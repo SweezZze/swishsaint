@@ -1,0 +1,30 @@
+name: Fork · Checks
+
+# Sur chaque PR et chaque push sur main : le fork ne modifie les fichiers officiels
+# qu'aux coutures déclarées (fork/seams.txt). La compilation, le selftest et les tests
+# sont faits par le CI officiel (ci.yml), qui tourne aussi dans le fork.
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: fork-checks-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  seams:
+    name: Fork seams
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Vérifier les coutures
+        run: fork/check-seams.sh --fetch

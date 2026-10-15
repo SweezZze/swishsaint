@@ -1,0 +1,269 @@
+name: Fork · Sync officiel
+
+# Toutes les 2 heures :
+#   1. regarde si vorssaint/vorssaint-utils a du nouveau (job léger sur Linux) ;
+#   2. si oui, fusionne dans main, vérifie (coutures, build, selftest, tests, empaquetage)
+#      et pousse directement sur main quand tout est vert ;
+#   3. sinon (conflit ou casse) : Claude termine la fusion sur une branche sync/upstream-<sha>
+#      et ouvre une PR. Tant qu'une PR ou issue « sync » est ouverte, les synchros attendent.
+#
+# Réglages (Settings › Secrets and variables › Actions) :
+#   vars.FORK_BOT_CLIENT_ID, secrets.FORK_BOT_PRIVATE_KEY   GitHub App du fork (obligatoire)
+#   secrets.CLAUDE_CODE_OAUTH_TOKEN ou ANTHROPIC_API_KEY     pour la résolution par Claude
+#   vars.SYNC_ENABLED = false                                coupe les synchros
+#   vars.AUTO_MERGE_RESOLVED = true                          merge auto des PR de Claude si la CI est verte
+on:
+  schedule:
+    - cron: "23 */2 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: fork-sync
+  cancel-in-progress: false
+
+jobs:
+  check:
+    name: Nouveautés officielles ?
+    if: vars.SYNC_ENABLED != 'false'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      issues: read
+      pull-requests: read
+    outputs:
+      behind: ${{ steps.compare.outputs.behind }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Comparer avec l'officiel
+        id: compare
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          . fork/config.env
+          pending="$(gh pr list --state open --label sync --json number --jq length)"
+          blocked="$(gh issue list --state open --label sync --json number --jq length)"
+          if [ "$pending" != 0 ] || [ "$blocked" != 0 ]; then
+            echo "::notice::Une synchro attend déjà (PR ou issue « sync » ouverte) : on ne relance pas."
+            echo "behind=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          git remote add upstream "https://github.com/$UPSTREAM_REPO.git"
+          git fetch --quiet --no-tags upstream \
+            "+refs/heads/$UPSTREAM_BRANCH:refs/remotes/upstream/$UPSTREAM_BRANCH"
+          if git merge-base --is-ancestor "upstream/$UPSTREAM_BRANCH" HEAD; then
+            echo "Déjà à jour."
+            echo "behind=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "$(git rev-list --count "HEAD..upstream/$UPSTREAM_BRANCH") commit(s) officiel(s) à intégrer."
+            echo "behind=true" >> "$GITHUB_OUTPUT"
+          fi
+
+  sync:
+    name: Fusion + vérifications
+    needs: check
+    if: needs.check.outputs.behind == 'true'
+    runs-on: macos-26
+    timeout-minutes: 75
+    outputs:
+      result: ${{ steps.result.outputs.result }}
+    steps:
+      - name: Jeton du bot
+        id: app-token
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        with:
+          client-id: ${{ vars.FORK_BOT_CLIENT_ID }}
+          private-key: ${{ secrets.FORK_BOT_PRIVATE_KEY }}
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+          fetch-depth: 0
+          token: ${{ steps.app-token.outputs.token }}
+
+      - name: Identité git du bot
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          SLUG: ${{ steps.app-token.outputs.app-slug }}
+        run: |
+          id="$(gh api "/users/${SLUG}[bot]" --jq .id)"
+          git config user.name "${SLUG}[bot]"
+          git config user.email "${id}+${SLUG}[bot]@users.noreply.github.com"
+
+      - name: Fusionner l'officiel
+        id: merge
+        run: |
+          set +e
+          fork/sync-upstream.sh
+          code=$?
+          set -e
+          case "$code" in
+            0) echo "status=merged" >> "$GITHUB_OUTPUT" ;;
+            10) echo "status=up-to-date" >> "$GITHUB_OUTPUT" ;;
+            20) echo "status=conflict" >> "$GITHUB_OUTPUT" ;;
+            *) exit "$code" ;;
+          esac
+
+      - name: Vérifier (coutures, build, selftest, tests, empaquetage)
+        id: verify
+        if: steps.merge.outputs.status == 'merged'
+        continue-on-error: true
+        run: |
+          fork/check-seams.sh
+          ./build.sh
+          ./build/Vorssaint --selftest
+          ./build.sh --test
+          if [ -x fork/test.sh ]; then fork/test.sh; fi
+          fork/build-release.sh --skip-build --adhoc
+
+      - name: Pousser sur main
+        if: steps.merge.outputs.status == 'merged' && steps.verify.outcome == 'success'
+        run: |
+          if git push origin HEAD:main; then exit 0; fi
+          git fetch --quiet origin main
+          if git merge-base --is-ancestor origin/main HEAD; then exit 1; fi
+          echo "::notice::main a bougé pendant les vérifications (PR mergée entre-temps) : nouvel essai au prochain passage."
+
+      - name: Résultat
+        id: result
+        if: always()
+        env:
+          STATUS: ${{ steps.merge.outputs.status }}
+          VERIFY: ${{ steps.verify.outcome }}
+        run: |
+          if [ "$STATUS" = conflict ] || [ "$VERIFY" = failure ]; then
+            echo "result=needs-help" >> "$GITHUB_OUTPUT"
+          else
+            echo "result=ok" >> "$GITHUB_OUTPUT"
+          fi
+
+  resolve:
+    name: Claude termine la fusion
+    needs: sync
+    if: always() && needs.sync.outputs.result == 'needs-help'
+    runs-on: macos-26
+    timeout-minutes: 150
+    steps:
+      - name: Jeton du bot
+        id: app-token
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        with:
+          client-id: ${{ vars.FORK_BOT_CLIENT_ID }}
+          private-key: ${{ secrets.FORK_BOT_PRIVATE_KEY }}
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+          fetch-depth: 0
+          token: ${{ steps.app-token.outputs.token }}
+
+      - name: Identité git du bot
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          SLUG: ${{ steps.app-token.outputs.app-slug }}
+        run: |
+          id="$(gh api "/users/${SLUG}[bot]" --jq .id)"
+          git config user.name "${SLUG}[bot]"
+          git config user.email "${id}+${SLUG}[bot]@users.noreply.github.com"
+
+      - name: Relancer la fusion en gardant les conflits
+        id: prep
+        run: |
+          set +e
+          KEEP_CONFLICTS=1 fork/sync-upstream.sh
+          code=$?
+          set -e
+          if [ "$code" != 0 ] && [ "$code" != 20 ]; then exit "$code"; fi
+          . fork/config.env
+          echo "branch=sync/upstream-$(git rev-parse --short=7 "upstream/$UPSTREAM_BRANCH")" >> "$GITHUB_OUTPUT"
+
+      - name: Claude résout
+        uses: anthropics/claude-code-action@a26b07d8c778b0c43f64618e5fd29fd0f8af72e8 # v1.0.250
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          github_token: ${{ steps.app-token.outputs.token }}
+          settings: '{"env": {"BASH_DEFAULT_TIMEOUT_MS": "1800000", "BASH_MAX_TIMEOUT_MS": "3600000"}}'
+          claude_args: |
+            --max-turns 150
+            --allowedTools "Bash,Read,Edit,Write,Glob,Grep,TodoWrite"
+          prompt: |
+            Tu travailles dans le fork d'une app macOS en Swift. Lis d'abord .claude/CLAUDE.md
+            (règles du fork) et CONTRIBUTING.md (règles de l'officiel).
+
+            La synchronisation automatique avec l'officiel (remote « upstream ») vient d'échouer.
+            Ce dossier contient la fusion de l'officiel dans main :
+            - s'il reste des conflits (git status), résous-les ;
+            - sinon la fusion est faite mais une vérification échoue : corrige.
+
+            Règles :
+            1. Le code officiel fait foi : garde ses changements.
+            2. Ré-applique chaque couture du fork (marqueurs FORK(...), liste dans fork/seams.txt)
+               à l'endroit équivalent, même si le code a bougé. Ne supprime jamais une couture.
+               Si son emplacement a changé, déplace-la et mets à jour fork/seams.txt.
+            3. Si le code du fork (Sources/Vorssaint/Fork/) ne compile plus à cause d'un changement
+               officiel (API renommée, nouvelle langue…), adapte-le.
+            4. Ne modifie aucun autre fichier officiel.
+
+            Lance ces vérifications, dans l'ordre, jusqu'à ce que toutes passent :
+              fork/check-seams.sh
+              ./build.sh
+              ./build/Vorssaint --selftest
+              ./build.sh --test
+              fork/build-release.sh --skip-build --adhoc
+
+            Termine par un commit : `git commit --no-edit` si la fusion est encore en cours, sinon
+            un commit « fix(fork): … ». Ne pousse rien et n'ouvre pas de PR : le workflow s'en charge.
+            Écris enfin dans .git/claude-summary.md un résumé en français pour les copains :
+            conflits rencontrés, choix faits, vérifications passées ou non.
+
+      - name: Ouvrir la PR (ou signaler l'échec)
+        if: always()
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          BRANCH: ${{ steps.prep.outputs.branch }}
+          AUTO_MERGE: ${{ vars.AUTO_MERGE_RESOLVED }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          gh label create sync --color FBCA04 --description "Synchronisation avec l'officiel" --force >/dev/null
+          summary="$(cat .git/claude-summary.md 2>/dev/null || echo "Pas de résumé de Claude.")"
+          body="$RUNNER_TEMP/sync-body.md"
+          if [ -f .git/MERGE_HEAD ] || [ -n "$(git ls-files -u)" ] || [ -z "$BRANCH" ]; then
+            cat > "$body" <<EOF
+          La fusion automatique avec l'officiel a échoué et Claude n'a pas pu la terminer.
+
+          Journal : $RUN_URL
+
+          $summary
+
+          À faire en local : \`KEEP_CONFLICTS=1 fork/sync-upstream.sh\`, résoudre (avec Claude Code),
+          pousser une branche et ouvrir une PR. Fermer cette issue relance les synchros automatiques.
+          EOF
+            gh issue create --label sync --title "🔴 Synchro avec l'officiel bloquée" --body-file "$body"
+            exit 1
+          fi
+          git push --force origin "HEAD:refs/heads/$BRANCH"
+          cat > "$body" <<EOF
+          $summary
+
+          ---
+          - [ ] La CI est verte
+          - [ ] Merger avec **« Create a merge commit »** (jamais Squash ni Rebase)
+
+          Journal : $RUN_URL
+          EOF
+          if ! gh pr view "$BRANCH" >/dev/null 2>&1; then
+            gh pr create --base main --head "$BRANCH" --label sync \
+              --title "sync(upstream): fusion résolue par Claude ($BRANCH)" --body-file "$body"
+          fi
+          if [ "$AUTO_MERGE" = true ]; then
+            gh pr merge "$BRANCH" --auto --merge
+          fi

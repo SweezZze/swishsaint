@@ -1,0 +1,119 @@
+name: Fork · Release
+
+# Publie automatiquement une nouvelle version de l'app (tag build-<N> + zip signé) :
+#   - dès qu'une PR est mergée dans main (une feature des copains) ;
+#   - dès qu'une synchro apporte une nouvelle version officielle (tag v…) ;
+#   - chaque nuit s'il reste des changements officiels pas encore publiés ;
+#   - à la main : Actions › Fork · Release › Run workflow.
+# L'updater intégré à l'app propose ensuite la MAJ à tout le monde.
+#
+# Réglages (Settings › Secrets and variables › Actions) :
+#   environnement « release » : secrets SIGNING_CERT_P12 et SIGNING_CERT_PASSWORD
+#   vars.RELEASE_ON_UPSTREAM_TAGS = all (défaut) | stable | none
+#   vars.NIGHTLY_RELEASE = false                     coupe la release de nuit
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: "41 2 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: fork-release
+  cancel-in-progress: false
+
+jobs:
+  decide:
+    name: Faut-il publier ?
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      release: ${{ steps.decide.outputs.release }}
+      build_number: ${{ steps.decide.outputs.build_number }}
+      sha: ${{ steps.decide.outputs.sha }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          filter: blob:none
+          persist-credentials: false
+
+      - name: Décider
+        id: decide
+        env:
+          EVENT: ${{ github.event_name }}
+          HEAD_MESSAGE: ${{ github.event.head_commit.message }}
+          TAG_POLICY: ${{ vars.RELEASE_ON_UPSTREAM_TAGS || 'all' }}
+          NIGHTLY: ${{ vars.NIGHTLY_RELEASE || 'true' }}
+        run: |
+          n="$(git rev-list --count HEAD)"
+          echo "build_number=$n" >> "$GITHUB_OUTPUT"
+          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+          release=false
+          if git rev-parse -q --verify "refs/tags/build-$n" >/dev/null; then
+            echo "build-$n est déjà publié."
+          else
+            first="$(printf '%s\n' "$HEAD_MESSAGE" | head -1)"
+            case "$EVENT" in
+              workflow_dispatch) release=true ;;
+              schedule) [ "$NIGHTLY" = false ] || release=true ;;
+              push)
+                case "$first" in
+                  "sync(upstream):"*)
+                    case "$TAG_POLICY" in
+                      all) case "$first" in *", includes v"*) release=true ;; esac ;;
+                      stable) printf '%s\n' "$first" | grep -Eq 'v[0-9]+\.[0-9]+\.[0-9]+( |$)' && release=true ;;
+                    esac ;;
+                  *) release=true ;;
+                esac ;;
+            esac
+          fi
+          echo "release=$release" >> "$GITHUB_OUTPUT"
+          echo "Décision : release=$release (build $n, événement $EVENT)"
+
+  publish:
+    name: Build, signature, publication
+    needs: decide
+    if: needs.decide.outputs.release == 'true'
+    runs-on: macos-26
+    timeout-minutes: 60
+    environment: release
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.decide.outputs.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Certificat de signature
+        env:
+          REQUIRE_SIGNING: "1"
+          SIGNING_CERT_P12: ${{ secrets.SIGNING_CERT_P12 }}
+          SIGNING_CERT_PASSWORD: ${{ secrets.SIGNING_CERT_PASSWORD }}
+        run: ./Tools/ci-setup-signing.sh
+
+      - name: Construire, renommer, signer, empaqueter
+        env:
+          BUILD_NUMBER: ${{ needs.decide.outputs.build_number }}
+        run: fork/build-release.sh
+
+      - name: Notes de version
+        run: fork/release-notes.sh > dist/notes.md
+
+      - name: Publier
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ needs.decide.outputs.sha }}
+        run: |
+          . fork/config.env
+          . dist/build-info.env
+          gh release create "build-$BUILD_NUMBER" "$ZIP" "$ZIP.sha256" \
+            --target "$SHA" \
+            --title "$FORK_APP_NAME build $BUILD_NUMBER" \
+            --notes-file dist/notes.md \
+            --latest
