@@ -5,10 +5,11 @@
 # Une couture = 1 à 3 lignes qui appellent du code rangé dans Sources/Vorssaint/Fork/.
 # fork/check-seams.sh refuse toute modification d'un fichier officiel qui n'est pas listée ici.
 #
-# Coutures prévues (décommente chaque ligne quand la couture est en place) :
-# bootstrap  Sources/Vorssaint/App/AppDelegate.swift                     # démarre le code du fork au lancement
-# update     Sources/Vorssaint/Services/Update/UpdateService.swift       # coupe l'updater officiel, branche celui du fork
-# backup     Sources/Vorssaint/Core/SettingsBackupSupport.swift          # les réglages du fork partent dans la sauvegarde
-# feedback   Sources/Vorssaint/Services/Feedback/FeedbackService.swift   # n'envoie pas nos rapports de bug au dev officiel
-# settings   Sources/Vorssaint/UI/Settings/FeatureVisibilitySupport.swift # page « Extras » : déclare la page
-# settings2  Sources/Vorssaint/UI/Settings/SettingsView.swift              # page « Extras » : affiche son contenu
+bootstrap      Sources/Vorssaint/App/AppDelegate.swift                        # démarre le code du fork au lancement
+update         Sources/Vorssaint/Services/Update/UpdateService.swift          # coupe l'updater officiel, branche celui du fork
+backup         Sources/Vorssaint/Services/SettingsBackup.swift                # les réglages du fork partent dans la sauvegarde et en reviennent
+feedback       Sources/Vorssaint/Services/Feedback/FeedbackService.swift      # n'envoie pas nos rapports de bug au dev officiel
+settings       Sources/Vorssaint/UI/Settings/FeatureVisibilitySupport.swift   # page « Extras » : déclare la page
+settings2      Sources/Vorssaint/UI/Settings/SettingsView.swift               # page « Extras » : affiche son contenu
+settings3      Sources/Vorssaint/UI/Settings/SettingsDirectory.swift          # page « Extras » : sa ligne dans la barre latérale et la recherche
+window-layout  Sources/Vorssaint/Services/WindowLayout/WindowLayoutService.swift  # gestes du trackpad : suivent chaque synchro et chaque arrêt de Disposition des fenêtres
