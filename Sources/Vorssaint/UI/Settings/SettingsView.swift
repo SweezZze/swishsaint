@@ -607,6 +607,7 @@ struct SettingsView: View {
         case .about: AboutSettings()
         case .releaseNotes: ReleaseNotesSettings()
         case .support: SupportSettings()
+        case .extras: ForkExtrasSettings() // FORK(settings2)
         }
     }
 }

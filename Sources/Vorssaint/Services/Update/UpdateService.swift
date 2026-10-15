@@ -61,6 +61,7 @@ final class UpdateService: ObservableObject {
 
     /// Called at launch: checks shortly after start and then daily, if enabled.
     func startAutomaticChecks() {
+        if ForkUpdate.takesOver() { return } // FORK(update)
         consumeInstallResult()
         if AppInfo.isBeta && UserDefaults.standard.object(forKey: DefaultsKey.includeBetaUpdates) == nil {
             UserDefaults.standard.set(true, forKey: DefaultsKey.includeBetaUpdates)
@@ -100,6 +101,7 @@ final class UpdateService: ObservableObject {
     // MARK: - Check
 
     func check(manual: Bool) {
+        if ForkUpdate.takesOver(manual: manual) { return } // FORK(update)
         if AppInfo.isDeveloperBuild {
             // No real update target; reflect the simulation default so the
             // notification UI can be exercised locally.

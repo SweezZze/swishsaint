@@ -77,6 +77,7 @@ final class FeedbackService {
     func submit(kind: FeedbackKind,
                 message: String,
                 diagnostics: FeedbackDiagnostics?) async throws {
+        if ForkFeedback.takesOver(kind: kind, message: message, diagnostics: diagnostics) { return } // FORK(feedback)
         let trimmed = message.trimmingCharacters(in: .whitespacesAndNewlines)
         guard trimmed.utf16.count >= 10, trimmed.utf16.count <= 2_000 else {
             throw FeedbackError.rejected

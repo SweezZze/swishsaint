@@ -31,6 +31,7 @@ enum SettingsBackup {
                                                           format: .xml,
                                                           options: 0)
             try data.write(to: url, options: .atomic)
+            ForkBackup.addForkSettings(toBackupAt: url) // FORK(backup)
             return true
         } catch {
             return false
@@ -50,6 +51,7 @@ enum SettingsBackup {
 
     /// Reads and validates a backup; nil when the file is not one of ours.
     static func readSettings(at url: URL) -> [String: Any]? {
+        ForkBackup.rememberForkSettings(inBackupAt: url) // FORK(backup)
         let accessing = url.startAccessingSecurityScopedResource()
         defer {
             if accessing {
@@ -116,6 +118,7 @@ enum SettingsBackup {
                 restored: defaults.stringArray(forKey: DefaultsKey.windowLayoutIgnoredApps) ?? [],
                 carried: windowLayoutPaths), forKey: DefaultsKey.windowLayoutIgnoredApps)
         }
+        ForkBackup.applyRememberedForkSettings() // FORK(backup)
         FeatureRuntime.shared.relaunchApp()
     }
 }

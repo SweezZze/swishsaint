@@ -107,6 +107,7 @@ final class WindowLayoutService: ObservableObject {
     }
 
     func syncWithPreferences() {
+        defer { ForkBootstrap.windowLayoutDidSync() } // FORK(window-layout)
         WindowLayoutIgnoredApps.shared.reload()
         let available = AppFeature.windowLayout.isAvailable
         let trusted = SessionActivitySupport.tapShouldRun(
@@ -176,6 +177,7 @@ final class WindowLayoutService: ObservableObject {
     /// the process terminates. Idempotent so permission and feature changes can
     /// call it freely.
     func suspend() {
+        ForkBootstrap.windowLayoutWillSuspend() // FORK(window-layout)
         unregisterHotkeys()
         unregisterDirectionalHotkey()
         stopGestureTap()

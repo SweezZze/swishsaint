@@ -438,6 +438,7 @@ enum SettingsDirectory {
                 SettingsDirectoryItem(page: .shortcuts, title: s.shortcutsPageTitle, icon: "command",
                                       keywords: [s.hotkeyToggle]),
                 SettingsDirectoryItem(page: .advanced, title: s.tabAdvanced, icon: "wrench.and.screwdriver"),
+                ForkExtrasSettings.directoryItem(language: language), // FORK(settings3)
                 SettingsDirectoryItem(page: .about, title: s.tabAbout, icon: "info.circle",
                                       keywords: [s.reviewIntro, s.reviewHighlights]),
                 SettingsDirectoryItem(page: .releaseNotes, title: s.tabReleaseNotes, icon: "sparkles"),
