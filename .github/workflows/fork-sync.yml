@@ -20,6 +20,11 @@ on:
 permissions:
   contents: read
 
+# gh choisit sinon le remote « upstream » (l'officiel) dès que fork/lib.sh l'a ajouté :
+# chaque release, PR et issue doit rester sur ce dépôt.
+env:
+  GH_REPO: ${{ github.repository }}
+
 concurrency:
   group: fork-sync
   cancel-in-progress: false
