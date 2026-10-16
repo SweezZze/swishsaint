@@ -25,12 +25,18 @@ automatiquement quand une feature est mergée, quand l'officiel publie une versi
 gh repo clone hectorpasserat2004-create/swishsaint && cd swishsaint
 gh repo set-default hectorpasserat2004-create/swishsaint       # sinon gh enverrait tes PR à l'officiel
 git config rerere.enabled true
-git switch -c feat/<prenom>-<sujet>
+git remote set-url --push upstream DISABLED                     # on ne pousse jamais chez Vorssaint
+
+# pour chaque feature :
+git switch main && git pull --ff-only
+git switch -c feat/<prenom>-<sujet>                             # une feature = une branche = une PR
 # … demande à Claude Code (il lit .claude/CLAUDE.md), teste avec ./build.sh --dev --install …
-git push -u origin HEAD && gh pr create
+git fetch origin && git merge origin/main                       # récupère les MAJ officielles (jamais de rebase)
+git push -u origin HEAD && gh pr create --base main --fill
 ```
 
-Règles complètes pour toi et pour Claude : [`.claude/CLAUDE.md`](../.claude/CLAUDE.md).
+Process complet, étape par étape, pour toi et pour Claude : [`.claude/CLAUDE.md`](../.claude/CLAUDE.md),
+section « Process des copains ».
 
 ## Licence
 

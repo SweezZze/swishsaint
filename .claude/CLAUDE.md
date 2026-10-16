@@ -33,6 +33,10 @@ Si `ForkDefaults`, `ForkFeature` ou la page « Extras » n'existent pas encore, 
 4. Ajoute une nouvelle ligne plutôt que de modifier une ligne existante, et choisis un endroit stable
    (début de fonction, fin d'un bloc qui bouge peu).
 5. `fork/check-seams.sh` doit passer : il refuse toute modification d'un fichier officiel non déclarée.
+6. Jamais de couture dans un fichier de la liste `TEST_SOURCES` de `build.sh` (compilé par `./build.sh --test`
+   sans le code du fork), sauf si elle ne nomme aucun type du fork : sinon les tests officiels ne compilent plus
+   et le CI officiel, contrôle obligatoire, passe au rouge. Exemple : la couture `backup` est dans
+   `Services/SettingsBackup.swift`, pas dans `Core/SettingsBackupSupport.swift`.
 
 ## Fichiers officiels à ne JAMAIS modifier
 
@@ -65,15 +69,95 @@ Ce sont les plus modifiés par l'officiel, donc un conflit garanti :
 ```sh
 ./build.sh --dev && ./build/VorssaintDeveloper --selftest
 ./build.sh --test
-fork/check-seams.sh
+fork/test.sh
+fork/check-seams.sh --fetch
 ./build.sh --dev --install    # test en vrai : installe « Vorssaint (Developer) », à côté des autres apps
 ```
 
-## Git
+## Process des copains : une feature = une branche = une PR
 
-- Une branche par feature, partie de `main` à jour : `feat/<prenom>-<sujet>` ou `fix/<prenom>-<sujet>`.
-- Les PR vont vers `main` **du fork**. `gh repo set-default` doit pointer sur le fork, jamais sur vorssaint/vorssaint-utils.
-- Interdit : push direct sur `main`, `push --force` sur une branche partagée, `rebase` de `main`, commit de `*.p12` ou de clés.
+Valable pour les humains comme pour Claude. Claude : si la demande arrive alors que tu es sur `main`,
+commence par l'étape 2 ; si elle concerne une autre feature que la branche en cours, demande avant de mélanger.
+
+### 1. Une seule fois, sur ton Mac
+
+```sh
+gh repo clone hectorpasserat2004-create/swishsaint ~/Developer/swishsaint && cd ~/Developer/swishsaint
+gh repo set-default hectorpasserat2004-create/swishsaint   # sinon gh peut envoyer tes PR à l'officiel
+git config rerere.enabled true                             # git retient tes résolutions de conflit
+git remote set-url --push upstream DISABLED                # on ne pousse jamais chez Vorssaint
+```
+
+Il faut être collaborateur du dépôt (demande à Hector) : sans ça, pas de push ni de `@claude`.
+
+### 2. Démarrer une feature
+
+```sh
+git switch main && git pull --ff-only          # toujours partir de main à jour
+git switch -c feat/<prenom>-<sujet>            # ou fix/<prenom>-<sujet>, docs/<prenom>-<sujet>
+```
+
+- **Une branche par feature, une feature par branche.** Deux idées = deux branches = deux PR, même petites.
+  Une PR courte est relue, mergée et publiée vite ; une grosse PR accumule les conflits.
+- Nom en minuscules avec tirets : `feat/martial-dictation-toggle`, `fix/louis-preview-flicker`.
+- Avant de toucher une zone où quelqu'un travaille déjà (regarde `gh pr list`), ouvre une issue ou parle-lui :
+  deux branches sur les mêmes fichiers finissent en conflit (c'est arrivé avec la PR #4).
+- Ne travaille jamais sur la branche d'un autre sans son accord. Pour l'aider : commente sa PR, ou pars de sa
+  branche (`git switch -c feat/<toi>-<sujet> origin/feat/<lui>-<sujet>`) et propose une PR vers la sienne.
+
+### 3. Coder et committer
+
+- Code dans `Sources/Vorssaint/Fork/<Feature>/`, interrupteur dans la page « Extras », réglages `fork.<feature>.*`,
+  textes dans les 15 langues, tests dans `Tests/Fork/` (voir « Où mettre quoi » et « Coutures » plus haut).
+- Committe souvent, un commit = un pas cohérent : `feat(<feature>): add …`, `fix(<feature>): stop …`.
+- Pousse ta branche dès le premier commit (`git push -u origin HEAD`) : elle est sauvegardée et visible des autres.
+
+### 4. Récupérer les mises à jour officielles pendant que tu codes
+
+Le robot fusionne Vorssaint officiel dans `main` toutes les 2 h. Ta branche, elle, ne bouge pas toute seule :
+
+```sh
+git fetch origin && git merge origin/main      # au moins tous les 2-3 jours, et toujours avant d'ouvrir la PR
+```
+
+- **Merge, jamais rebase** d'une branche déjà poussée, jamais `push --force`.
+- Merge `origin/main`, **jamais `upstream/main`** directement : la synchro avec l'officiel est le travail du robot,
+  sinon ta PR embarque des centaines de commits officiels et double la synchro.
+- En cas de conflit : section « Résoudre un conflit avec l'officiel » ci-dessous, puis relance les vérifications.
+
+### 5. Vérifier puis ouvrir la PR
+
+```sh
+fork/test.sh && fork/check-seams.sh --fetch && ./build.sh --test
+./build.sh --dev --install     # essai en vrai dans « Vorssaint (Developer) » ; quitte Swishsaint pendant l'essai
+git push && gh pr create --base main --fill
+```
+
+Le corps de la PR dit : **ce que fait la feature**, **les réglages ou coutures ajoutés**, **ce qui a vraiment été
+vérifié** (commandes lancées, essai sur un vrai Mac ou non). Une PR = une feature ; si tu as besoin d'une autre
+PR avant, dis-le (« dépend de #12 »).
+
+### 6. Merge et release
+
+- Les contrôles obligatoires doivent être verts : `Fork seams`, `Build & selftest`, `Swift 6.0.3 compatibility`.
+  Si un échec vient aussi de `main` de l'officiel (pas de ta PR), écris-le dans la PR : Hector décide du contournement.
+- Merge par le bouton **« Create a merge commit »** (seul mode autorisé), par l'auteur une fois les contrôles verts,
+  ou par Hector. Supprime la branche ensuite.
+- Le workflow `Fork · Release` publie alors `build-<N>` ; l'app de chacun propose la mise à jour toute seule.
+- Chez toi : `git switch main && git pull --ff-only && git branch -d feat/<prenom>-<sujet>`, et la feature suivante
+  repart de l'étape 2.
+
+### 7. Les branches et PR du robot
+
+- `sync/upstream-*` : synchro avec l'officiel qui a besoin d'aide (conflit ou casse). Elle passe avant les features ;
+  n'y mets jamais de feature. Tant qu'elle est ouverte, les synchros suivantes attendent.
+- `claude/*` : créées par `@claude` dans une issue ou une PR. Même process : relue, contrôles verts, merge commit.
+
+### Interdits
+
+Push direct sur `main` ; `push --force` sur une branche partagée ; `rebase` de `main` ou d'une branche poussée ;
+squash ; merger `upstream/main` à la main ; PR vers `vorssaint/vorssaint-utils` ; committer `*.p12`, clés ou jetons ;
+deux features dans une même PR.
 
 ## Résoudre un conflit avec l'officiel
 
