@@ -239,6 +239,11 @@ private struct ForkTrackpadPreviewView: View {
                         .shadow(color: .black.opacity(0.3), radius: 2, y: 1)
                         .transition(.move(edge: .bottom).combined(with: .opacity))
                 }
+            case .symbol(let name):
+                Image(systemName: name)
+                    .font(.system(size: 44, weight: .semibold))
+                    .foregroundStyle(.secondary)
+                    .transition(.scale(scale: 0.8).combined(with: .opacity))
             case .unrecognized:
                 Image(systemName: "questionmark")
                     .font(.system(size: 44, weight: .semibold))

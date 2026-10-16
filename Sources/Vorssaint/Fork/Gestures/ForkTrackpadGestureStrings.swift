@@ -38,6 +38,8 @@ struct ForkTrackpadGestureStrings {
     let actionQuitApp: String
     let actionEmptyTrash: String
     let actionShowAppWindows: String
+    let actionShowNextWindow: String
+    let actionShowPreviousWindow: String
     let actionRestoreMinimizedWindow: String
     let actionCloseMinimizedWindow: String
     let centerSizeTitle: String
@@ -67,6 +69,11 @@ struct ForkTrackpadGestureStrings {
     let previewDetail: String
     let hapticsTitle: String
     let hapticsDetail: String
+    let diagnosticsTitle: String
+    let diagnosticSmartZoomOff: String
+    let diagnosticPinchToZoomOff: String
+    let diagnosticForceClickOff: String
+    let diagnosticsOpenTrackpadSettings: String
 }
 
 extension FeatureStrings {
@@ -124,6 +131,8 @@ extension ForkTrackpadGestureStrings {
         actionQuitApp: "Quit from the Dock",
         actionEmptyTrash: "Empty the Trash",
         actionShowAppWindows: "Bring back the app’s windows",
+        actionShowNextWindow: "Show the app’s next window",
+        actionShowPreviousWindow: "Show the app’s previous window",
         actionRestoreMinimizedWindow: "Reopen the minimized window",
         actionCloseMinimizedWindow: "Close the minimized window",
         centerSizeTitle: "Size of the centered window",
@@ -152,7 +161,13 @@ extension ForkTrackpadGestureStrings {
         previewTitle: "Preview",
         previewDetail: "A small screen shows where the window will go.",
         hapticsTitle: "Haptic feedback",
-        hapticsDetail: "A light click at each step that counts."
+        hapticsDetail: "A light click at each step that counts.",
+        diagnosticsTitle: "Diagnostics",
+        diagnosticSmartZoomOff: "Smart zoom is off in System Settings › Trackpad, so the double tap does nothing.",
+        diagnosticPinchToZoomOff: "Pinch to zoom is off in System Settings › Trackpad, so pinching does nothing.",
+        diagnosticForceClickOff: "Force Click and haptic feedback are off in System Settings › Trackpad, "
+            + "so gestures never click.",
+        diagnosticsOpenTrackpadSettings: "Open Trackpad Settings"
     )
 
     static let ptBR = ForkTrackpadGestureStrings(
@@ -187,6 +202,8 @@ extension ForkTrackpadGestureStrings {
         actionQuitApp: "Encerrar pelo Dock",
         actionEmptyTrash: "Esvaziar o Lixo",
         actionShowAppWindows: "Trazer de volta as janelas do app",
+        actionShowNextWindow: "Mostrar a próxima janela do app",
+        actionShowPreviousWindow: "Mostrar a janela anterior do app",
         actionRestoreMinimizedWindow: "Reabrir a janela minimizada",
         actionCloseMinimizedWindow: "Fechar a janela minimizada",
         centerSizeTitle: "Tamanho da janela centralizada",
@@ -215,7 +232,15 @@ extension ForkTrackpadGestureStrings {
         previewTitle: "Pré-visualização",
         previewDetail: "Uma pequena tela mostra para onde a janela vai.",
         hapticsTitle: "Resposta tátil",
-        hapticsDetail: "Um leve clique a cada etapa validada."
+        hapticsDetail: "Um leve clique a cada etapa validada.",
+        diagnosticsTitle: "Diagnóstico",
+        diagnosticSmartZoomOff: "O zoom inteligente está desativado em Ajustes do Sistema › Trackpad, "
+            + "então o toque duplo não faz nada.",
+        diagnosticPinchToZoomOff: "O pinçar para zoom está desativado em Ajustes do Sistema › Trackpad, "
+            + "então pinçar não faz nada.",
+        diagnosticForceClickOff: "O Force Click e o retorno háptico estão desativados em Ajustes do Sistema "
+            + "› Trackpad, então os gestos nunca clicam.",
+        diagnosticsOpenTrackpadSettings: "Abrir Ajustes do Trackpad"
     )
 
     static let tr = ForkTrackpadGestureStrings(
@@ -250,6 +275,8 @@ extension ForkTrackpadGestureStrings {
         actionQuitApp: "Dock’tan çık",
         actionEmptyTrash: "Çöp Sepeti’ni boşalt",
         actionShowAppWindows: "Uygulamanın pencerelerini geri getir",
+        actionShowNextWindow: "Uygulamanın sonraki penceresini göster",
+        actionShowPreviousWindow: "Uygulamanın önceki penceresini göster",
         actionRestoreMinimizedWindow: "Küçültülmüş pencereyi yeniden aç",
         actionCloseMinimizedWindow: "Küçültülmüş pencereyi kapat",
         centerSizeTitle: "Ortalanan pencerenin boyutu",
@@ -278,7 +305,15 @@ extension ForkTrackpadGestureStrings {
         previewTitle: "Önizleme",
         previewDetail: "Küçük bir ekran pencerenin nereye gideceğini gösterir.",
         hapticsTitle: "Dokunsal geri bildirim",
-        hapticsDetail: "Onaylanan her adımda hafif bir tık."
+        hapticsDetail: "Onaylanan her adımda hafif bir tık.",
+        diagnosticsTitle: "Tanılama",
+        diagnosticSmartZoomOff: "Akıllı yakınlaştırma Sistem Ayarları › Trackpad’de kapalı, "
+            + "bu yüzden çift dokunuş hiçbir şey yapmıyor.",
+        diagnosticPinchToZoomOff: "Yakınlaştırmak için sıkıştırma Sistem Ayarları › Trackpad’de kapalı, "
+            + "bu yüzden sıkıştırma hiçbir şey yapmıyor.",
+        diagnosticForceClickOff: "Sert Tıklama ve dokunsal geri bildirim Sistem Ayarları › Trackpad’de kapalı, "
+            + "bu yüzden hareketler asla tıklamıyor.",
+        diagnosticsOpenTrackpadSettings: "Trackpad Ayarlarını Aç"
     )
 
     static let ru = ForkTrackpadGestureStrings(
@@ -313,6 +348,8 @@ extension ForkTrackpadGestureStrings {
         actionQuitApp: "Завершить из Dock",
         actionEmptyTrash: "Очистить Корзину",
         actionShowAppWindows: "Вернуть окна приложения",
+        actionShowNextWindow: "Показать следующее окно приложения",
+        actionShowPreviousWindow: "Показать предыдущее окно приложения",
         actionRestoreMinimizedWindow: "Открыть свёрнутое окно",
         actionCloseMinimizedWindow: "Закрыть свёрнутое окно",
         centerSizeTitle: "Размер окна по центру",
@@ -341,7 +378,15 @@ extension ForkTrackpadGestureStrings {
         previewTitle: "Предпросмотр",
         previewDetail: "Маленький экран показывает, куда встанет окно.",
         hapticsTitle: "Тактильный отклик",
-        hapticsDetail: "Лёгкий щелчок на каждом засчитанном шаге."
+        hapticsDetail: "Лёгкий щелчок на каждом засчитанном шаге.",
+        diagnosticsTitle: "Диагностика",
+        diagnosticSmartZoomOff: "Функция «Смарт-зум» отключена в Системных настройках › Трекпад, "
+            + "поэтому двойное касание ничего не делает.",
+        diagnosticPinchToZoomOff: "Функция «Сжатие для масштабирования» отключена в Системных настройках "
+            + "› Трекпад, поэтому сжатие ничего не делает.",
+        diagnosticForceClickOff: "Функции Force Click и тактильный отклик отключены в Системных настройках "
+            + "› Трекпад, поэтому жесты никогда не «щёлкают».",
+        diagnosticsOpenTrackpadSettings: "Открыть настройки трекпада"
     )
 
     static let es = ForkTrackpadGestureStrings(
@@ -376,6 +421,8 @@ extension ForkTrackpadGestureStrings {
         actionQuitApp: "Salir desde el Dock",
         actionEmptyTrash: "Vaciar la papelera",
         actionShowAppWindows: "Recuperar las ventanas de la app",
+        actionShowNextWindow: "Mostrar la siguiente ventana de la app",
+        actionShowPreviousWindow: "Mostrar la ventana anterior de la app",
         actionRestoreMinimizedWindow: "Reabrir la ventana minimizada",
         actionCloseMinimizedWindow: "Cerrar la ventana minimizada",
         centerSizeTitle: "Tamaño de la ventana centrada",
@@ -404,7 +451,15 @@ extension ForkTrackpadGestureStrings {
         previewTitle: "Previsualización",
         previewDetail: "Una pequeña pantalla muestra adónde irá la ventana.",
         hapticsTitle: "Respuesta háptica",
-        hapticsDetail: "Un clic suave en cada paso que cuenta."
+        hapticsDetail: "Un clic suave en cada paso que cuenta.",
+        diagnosticsTitle: "Diagnóstico",
+        diagnosticSmartZoomOff: "El zoom inteligente está desactivado en Ajustes del Sistema › Trackpad, "
+            + "así que el doble toque no hace nada.",
+        diagnosticPinchToZoomOff: "Pellizcar para hacer zoom está desactivado en Ajustes del Sistema › "
+            + "Trackpad, así que pellizcar no hace nada.",
+        diagnosticForceClickOff: "Force Click y la respuesta háptica están desactivados en Ajustes del "
+            + "Sistema › Trackpad, así que los gestos nunca hacen clic.",
+        diagnosticsOpenTrackpadSettings: "Abrir ajustes del Trackpad"
     )
 
     static let sk = ForkTrackpadGestureStrings(
@@ -439,6 +494,8 @@ extension ForkTrackpadGestureStrings {
         actionQuitApp: "Ukončiť z Docku",
         actionEmptyTrash: "Vyprázdniť Kôš",
         actionShowAppWindows: "Vrátiť okná aplikácie",
+        actionShowNextWindow: "Zobraziť ďalšie okno aplikácie",
+        actionShowPreviousWindow: "Zobraziť predchádzajúce okno aplikácie",
         actionRestoreMinimizedWindow: "Znova otvoriť minimalizované okno",
         actionCloseMinimizedWindow: "Zavrieť minimalizované okno",
         centerSizeTitle: "Veľkosť vycentrovaného okna",
@@ -467,7 +524,15 @@ extension ForkTrackpadGestureStrings {
         previewTitle: "Náhľad",
         previewDetail: "Malá obrazovka ukáže, kam sa okno presunie.",
         hapticsTitle: "Hmatová odozva",
-        hapticsDetail: "Jemné cvaknutie pri každom započítanom kroku."
+        hapticsDetail: "Jemné cvaknutie pri každom započítanom kroku.",
+        diagnosticsTitle: "Diagnostika",
+        diagnosticSmartZoomOff: "Inteligentné priblíženie je vypnuté v Nastaveniach systému › Trackpad, "
+            + "takže dvojité ťuknutie nič nerobí.",
+        diagnosticPinchToZoomOff: "Priblíženie stiahnutím prstov je vypnuté v Nastaveniach systému › "
+            + "Trackpad, takže stiahnutie prstov nič nerobí.",
+        diagnosticForceClickOff: "Force Click a haptická odozva sú vypnuté v Nastaveniach systému › "
+            + "Trackpad, takže gestá nikdy neklikajú.",
+        diagnosticsOpenTrackpadSettings: "Otvoriť Nastavenia trackpadu"
     )
 
     static let de = ForkTrackpadGestureStrings(
@@ -502,6 +567,8 @@ extension ForkTrackpadGestureStrings {
         actionQuitApp: "Aus dem Dock beenden",
         actionEmptyTrash: "Papierkorb entleeren",
         actionShowAppWindows: "Fenster der App zurückholen",
+        actionShowNextWindow: "Nächstes Fenster der App zeigen",
+        actionShowPreviousWindow: "Vorheriges Fenster der App zeigen",
         actionRestoreMinimizedWindow: "Minimiertes Fenster wieder öffnen",
         actionCloseMinimizedWindow: "Minimiertes Fenster schließen",
         centerSizeTitle: "Größe des zentrierten Fensters",
@@ -530,7 +597,15 @@ extension ForkTrackpadGestureStrings {
         previewTitle: "Vorschau",
         previewDetail: "Ein kleiner Bildschirm zeigt, wohin das Fenster geht.",
         hapticsTitle: "Haptisches Feedback",
-        hapticsDetail: "Ein leichtes Klicken bei jedem gezählten Schritt."
+        hapticsDetail: "Ein leichtes Klicken bei jedem gezählten Schritt.",
+        diagnosticsTitle: "Diagnose",
+        diagnosticSmartZoomOff: "Der intelligente Zoom ist in den Systemeinstellungen › Trackpad "
+            + "deaktiviert, daher bewirkt der Doppeltipp nichts.",
+        diagnosticPinchToZoomOff: "Zum Zoomen zusammenziehen ist in den Systemeinstellungen › Trackpad "
+            + "deaktiviert, daher bewirkt das Zusammenziehen nichts.",
+        diagnosticForceClickOff: "Force Click und haptisches Feedback sind in den Systemeinstellungen › "
+            + "Trackpad deaktiviert, daher klicken die Gesten nie.",
+        diagnosticsOpenTrackpadSettings: "Trackpad-Einstellungen öffnen"
     )
 
     static let fr = ForkTrackpadGestureStrings(
@@ -565,6 +640,8 @@ extension ForkTrackpadGestureStrings {
         actionQuitApp: "Quitter depuis le Dock",
         actionEmptyTrash: "Vider la Corbeille",
         actionShowAppWindows: "Ramener les fenêtres de l’app",
+        actionShowNextWindow: "Montrer la fenêtre suivante de l’app",
+        actionShowPreviousWindow: "Montrer la fenêtre précédente de l’app",
         actionRestoreMinimizedWindow: "Rouvrir la fenêtre réduite",
         actionCloseMinimizedWindow: "Fermer la fenêtre réduite",
         centerSizeTitle: "Taille de la fenêtre centrée",
@@ -593,7 +670,15 @@ extension ForkTrackpadGestureStrings {
         previewTitle: "Aperçu",
         previewDetail: "Un petit écran montre où ira la fenêtre.",
         hapticsTitle: "Retour haptique",
-        hapticsDetail: "Un léger clic à chaque étape validée."
+        hapticsDetail: "Un léger clic à chaque étape validée.",
+        diagnosticsTitle: "Diagnostics",
+        diagnosticSmartZoomOff: "Le zoom intelligent est désactivé dans Réglages Système › Trackpad, "
+            + "donc le double-tap ne fait rien.",
+        diagnosticPinchToZoomOff: "Le pincement pour zoomer est désactivé dans Réglages Système › "
+            + "Trackpad, donc pincer ne fait rien.",
+        diagnosticForceClickOff: "Force Click et le retour haptique sont désactivés dans Réglages Système "
+            + "› Trackpad, donc les gestes ne cliquent jamais.",
+        diagnosticsOpenTrackpadSettings: "Ouvrir les réglages du Trackpad"
     )
 
     static let it = ForkTrackpadGestureStrings(
@@ -628,6 +713,8 @@ extension ForkTrackpadGestureStrings {
         actionQuitApp: "Esci dal Dock",
         actionEmptyTrash: "Svuota il Cestino",
         actionShowAppWindows: "Riporta le finestre dell’app",
+        actionShowNextWindow: "Mostra la finestra successiva dell’app",
+        actionShowPreviousWindow: "Mostra la finestra precedente dell’app",
         actionRestoreMinimizedWindow: "Riapri la finestra ridotta",
         actionCloseMinimizedWindow: "Chiudi la finestra ridotta",
         centerSizeTitle: "Dimensione della finestra centrata",
@@ -656,7 +743,15 @@ extension ForkTrackpadGestureStrings {
         previewTitle: "Anteprima",
         previewDetail: "Un piccolo schermo mostra dove andrà la finestra.",
         hapticsTitle: "Feedback aptico",
-        hapticsDetail: "Un leggero clic a ogni passaggio convalidato."
+        hapticsDetail: "Un leggero clic a ogni passaggio convalidato.",
+        diagnosticsTitle: "Diagnostica",
+        diagnosticSmartZoomOff: "Lo zoom intelligente è disattivato in Impostazioni di Sistema › Trackpad, "
+            + "quindi il doppio tocco non fa nulla.",
+        diagnosticPinchToZoomOff: "Pizzica per zoomare è disattivato in Impostazioni di Sistema › Trackpad, "
+            + "quindi pizzicare non fa nulla.",
+        diagnosticForceClickOff: "Force Click e il feedback aptico sono disattivati in Impostazioni di "
+            + "Sistema › Trackpad, quindi i gesti non fanno mai clic.",
+        diagnosticsOpenTrackpadSettings: "Apri Impostazioni Trackpad"
     )
 
     static let ja = ForkTrackpadGestureStrings(
@@ -691,6 +786,8 @@ extension ForkTrackpadGestureStrings {
         actionQuitApp: "Dockから終了",
         actionEmptyTrash: "ゴミ箱を空にする",
         actionShowAppWindows: "アプリのウインドウを戻す",
+        actionShowNextWindow: "アプリの次のウインドウを表示",
+        actionShowPreviousWindow: "アプリの前のウインドウを表示",
         actionRestoreMinimizedWindow: "しまったウインドウを開く",
         actionCloseMinimizedWindow: "しまったウインドウを閉じる",
         centerSizeTitle: "中央に配置したウインドウのサイズ",
@@ -719,7 +816,13 @@ extension ForkTrackpadGestureStrings {
         previewTitle: "プレビュー",
         previewDetail: "小さな画面でウインドウの移動先を示します。",
         hapticsTitle: "触覚フィードバック",
-        hapticsDetail: "確定した各ステップで軽いクリック。"
+        hapticsDetail: "確定した各ステップで軽いクリック。",
+        diagnosticsTitle: "診断",
+        diagnosticSmartZoomOff: "システム設定 › トラックパッドで「スマートズーム」がオフのため、ダブルタップは何も行いません。",
+        diagnosticPinchToZoomOff: "システム設定 › トラックパッドで「ピンチでズーム」がオフのため、ピンチは何も行いません。",
+        diagnosticForceClickOff: "システム設定 › トラックパッドで「Force Clickと触覚フィードバック」がオフのため、"
+            + "ジェスチャーがクリックしません。",
+        diagnosticsOpenTrackpadSettings: "トラックパッド設定を開く"
     )
 
     static let ko = ForkTrackpadGestureStrings(
@@ -754,6 +857,8 @@ extension ForkTrackpadGestureStrings {
         actionQuitApp: "Dock에서 종료",
         actionEmptyTrash: "휴지통 비우기",
         actionShowAppWindows: "앱 윈도우 되돌리기",
+        actionShowNextWindow: "앱의 다음 윈도우 보기",
+        actionShowPreviousWindow: "앱의 이전 윈도우 보기",
         actionRestoreMinimizedWindow: "최소화된 윈도우 다시 열기",
         actionCloseMinimizedWindow: "최소화된 윈도우 닫기",
         centerSizeTitle: "가운데로 옮긴 윈도우의 크기",
@@ -782,7 +887,13 @@ extension ForkTrackpadGestureStrings {
         previewTitle: "미리보기",
         previewDetail: "작은 화면이 윈도우가 갈 위치를 보여줍니다.",
         hapticsTitle: "햅틱 피드백",
-        hapticsDetail: "확정된 단계마다 가벼운 클릭."
+        hapticsDetail: "확정된 단계마다 가벼운 클릭.",
+        diagnosticsTitle: "진단",
+        diagnosticSmartZoomOff: "시스템 설정 › 트랙패드에서 “스마트 확대/축소”가 꺼져 있어 더블 탭이 아무 동작도 하지 않습니다.",
+        diagnosticPinchToZoomOff: "시스템 설정 › 트랙패드에서 “오므려서 확대/축소”가 꺼져 있어 오므리기가 아무 동작도 하지 않습니다.",
+        diagnosticForceClickOff: "시스템 설정 › 트랙패드에서 “Force Click 및 햅틱 피드백”이 꺼져 있어 제스처가 "
+            + "클릭되지 않습니다.",
+        diagnosticsOpenTrackpadSettings: "트랙패드 설정 열기"
     )
 
     static let zhHans = ForkTrackpadGestureStrings(
@@ -817,6 +928,8 @@ extension ForkTrackpadGestureStrings {
         actionQuitApp: "从程序坞退出",
         actionEmptyTrash: "清倒废纸篓",
         actionShowAppWindows: "找回应用的窗口",
+        actionShowNextWindow: "显示应用的下一个窗口",
+        actionShowPreviousWindow: "显示应用的上一个窗口",
         actionRestoreMinimizedWindow: "重新打开最小化的窗口",
         actionCloseMinimizedWindow: "关闭最小化的窗口",
         centerSizeTitle: "居中窗口的大小",
@@ -845,7 +958,12 @@ extension ForkTrackpadGestureStrings {
         previewTitle: "预览",
         previewDetail: "一个小屏幕显示窗口将要去的位置。",
         hapticsTitle: "触觉反馈",
-        hapticsDetail: "每个确认的步骤都有一次轻微点击。"
+        hapticsDetail: "每个确认的步骤都有一次轻微点击。",
+        diagnosticsTitle: "诊断",
+        diagnosticSmartZoomOff: "系统设置›触控板中的“智能缩放”已关闭，因此双指双击没有任何效果。",
+        diagnosticPinchToZoomOff: "系统设置›触控板中的“捏合缩放”已关闭，因此捏合手势没有任何效果。",
+        diagnosticForceClickOff: "系统设置›触控板中的“触感点按和触感反馈”已关闭，因此手势永远不会触发点按。",
+        diagnosticsOpenTrackpadSettings: "打开触控板设置"
     )
 
     static let zhTW = ForkTrackpadGestureStrings(
@@ -880,6 +998,8 @@ extension ForkTrackpadGestureStrings {
         actionQuitApp: "從 Dock 結束",
         actionEmptyTrash: "清空垃圾桶",
         actionShowAppWindows: "找回 App 的視窗",
+        actionShowNextWindow: "顯示 App 的下一個視窗",
+        actionShowPreviousWindow: "顯示 App 的上一個視窗",
         actionRestoreMinimizedWindow: "重新打開縮到最小的視窗",
         actionCloseMinimizedWindow: "關閉縮到最小的視窗",
         centerSizeTitle: "置中視窗的大小",
@@ -908,7 +1028,12 @@ extension ForkTrackpadGestureStrings {
         previewTitle: "預覽",
         previewDetail: "一個小螢幕顯示視窗將前往的位置。",
         hapticsTitle: "觸覺回饋",
-        hapticsDetail: "每個確認的步驟都有一次輕微點按。"
+        hapticsDetail: "每個確認的步驟都有一次輕微點按。",
+        diagnosticsTitle: "診斷",
+        diagnosticSmartZoomOff: "「系統設定」›「觸控式軌跡板」中的「智慧型縮放」已關閉，因此雙指點兩下沒有任何作用。",
+        diagnosticPinchToZoomOff: "「系統設定」›「觸控式軌跡板」中的「以兩指縮放」已關閉，因此縮放手勢沒有任何作用。",
+        diagnosticForceClickOff: "「系統設定」›「觸控式軌跡板」中的「觸壓感應點按與觸覺回饋」已關閉，因此手勢永遠不會點按。",
+        diagnosticsOpenTrackpadSettings: "打開觸控式軌跡板設定"
     )
 
     static let zhHK = ForkTrackpadGestureStrings(
@@ -943,6 +1068,8 @@ extension ForkTrackpadGestureStrings {
         actionQuitApp: "從 Dock 結束",
         actionEmptyTrash: "清空垃圾桶",
         actionShowAppWindows: "找回 App 的視窗",
+        actionShowNextWindow: "顯示 App 的下一個視窗",
+        actionShowPreviousWindow: "顯示 App 的上一個視窗",
         actionRestoreMinimizedWindow: "重新打開最小化的視窗",
         actionCloseMinimizedWindow: "關閉最小化的視窗",
         centerSizeTitle: "置中視窗的大小",
@@ -971,7 +1098,12 @@ extension ForkTrackpadGestureStrings {
         previewTitle: "預覽",
         previewDetail: "一個小螢幕顯示視窗將前往的位置。",
         hapticsTitle: "觸覺回饋",
-        hapticsDetail: "每個確認的步驟都有一次輕微點按。"
+        hapticsDetail: "每個確認的步驟都有一次輕微點按。",
+        diagnosticsTitle: "診斷",
+        diagnosticSmartZoomOff: "「系統設定」›「觸控式軌跡板」中的「智慧型縮放」已關閉，因此雙指點兩下沒有任何作用。",
+        diagnosticPinchToZoomOff: "「系統設定」›「觸控式軌跡板」中的「以兩指縮放」已關閉，因此縮放手勢沒有任何作用。",
+        diagnosticForceClickOff: "「系統設定」›「觸控式軌跡板」中的「觸壓感應點按與觸覺回饋」已關閉，因此手勢永遠不會點按。",
+        diagnosticsOpenTrackpadSettings: "打開觸控式軌跡板設定"
     )
 
     static let uk = ForkTrackpadGestureStrings(
@@ -1006,6 +1138,8 @@ extension ForkTrackpadGestureStrings {
         actionQuitApp: "Завершити з Dock",
         actionEmptyTrash: "Очистити Смітник",
         actionShowAppWindows: "Повернути вікна програми",
+        actionShowNextWindow: "Показати наступне вікно програми",
+        actionShowPreviousWindow: "Показати попереднє вікно програми",
         actionRestoreMinimizedWindow: "Відкрити згорнуте вікно",
         actionCloseMinimizedWindow: "Закрити згорнуте вікно",
         centerSizeTitle: "Розмір вікна по центру",
@@ -1034,6 +1168,14 @@ extension ForkTrackpadGestureStrings {
         previewTitle: "Попередній перегляд",
         previewDetail: "Маленький екран показує, куди стане вікно.",
         hapticsTitle: "Тактильний відгук",
-        hapticsDetail: "Легке клацання на кожному зарахованому кроці."
+        hapticsDetail: "Легке клацання на кожному зарахованому кроці.",
+        diagnosticsTitle: "Діагностика",
+        diagnosticSmartZoomOff: "Функція «Розумне масштабування» вимкнена в Системних налаштуваннях › "
+            + "Трекпад, тому подвійний дотик нічого не робить.",
+        diagnosticPinchToZoomOff: "Функція «Стискання для масштабування» вимкнена в Системних "
+            + "налаштуваннях › Трекпад, тому стискання нічого не робить.",
+        diagnosticForceClickOff: "Force Click і тактильний відгук вимкнені в Системних налаштуваннях › "
+            + "Трекпад, тому жести ніколи не клацають.",
+        diagnosticsOpenTrackpadSettings: "Відкрити налаштування трекпада"
     )
 }

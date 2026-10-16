@@ -34,6 +34,8 @@ struct ForkTrackpadSettingsSections: View {
     @AppStorage(ForkDefaultsKey.previewEnabled) private var previewEnabled = true
     @AppStorage(ForkDefaultsKey.hapticsEnabled) private var hapticsEnabled = true
     @State private var showsAdvanced = false
+    @ObservedObject private var diagnostics = ForkTrackpadDiagnosticsMonitor.shared
+    @State private var diagnosticsSurface = UUID()
 
     private static let columns = [GridItem(.adaptive(minimum: 128, maximum: 200), spacing: 10)]
 
@@ -45,11 +47,25 @@ struct ForkTrackpadSettingsSections: View {
         ForkTrackpadTuning.centerSize.value(atStep: centerSizeStep)
     }
 
+    private var failingDiagnostics: [ForkTrackpadDiagnosticCheck] {
+        ForkTrackpadDiagnosticCheck.allCases.filter { diagnostics.results[$0] == false }
+    }
+
     var body: some View {
         Section {
             ForkTrackpadHero(text: text, layoutText: layoutText, isOn: gesturesEnabled) {
                 gesturesEnabled.toggle()
                 ForkGestures.sync()
+            }
+        }
+
+        if !failingDiagnostics.isEmpty {
+            Section {
+                ForEach(failingDiagnostics, id: \.self) { check in
+                    ForkTrackpadDiagnosticRow(check: check, text: text)
+                }
+            } header: {
+                Text(text.diagnosticsTitle)
             }
         }
 
@@ -65,6 +81,10 @@ struct ForkTrackpadSettingsSections: View {
         // them on. It simply reads as set back.
         .opacity(gesturesEnabled ? 1 : 0.62)
         .animation(.easeInOut(duration: 0.18), value: gesturesEnabled)
+        // Checked regardless of `gesturesEnabled`: a system setting worth
+        // fixing before gestures are even turned on in the first place.
+        .onAppear { diagnostics.setObservingSurface(diagnosticsSurface, visible: true) }
+        .onDisappear { diagnostics.setObservingSurface(diagnosticsSurface, visible: false) }
     }
 
     // MARK: Groups
@@ -469,6 +489,38 @@ private struct ForkTrackpadGestureCard: View {
             try? await Task.sleep(for: .milliseconds(180))
             guard !Task.isCancelled else { return }
             withAnimation(.spring(response: 0.42, dampingFraction: 0.8)) { isDone = true }
+        }
+    }
+}
+
+/// Why a gesture that looks enabled still does nothing: a system setting it
+/// depends on is off. Shown only for a check caught failing; a passing or
+/// unreadable one says nothing, the same restraint as `SecureInputRow`.
+private struct ForkTrackpadDiagnosticRow: View {
+    let check: ForkTrackpadDiagnosticCheck
+    let text: ForkTrackpadGestureStrings
+
+    private var message: String {
+        switch check {
+        case .smartZoom: return text.diagnosticSmartZoomOff
+        case .pinchToZoom: return text.diagnosticPinchToZoomOff
+        case .forceClickHaptics: return text.diagnosticForceClickOff
+        }
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 8) {
+                Image(systemName: "exclamationmark.circle.fill")
+                    .foregroundStyle(.orange)
+                Text(message)
+                    .fixedSize(horizontal: false, vertical: true)
+                Spacer()
+            }
+            Button(text.diagnosticsOpenTrackpadSettings) {
+                ForkTrackpadDiagnosticsSettings.openTrackpadSettings()
+            }
+            .controlSize(.small)
         }
     }
 }

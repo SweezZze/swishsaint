@@ -35,6 +35,20 @@ final class ForkTrackpadWindowPlacer {
     private var settleTimers: [CGWindowID: Timer] = [:]
     private var suspensions: [CGWindowID: EnhancedUserInterfaceSuspension] = [:]
 
+    /// The last side, top or bottom placement a gesture sent a window to,
+    /// and the frame it landed at: repeating the same gesture right after
+    /// advances through the official size cycle (half, two thirds, third;
+    /// top half then top half again is maximize instead), exactly as
+    /// repeating its keyboard shortcut would. Forgotten by any placement the
+    /// cycle does not know, so the next plain gesture starts the cycle over.
+    private var cycleMemory: [WindowLayoutWindowKey: (action: WindowLayoutAction, frame: WindowLayoutFrame)] = [:]
+
+    /// The frame a window held right before its last trackpad placement, for
+    /// a held modifier's `restorePlacement` to undo. Kept across placements
+    /// on purpose: undoing stays possible even after the window since moved
+    /// through several more gestures by hand.
+    private var beforePlacement: [WindowLayoutWindowKey: WindowLayoutFrame] = [:]
+
     private init() {}
 
     /// Forgets everything once the gestures stop: nothing is left to settle
@@ -47,6 +61,8 @@ final class ForkTrackpadWindowPlacer {
         halfMemory.removeAll()
         halfRefitGenerations.removeAll()
         halfSettleDeadlines.removeAll()
+        cycleMemory.removeAll()
+        beforePlacement.removeAll()
     }
 
     // MARK: - Gestures
@@ -76,7 +92,8 @@ final class ForkTrackpadWindowPlacer {
         case .quitApp, .quitWindowApp:
             // Like ⌘Q: the app may ask to save, or refuse.
             return app.terminate()
-        case .emptyTrash, .showAppWindows, .restoreMinimizedWindow, .closeMinimizedWindow:
+        case .emptyTrash, .showAppWindows, .restoreMinimizedWindow, .closeMinimizedWindow,
+             .showNextWindow, .showPreviousWindow:
             // Dock gestures: the gesture service carries them out itself,
             // and never hands them a window.
             return false
@@ -85,6 +102,8 @@ final class ForkTrackpadWindowPlacer {
                   let screen = bestScreen(for: target.frame)
             else { return false }
             forgetHalf(target.key)
+            cycleMemory.removeValue(forKey: target.key)
+            rememberBeforePlacement(target)
             bringForward(target.window, of: app)
             let rect = ForkTrackpadCenter.rect(in: screen.visibleFrame,
                                                scale: ForkTrackpadTuning.centerSize.current).integral
@@ -93,28 +112,98 @@ final class ForkTrackpadWindowPlacer {
             return setFrame(axFrame(fromAppKit: rect), targetRect: rect,
                             screenVisibleFrame: screen.visibleFrame, action: .center,
                             on: target.window, windowID: target.key.windowID)
+        case .minimizeAllWindows:
+            guard let windows = elementsAttribute(AXUIElementCreateApplication(pid), kAXWindowsAttribute as String)
+            else { return false }
+            for other in windows {
+                AXUIElementSetAttributeValue(other, kAXMinimizedAttribute as CFString, kCFBooleanTrue)
+            }
+            return !windows.isEmpty
+        case .moveToPreviousDisplay, .moveToNextDisplay:
+            guard let layoutAction = action.layoutAction,
+                  let target = target(from: window, app: app, capability: layoutAction.targetCapability),
+                  let source = bestScreen(for: target.frame)
+            else { return false }
+            let screens = NSScreen.screens
+            guard let currentIndex = screens.firstIndex(where: { $0 === source }),
+                  let destinationIndex = WindowLayoutGeometry.adjacentDisplayIndex(
+                      currentIndex: currentIndex, frames: screens.map(\.frame),
+                      movingForward: action == .moveToNextDisplay),
+                  screens.indices.contains(destinationIndex)
+            else { return false }
+            bringForward(target.window, of: app)
+            forgetHalf(target.key)
+            cycleMemory.removeValue(forKey: target.key)
+            rememberBeforePlacement(target)
+            let destination = screens[destinationIndex]
+            let rect = WindowLayoutGeometry.rectForDisplay(current: appKitFrame(fromAX: target.frame),
+                                                            sourceVisibleFrame: source.visibleFrame,
+                                                            destinationVisibleFrame: destination.visibleFrame)
+            return setFrame(axFrame(fromAppKit: rect), targetRect: rect,
+                            screenVisibleFrame: destination.visibleFrame, action: layoutAction,
+                            on: target.window, windowID: target.key.windowID)
+        case .restorePlacement:
+            guard let target = target(from: window, app: app, capability: .frame),
+                  let previous = beforePlacement[target.key],
+                  let screen = bestScreen(for: previous)
+            else { return false }
+            bringForward(target.window, of: app)
+            forgetHalf(target.key)
+            cycleMemory.removeValue(forKey: target.key)
+            beforePlacement.removeValue(forKey: target.key)
+            return setFrame(previous, targetRect: appKitFrame(fromAX: previous),
+                            screenVisibleFrame: screen.visibleFrame, action: .restore,
+                            on: target.window, windowID: target.key.windowID)
         case .leftHalf, .rightHalf, .topHalf, .bottomHalf,
              .topLeftQuarter, .topRightQuarter, .bottomLeftQuarter, .bottomRightQuarter,
-             .maximize, .toggleFullScreen:
+             .maximize, .marginMaximize, .toggleFullScreen:
             guard let layoutAction = action.layoutAction,
                   let target = target(from: window, app: app, capability: layoutAction.targetCapability)
             else { return false }
             bringForward(target.window, of: app)
             if layoutAction == .fullScreen {
                 forgetHalf(target.key)
+                cycleMemory.removeValue(forKey: target.key)
                 return toggleFullScreen(target.window)
             }
             guard let screen = bestScreen(for: target.frame) else { return false }
-            if let half = ForkLayoutHalf(layoutAction) {
-                return applyHalf(half, to: target, visibleFrame: screen.visibleFrame)
+            let effective = effectiveAction(for: layoutAction, target: target)
+            rememberBeforePlacement(target)
+            if effective == layoutAction, let half = ForkLayoutHalf(effective) {
+                let applied = applyHalf(half, to: target, visibleFrame: screen.visibleFrame)
+                if applied { recordCycle(effective, target: target) }
+                return applied
             }
             forgetHalf(target.key)
-            let rect = placementRect(for: layoutAction, current: target.frame,
+            let rect = placementRect(for: effective, current: target.frame,
                                      visibleFrame: screen.visibleFrame)
-            return setFrame(axFrame(fromAppKit: rect), targetRect: rect,
-                            screenVisibleFrame: screen.visibleFrame, action: layoutAction,
-                            on: target.window, windowID: target.key.windowID)
+            let applied = setFrame(axFrame(fromAppKit: rect), targetRect: rect,
+                                   screenVisibleFrame: screen.visibleFrame, action: effective,
+                                   on: target.window, windowID: target.key.windowID)
+            if applied { recordCycle(effective, target: target) }
+            return applied
         }
+    }
+
+    /// Remembers where `target` sat right before a placement changes it, for
+    /// a later `restorePlacement` to undo.
+    private func rememberBeforePlacement(_ target: Target) {
+        beforePlacement[target.key] = target.frame
+    }
+
+    /// Unlike the keyboard shortcut, a repeated trackpad gesture always
+    /// cycles the sides through the official thirds: the setting that gates
+    /// the shortcut is about sharing a key across displays, which a
+    /// deliberate two-finger repeat is never mistaken for.
+    private func effectiveAction(for action: WindowLayoutAction, target: Target) -> WindowLayoutAction {
+        ForkWindowSizeCycle.effectiveAction(for: action, current: target.frame,
+                                           previous: cycleMemory[target.key], tolerance: frameTolerance,
+                                           cyclesThirds: true)
+    }
+
+    private func recordCycle(_ action: WindowLayoutAction, target: Target) {
+        let settled = frame(of: target.window) ?? target.frame
+        cycleMemory[target.key] = (action, settled)
     }
 
     /// The same raise as the official pointer gesture's "raise window" option.
@@ -609,6 +698,12 @@ final class ForkTrackpadWindowPlacer {
               let value, CFGetTypeID(value) == AXUIElementGetTypeID()
         else { return nil }
         return (value as! AXUIElement)
+    }
+
+    private func elementsAttribute(_ element: AXUIElement, _ attribute: String) -> [AXUIElement]? {
+        var value: CFTypeRef?
+        guard AXUIElementCopyAttributeValue(element, attribute as CFString, &value) == .success else { return nil }
+        return value as? [AXUIElement]
     }
 }
 

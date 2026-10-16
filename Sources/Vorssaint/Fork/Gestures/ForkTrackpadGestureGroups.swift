@@ -106,6 +106,8 @@ enum ForkTrackpadGestureTitle {
         case .quitApp: return text.actionQuitApp
         case .emptyTrash: return text.actionEmptyTrash
         case .showAppWindows: return text.actionShowAppWindows
+        case .showNextWindow: return text.actionShowNextWindow
+        case .showPreviousWindow: return text.actionShowPreviousWindow
         case .restoreMinimizedWindow: return text.actionRestoreMinimizedWindow
         case .closeMinimizedWindow: return text.actionCloseMinimizedWindow
         default: return action.layoutAction?.title(layoutText) ?? action.rawValue

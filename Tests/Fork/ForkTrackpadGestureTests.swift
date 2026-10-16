@@ -32,6 +32,10 @@ enum ForkTrackpadGestureTests {
         clock(suite)
         center(suite)
         halves(suite)
+        sizeCycle(suite)
+        windowChain(suite)
+        modifierRemap(suite)
+        diagnostics(suite)
         complementaryHalves(suite)
         complementRefit(suite)
         halfMemory(suite)
@@ -255,9 +259,15 @@ enum ForkTrackpadGestureTests {
             }
         }
 
+        // A held modifier's actions reach only through another action's own
+        // catalog entry (see ForkTrackpadModifierRemap): they have no trigger
+        // or card of their own, so the catalog never lists them.
+        let modifierReachActions: Set<Action> = [.minimizeAllWindows, .marginMaximize,
+                                                  .moveToPreviousDisplay, .moveToNextDisplay, .restorePlacement]
         let listed = ForkTrackpadGestureCatalog.entries.map(\.action)
-        suite.expect(listed.count == Set(listed).count && Set(listed) == Set(Action.allCases),
-                     "every gesture action is listed exactly once in the catalog")
+        suite.expect(listed.count == Set(listed).count
+                        && Set(listed) == Set(Action.allCases).subtracting(modifierReachActions),
+                     "every gesture action is listed exactly once in the catalog, bar a held modifier's own")
 
         let diagonals: [Action: Swipe] = [.topLeftQuarter: .upLeft, .topRightQuarter: .upRight,
                                           .bottomLeftQuarter: .downLeft, .bottomRightQuarter: .downRight]
@@ -276,6 +286,8 @@ enum ForkTrackpadGestureTests {
             .topLeftQuarter: .topLeft, .topRightQuarter: .topRight,
             .bottomLeftQuarter: .bottomLeft, .bottomRightQuarter: .bottomRight,
             .maximize: .maximize, .toggleFullScreen: .fullScreen,
+            .marginMaximize: .marginMaximize,
+            .moveToPreviousDisplay: .previousDisplay, .moveToNextDisplay: .nextDisplay,
         ]
         for action in Action.allCases {
             suite.expect(action.layoutAction == placements[action],
@@ -793,13 +805,31 @@ enum ForkTrackpadGestureTests {
         out.wait(0.2)
         suite.expect(unrecognized && out.commits.isEmpty, "pinching out on a Dock icon does nothing yet")
 
-        var swipe = Driver(suite, blocks: false)
-        swipe.onTarget = .dockApp
-        swipe.swipe(dx: 40)
-        swipe.momentum()
-        swipe.wait(0.2)
-        suite.expect(swipe.commits.isEmpty && Set(swipe.dispositions) == [.pass],
-                     "a sideways swipe on a Dock icon does nothing and is left to the Dock")
+        var next = Driver(suite, blocks: false)
+        next.onTarget = .dockApp
+        next.swipe(dx: 40)
+        next.momentum()
+        next.wait(0.2)
+        suite.expect(next.commits == [.showNextWindow] && Set(next.dispositions) == [.pass],
+                     "a rightward swipe on a Dock icon chains to its next window")
+        var previous = Driver(suite, blocks: false)
+        previous.onTarget = .dockApp
+        previous.swipe(dx: -40)
+        previous.momentum()
+        previous.wait(0.2)
+        suite.expect(previous.commits == [.showPreviousWindow],
+                     "a leftward swipe chains to the previous one")
+        var upUp = Driver(suite, blocks: false)
+        upUp.onTarget = .dockApp
+        upUp.scroll(.began)
+        upUp.move(dy: -40)
+        upUp.wait(0.16)
+        upUp.move(dy: -40)
+        upUp.scroll(.ended)
+        upUp.momentum()
+        upUp.wait(0.2)
+        suite.expect(upUp.commits.isEmpty && Set(upUp.dispositions) == [.pass],
+                     "a sequence a Dock icon has no action for does nothing and is left to the Dock")
         var trash = Driver(suite, blocks: true)
         trash.onTarget = .dockTrash
         trash.swipe(dy: 40)
@@ -931,6 +961,23 @@ enum ForkTrackpadGestureTests {
                      "lights sit on the pointer, zones and the question mark on the screen")
         suite.expect(Action.allCases.allSatisfy { content($0) != .unrecognized },
                      "every action has a preview")
+
+        let side = 1000.0
+        let reference = CGRect(x: 0, y: 0, width: side, height: side)
+        func zone(_ layoutAction: WindowLayoutAction) -> Content {
+            let rect = WindowLayoutGeometry.rect(for: layoutAction, current: reference, visibleFrame: reference)
+            return .zone(CGRect(x: rect.minX / side, y: (side - rect.maxY) / side,
+                                width: rect.width / side, height: rect.height / side))
+        }
+        suite.expect(content(.minimizeAllWindows) == .light(.minimize)
+                        && content(.restorePlacement) == .symbol("arrow.uturn.backward")
+                        && !content(.restorePlacement).isAtPointer,
+                     "a held modifier's minimize-all previews like minimize, undoing previews as its own symbol")
+        suite.expect(content(.marginMaximize) == zone(.marginMaximize),
+                     "margin maximize previews the same zone the placement itself computes")
+        suite.expect(content(.moveToPreviousDisplay) == .zone(CGRect(x: 0, y: 0, width: 0.08, height: 1))
+                        && content(.moveToNextDisplay) == .zone(CGRect(x: 0.92, y: 0, width: 0.08, height: 1)),
+                     "moving to another display previews a sliver at the edge the window leaves through")
     }
 
     private static func previewPlacement(_ suite: TestSuite) {
@@ -1336,6 +1383,120 @@ enum ForkTrackpadGestureTests {
                      "a window moved, resized or closed no longer holds its half")
     }
 
+    private static func modifierRemap(_ suite: TestSuite) {
+        typealias Remap = ForkTrackpadModifierRemap
+        suite.expect(Remap.action(for: .minimize, modifierHeld: false) == .minimize
+                        && Remap.action(for: .maximize, modifierHeld: false) == .maximize,
+                     "without the modifier, a gesture keeps its plain action")
+        suite.expect(Remap.action(for: .minimize, modifierHeld: true) == .minimizeAllWindows
+                        && Remap.action(for: .maximize, modifierHeld: true) == .marginMaximize
+                        && Remap.action(for: .close, modifierHeld: true) == .quitWindowApp
+                        && Remap.action(for: .leftHalf, modifierHeld: true) == .moveToPreviousDisplay
+                        && Remap.action(for: .rightHalf, modifierHeld: true) == .moveToNextDisplay
+                        && Remap.action(for: .centerReduced, modifierHeld: true) == .restorePlacement,
+                     "held, the modifier reaches minimize-all, margin maximize, quitting the app, "
+                        + "the next or previous display, and undoing the last placement")
+        suite.expect(Remap.action(for: .topHalf, modifierHeld: true) == .topHalf
+                        && Remap.action(for: .quitApp, modifierHeld: true) == .quitApp
+                        && Remap.action(for: .minimizeAllWindows, modifierHeld: true) == .minimizeAllWindows,
+                     "an action the modifier has nothing further to say about stays exactly what it was")
+        suite.expect(Remap.action(for: .close, modifierHeld: true, disabled: [.quitWindowApp]) == .close
+                        && Remap.action(for: .minimize, modifierHeld: true, disabled: [.quitWindowApp])
+                        == .minimizeAllWindows,
+                     "quitting the app keeps its own switch even reached through a held modifier")
+
+        typealias Action = ForkTrackpadGestureAction
+        suite.expect(!Action.quitApp.isWindowAction && !Action.emptyTrash.isWindowAction
+                        && !Action.showAppWindows.isWindowAction && !Action.restoreMinimizedWindow.isWindowAction
+                        && !Action.closeMinimizedWindow.isWindowAction,
+                     "the Dock's own gestures never reach a window")
+        suite.expect(Action.allCases.filter { !$0.isWindowAction }.count == 7
+                        && [Action.leftHalf, .minimize, .centerReduced, .minimizeAllWindows, .marginMaximize,
+                            .moveToPreviousDisplay, .moveToNextDisplay, .restorePlacement]
+                            .allSatisfy(\.isWindowAction),
+                     "every other action, the held modifier's own included, can reach a window")
+    }
+
+    private static func diagnostics(_ suite: TestSuite) {
+        typealias Check = ForkTrackpadDiagnosticCheck
+        suite.expect(Check.allCases.count == 3
+                        && Check.smartZoom.preferenceKey == "TrackpadTwoFingerDoubleTapGesture"
+                        && Check.pinchToZoom.preferenceKey == "TrackpadPinch"
+                        && Check.forceClickHaptics.preferenceKey == "ActuateDetents",
+                     "each diagnostic reads the preference key System Settings itself writes")
+        suite.expect(Check.preferenceDomains == ["com.apple.AppleMultitouchTrackpad",
+                                                 "com.apple.driver.AppleBluetoothMultitouch.trackpad"],
+                     "the built-in trackpad is read before the Bluetooth one")
+
+        func reading(_ answers: [String: Bool?]) -> (String, String) -> Bool? {
+            { key, domain in answers["\(key)|\(domain)"] ?? nil }
+        }
+        suite.expect(Check.smartZoom.isEnabled(reading: reading([
+            "TrackpadTwoFingerDoubleTapGesture|com.apple.AppleMultitouchTrackpad": true,
+        ])) == true, "on for the built-in trackpad reads as on")
+        suite.expect(Check.smartZoom.isEnabled(reading: reading([
+            "TrackpadTwoFingerDoubleTapGesture|com.apple.AppleMultitouchTrackpad": false,
+            "TrackpadTwoFingerDoubleTapGesture|com.apple.driver.AppleBluetoothMultitouch.trackpad": true,
+        ])) == true, "on for the Bluetooth trackpad alone still reads as on")
+        suite.expect(Check.smartZoom.isEnabled(reading: reading([
+            "TrackpadTwoFingerDoubleTapGesture|com.apple.AppleMultitouchTrackpad": false,
+            "TrackpadTwoFingerDoubleTapGesture|com.apple.driver.AppleBluetoothMultitouch.trackpad": false,
+        ])) == false, "off for every trackpad that answered reads as off")
+        suite.expect(Check.smartZoom.isEnabled(reading: reading([:])) == nil,
+                     "no trackpad known to the system answers nothing, not off")
+    }
+
+    private static func windowChain(_ suite: TestSuite) {
+        typealias Chain = ForkTrackpadWindowChain
+        suite.expect(Chain.nextIndex(current: nil, count: 4, forward: true) == 1
+                        && Chain.nextIndex(current: nil, count: 4, forward: false) == 3,
+                     "with nothing remembered yet, forward and back both skip the first window")
+        suite.expect(Chain.nextIndex(current: 0, count: 4, forward: true) == 1
+                        && Chain.nextIndex(current: 1, count: 4, forward: true) == 2
+                        && Chain.nextIndex(current: 2, count: 4, forward: true) == 3
+                        && Chain.nextIndex(current: 3, count: 4, forward: true) == 0,
+                     "forward steps through every window in order, then wraps to the first")
+        suite.expect(Chain.nextIndex(current: 0, count: 4, forward: false) == 3
+                        && Chain.nextIndex(current: 3, count: 4, forward: false) == 2,
+                     "back steps the other way, wrapping past the first to the last")
+        suite.expect(Chain.nextIndex(current: 5, count: 4, forward: true) == 2
+                        && Chain.nextIndex(current: -1, count: 4, forward: true) == 0,
+                     "a remembered position outside today's count still lands inside it")
+    }
+
+    private static func sizeCycle(_ suite: TestSuite) {
+        typealias Cycle = ForkWindowSizeCycle
+        let frame = WindowLayoutFrame(origin: .zero, size: CGSize(width: 720, height: 900))
+        let moved = WindowLayoutFrame(origin: CGPoint(x: 40, y: 0), size: frame.size)
+        func effective(_ action: WindowLayoutAction, previous: (WindowLayoutAction, WindowLayoutFrame)?,
+                      current: WindowLayoutFrame = frame, cyclesThirds: Bool = true) -> WindowLayoutAction {
+            Cycle.effectiveAction(for: action, current: current,
+                                  previous: previous.map { ($0.0, $0.1) }, tolerance: 8,
+                                  cyclesThirds: cyclesThirds)
+        }
+
+        suite.expect(effective(.leftHalf, previous: nil) == .leftHalf,
+                     "a first half gesture is never advanced")
+        suite.expect(effective(.leftHalf, previous: (.leftHalf, frame)) == .leftTwoThirds
+                        && effective(.leftHalf, previous: (.leftTwoThirds, frame)) == .leftThird
+                        && effective(.leftHalf, previous: (.leftThird, frame)) == .leftHalf,
+                     "repeating a left half cycles half, two thirds, third, then back to half")
+        suite.expect(effective(.rightHalf, previous: (.rightHalf, frame)) == .rightTwoThirds,
+                     "the right half cycles the same way, on its own side")
+        suite.expect(effective(.leftHalf, previous: (.leftHalf, frame), cyclesThirds: false) == .leftHalf,
+                     "the cycle never advances while the setting that turns it on is off")
+        suite.expect(effective(.leftHalf, previous: (.leftHalf, moved)) == .leftHalf,
+                     "a window moved away from the remembered frame starts the cycle over")
+        suite.expect(effective(.leftHalf, previous: (.rightHalf, frame)) == .leftHalf,
+                     "a different previous side never advances this one")
+        suite.expect(effective(.topHalf, previous: (.topHalf, frame)) == .maximize
+                        && effective(.topHalf, previous: (.topHalf, frame), cyclesThirds: false) == .maximize,
+                     "a repeated top half always goes to maximize, whether or not thirds are on")
+        suite.expect(effective(.maximize, previous: (.maximize, frame)) == .maximize
+                        && effective(.leftThird, previous: (.leftHalf, frame)) == .leftThird,
+                     "only a plain left, right or top half is ever advanced")
+    }
+
     private static func complementWiring(_ suite: TestSuite) {
         let service = sourceCode("Sources/Vorssaint/Fork/Gestures/ForkTrackpadWindowPlacer.swift")
         func body(_ signature: String) -> String {
@@ -1343,10 +1504,13 @@ enum ForkTrackpadGestureTests {
             return tail.components(separatedBy: "\n    }\n").first ?? ""
         }
         let gesture = body("func apply(_ action: ForkTrackpadGestureAction, to window: AXUIElement)")
-        suite.expect(gesture.contains("if let half = ForkLayoutHalf(layoutAction) {")
-                        && gesture.contains("return applyHalf(half,"),
-                     "trackpad halves go through the complementary placement")
-        suite.expect(gesture.components(separatedBy: "bringForward(target.window, of: app)").count - 1 == 2
+        suite.expect(gesture.contains("if effective == layoutAction, let half = ForkLayoutHalf(effective) {")
+                        && gesture.contains("applyHalf(half, to: target, visibleFrame: screen.visibleFrame)"),
+                     "trackpad halves go through the complementary placement, unless a repeat advanced the cycle")
+        suite.expect(gesture.contains("effectiveAction(for: layoutAction, target: target)")
+                        && gesture.components(separatedBy: "recordCycle(effective, target: target)").count - 1 == 2,
+                     "every half, quarter or maximize placement records its cycle state")
+        suite.expect(gesture.components(separatedBy: "bringForward(target.window, of: app)").count - 1 == 4
                         && body("private func bringForward(").contains("app.activate(options: [])")
                         && body("private func bringForward(").contains("kAXRaiseAction"),
                      "centering and every placement bring the window forward, activating its app")
@@ -1354,8 +1518,15 @@ enum ForkTrackpadGestureTests {
             .components(separatedBy: "case .centerReduced:").first ?? ""
         suite.expect(!minimize.contains("bringForward"),
                      "minimize, close and quit never raise the window first")
-        suite.expect(gesture.components(separatedBy: "forgetHalf(target.key)").count - 1 == 3,
+        suite.expect(gesture.components(separatedBy: "forgetHalf(target.key)").count - 1 == 5,
                      "centering, full screen and every other placement retire the window's half")
+        suite.expect(gesture.contains("case .minimizeAllWindows:")
+                        && gesture.contains("case .moveToPreviousDisplay, .moveToNextDisplay:")
+                        && gesture.contains("case .restorePlacement:")
+                        && gesture.contains("WindowLayoutGeometry.adjacentDisplayIndex(")
+                        && gesture.contains("WindowLayoutGeometry.rectForDisplay(")
+                        && gesture.contains("beforePlacement[target.key]"),
+                     "a held modifier's own actions move every window, the display or undo the last placement")
         let half = body("private func applyHalf(")
         suite.expect(half.contains("neighbour: neighbour?.frame")
                         && half.contains("guard setFrame(axFrame(fromAppKit: rect), targetRect: rect")
@@ -1376,10 +1547,11 @@ enum ForkTrackpadGestureTests {
         let suspend = gestures.components(separatedBy: "static func suspend()").dropFirst().first?
             .components(separatedBy: "\n    }\n").first ?? ""
         suite.expect(body("func reset()").contains("halfMemory.removeAll()")
+                        && body("func reset()").contains("cycleMemory.removeAll()")
                         && body("func reset()").contains("timer.invalidate()")
                         && body("func reset()").contains("suspension.resume()")
                         && suspend.contains("ForkTrackpadWindowPlacer.shared.reset()"),
-                     "suspending the gestures forgets every half and every pending settle")
+                     "suspending the gestures forgets every half, every cycle and every pending settle")
     }
 
     private static func complementaryPairs(_ suite: TestSuite) {
@@ -1831,10 +2003,10 @@ enum ForkTrackpadGestureTests {
                      "emptying the Trash is named in every language")
 
         let tap = sourceCode("Sources/Vorssaint/Fork/Gestures/ForkTrackpadGestureService.swift")
-        let commit = tap.components(separatedBy: "case .commit(let action):").dropFirst().first?
+        let commit = tap.components(separatedBy: "case .commit(let rawAction):").dropFirst().first?
             .components(separatedBy: "case .haptic").first ?? ""
         suite.expect(commit.contains("case (.dockTrash?, .emptyTrash):\n                    Self.emptyTrash()")
-                        && commit.contains("where ForkTrackpadGestureCatalog.entry(for: action)?.targets == [.titlebar]"),
+                        && commit.contains("where action.isWindowAction:"),
                      "only a gesture begun on the Trash empties it, and no window ever gets that action")
         let body = tap.components(separatedBy: "private static func emptyTrash() {").dropFirst().first?
             .components(separatedBy: "\n    }\n").first ?? ""
@@ -1858,7 +2030,9 @@ enum ForkTrackpadGestureTests {
                         && Sequence.resolve(swipes: [.upLeft], on: .dockApp) == nil
                         && Sequence.resolve(swipes: [.up], on: .dockTrash) == nil
                         && Sequence.accepts(.swipe, on: .dockApp) && Sequence.accepts(.swipe, on: .dockFinder)
-                        && !Sequence.accepts(.swipe, on: .dockFinder, disabled: [.showAppWindows])
+                        && !Sequence.accepts(.swipe, on: .dockFinder,
+                                             disabled: [.showAppWindows, .showNextWindow, .showPreviousWindow])
+                        && Sequence.accepts(.swipe, on: .dockFinder, disabled: [.showAppWindows])
                         && !Sequence.accepts(.swipe, on: .dockTrash),
                      "swiping up on a running app's icon, Finder's included, brings its windows back")
         let entry = ForkTrackpadGestureCatalog.entry(for: .showAppWindows)
@@ -1872,9 +2046,42 @@ enum ForkTrackpadGestureTests {
                         && Sequence.resolve(pinches: [.in], on: .dockFinder) == nil,
                      "a pinch still quits an app from its icon, and still never Finder")
 
+        suite.expect(Sequence.resolve(swipes: [.right], on: .dockApp) == .showNextWindow
+                        && Sequence.resolve(swipes: [.right], on: .dockFinder) == .showNextWindow
+                        && Sequence.resolve(swipes: [.left], on: .dockApp) == .showPreviousWindow
+                        && Sequence.resolve(swipes: [.left], on: .dockFinder) == .showPreviousWindow
+                        && Sequence.resolve(swipes: [.right, .right], on: .dockApp) == nil,
+                     "swiping sideways on an app's icon, Finder's included, chains to its next or previous window")
+        let nextEntry = ForkTrackpadGestureCatalog.entry(for: .showNextWindow)
+        let previousEntry = ForkTrackpadGestureCatalog.entry(for: .showPreviousWindow)
+        suite.expect(nextEntry?.targets == [.dockApp, .dockFinder] && nextEntry?.triggers == [.swipes([.right])]
+                        && previousEntry?.targets == [.dockApp, .dockFinder]
+                        && previousEntry?.triggers == [.swipes([.left])]
+                        && nextEntry.map(ForkTrackpadGestureGroup.of) == .dock
+                        && previousEntry.map(ForkTrackpadGestureGroup.of) == .dock
+                        && ForkTrackpadPreviewContent(.action(.showNextWindow)) == .showApp
+                        && ForkTrackpadPreviewContent(.action(.showPreviousWindow)) == .showApp,
+                     "chaining windows has its own card with the Dock gestures, and previews as the app's icon")
+
         let tap = sourceCode("Sources/Vorssaint/Fork/Gestures/ForkTrackpadGestureService.swift")
         suite.expect(tap.contains("case (.dockApp(let pid)?, .showAppWindows), (.dockFinder(let pid)?, .showAppWindows):\n                    Self.showAppWindows(pid: pid)"),
                      "only a gesture begun on an app's icon calls its windows back")
+        suite.expect(tap.contains("case (.dockApp(let pid)?, .showNextWindow), (.dockFinder(let pid)?, .showNextWindow):\n                    showAdjacentWindow(pid: pid, forward: true)")
+                        && tap.contains("case (.dockApp(let pid)?, .showPreviousWindow), (.dockFinder(let pid)?, .showPreviousWindow):\n                    showAdjacentWindow(pid: pid, forward: false)"),
+                     "only a gesture begun on an app's icon chains its windows")
+        let chain = tap.components(separatedBy: "private func showAdjacentWindow(pid: pid_t, forward: Bool) {")
+            .dropFirst().first?.components(separatedBy: "\n    }\n").first ?? ""
+        suite.expect(chain.contains("Self.bool($0, kAXMinimizedAttribute) != true")
+                        && chain.contains("AXWindowResolver.windowID(for: window)")
+                        && chain.contains(".sorted { $0.id < $1.id }")
+                        && chain.contains("guard let only = ordered.first else {\n                Self.showAppWindows(pid: pid)")
+                        && chain.contains("chainedWindow[pid].flatMap")
+                        && chain.contains("ForkTrackpadWindowChain.nextIndex(current: currentIndex, count: ordered.count,")
+                        && chain.contains("chainedWindow[pid] = next.id")
+                        && chain.contains("kAXRaiseAction") && chain.contains("kAXMainAttribute as CFString")
+                        && chain.contains("kAXFocusedAttribute as CFString"),
+                     "chaining skips minimized windows, orders them by ID, remembers its place, simply raises "
+                        + "the one left alone, and otherwise raises, focuses and marks the next one main")
         let body = tap.components(separatedBy: "private static func showAppWindows(pid: pid_t) {").dropFirst().first?
             .components(separatedBy: "\n    }\n").first ?? ""
         let unminimize = body.range(of: "AXUIElementSetAttributeValue(window, kAXMinimizedAttribute as CFString, kCFBooleanFalse)")
@@ -2077,18 +2284,23 @@ enum ForkTrackpadGestureTests {
                         && observeBody.contains("DispatchQueue.main.async"),
                      "the tap only listens and hands events to the main thread without asking Accessibility")
 
-        let commit = tap.components(separatedBy: "case .commit(let action):").dropFirst().first ?? ""
+        let commit = tap.components(separatedBy: "case .commit(let rawAction):").dropFirst().first ?? ""
         let commitBody = commit.components(separatedBy: "case .haptic").first ?? ""
         let quit = tap.components(separatedBy: "func quitDockApp(").dropFirst().first ?? ""
         let quitBody = quit.components(separatedBy: "\n    }\n").first ?? ""
         suite.expect(commitBody.contains("(.dockApp(let pid)?, .quitApp)")
                         && commitBody.contains("Self.quitDockApp(pid: pid)")
-                        && commitBody.contains("where ForkTrackpadGestureCatalog.entry(for: action)?.targets == [.titlebar]")
+                        && commitBody.contains("where action.isWindowAction:")
                         && quitBody.contains("app.terminate()")
                         && !quitBody.contains("forceTerminate")
                         && quitBody.contains("ProcessInfo.processInfo.processIdentifier")
                         && quitBody.contains("ForkTrackpadDock.protectedBundleIdentifiers"),
                      "a pinch on a Dock icon quits that app politely, never this app nor a protected one")
+        suite.expect(commit.contains("ForkTrackpadModifierRemap.action(for: rawAction, modifierHeld: modifierHeld,")
+                        && tap.contains("modifierHeld: event.flags.contains(.maskShift)")
+                        && tap.contains("modifierHeld = input.modifierHeld")
+                        && tap.contains("ForkTrackpadModifierRemap.action(for: action, modifierHeld: modifierHeld,"),
+                     "a held modifier remaps both the commit and the live preview, read fresh from every event")
         let hit = tap.components(separatedBy: "let output = machine.handle(input.event, at: now)").dropFirst().first ?? ""
         let dockFirst = hit.range(of: "let dockHit = Self.dockItem(at: input.location)")
         let titlebarNext = hit.range(of: "Self.titlebarWindow(at: input.location")

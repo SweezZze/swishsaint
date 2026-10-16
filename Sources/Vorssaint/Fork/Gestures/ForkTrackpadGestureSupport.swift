@@ -68,6 +68,27 @@ enum ForkTrackpadGestureAction: String, CaseIterable, Equatable {
     /// Close a minimized window from its thumbnail, as its red button would:
     /// the app stays open and may still ask to save.
     case closeMinimizedWindow
+    /// From an app's Dock icon, swiping right: its next window comes to the
+    /// front, cycling past its last back to its first.
+    case showNextWindow
+    /// The same, swiping left, to its previous window.
+    case showPreviousWindow
+
+    /// A held modifier's stronger reach of `minimize`: every window of the
+    /// app, not only the one the gesture began on.
+    case minimizeAllWindows
+    /// A held modifier's stronger reach of `maximize`: the official margin
+    /// maximize, filling the screen short of its margin rather than all
+    /// the way.
+    case marginMaximize
+    /// A held modifier's other reach of `leftHalf`: the window moves to the
+    /// display before this one instead of this display's left half.
+    case moveToPreviousDisplay
+    /// The same, after `rightHalf`, to the display after this one.
+    case moveToNextDisplay
+    /// A held modifier's other reach of `centerReduced`: undoes the window's
+    /// last trackpad placement instead of centering it.
+    case restorePlacement
 
     /// The placement the window layout engine already knows, when there is
     /// one. The other actions act on the window or the app directly.
@@ -83,9 +104,51 @@ enum ForkTrackpadGestureAction: String, CaseIterable, Equatable {
         case .bottomRightQuarter: return .bottomRight
         case .maximize: return .maximize
         case .toggleFullScreen: return .fullScreen
+        case .marginMaximize: return .marginMaximize
+        case .moveToPreviousDisplay: return .previousDisplay
+        case .moveToNextDisplay: return .nextDisplay
         case .minimize, .close, .centerReduced, .quitApp, .quitWindowApp, .emptyTrash,
-             .showAppWindows, .restoreMinimizedWindow, .closeMinimizedWindow: return nil
+             .showAppWindows, .restoreMinimizedWindow, .closeMinimizedWindow,
+             .showNextWindow, .showPreviousWindow,
+             .minimizeAllWindows, .restorePlacement: return nil
         }
+    }
+
+    /// Whether a gesture with this action can only ever begin on a window's
+    /// title bar: every action but the ones the Dock already carries out by
+    /// itself, which a window must never receive.
+    var isWindowAction: Bool {
+        switch self {
+        case .quitApp, .emptyTrash, .showAppWindows, .restoreMinimizedWindow, .closeMinimizedWindow,
+             .showNextWindow, .showPreviousWindow:
+            return false
+        default:
+            return true
+        }
+    }
+}
+
+/// What a modifier held through a gesture turns its plain action into: a
+/// second, stronger meaning for the same swipe, pinch or tap, decided once
+/// the gesture commits (or, for a preview, at every step). The base gesture's
+/// own on/off switch in settings already governs both: a modifier never
+/// revives an action switched off on its own, and `quitWindowApp` keeps its
+/// own switch even though a held modifier can also reach it from `close`.
+enum ForkTrackpadModifierRemap {
+    static func action(for action: ForkTrackpadGestureAction, modifierHeld: Bool,
+                       disabled: Set<ForkTrackpadGestureAction> = []) -> ForkTrackpadGestureAction {
+        guard modifierHeld else { return action }
+        let remapped: ForkTrackpadGestureAction
+        switch action {
+        case .minimize: remapped = .minimizeAllWindows
+        case .maximize: remapped = .marginMaximize
+        case .close: remapped = .quitWindowApp
+        case .leftHalf: remapped = .moveToPreviousDisplay
+        case .rightHalf: remapped = .moveToNextDisplay
+        case .centerReduced: remapped = .restorePlacement
+        default: return action
+        }
+        return disabled.contains(remapped) ? action : remapped
     }
 }
 
@@ -223,6 +286,8 @@ enum ForkTrackpadGestureCatalog {
         Entry(action: .quitApp, target: .dockApp, triggers: [.pinches([.in])]),
         Entry(action: .emptyTrash, target: .dockTrash, triggers: [.pinches([.in])]),
         Entry(action: .showAppWindows, targets: [.dockApp, .dockFinder], triggers: [.swipes([.up])]),
+        Entry(action: .showNextWindow, targets: [.dockApp, .dockFinder], triggers: [.swipes([.right])]),
+        Entry(action: .showPreviousWindow, targets: [.dockApp, .dockFinder], triggers: [.swipes([.left])]),
         Entry(action: .restoreMinimizedWindow, target: .dockMinimizedWindow, triggers: [.swipes([.up])]),
         Entry(action: .closeMinimizedWindow, target: .dockMinimizedWindow, triggers: [.pinches([.in])]),
     ]
@@ -315,7 +380,13 @@ enum ForkTrackpadGestureSequence {
                         on target: ForkTrackpadGestureTarget = .titlebar) -> ForkTrackpadGestureAction? {
         // Out of the Dock, the way a window comes up from it.
         switch target {
-        case .dockApp, .dockFinder: return steps == [.up] ? .showAppWindows : nil
+        case .dockApp, .dockFinder:
+            switch steps {
+            case [.up]: return .showAppWindows
+            case [.right]: return .showNextWindow
+            case [.left]: return .showPreviousWindow
+            default: return nil
+            }
         case .dockMinimizedWindow: return steps == [.up] ? .restoreMinimizedWindow : nil
         case .dockTrash: return nil
         case .titlebar: break
@@ -744,6 +815,9 @@ enum ForkTrackpadPreviewContent: Equatable {
     case emptyTrash
     /// The app's icon alone: its windows are coming back.
     case showApp
+    /// A system symbol, drawn plain like the question mark: an action with
+    /// neither a zone nor a traffic light of its own.
+    case symbol(String)
     /// A sequence without action: the lift will do nothing.
     case unrecognized
 
@@ -755,9 +829,13 @@ enum ForkTrackpadPreviewContent: Equatable {
         // 1,000 points brought down to 1: the geometry works in whole points.
         let side = 1000.0
         let reference = CGRect(x: 0, y: 0, width: side, height: side)
+        // A sliver at the edge the window is leaving through, since the
+        // official geometry for moving to another display only ever hands
+        // back the window's own, unchanged, current rectangle.
+        let edgeShare = 0.08
         let rect: CGRect
         switch action {
-        case .minimize:
+        case .minimize, .minimizeAllWindows:
             self = .light(.minimize)
             return
         case .toggleFullScreen:
@@ -772,14 +850,21 @@ enum ForkTrackpadPreviewContent: Equatable {
         case .emptyTrash:
             self = .emptyTrash
             return
-        case .showAppWindows, .restoreMinimizedWindow:
+        case .showAppWindows, .restoreMinimizedWindow, .showNextWindow, .showPreviousWindow:
             self = .showApp
             return
         case .closeMinimizedWindow:
             self = .light(.close)
             return
+        case .restorePlacement:
+            self = .symbol("arrow.uturn.backward")
+            return
         case .centerReduced:
             rect = ForkTrackpadCenter.rect(in: reference, scale: centerScale)
+        case .moveToPreviousDisplay:
+            rect = CGRect(x: 0, y: 0, width: side * edgeShare, height: side)
+        case .moveToNextDisplay:
+            rect = CGRect(x: side * (1 - edgeShare), y: 0, width: side * edgeShare, height: side)
         default:
             guard let layoutAction = action.layoutAction else {
                 self = .unrecognized
@@ -793,11 +878,11 @@ enum ForkTrackpadPreviewContent: Equatable {
     }
 
     /// Traffic lights sit on the pointer, like the button the gesture stands
-    /// for; zones need the room of a panel centered on the screen.
+    /// for; zones and symbols need the room of a panel centered on the screen.
     var isAtPointer: Bool {
         switch self {
         case .light, .quitApp, .emptyTrash, .showApp: return true
-        case .zone, .unrecognized: return false
+        case .zone, .symbol, .unrecognized: return false
         }
     }
 }
