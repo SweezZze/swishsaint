@@ -355,6 +355,7 @@ final class ForkTrackpadGestureService {
                 showPreview(preview)
             case .hidePreview:
                 ForkTrackpadGesturePreview.shared.hide(committed: commits)
+                ForkTrackpadDockWindowPreview.shared.hide(committed: commits)
             case .cancelled:
                 break
             }
@@ -381,8 +382,15 @@ final class ForkTrackpadGestureService {
         // get in the way: nothing shows until the gesture means something.
         if preview == .unrecognized, !isOnWindow {
             ForkTrackpadGesturePreview.shared.hide()
+            ForkTrackpadDockWindowPreview.shared.hide()
             return
         }
+        // Calling windows from a Dock icon shows the windows themselves.
+        if !flash, showDockWindows(for: preview) {
+            ForkTrackpadGesturePreview.shared.hide()
+            return
+        }
+        ForkTrackpadDockWindowPreview.shared.hide()
         var targetFrame: CGRect?
         var pid: pid_t?
         switch target {
@@ -526,14 +534,7 @@ final class ForkTrackpadGestureService {
         guard pid != ProcessInfo.processInfo.processIdentifier,
               let running = NSRunningApplication(processIdentifier: pid), !running.isTerminated
         else { return }
-        let app = AXUIElementCreateApplication(pid)
-        AXUIElementSetMessagingTimeout(app, 0.35)
-        let windows = (Self.elements(app, kAXWindowsAttribute) ?? []).filter {
-            Self.bool($0, kAXMinimizedAttribute) != true
-        }
-        let ordered = windows.compactMap { window in
-            AXWindowResolver.windowID(for: window).map { (id: $0, element: window) }
-        }.sorted { $0.id < $1.id }
+        let ordered = Self.chainableWindows(pid: pid)
         guard ordered.count > 1 else {
             guard let only = ordered.first else {
                 Self.showAppWindows(pid: pid)
@@ -545,16 +546,90 @@ final class ForkTrackpadGestureService {
             AXUIElementPerformAction(only.element, kAXRaiseAction as CFString)
             return
         }
-        let currentIndex = chainedWindow[pid].flatMap { id in ordered.firstIndex { $0.id == id } }
-        let nextIndex = ForkTrackpadWindowChain.nextIndex(current: currentIndex, count: ordered.count,
-                                                          forward: forward)
-        let next = ordered[nextIndex]
+        let next = ordered[adjacentIndex(in: ordered, pid: pid, forward: forward)]
         chainedWindow[pid] = next.id
         running.unhide()
         _ = running.activate(options: [])
         AXUIElementPerformAction(next.element, kAXRaiseAction as CFString)
         AXUIElementSetAttributeValue(next.element, kAXMainAttribute as CFString, kCFBooleanTrue)
         AXUIElementSetAttributeValue(next.element, kAXFocusedAttribute as CFString, kCFBooleanTrue)
+    }
+
+    /// The app's windows a swipe on its icon steps through, in window ID
+    /// order: minimized ones never count.
+    private static func chainableWindows(pid: pid_t) -> [(id: CGWindowID, element: AXUIElement)] {
+        let app = AXUIElementCreateApplication(pid)
+        AXUIElementSetMessagingTimeout(app, 0.35)
+        let windows = (elements(app, kAXWindowsAttribute) ?? []).filter {
+            bool($0, kAXMinimizedAttribute) != true
+        }
+        return windows.compactMap { window in
+            AXWindowResolver.windowID(for: window).map { (id: $0, element: window) }
+        }.sorted { $0.id < $1.id }
+    }
+
+    private func adjacentIndex(in ordered: [(id: CGWindowID, element: AXUIElement)],
+                               pid: pid_t, forward: Bool) -> Int {
+        let currentIndex = chainedWindow[pid].flatMap { id in ordered.firstIndex { $0.id == id } }
+        return ForkTrackpadWindowChain.nextIndex(current: currentIndex, count: ordered.count, forward: forward)
+    }
+
+    /// Every window of the app, minimized ones too, since calling the app's
+    /// windows brings those back as well.
+    private static func appWindows(pid: pid_t) -> [ForkTrackpadDockWindowPreview.Window] {
+        let app = AXUIElementCreateApplication(pid)
+        AXUIElementSetMessagingTimeout(app, 0.35)
+        let name = NSRunningApplication(processIdentifier: pid)?.localizedName ?? ""
+        return (elements(app, kAXWindowsAttribute) ?? []).compactMap { window in
+            AXWindowResolver.windowID(for: window).map {
+                ForkTrackpadDockWindowPreview.Window(id: $0, title: title(of: window, app: name))
+            }
+        }
+    }
+
+    private static func title(of window: AXUIElement, app: String) -> String {
+        guard let title = string(window, kAXTitleAttribute), !title.isEmpty else { return app }
+        return title
+    }
+
+    /// For ←, → and ↑ on an app's icon: the window that will come forward,
+    /// the same `showAdjacentWindow` picks, or all of them. `false` when there
+    /// is none to show (an app without windows opens a new one): the icon's
+    /// own small preview then says it.
+    private func showDockWindows(for preview: ForkTrackpadGestureMachine.Preview) -> Bool {
+        guard case .action(let action) = preview else { return false }
+        let pid: pid_t
+        switch target {
+        case .dockApp(let appPID)?, .dockFinder(let appPID)?: pid = appPID
+        default: return false
+        }
+        let windows: [ForkTrackpadDockWindowPreview.Window]
+        switch action {
+        case .showAppWindows:
+            windows = Self.appWindows(pid: pid)
+        case .showNextWindow, .showPreviousWindow:
+            let ordered = Self.chainableWindows(pid: pid)
+            guard !ordered.isEmpty else {
+                // None visible: the swipe brings every minimized one back.
+                windows = Self.appWindows(pid: pid)
+                break
+            }
+            let next = ordered.count > 1
+                ? ordered[adjacentIndex(in: ordered, pid: pid, forward: action == .showNextWindow)]
+                : ordered[0]
+            let name = NSRunningApplication(processIdentifier: pid)?.localizedName ?? ""
+            windows = [.init(id: next.id, title: Self.title(of: next.element, app: name))]
+        default:
+            return false
+        }
+        guard !windows.isEmpty else { return false }
+        let side = ForkTrackpadPreviewAnchor.fallbackIconSide
+        let item = dockItemFrame
+            ?? CGRect(x: gestureOrigin.x - side / 2, y: gestureOrigin.y - side / 2, width: side, height: side)
+        ForkTrackpadDockWindowPreview.shared.show(windows,
+                                                  appIcon: NSRunningApplication(processIdentifier: pid)?.icon,
+                                                  itemFrame: item)
+        return true
     }
 
     /// The minimized window a thumbnail's title names, among the windows of
