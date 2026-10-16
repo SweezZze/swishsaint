@@ -1397,6 +1397,14 @@ def main():
           + declaration("Sources/Vorssaint/Services/QuickTools/QuickTogglesService.swift", "enum QuickToggleAction:")
           + "}\n")
 
+    # The Developer probe's modes and argument check, outside its development-only file.
+    probe = "Sources/Vorssaint/Support/NotchPresentationProbe.swift"
+    write("NotchPresentationProbeArguments.swift", "import Foundation\n\nextension NotchPresentationProbeArgumentTests {\n"
+          + "enum Probe {\n"
+          + "".join(declaration(probe, prefix, scope="enum NotchPresentationProbe {")
+                    for prefix in ["    enum Mode:", "    static func isRequested("])
+          + "}\n}\n")
+
     preview = "Sources/Vorssaint/Services/QuickTools/ScreenshotQuickPreviewController.swift"
     screen_text = "Sources/Vorssaint/Services/QuickTools/ScreenTextService.swift"
     write("ScreenshotOCRControl.swift", "import AppKit\nimport SwiftUI\n"

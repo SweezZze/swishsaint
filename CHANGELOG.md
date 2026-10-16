@@ -54,6 +54,7 @@ After updating, What's New shows the changes for the features you use. The windo
 - Command Bar resolves February 29 without a year to the next valid occurrence and rejects impossible dates such as April 31.
 - Volume keys keep moving on outputs that only take coarse volume steps.
 - Dock clicks and Dock Preview act on the right instance when an app runs as several processes.
+- Window switcher and Dock Preview can pause thumbnails in programs that are not apps, such as the Java that runs Minecraft.
 - CPU temperature on Apple M4 Pro reads its hottest cores, so alerts and fan curves react in time.
 - Settings → Features no longer jumps or goes blank when a feature is installed or removed while scrolled down.
 - AI Agents follows OpenCode 2, including databases upgraded from OpenCode 1 and the cost of compactions.
@@ -64,7 +65,7 @@ After updating, What's New shows the changes for the features you use. The windo
 - Port Manager shows ports and PIDs without thousands separators, such as 5173 instead of 5,173.
 
 ### Contributors
-Thanks to @2-Chengs, @AB-boi, @Acronyxxx, @Adridot, @ahmedabdullah-o, @beckhauser, @benjcrich, @capozz03, @carltonking, @chadfidev, @claude, @COMEBACKISREAL, @cprecioso, @DanyRodier, @eioz, @EugeneCarldotme, @gustavoramalho, @Hackmodford, @iancenry, @JeanBaeez, @JoeC-Dev, @juanra, @kit101, @LechTheMitch, @Likheet, @luantedesco, @ManuLorenzzo, @mohammadhprp, @morhaf-ko, @Narangor, @nateships, @ncesar, @oecer, @oskarsss, @PratikPawar1401, @RoccoRakete, @unfilet, @voljumet, @Werkezeugs, @ywu73 and @zhanghk2001.
+Thanks to @2-Chengs, @AB-boi, @Acronyxxx, @Adridot, @ahmedabdullah-o, @Alpaka05, @beckhauser, @benjcrich, @capozz03, @carltonking, @chadfidev, @claude, @COMEBACKISREAL, @cprecioso, @DanyRodier, @eioz, @EugeneCarldotme, @gustavoramalho, @Hackmodford, @iancenry, @JeanBaeez, @JoeC-Dev, @juanra, @kit101, @LechTheMitch, @Likheet, @luantedesco, @ManuLorenzzo, @mohammadhprp, @morhaf-ko, @Narangor, @nateships, @ncesar, @oecer, @oskarsss, @PratikPawar1401, @RoccoRakete, @unfilet, @voljumet, @Werkezeugs, @ywu73 and @zhanghk2001.
 
 ## [3.4.1] - 2026-10-08
 
