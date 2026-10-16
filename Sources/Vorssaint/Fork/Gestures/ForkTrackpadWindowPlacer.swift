@@ -154,8 +154,31 @@ final class ForkTrackpadWindowPlacer {
             return setFrame(previous, targetRect: appKitFrame(fromAX: previous),
                             screenVisibleFrame: screen.visibleFrame, action: .restore,
                             on: target.window, windowID: target.key.windowID)
+        case .topLeftTwoSixths, .topRightTwoSixths, .bottomLeftTwoSixths, .bottomRightTwoSixths:
+            // No official geometry for two of a row's three sixths
+            // together: the rectangle comes from `ForkTrackpadRowGeometry`,
+            // but settling and anchoring still borrow the matching corner
+            // sixth's own behaviour (same corner, twice as wide).
+            guard let anchor = ForkTrackpadGestureSequence.ForkTrackpadRowGeometry.anchor(for: action),
+                  let target = target(from: window, app: app, capability: anchor.targetCapability),
+                  let screen = bestScreen(for: target.frame),
+                  let rect = ForkTrackpadGestureSequence.ForkTrackpadRowGeometry.rect(
+                      for: action, visibleFrame: WindowLayoutGeometry.screenGapFrame(
+                          screen.visibleFrame, screenGap: WindowLayoutGaps.screenGap))?.integral
+            else { return false }
+            bringForward(target.window, of: app)
+            forgetHalf(target.key)
+            rememberBeforePlacement(target)
+            let applied = setFrame(axFrame(fromAppKit: rect), targetRect: rect,
+                                   screenVisibleFrame: screen.visibleFrame, action: anchor,
+                                   on: target.window, windowID: target.key.windowID)
+            if applied { recordCycle(anchor, target: target) }
+            return applied
         case .leftHalf, .rightHalf, .topHalf, .bottomHalf,
              .topLeftQuarter, .topRightQuarter, .bottomLeftQuarter, .bottomRightQuarter,
+             .leftThird, .rightThird, .leftTwoThirds, .rightTwoThirds, .centerThird,
+             .topLeftSixth, .topRightSixth, .bottomLeftSixth, .bottomRightSixth,
+             .topCenterSixth, .bottomCenterSixth,
              .maximize, .marginMaximize, .toggleFullScreen:
             guard let layoutAction = action.layoutAction,
                   let target = target(from: window, app: app, capability: layoutAction.targetCapability)

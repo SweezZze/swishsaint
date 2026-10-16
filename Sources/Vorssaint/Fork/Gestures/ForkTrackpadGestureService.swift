@@ -50,6 +50,9 @@ final class ForkTrackpadGestureService {
         /// stronger, modified meaning, decided fresh at every step and at
         /// the commit alike.
         var modifierHeld: Bool
+        /// Whether Option was held when this event was read: the grid, in
+        /// place of the plain half or quarter a swipe would otherwise form.
+        var gridModifierHeld: Bool
     }
 
     /// What the gesture in progress started on. The action goes there even if
@@ -74,6 +77,10 @@ final class ForkTrackpadGestureService {
     /// Shift, as of the last event: a gesture's stronger meaning, read fresh
     /// for every preview step and for the commit alike.
     private var modifierHeld = false
+    /// Option, as of the last event: the grid modifier the machine itself
+    /// needs, to decide which continuous tracking a swipe takes up the
+    /// moment it first combines.
+    private var gridModifierHeld = false
     /// The window last chained to on an app's Dock icon, so the next swipe
     /// in either direction knows where it left off.
     private var chainedWindow: [pid_t: CGWindowID] = [:]
@@ -182,7 +189,8 @@ final class ForkTrackpadGestureService {
         }
         guard let decoded else { return }
         let input = Input(event: decoded, time: time, location: event.location,
-                          modifierHeld: event.flags.contains(.maskShift))
+                          modifierHeld: event.flags.contains(.maskShift),
+                          gridModifierHeld: event.flags.contains(.maskAlternate))
         DispatchQueue.main.async { [weak self] in self?.handle(input) }
     }
 
@@ -221,8 +229,9 @@ final class ForkTrackpadGestureService {
     private func handle(_ input: Input) {
         guard isRunning else { return }
         modifierHeld = input.modifierHeld
+        gridModifierHeld = input.gridModifierHeld
         let now = clock.time(for: input.time)
-        let output = machine.handle(input.event, at: now) { [self] in
+        let output = machine.handle(input.event, at: now, gridModifierHeld: gridModifierHeld) { [self] in
             gestureOrigin = input.location
             let dockHit = Self.dockItem(at: input.location)
             switch dockHit?.verdict {
@@ -258,7 +267,7 @@ final class ForkTrackpadGestureService {
         scheduledDeadline = nil
         guard isRunning else { return }
         let now = clock.time(for: ProcessInfo.processInfo.systemUptime)
-        perform(machine.handle(.tick, at: now) { nil }.effects)
+        perform(machine.handle(.tick, at: now, gridModifierHeld: gridModifierHeld) { nil }.effects)
         scheduleDeadline()
     }
 

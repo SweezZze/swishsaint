@@ -35,6 +35,9 @@ enum ForkTrackpadGestureTests {
         sizeCycle(suite)
         windowChain(suite)
         modifierRemap(suite)
+        gridResolve(suite)
+        grid(suite)
+        gridRow(suite)
         diagnostics(suite)
         complementaryHalves(suite)
         complementRefit(suite)
@@ -66,6 +69,7 @@ enum ForkTrackpadGestureTests {
         var machine: Machine
         var now: TimeInterval = 0
         var onTarget: ForkTrackpadGestureTarget? = .titlebar
+        var gridModifierHeld = false
         private(set) var hitTests = 0
         private(set) var effects: [Machine.Effect] = []
         private(set) var dispositions: [Machine.Disposition] = []
@@ -121,7 +125,7 @@ enum ForkTrackpadGestureTests {
             if delay > 0 { wait(delay) }
             let isOnTarget = onTarget
             var calls = 0
-            let output = machine.handle(event, at: now) {
+            let output = machine.handle(event, at: now, gridModifierHeld: gridModifierHeld) {
                 calls += 1
                 return isOnTarget
             }
@@ -183,22 +187,23 @@ enum ForkTrackpadGestureTests {
                   ([.left, .up, .down, .up], .topLeftQuarter), ([.up, .up, .right], .topRightQuarter),
                   ([.right, .left, .down], .bottomLeftQuarter)],
                  "the vertical always combines and the latest direction wins")
-        resolves([([.up, .right, .left], .leftHalf), ([.right, .up, .left], .leftHalf),
-                  ([.down, .left, .right], .rightHalf), ([.up, .right, .left, .left], .leftHalf)],
-                 "reversing the horizontal on a quarter erases the vertical")
+        resolves([([.up, .right, .left], .topLeftQuarter), ([.right, .up, .left], .topLeftQuarter),
+                  ([.down, .left, .right], .bottomRightQuarter), ([.up, .right, .left, .left], .topLeftQuarter)],
+                 "reversing the horizontal on a quarter only ever flips the horizontal")
         resolves([([.up, .right, .left, .up], .topLeftQuarter), ([.left, .down, .right, .up], .topRightQuarter),
                   ([.up, .right, .left, .down], .bottomLeftQuarter)],
-                 "the vertical can come back after the erasure")
-        resolves([([.up, .right, .left, .right], .rightHalf)],
-                 "an oscillating horizontal after the erasure keeps flipping")
+                 "the vertical keeps up with every later step regardless")
+        resolves([([.up, .right, .left, .right], .topRightQuarter)],
+                 "an oscillating horizontal keeps flipping without ever touching the vertical")
         resolves([([.left, .up, .down], .bottomLeftQuarter), ([.right, .down, .up], .topRightQuarter)],
                  "reversing the vertical never erases the horizontal")
         resolves([([.left, .up, .down, .down], .bottomHalf), ([.right, .up, .up], .topHalf),
                   ([.left, .up, .down, .down, .down], .bottomHalf), ([.up, .right, .left, .down, .down], .bottomHalf)],
                  "two identical vertical steps in a row force the half")
         resolves([([.up, .up, .right], .topRightQuarter), ([.left, .up, .up, .right], .topRightQuarter),
-                  ([.left, .down, .down, .right], .bottomRightQuarter), ([.left, .down, .down, .right, .left], .leftHalf)],
-                 "the horizontal recombines over a forced half")
+                  ([.left, .down, .down, .right], .bottomRightQuarter),
+                  ([.left, .down, .down, .right, .left], .bottomLeftQuarter)],
+                 "the horizontal recombines over a forced half, and a later reversal still only flips it")
         resolves([([.up, .left, .up], .topLeftQuarter), ([.up, .right, .up], .topRightQuarter)],
                  "the vertical pair must be consecutive")
         resolves([([.up, .right, .right], .topRightQuarter), ([.up, .left, .left], .topLeftQuarter)],
@@ -209,13 +214,14 @@ enum ForkTrackpadGestureTests {
                   ([.left, .up], .topLeftQuarter)],
                  "two-step quarters work in either order")
         resolves([([.up, .up], .topHalf), ([.down, .down], .bottomHalf)], "a vertical pair means the half")
-        resolves([[.up, .down], [.down, .up], [.left, .right], [.right, .left],
-                  [.left, .left], [.up, .up, .up], [.up, .down, .up]].map { ($0, nil) },
-                 "changing one's mind on a single axis stays unrecognized")
+        resolves([([.up, .down], .minimize), ([.down, .up], .maximize), ([.left, .right], .rightHalf),
+                  ([.right, .left], .leftHalf), ([.left, .left], .leftHalf), ([.up, .up, .up], .topHalf),
+                  ([.up, .down, .up], .maximize)],
+                 "changing one's mind on a single axis, even repeatedly, always lands on a plain answer")
         resolves([([.upLeft], .topLeftQuarter), ([.upRight], .topRightQuarter),
                   ([.downLeft], .bottomLeftQuarter), ([.downRight], .bottomRightQuarter)],
                  "a diagonal alone is its quarter")
-        resolves([([.upRight, .left], .leftHalf), ([.upRight, .right], .topRightQuarter),
+        resolves([([.upRight, .left], .topLeftQuarter), ([.upRight, .right], .topRightQuarter),
                   ([.upRight, .down], .bottomRightQuarter), ([.upRight, .up], .topRightQuarter),
                   ([.upRight, .up, .up], .topHalf), ([.downLeft, .down, .down], .bottomHalf),
                   ([.upRight, .left, .up], .topLeftQuarter)],
@@ -263,7 +269,14 @@ enum ForkTrackpadGestureTests {
         // catalog entry (see ForkTrackpadModifierRemap): they have no trigger
         // or card of their own, so the catalog never lists them.
         let modifierReachActions: Set<Action> = [.minimizeAllWindows, .marginMaximize,
-                                                  .moveToPreviousDisplay, .moveToNextDisplay, .restorePlacement]
+                                                  .moveToPreviousDisplay, .moveToNextDisplay, .restorePlacement,
+                                                  .leftThird, .rightThird, .leftTwoThirds, .rightTwoThirds,
+                                                  .topLeftSixth, .topRightSixth,
+                                                  .bottomLeftSixth, .bottomRightSixth,
+                                                  .topCenterSixth, .bottomCenterSixth,
+                                                  .topLeftTwoSixths, .topRightTwoSixths,
+                                                  .bottomLeftTwoSixths, .bottomRightTwoSixths,
+                                                  .centerThird]
         let listed = ForkTrackpadGestureCatalog.entries.map(\.action)
         suite.expect(listed.count == Set(listed).count
                         && Set(listed) == Set(Action.allCases).subtracting(modifierReachActions),
@@ -288,6 +301,12 @@ enum ForkTrackpadGestureTests {
             .maximize: .maximize, .toggleFullScreen: .fullScreen,
             .marginMaximize: .marginMaximize,
             .moveToPreviousDisplay: .previousDisplay, .moveToNextDisplay: .nextDisplay,
+            .leftThird: .leftThird, .rightThird: .rightThird,
+            .leftTwoThirds: .leftTwoThirds, .rightTwoThirds: .rightTwoThirds,
+            .centerThird: .centerThird,
+            .topLeftSixth: .topLeftSixth, .topRightSixth: .topRightSixth,
+            .bottomLeftSixth: .bottomLeftSixth, .bottomRightSixth: .bottomRightSixth,
+            .topCenterSixth: .topCenterSixth, .bottomCenterSixth: .bottomCenterSixth,
         ]
         for action in Action.allCases {
             suite.expect(action.layoutAction == placements[action],
@@ -480,10 +499,12 @@ enum ForkTrackpadGestureTests {
         thenLeft.wait(0.35)
         let stepped = thenLeft.haptics == [.step]
         thenLeft.move(dx: -40)
-        let previewed = thenLeft.lastPreview == .some(.action(.leftHalf))
+        let previewed = thenLeft.lastPreview == .some(.action(.topLeftQuarter))
         thenLeft.scroll(.ended)
-        suite.expect(stepped && previewed && thenLeft.commits == [.leftHalf],
-                     "a diagonal step then ← falls back to the left half")
+        suite.expect(stepped && previewed && thenLeft.commits == [.topLeftQuarter]
+                        && thenLeft.haptics == [.step, .step],
+                     "a diagonal step then reversing the horizontal flips straight across, "
+                        + "ticking again without a pause")
 
         var disabled = Driver(suite) { $0.disabledActions = [.topRightQuarter] }
         disabled.scroll(.began)
@@ -492,15 +513,33 @@ enum ForkTrackpadGestureTests {
         disabled.scroll(.ended)
         suite.expect(unrecognized && disabled.commits.isEmpty, "a disabled quarter disables its diagonal")
 
-        var unknown = Driver(suite)
-        unknown.scroll(.began)
-        unknown.move(dx: -40)
-        unknown.wait(0.35)
-        unknown.move(dx: -40)
-        let unknownPreview = unknown.lastPreview == .some(.unrecognized)
-        unknown.scroll(.ended)
-        suite.expect(unknownPreview && unknown.commits.isEmpty,
-                     "an unknown sequence is previewed as such and does nothing")
+        var repeatedLeft = Driver(suite)
+        repeatedLeft.scroll(.began)
+        repeatedLeft.move(dx: -40)
+        repeatedLeft.wait(0.35)
+        repeatedLeft.move(dx: -40)
+        let stillLeftHalf = repeatedLeft.lastPreview == .some(.action(.leftHalf))
+        repeatedLeft.scroll(.ended)
+        suite.expect(stillLeftHalf && repeatedLeft.commits == [.leftHalf],
+                     "repeating the same half keeps affirming it, never a question mark for its own sake")
+
+        // Letting go of both axes at once (easing back toward where the
+        // gesture started) is the one way left to hold nothing at all once
+        // combined: the preview holds what it last showed instead of
+        // blanking, and the lift does nothing since nothing is held.
+        var bothRelease = Driver(suite)
+        bothRelease.scroll(.began)
+        bothRelease.move(dy: -40)
+        bothRelease.wait(0.35)
+        bothRelease.move(dx: 40)
+        bothRelease.wait(0.35)
+        let formedTopRight = bothRelease.lastPreview == .some(.action(.topRightQuarter))
+        bothRelease.move(dx: -3, dy: 3)
+        let stillShowsTopRight = bothRelease.lastPreview == .some(.action(.topRightQuarter))
+        bothRelease.scroll(.ended)
+        suite.expect(formedTopRight && stillShowsTopRight && bothRelease.commits.isEmpty,
+                     "easing both axes back to the middle at once holds the last preview rather than "
+                        + "blanking it, and the lift does nothing since nothing is actually held any more")
     }
 
     // MARK: - Cancellation
@@ -1134,8 +1173,9 @@ enum ForkTrackpadGestureTests {
         let bottomRight = three.lastPreview == .some(.action(.bottomRightQuarter))
         three.scroll(.ended)
         suite.expect(topRight && bottomRight && three.commits == [.bottomRightQuarter]
-                        && three.haptics == [.step, .step],
-                     "changing one's mind across three steps lands on the latest quarter")
+                        && three.haptics == [.step, .step, .step],
+                     "changing one's mind across three steps lands on the latest quarter, "
+                        + "the third ticking at once since the quarter already stood")
 
         var four = Driver(suite)
         four.scroll(.began)
@@ -1145,20 +1185,34 @@ enum ForkTrackpadGestureTests {
         }
         four.move(dy: -40)
         four.scroll(.ended)
-        suite.expect(four.commits == [.topRightQuarter] && four.haptics == [.step, .step, .step],
-                     "four steps keep following the latest of each axis")
+        suite.expect(four.commits == [.topRightQuarter]
+                        && four.haptics == Array(repeating: .step, count: 4),
+                     "four steps keep following the latest of each axis, the last two live once "
+                        + "a quarter already stood, each still ticking on its own")
 
+        // The full shape of a reversal once a quarter stands: a push past the
+        // threshold the other way flips that axis straight across, never
+        // through a half in between; easing back toward the middle lets that
+        // axis go, landing on the half the other axis still holds.
         var reverse = Driver(suite)
         reverse.scroll(.began)
         reverse.move(dy: -40)
         reverse.wait(0.35)
         reverse.move(dx: 40)
         reverse.wait(0.35)
+        let topRightFirst = reverse.lastPreview == .some(.action(.topRightQuarter))
         reverse.move(dx: -40)
-        let leftHalf = reverse.lastPreview == .some(.action(.leftHalf))
+        let flippedLeft = reverse.lastPreview == .some(.action(.topLeftQuarter))
+        reverse.move(dy: 40)
+        let flippedDown = reverse.lastPreview == .some(.action(.bottomLeftQuarter))
+        reverse.move(dx: 33)
+        let easedToHalf = reverse.lastPreview == .some(.action(.bottomHalf))
         reverse.scroll(.ended)
-        suite.expect(leftHalf && reverse.commits == [.leftHalf],
-                     "reversing the horizontal on a quarter falls back to a half")
+        suite.expect(topRightFirst && flippedLeft && flippedDown && easedToHalf
+                        && reverse.commits == [.bottomHalf]
+                        && reverse.haptics == Array(repeating: .step, count: 5),
+                     "once a quarter stands, a reversal flips straight to the other quarter and "
+                        + "easing back to the middle lets go to the half, all without a pause")
 
         var downTwice = Driver(suite)
         downTwice.scroll(.began)
@@ -1167,22 +1221,47 @@ enum ForkTrackpadGestureTests {
             downTwice.wait(0.35)
         }
         let bottomLeft = downTwice.lastPreview == .some(.action(.bottomLeftQuarter))
-        downTwice.move(dy: 40)
+        downTwice.move(dx: 3)
         let bottomHalf = downTwice.lastPreview == .some(.action(.bottomHalf))
         downTwice.scroll(.ended)
         suite.expect(bottomLeft && bottomHalf && downTwice.commits == [.bottomHalf]
-                        && downTwice.haptics == [.step, .step, .step],
-                     "two consecutive ↓ steps after a quarter force the bottom half")
+                        && downTwice.haptics == Array(repeating: .step, count: 4),
+                     "easing the horizontal back to the middle lets go to the half, now that "
+                        + "pushing the vertical further no longer forces it on its own")
+
+        // The hysteresis band's exact edges: short of the release threshold
+        // an axis holds, short of the full threshold a fresh axis never
+        // enters, and a diagonal's own corner seeds its two axes the same
+        // way a two-step quarter does.
+        var edges = Driver(suite)
+        edges.scroll(.began)
+        edges.move(dx: 40, dy: -40)
+        edges.wait(0.35)
+        // Seeded at accX=+5 (the default swipeThreshold); release sits at 2.5.
+        edges.move(dx: -2)
+        let stillRight = edges.lastPreview == .some(.action(.topRightQuarter))
+        edges.move(dx: -1)
+        let releasedHorizontal = edges.lastPreview == .some(.action(.topHalf))
+        edges.move(dx: -2)
+        let notYetFlipped = edges.lastPreview == .some(.action(.topHalf))
+        edges.move(dx: -5)
+        let edgeFlippedLeft = edges.lastPreview == .some(.action(.topLeftQuarter))
+        edges.scroll(.ended)
+        suite.expect(stillRight && releasedHorizontal && notYetFlipped && edgeFlippedLeft,
+                     "a quarter's own diagonal seeds its axes at the threshold too: holds past the "
+                        + "release band (accX=3), lets go right at it (accX=2≤2.5), stays let go well "
+                        + "short of the far threshold (accX=0), then only flips once fully crossed (accX=-5)")
 
         var oneAxis = Driver(suite)
         oneAxis.scroll(.began)
         oneAxis.move(dy: -40)
         oneAxis.wait(0.35)
         oneAxis.move(dy: 40)
-        let unrecognized = oneAxis.lastPreview == .some(.unrecognized)
+        let minimizes = oneAxis.lastPreview == .some(.action(.minimize))
         oneAxis.scroll(.ended)
-        suite.expect(unrecognized && oneAxis.commits.isEmpty,
-                     "changing one's mind on one axis is previewed as unrecognized and does nothing")
+        suite.expect(minimizes && oneAxis.commits == [.minimize],
+                     "changing one's mind on one axis before a quarter ever exists simply lands on "
+                        + "that axis's own latest meaning")
     }
 
     // MARK: - Host
@@ -1417,6 +1496,218 @@ enum ForkTrackpadGestureTests {
                      "every other action, the held modifier's own included, can reach a window")
     }
 
+    private static func gridResolve(_ suite: TestSuite) {
+        typealias Sequence = ForkTrackpadGestureSequence
+        func column(_ index: Int, _ span: Int) -> (column: Int, span: Int) { (column: index, span: span) }
+        func edge(_ direction: Swipe, _ span: Int) -> (edge: Swipe, span: Int) { (edge: direction, span: span) }
+
+        suite.expect(Sequence.resolveGrid(horizontal: nil, vertical: nil) == nil,
+                     "nothing held on either axis names nothing")
+        suite.expect(Sequence.resolveGrid(horizontal: column(0, 1), vertical: nil) == .leftThird
+                        && Sequence.resolveGrid(horizontal: column(2, 1), vertical: nil) == .rightThird
+                        && Sequence.resolveGrid(horizontal: column(0, 2), vertical: nil) == .leftTwoThirds
+                        && Sequence.resolveGrid(horizontal: column(1, 2), vertical: nil) == .rightTwoThirds,
+                     "a third or two thirds alone, from its own edge, with no vertical held")
+        suite.expect(Sequence.resolveGrid(horizontal: column(1, 1), vertical: nil) == .centerThird,
+                     "sliding on past two thirds, with no vertical held, reaches the centre "
+                        + "third itself, on the way to the far edge's own third")
+        suite.expect(Sequence.resolveGrid(horizontal: nil, vertical: edge(.up, 1)) == .topHalf
+                        && Sequence.resolveGrid(horizontal: nil, vertical: edge(.down, 1)) == .bottomHalf,
+                     "a vertical half alone, with no horizontal held")
+        suite.expect(Sequence.resolveGrid(horizontal: nil, vertical: edge(.up, 2)) == .topCenterSixth
+                        && Sequence.resolveGrid(horizontal: nil, vertical: edge(.down, 2)) == .bottomCenterSixth,
+                     "a vertical half pushed a second stop further, with no horizontal ever "
+                        + "joining it, names the sixth down its own centre column")
+        suite.expect(Sequence.resolveGrid(horizontal: column(0, 1), vertical: edge(.up, 1)) == .topLeftSixth
+                        && Sequence.resolveGrid(horizontal: column(2, 1), vertical: edge(.up, 1)) == .topRightSixth
+                        && Sequence.resolveGrid(horizontal: column(0, 1), vertical: edge(.down, 1)) == .bottomLeftSixth
+                        && Sequence.resolveGrid(horizontal: column(2, 1), vertical: edge(.down, 1)) == .bottomRightSixth,
+                     "a third and a vertical half together name their corner sixth")
+        suite.expect(Sequence.resolveGrid(horizontal: column(0, 2), vertical: edge(.up, 1)) == .topLeftTwoSixths
+                        && Sequence.resolveGrid(horizontal: column(1, 2), vertical: edge(.up, 1)) == .topRightTwoSixths
+                        && Sequence.resolveGrid(horizontal: column(0, 2), vertical: edge(.down, 1)) == .bottomLeftTwoSixths
+                        && Sequence.resolveGrid(horizontal: column(1, 2), vertical: edge(.down, 1)) == .bottomRightTwoSixths,
+                     "two of a row's three sixths together, confined to it by the vertical "
+                        + "half, name their own shape — the one no plain third ever reaches")
+        suite.expect(Sequence.resolveGrid(horizontal: column(1, 1), vertical: edge(.up, 1)) == .topCenterSixth
+                        && Sequence.resolveGrid(horizontal: column(1, 1), vertical: edge(.down, 1)) == .bottomCenterSixth,
+                     "the row's own centre sixth, reached by sliding across it, names the "
+                        + "same action as reaching it by pushing the vertical further alone")
+        suite.expect(Sequence.resolveGrid(horizontal: column(0, 1), vertical: edge(.up, 2)) == .topLeftSixth,
+                     "once a horizontal column is set, how far out the vertical push went no "
+                        + "longer matters: the corner sixth is already fully named")
+    }
+
+    private static func grid(_ suite: TestSuite) {
+        // A third, with no vertical ever touched: the grid modifier reaches
+        // it from a single axis alone, unlike a plain quarter. Pushing
+        // further the same way does nothing more — that edge is already
+        // pinned to the screen's own edge — but swiping back the other way
+        // slides on across the same ladder a row's own sixths use: two
+        // thirds, the centre third itself, the far edge's own two thirds,
+        // then its third — one stop at a time, never skipping past the
+        // centre — and reversing all the way retraces every stop back.
+        var third = Driver(suite)
+        third.gridModifierHeld = true
+        third.scroll(.began)
+        third.move(dx: -40)
+        third.wait(0.35)
+        let isThird = third.lastPreview == .some(.action(.leftThird))
+        third.move(dx: 13)
+        let passedTwoThirds = third.previews.contains(.some(.action(.leftTwoThirds)))
+        let isCenterThird = third.lastPreview == .some(.action(.centerThird))
+        third.move(dx: 13)
+        let passedRightTwoThirds = third.previews.contains(.some(.action(.rightTwoThirds)))
+        let isRightThird = third.lastPreview == .some(.action(.rightThird))
+        third.move(dx: -33)
+        let backToLeftThird = third.lastPreview == .some(.action(.leftThird))
+        third.scroll(.ended)
+        suite.expect(isThird && passedTwoThirds && isCenterThird && passedRightTwoThirds
+                        && isRightThird && backToLeftThird && third.commits == [.leftThird],
+                     "a third slides through two thirds, the centre third itself, the far "
+                        + "edge's own two thirds and its third, one stop at a time, and "
+                        + "reversing all the way retraces every stop back")
+
+        // Pushing hard back toward the original edge, from two thirds,
+        // shrinks straight back to the plain third rather than lingering
+        // in between.
+        var shrink = Driver(suite)
+        shrink.gridModifierHeld = true
+        shrink.scroll(.began)
+        shrink.move(dx: -40)
+        shrink.wait(0.35)
+        shrink.move(dx: 8)
+        let shrinkIsTwoThirds = shrink.lastPreview == .some(.action(.leftTwoThirds))
+        shrink.move(dx: -20)
+        let backToThird = shrink.lastPreview == .some(.action(.leftThird))
+        shrink.scroll(.ended)
+        suite.expect(shrinkIsTwoThirds && backToThird && shrink.commits == [.leftThird]
+                        && shrink.haptics == Array(repeating: .step, count: 3),
+                     "pushing hard back toward the original edge, even from two thirds, "
+                        + "shrinks straight back to the plain third rather than growing further")
+
+        // A vertical half, with no horizontal ever joining it, pushed a
+        // second stop further: the sixth down its own centre column,
+        // reached the way Swish's own help text describes it (swiping up
+        // twice) — the only way to name it, since no key points straight at
+        // the centre.
+        var center = Driver(suite)
+        center.gridModifierHeld = true
+        center.scroll(.began)
+        center.move(dy: -40)
+        center.wait(0.35)
+        let centerIsTopHalf = center.lastPreview == .some(.action(.topHalf))
+        center.move(dy: -10)
+        let isTopCenterSixth = center.lastPreview == .some(.action(.topCenterSixth))
+        center.scroll(.ended)
+        suite.expect(centerIsTopHalf && isTopCenterSixth && center.commits == [.topCenterSixth]
+                        && center.haptics == Array(repeating: .step, count: 2),
+                     "a vertical half pushed further still, with no horizontal ever joining "
+                        + "it, reaches the sixth down its own centre column")
+
+        // A sixth: the vertical joins afterwards, live, with no pause of its
+        // own needed either, since the grid already took over after the
+        // first step.
+        var sixth = Driver(suite)
+        sixth.gridModifierHeld = true
+        sixth.scroll(.began)
+        sixth.move(dx: -40)
+        sixth.wait(0.35)
+        sixth.move(dy: -40)
+        let isSixth = sixth.lastPreview == .some(.action(.topLeftSixth))
+        sixth.scroll(.ended)
+        suite.expect(isSixth && sixth.commits == [.topLeftSixth]
+                        && sixth.haptics == [.step, .step],
+                     "a vertical half joins a third live to name their corner sixth")
+
+        // A vertical half alone, with the grid modifier held: straight to
+        // the half, no doubled step needed the way a plain maximize would.
+        var half = Driver(suite)
+        half.gridModifierHeld = true
+        half.scroll(.began)
+        half.move(dy: -40)
+        half.wait(0.35)
+        let isTopHalf = half.lastPreview == .some(.action(.topHalf))
+        half.scroll(.ended)
+        suite.expect(isTopHalf && half.commits == [.topHalf],
+                     "the grid modifier reaches a vertical half from a single step, not maximize, "
+                        + "and not a doubled step either")
+
+        // Whichever tracking a gesture settles into — plain or grid — is
+        // decided once, by the modifier's state right when it settles, and
+        // does not switch again from a later change of mind about the key.
+        var locked = Driver(suite)
+        locked.scroll(.began)
+        locked.move(dx: -40)
+        locked.wait(0.35)
+        locked.move(dy: -40)
+        locked.wait(0.35)
+        locked.gridModifierHeld = true
+        locked.move(dx: 40)
+        let stillPlainQuarter = locked.lastPreview == .some(.action(.topRightQuarter))
+        locked.scroll(.ended)
+        suite.expect(stillPlainQuarter && locked.commits == [.topRightQuarter],
+                     "a plain quarter already under way keeps its own tracking even once the grid "
+                        + "modifier is pressed, and only reverses the side it was asked to")
+    }
+
+    private static func gridRow(_ suite: TestSuite) {
+        // Once a vertical half confines the window to a row, sliding across
+        // it in one direction visits every one of its five stops in order —
+        // the near sixth, the two sixths beside it, the centre sixth, the
+        // far two sixths, the far sixth — and reversing retraces them back,
+        // the same way the plain third's own growth and flip do.
+        var row = Driver(suite)
+        row.gridModifierHeld = true
+        row.scroll(.began)
+        row.move(dx: -40)
+        row.wait(0.35)
+        let isLeftThird = row.lastPreview == .some(.action(.leftThird))
+        row.move(dy: -40)
+        let isTopLeftSixth = row.lastPreview == .some(.action(.topLeftSixth))
+        row.move(dx: 13)
+        let passedTopLeftTwoSixths = row.previews.contains(.some(.action(.topLeftTwoSixths)))
+        let isTopCenterSixth = row.lastPreview == .some(.action(.topCenterSixth))
+        row.move(dx: 13)
+        let passedTopRightTwoSixths = row.previews.contains(.some(.action(.topRightTwoSixths)))
+        let isTopRightSixth = row.lastPreview == .some(.action(.topRightSixth))
+        row.move(dx: -33)
+        let backToTopLeftSixth = row.lastPreview == .some(.action(.topLeftSixth))
+        row.scroll(.ended)
+        suite.expect(isLeftThird && isTopLeftSixth && passedTopLeftTwoSixths && isTopCenterSixth
+                        && passedTopRightTwoSixths && isTopRightSixth && backToTopLeftSixth
+                        && row.commits == [.topLeftSixth],
+                     "sliding across a row in one direction visits every stop in order — the "
+                        + "near sixth, the two sixths beside it, the centre sixth, the far two "
+                        + "sixths, the far sixth — and reversing retraces them back")
+
+        // A hand wobbling the vertical while sliding — easing it off past
+        // its own release band, then pushing it back past the threshold —
+        // must never throw the ladder back to wherever `accX` happens to
+        // sit: it stays exactly where the slide last left it, read-only
+        // while the vertical is let go, and resumes naming its row once
+        // the vertical recommits.
+        var wobble = Driver(suite)
+        wobble.gridModifierHeld = true
+        wobble.scroll(.began)
+        wobble.move(dx: -40)
+        wobble.wait(0.35)
+        wobble.move(dy: -8)
+        let wobbleIsTopLeftSixth = wobble.lastPreview == .some(.action(.topLeftSixth))
+        wobble.move(dx: 13)
+        let wobbleIsTopCenterSixth = wobble.lastPreview == .some(.action(.topCenterSixth))
+        wobble.move(dy: 6)
+        wobble.move(dx: 13)
+        wobble.move(dy: -8.5)
+        let backToTopRightSixth = wobble.lastPreview == .some(.action(.topRightSixth))
+        wobble.scroll(.ended)
+        suite.expect(wobbleIsTopLeftSixth && wobbleIsTopCenterSixth && backToTopRightSixth
+                        && wobble.commits == [.topRightSixth],
+                     "a vertical wobble mid-slide — easing the row off and recommitting it — "
+                        + "never resets where the ladder stood: sliding on and reconfirming the "
+                        + "row lands exactly where the ladder already was")
+    }
+
     private static func diagnostics(_ suite: TestSuite) {
         typealias Check = ForkTrackpadDiagnosticCheck
         suite.expect(Check.allCases.count == 3
@@ -1510,7 +1801,7 @@ enum ForkTrackpadGestureTests {
         suite.expect(gesture.contains("effectiveAction(for: layoutAction, target: target)")
                         && gesture.components(separatedBy: "recordCycle(effective, target: target)").count - 1 == 2,
                      "every half, quarter or maximize placement records its cycle state")
-        suite.expect(gesture.components(separatedBy: "bringForward(target.window, of: app)").count - 1 == 4
+        suite.expect(gesture.components(separatedBy: "bringForward(target.window, of: app)").count - 1 == 5
                         && body("private func bringForward(").contains("app.activate(options: [])")
                         && body("private func bringForward(").contains("kAXRaiseAction"),
                      "centering and every placement bring the window forward, activating its app")
@@ -1518,7 +1809,7 @@ enum ForkTrackpadGestureTests {
             .components(separatedBy: "case .centerReduced:").first ?? ""
         suite.expect(!minimize.contains("bringForward"),
                      "minimize, close and quit never raise the window first")
-        suite.expect(gesture.components(separatedBy: "forgetHalf(target.key)").count - 1 == 5,
+        suite.expect(gesture.components(separatedBy: "forgetHalf(target.key)").count - 1 == 6,
                      "centering, full screen and every other placement retire the window's half")
         suite.expect(gesture.contains("case .minimizeAllWindows:")
                         && gesture.contains("case .moveToPreviousDisplay, .moveToNextDisplay:")
@@ -2301,7 +2592,9 @@ enum ForkTrackpadGestureTests {
                         && tap.contains("modifierHeld = input.modifierHeld")
                         && tap.contains("ForkTrackpadModifierRemap.action(for: action, modifierHeld: modifierHeld,"),
                      "a held modifier remaps both the commit and the live preview, read fresh from every event")
-        let hit = tap.components(separatedBy: "let output = machine.handle(input.event, at: now)").dropFirst().first ?? ""
+        let hit = tap.components(
+            separatedBy: "let output = machine.handle(input.event, at: now, gridModifierHeld: gridModifierHeld)"
+        ).dropFirst().first ?? ""
         let dockFirst = hit.range(of: "let dockHit = Self.dockItem(at: input.location)")
         let titlebarNext = hit.range(of: "Self.titlebarWindow(at: input.location")
         suite.expect(dockFirst != nil && titlebarNext != nil && dockFirst!.lowerBound < titlebarNext!.lowerBound

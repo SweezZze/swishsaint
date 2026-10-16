@@ -90,6 +90,32 @@ enum ForkTrackpadGestureAction: String, CaseIterable, Equatable {
     /// last trackpad placement instead of centering it.
     case restorePlacement
 
+    /// Held with the grid modifier: a third or two thirds of the width, from
+    /// the left or the right edge, or — sliding on past two thirds — the
+    /// centre third itself, on the way to the far edge's own third. Unlike
+    /// a sixth's own centre column, the centre third has an official
+    /// placement of its own (`layoutAction` below): only reaching it by
+    /// gesture is new.
+    case leftThird, rightThird, leftTwoThirds, rightTwoThirds, centerThird
+    /// Held with the grid modifier, combined with a vertical half: a sixth
+    /// of the screen, one of its four corners.
+    case topLeftSixth, topRightSixth, bottomLeftSixth, bottomRightSixth
+    /// Held with the grid modifier, a vertical half pushed a second stop
+    /// further with no horizontal ever joining it: the sixth down that
+    /// half's own centre column. No key points straight at the centre
+    /// column — nothing reads a swipe as "towards the middle" — so this is
+    /// the only way to reach it, the same escape hatch Swish itself uses.
+    case topCenterSixth, bottomCenterSixth
+    /// Held with the grid modifier, once a vertical half has confined the
+    /// window to a row: sliding further across it reaches two of the row's
+    /// three sixths together — the one next to the edge sixth and the
+    /// centre sixth, or the centre sixth and the far edge sixth — on the
+    /// way from one corner sixth to the other. Neither Swish's own grid nor
+    /// the official Window Layout geometry has a shape for this on its
+    /// own; every other stop of the slide already matches an existing
+    /// sixth, third or half.
+    case topLeftTwoSixths, topRightTwoSixths, bottomLeftTwoSixths, bottomRightTwoSixths
+
     /// The placement the window layout engine already knows, when there is
     /// one. The other actions act on the window or the app directly.
     var layoutAction: WindowLayoutAction? {
@@ -107,10 +133,26 @@ enum ForkTrackpadGestureAction: String, CaseIterable, Equatable {
         case .marginMaximize: return .marginMaximize
         case .moveToPreviousDisplay: return .previousDisplay
         case .moveToNextDisplay: return .nextDisplay
+        case .leftThird: return .leftThird
+        case .rightThird: return .rightThird
+        case .leftTwoThirds: return .leftTwoThirds
+        case .rightTwoThirds: return .rightTwoThirds
+        case .centerThird: return .centerThird
+        case .topLeftSixth: return .topLeftSixth
+        case .topRightSixth: return .topRightSixth
+        case .bottomLeftSixth: return .bottomLeftSixth
+        case .bottomRightSixth: return .bottomRightSixth
+        case .topCenterSixth: return .topCenterSixth
+        case .bottomCenterSixth: return .bottomCenterSixth
         case .minimize, .close, .centerReduced, .quitApp, .quitWindowApp, .emptyTrash,
              .showAppWindows, .restoreMinimizedWindow, .closeMinimizedWindow,
              .showNextWindow, .showPreviousWindow,
-             .minimizeAllWindows, .restorePlacement: return nil
+             .minimizeAllWindows, .restorePlacement,
+             .topLeftTwoSixths, .topRightTwoSixths, .bottomLeftTwoSixths, .bottomRightTwoSixths:
+            // No official geometry matches two of a row's three sixths
+            // together (see the case's own doc comment): their rectangle
+            // comes from `ForkTrackpadRowGeometry` instead.
+            return nil
         }
     }
 
@@ -316,7 +358,11 @@ enum ForkTrackpadGestureCatalog {
 /// the mechanics: the machine says "the person did ↓ then →", this table says
 /// "bottom right quarter".
 enum ForkTrackpadGestureSequence {
-    /// The state of a chain of swipe steps, replayed step by step.
+    /// The state of a chain of swipe steps, replayed step by step: how the
+    /// first quarter or half forms. Once it has, `ForkTrackpadGestureMachine`
+    /// stops replaying steps and tracks each axis on its own instead (see
+    /// its `CombinedTracking`), so this only ever builds the *first*
+    /// combination, never a later change of mind.
     ///
     /// Two axes, each with its current direction, and `hasCombined`: true as
     /// soon as both axes were set together, and never reset. That flag, not
@@ -327,6 +373,11 @@ enum ForkTrackpadGestureSequence {
         var horizontal: ForkTrackpadSwipeDirection?
         var vertical: ForkTrackpadSwipeDirection?
         var hasCombined = false
+        /// Whether `vertical` was just confirmed a second time in a row,
+        /// without a horizontal step in between: the only thing that tells
+        /// a lone ↑↑ (the top half) apart from a lone ↑ (maximize) once
+        /// neither has combined with a horizontal.
+        var verticalDoubled = false
         /// The previous step, to find two identical vertical steps in a row:
         /// a horizontal step between them breaks the pair.
         private var lastStep: ForkTrackpadSwipeDirection?
@@ -338,27 +389,19 @@ enum ForkTrackpadGestureSequence {
         private mutating func apply(_ step: ForkTrackpadSwipeDirection) {
             switch step {
             case .left, .right:
-                // Reversing the horizontal on a real quarter erases the
-                // vertical: ↑ → ← gives the left half, not the top left
-                // quarter. The vertical always combines: the latest ↑ or ↓
-                // wins without touching the horizontal.
-                if hasCombined, let current = horizontal, current != step {
-                    vertical = nil
-                }
                 horizontal = step
             case .up, .down:
+                verticalDoubled = lastStep == step
                 vertical = step
                 // Two ↑ (or two ↓) in a row go back to that half, even over a
                 // quarter already built. Vertical only: ←← and →→ change
                 // nothing.
-                if lastStep == step { horizontal = nil }
+                if verticalDoubled { horizontal = nil }
             case .upLeft, .upRight, .downLeft, .downRight:
-                // A diagonal sets the quarter at once, whatever came before,
-                // and then counts as a built quarter: ← or → the other way
-                // gives the half, ↑ or ↓ changes the row, and the half needs
-                // two ↑ (or ↓) — the diagonal is not the first of the two.
+                // A diagonal sets the quarter at once, whatever came before.
                 horizontal = step.horizontal
                 vertical = step.vertical
+                verticalDoubled = false
             }
             lastStep = step
             if horizontal != nil, vertical != nil { hasCombined = true }
@@ -394,24 +437,35 @@ enum ForkTrackpadGestureSequence {
 
         let chain = Chain(steps)
 
-        // Never combined: a single axis, from the exact table and nothing
-        // else. ↑↓ or ←→ stay without action so that ↑↑ and ↓↓ keep meaning
-        // halves.
+        // Never combined: at most one axis is set (the other, by
+        // definition, since combining the two is what `hasCombined` means).
+        // A fresh vertical touch maximizes or minimizes; doubled without a
+        // horizontal step in between, it is the half instead. A reversal on
+        // either axis alone, at any point, simply lands on that axis's own
+        // latest meaning: changing one's mind before a quarter ever exists
+        // is still a plain answer, not a question mark.
         guard chain.hasCombined else {
-            switch steps {
-            case [.left]: return .leftHalf
-            case [.right]: return .rightHalf
-            case [.up]: return .maximize
-            case [.down]: return .minimize
-            case [.up, .up]: return .topHalf
-            case [.down, .down]: return .bottomHalf
-            default: return nil
+            if let horizontal = chain.horizontal {
+                return horizontal == .left ? .leftHalf : .rightHalf
             }
+            if let vertical = chain.vertical {
+                if chain.verticalDoubled {
+                    return vertical == .up ? .topHalf : .bottomHalf
+                }
+                return vertical == .up ? .maximize : .minimize
+            }
+            return nil
         }
+        return resolve(horizontal: chain.horizontal, vertical: chain.vertical)
+    }
 
-        // Combined: the current direction of each axis. Quarters work in
-        // either order; a single axis left after an erasure is a half.
-        switch (chain.horizontal, chain.vertical) {
+    /// The half or quarter two independent axis zones name, `nil` on neither
+    /// held. Shared by `resolve(swipes:on:)`, which builds the first
+    /// combination from a chain of steps, and `ForkTrackpadGestureMachine`'s
+    /// continuous tracking, which takes over from there.
+    static func resolve(horizontal: ForkTrackpadSwipeDirection?,
+                        vertical: ForkTrackpadSwipeDirection?) -> ForkTrackpadGestureAction? {
+        switch (horizontal, vertical) {
         case (.left?, .up?): return .topLeftQuarter
         case (.right?, .up?): return .topRightQuarter
         case (.left?, .down?): return .bottomLeftQuarter
@@ -421,6 +475,96 @@ enum ForkTrackpadGestureSequence {
         case (nil, .up?): return .topHalf
         case (nil, .down?): return .bottomHalf
         default: return nil
+        }
+    }
+
+    /// The two axis zones `steps` already combine into, the moment they
+    /// first do, for the continuous tracking that takes over from there to
+    /// seed itself from; `nil` before that moment.
+    static func combinedZones(_ steps: [ForkTrackpadSwipeDirection])
+        -> (horizontal: ForkTrackpadSwipeDirection?, vertical: ForkTrackpadSwipeDirection?)? {
+        let chain = Chain(steps)
+        return chain.hasCombined ? (chain.horizontal, chain.vertical) : nil
+    }
+
+    /// What the grid modifier's own axis tracking names. The horizontal is
+    /// given as a column (0 = left, 1 = centre, 2 = right) and a span (1 or
+    /// 2), the vertical as a direction and a span the same way.
+    ///
+    /// With no row chosen (no vertical held), the same five stops a row
+    /// slides across name a third, two thirds, or — in the middle —
+    /// `centerThird` itself. With no horizontal, a plain half, or — pushed
+    /// a second stop further — the sixth down that half's own centre
+    /// column (`topCenterSixth`). With both: every one of a row's five
+    /// stops names its own sixth or two sixths within it — the two-sixths
+    /// (`topLeftTwoSixths` and siblings) exist only here, nowhere reachable
+    /// without a row to confine them to.
+    static func resolveGrid(horizontal: (column: Int, span: Int)?,
+                            vertical: (edge: ForkTrackpadSwipeDirection, span: Int)?) -> ForkTrackpadGestureAction? {
+        switch (horizontal, vertical) {
+        case (nil, nil): return nil
+        case (nil, let v?):
+            switch v.edge {
+            case .up: return v.span >= 2 ? .topCenterSixth : .topHalf
+            case .down: return v.span >= 2 ? .bottomCenterSixth : .bottomHalf
+            default: return nil
+            }
+        case (let h?, nil):
+            switch (h.column, h.span) {
+            case (0, 1): return .leftThird
+            case (0, _): return .leftTwoThirds
+            case (1, 1): return .centerThird
+            case (1, _): return .rightTwoThirds
+            case (2, 1): return .rightThird
+            default: return nil
+            }
+        case (let h?, let v?):
+            let up = v.edge == .up
+            switch (h.column, h.span) {
+            case (0, 1): return up ? .topLeftSixth : .bottomLeftSixth
+            case (0, _): return up ? .topLeftTwoSixths : .bottomLeftTwoSixths
+            case (1, 1): return up ? .topCenterSixth : .bottomCenterSixth
+            case (1, _): return up ? .topRightTwoSixths : .bottomRightTwoSixths
+            case (2, 1): return up ? .topRightSixth : .bottomRightSixth
+            default: return nil
+            }
+        }
+    }
+
+    /// The rectangles of a row's own two middle stops (point 3): two of its
+    /// three sixths together, anchored at whichever screen edge that pair
+    /// touches. Kept apart from `WindowLayoutGeometry`, the official
+    /// service's own, which has no case for this shape and would be a much
+    /// bigger, conflict-prone diff to add four cases nothing outside this
+    /// ladder ever needs.
+    enum ForkTrackpadRowGeometry {
+        /// The existing sixth whose corner, anchoring and settle behaviour
+        /// this shape borrows: same corner, twice as wide.
+        static func anchor(for action: ForkTrackpadGestureAction) -> WindowLayoutAction? {
+            switch action {
+            case .topLeftTwoSixths: return .topLeftSixth
+            case .topRightTwoSixths: return .topRightSixth
+            case .bottomLeftTwoSixths: return .bottomLeftSixth
+            case .bottomRightTwoSixths: return .bottomRightSixth
+            default: return nil
+            }
+        }
+
+        static func rect(for action: ForkTrackpadGestureAction, visibleFrame: CGRect) -> CGRect? {
+            let width = visibleFrame.width * 2 / 3
+            let height = visibleFrame.height / 2
+            switch action {
+            case .topLeftTwoSixths:
+                return CGRect(x: visibleFrame.minX, y: visibleFrame.midY, width: width, height: height)
+            case .topRightTwoSixths:
+                return CGRect(x: visibleFrame.maxX - width, y: visibleFrame.midY, width: width, height: height)
+            case .bottomLeftTwoSixths:
+                return CGRect(x: visibleFrame.minX, y: visibleFrame.minY, width: width, height: height)
+            case .bottomRightTwoSixths:
+                return CGRect(x: visibleFrame.maxX - width, y: visibleFrame.minY, width: width, height: height)
+            default:
+                return nil
+            }
         }
     }
 
@@ -865,6 +1009,14 @@ enum ForkTrackpadPreviewContent: Equatable {
             rect = CGRect(x: 0, y: 0, width: side * edgeShare, height: side)
         case .moveToNextDisplay:
             rect = CGRect(x: side * (1 - edgeShare), y: 0, width: side * edgeShare, height: side)
+        case .topLeftTwoSixths, .topRightTwoSixths, .bottomLeftTwoSixths, .bottomRightTwoSixths:
+            guard let own = ForkTrackpadGestureSequence.ForkTrackpadRowGeometry.rect(for: action,
+                                                                                     visibleFrame: reference)
+            else {
+                self = .unrecognized
+                return
+            }
+            rect = own
         default:
             guard let layoutAction = action.layoutAction else {
                 self = .unrecognized
