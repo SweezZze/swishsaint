@@ -62,7 +62,7 @@ struct ForkTrackpadGestureMachine {
         /// follow without lifting the fingers. Only ↑↑, ↓↓ and changes of mind
         /// need it now that diagonals give quarters in one movement.
         var stepPause: TimeInterval = 0.15
-        /// Stillness that cancels the gesture.
+        /// Stillness that cancels the gesture. Infinite: stillness never does.
         var cancelTimeout: TimeInterval = 0.8
         /// Silence that stands for "fingers lifted" on a pinch without phase.
         var pinchSessionGap: TimeInterval = 0.15
@@ -78,6 +78,11 @@ struct ForkTrackpadGestureMachine {
         /// step validation nor the cancellation.
         var scrollMovementEpsilon: Double = 0.1
         var pinchMovementEpsilon: Double = 0.002
+        /// Once a quarter has combined two axes, how far back toward the
+        /// centre an axis must ease, relative to `swipeThreshold`, before it
+        /// lets go to neutral: smaller than entering an extreme, so the zone
+        /// does not flicker right at the boundary.
+        var combinedReleaseShare: Double = 0.5
     }
 
     /// Trackpad gesture phases, without AppKit. For a scroll, `phase` is `nil`
@@ -157,6 +162,62 @@ struct ForkTrackpadGestureMachine {
         /// not moved yet): the `began` that follows continues this gesture
         /// instead of opening another one.
         var hasBegun: Bool
+        /// Set the moment a quarter first forms (see
+        /// `ForkTrackpadGestureSequence.combinedZones`); from then on each
+        /// axis is tracked on its own, continuously, in place of more steps.
+        /// Mutually exclusive with `grid`: whichever the grid modifier's
+        /// state said at that same moment.
+        var combined: CombinedTracking?
+        /// Set instead of `combined`, at that same moment, when the grid
+        /// modifier was held then: the same continuous tracking, with a
+        /// second stop on the horizontal for two thirds, and sixths where
+        /// it meets a vertical half.
+        var grid: GridTracking?
+    }
+
+    /// Two axis zones, each tracked on its own once a quarter has formed:
+    /// a reversal flips only the axis that reverses, and easing an axis back
+    /// toward the middle lets it go to neutral, both without needing a pause.
+    /// `horizontal`/`vertical` start at whatever formed the quarter and only
+    /// change from there, which is why this is not simply recomputed from
+    /// `accX`/`accY` alone: the same accumulated position means something
+    /// different depending on which side it was last reached from.
+    private struct CombinedTracking: Equatable {
+        var horizontal: ForkTrackpadSwipeDirection?
+        var vertical: ForkTrackpadSwipeDirection?
+        var accX: Double = 0
+        var accY: Double = 0
+    }
+
+    /// One edge and how far out from it: one stop for a third, two for two
+    /// thirds.
+    private struct GridEdge: Equatable {
+        var edge: ForkTrackpadSwipeDirection
+        var span: Int
+    }
+
+    /// One stop of the horizontal's own ladder (point 3): which column the
+    /// window starts at (0 = left, 1 = centre, 2 = right) and how many
+    /// columns wide it is (1 or 2). The same ladder applies whether or not
+    /// a vertical half has confined it to a row; only what `resolveGrid`
+    /// reads each stop as differs.
+    private struct GridColumn: Equatable {
+        var column: Int
+        var span: Int
+    }
+
+    /// The grid modifier's own version of `CombinedTracking`: both axes also
+    /// remember how far out they are (one stop for a third or a half, two
+    /// for two thirds or the centre sixth).
+    private struct GridTracking: Equatable {
+        var horizontal: GridColumn?
+        var vertical: GridEdge?
+        var accX: Double = 0
+        var accY: Double = 0
+        /// Where `accX` stood the moment the ladder last moved: seeded at
+        /// the threshold that first committed it, like `accX` itself, and
+        /// from there on kept only by `gridRowStep`.
+        var horizontalBase: Double = 0
     }
 
     private struct PinchTracking: Equatable {
@@ -217,13 +278,14 @@ struct ForkTrackpadGestureMachine {
             if t.candidate != nil {
                 deadline = min(deadline, t.lastMovementAt + configuration.stepPause)
             }
-            return deadline
+            // An infinite cancel delay is no deadline to wake up for.
+            return deadline.isFinite ? deadline : nil
         case let .pinch(p):
             var deadline = p.lastMovementAt + configuration.cancelTimeout
             if !p.usesPhase {
                 deadline = min(deadline, p.lastEventAt + configuration.pinchSessionGap)
             }
-            return deadline
+            return deadline.isFinite ? deadline : nil
         case let .pinchCancelled(lastEventAt, usesPhase),
              let .pinchPassThrough(lastEventAt, usesPhase):
             return usesPhase ? nil : lastEventAt + configuration.pinchSessionGap
@@ -250,7 +312,7 @@ struct ForkTrackpadGestureMachine {
 
     /// `isOnTarget` is only called when a gesture begins, never during one. It
     /// returns the kind of target under the pointer, or `nil` for none.
-    mutating func handle(_ event: Event, at now: TimeInterval,
+    mutating func handle(_ event: Event, at now: TimeInterval, gridModifierHeld: Bool = false,
                          isOnTarget: () -> Target?) -> Output {
         var effects: [Effect] = []
         let captured: Bool
@@ -267,7 +329,7 @@ struct ForkTrackpadGestureMachine {
         case .escape:
             captured = handleEscape(effects: &effects)
         case .tick:
-            handleTick(now: now, effects: &effects)
+            handleTick(now: now, gridModifierHeld: gridModifierHeld, effects: &effects)
             captured = false
         }
 
@@ -326,10 +388,22 @@ struct ForkTrackpadGestureMachine {
         case .changed:
             switch state {
             case var .swipe(t):
+                // Compared by the action it names, not the raw tracking it
+                // comes from: a vertical half pushed from a third to two
+                // thirds (see `GridTracking`) changes how far out the
+                // vertical stands without changing which corner sixth that
+                // names, and that must not buzz on its own.
+                let previousAction = rawAction(for: t)
                 move(&t, dx: dx, dy: dy, now: now)
+                if rawAction(for: t) != previousAction {
+                    // A quarter (or a grid zone) already stood, and an axis
+                    // just flipped or let go: the same little confirmation a
+                    // paused step gives, without needing a pause now that
+                    // nothing waits for one.
+                    effects.append(.haptic(.step))
+                }
                 state = .swipe(t)
-                show(preview(swipes: t.steps + [t.candidate].compactMap { $0 }, on: t.target),
-                     effects: &effects)
+                if let update = preview(for: t) { show(update, effects: &effects) }
                 return true
             case .swipeCancelled:
                 return true
@@ -341,8 +415,7 @@ struct ForkTrackpadGestureMachine {
             switch state {
             case let .swipe(t):
                 show(nil, effects: &effects)
-                let steps = t.steps + [t.candidate].compactMap { $0 }
-                if let action = enabledAction(swipes: steps, on: t.target) {
+                if let action = action(for: t) {
                     effects.append(.commit(action))
                 }
                 state = .swallowingMomentum
@@ -359,8 +432,8 @@ struct ForkTrackpadGestureMachine {
             // momentum to wait for.
             switch state {
             case let .swipe(t):
-                abandon(pending: !t.steps.isEmpty || t.candidate != nil, reason: .interrupted,
-                        effects: &effects)
+                abandon(pending: !t.steps.isEmpty || t.candidate != nil || t.combined != nil
+                            || t.grid != nil, reason: .interrupted, effects: &effects)
                 state = .idle
                 return true
             case .swipeCancelled:
@@ -372,14 +445,183 @@ struct ForkTrackpadGestureMachine {
         }
     }
 
+    /// Which of `t.grid`/`t.combined` moves (set once, in `handleTick`, by
+    /// whether the grid modifier was held the moment the first quarter or
+    /// grid zone formed) decides how this reads the movement; this itself
+    /// takes no view of the modifier's current state.
     private func move(_ t: inout SwipeTracking, dx: Double, dy: Double, now: TimeInterval) {
         guard abs(dx) + abs(dy) >= configuration.scrollMovementEpsilon else { return }
+        t.lastMovementAt = now
+        let enter = configuration.swipeThreshold
+        let release = enter * configuration.combinedReleaseShare
+        if var grid = t.grid {
+            grid.accX += dx
+            grid.accY += dy
+            grid.vertical = Self.gridEdgeAndSpan(current: grid.vertical, accumulated: grid.accY,
+                                                 enter: enter, release: release, negative: .up, positive: .down)
+            // The same ladder slides the horizontal whether or not a row is
+            // chosen: `resolveGrid` is what reads a stop as a third, two
+            // thirds or the centre third with no vertical held, and as a
+            // sixth or two sixths within a row once one is. Tracking it
+            // this way, always, also means a vertical letting go and
+            // recommitting mid-slide (hand wobble) never loses the
+            // horizontal's own place: there is only ever the one ladder.
+            grid.horizontal = Self.gridRowStep(current: grid.horizontal, base: &grid.horizontalBase,
+                                               accumulated: grid.accX, enter: enter)
+            t.grid = grid
+            return
+        }
+        if var combined = t.combined {
+            combined.accX += dx
+            combined.accY += dy
+            combined.horizontal = Self.axisZone(current: combined.horizontal, accumulated: combined.accX,
+                                                enter: enter, release: release, negative: .left, positive: .right)
+            combined.vertical = Self.axisZone(current: combined.vertical, accumulated: combined.accY,
+                                              enter: enter, release: release, negative: .up, positive: .down)
+            t.combined = combined
+            return
+        }
         t.accX += dx
         t.accY += dy
-        t.lastMovementAt = now
         t.candidate = max(abs(t.accX), abs(t.accY)) >= configuration.swipeThreshold
             ? Self.direction(dx: t.accX, dy: t.accY, diagonalRatio: configuration.diagonalRatio)
             : nil
+    }
+
+    /// Where one axis sits, given where it already was. Already at an
+    /// extreme, it stays there until the movement either reverses past the
+    /// full threshold the other way, flipping straight across, or eases back
+    /// under the release threshold, letting go to neutral; starting neutral,
+    /// it only ever enters at the full threshold, never through the easier
+    /// release band, so it cannot talk itself into a quarter by trembling.
+    private static func axisZone(current: ForkTrackpadSwipeDirection?, accumulated: Double,
+                                 enter: Double, release: Double,
+                                 negative: ForkTrackpadSwipeDirection,
+                                 positive: ForkTrackpadSwipeDirection) -> ForkTrackpadSwipeDirection? {
+        if accumulated <= -enter { return negative }
+        if accumulated >= enter { return positive }
+        if current != nil, abs(accumulated) <= release { return nil }
+        return current
+    }
+
+    /// Where a newly combined axis starts its own continuous accumulator:
+    /// at the threshold that formed it, in the direction it formed it, not
+    /// at zero — the fingers really are out that far, and starting at zero
+    /// would read as having already eased back to the middle.
+    private static func seedAccumulator(for zone: ForkTrackpadSwipeDirection?,
+                                        negative: ForkTrackpadSwipeDirection, enter: Double) -> Double {
+        guard let zone else { return 0 }
+        return zone == negative ? -enter : enter
+    }
+
+    /// The grid modifier's vertical tracking: the same hysteresis as
+    /// `axisZone`, with a second, further-out stage at twice the threshold —
+    /// pushed further the *same* way, no horizontal ever having joined it —
+    /// for the centre sixth instead of the plain half. Flipping straight to
+    /// the other edge (even from the centre sixth) and letting go to
+    /// neutral both work exactly as they do for a plain half; the only
+    /// addition is the stop in between, reached and left the same way.
+    /// Pushing further is the only way to name this stop: nothing reads a
+    /// swipe as "towards the middle" for a second axis to confirm it the
+    /// way a horizontal and a vertical confirm a corner together.
+    private static func gridEdgeAndSpan(current: GridEdge?, accumulated: Double,
+                                        enter: Double, release: Double,
+                                        negative: ForkTrackpadSwipeDirection,
+                                        positive: ForkTrackpadSwipeDirection) -> GridEdge? {
+        if accumulated <= -enter * 2 { return GridEdge(edge: negative, span: 2) }
+        if accumulated >= enter * 2 { return GridEdge(edge: positive, span: 2) }
+        if accumulated <= -enter { return GridEdge(edge: negative, span: 1) }
+        if accumulated >= enter { return GridEdge(edge: positive, span: 1) }
+        if current != nil, abs(accumulated) <= release { return nil }
+        return current
+    }
+
+    /// The horizontal's own five stops, in order from the left edge to the
+    /// right: an edge alone, that edge grown by one column, the centre
+    /// column alone, the far edge grown by one column, the far edge alone.
+    /// `resolveGrid` reads these as a third, two thirds and the centre third
+    /// with no row chosen, or a sixth and two sixths within one once a
+    /// vertical half confines it there.
+    private static let rowLadder: [GridColumn] = [
+        GridColumn(column: 0, span: 1),
+        GridColumn(column: 0, span: 2),
+        GridColumn(column: 1, span: 1),
+        GridColumn(column: 1, span: 2),
+        GridColumn(column: 2, span: 1),
+    ]
+
+    /// Slides across the horizontal's own ladder (point 3): entering a
+    /// third works like any other half, crossing the threshold to commit
+    /// it; from there, as long as the push keeps going the same way, each
+    /// further `enter` out from wherever the ladder last moved advances one
+    /// more stop, in order — through the centre, on to the growth and edge
+    /// beyond it — never skipping past the edge stops at either end. Pushing
+    /// hard back the original way retraces the stops just as it came,
+    /// landing straight on the near edge however far it has to walk back;
+    /// reversing a long way past the far edge does the same the other way.
+    /// `base` moves with the ladder, so every step is measured from the one
+    /// before it, not from the gesture's own start, the same way a freshly
+    /// combined axis is seeded at the threshold that formed it rather than
+    /// at zero. Unlike a plain half, this never lets go to nothing once
+    /// committed: there is always some stop held until the fingers lift or
+    /// the gesture is cancelled.
+    private static func gridRowStep(current: GridColumn?, base: inout Double,
+                                    accumulated: Double, enter: Double) -> GridColumn? {
+        var index: Int
+        if let current, let found = rowLadder.firstIndex(of: current) {
+            index = found
+        } else if accumulated <= -enter {
+            index = 0
+            base = -enter
+        } else if accumulated >= enter {
+            index = rowLadder.count - 1
+            base = enter
+        } else {
+            return nil
+        }
+        while accumulated - base >= enter, index < rowLadder.count - 1 {
+            index += 1
+            base += enter
+        }
+        while accumulated - base <= -enter, index > 0 {
+            index -= 1
+            base -= enter
+        }
+        return rowLadder[index]
+    }
+
+    /// What the preview should become; `nil` leaves it exactly as it is.
+    /// Nothing held on the relevant axes is not a reason to blank the panel
+    /// or ask a question nobody meant to ask — only a target switched off in
+    /// settings does that, with `.unrecognized`.
+    private func preview(for t: SwipeTracking) -> Preview? {
+        guard let raw = rawAction(for: t) else {
+            guard t.grid == nil, t.combined == nil else { return nil }
+            return preview(swipes: t.steps + [t.candidate].compactMap { $0 }, on: t.target)
+        }
+        return enabled(raw).map(Preview.action) ?? .unrecognized
+    }
+
+    private func action(for t: SwipeTracking) -> Action? {
+        if let raw = rawAction(for: t) { return enabled(raw) }
+        guard t.grid == nil, t.combined == nil else { return nil }
+        return enabledAction(swipes: t.steps + [t.candidate].compactMap { $0 }, on: t.target)
+    }
+
+    /// The unfiltered action `t.grid` or `t.combined` names, before settings
+    /// decide whether it is actually enabled; `nil` either while forming
+    /// (ask the chain instead) or while held but naming nothing (hold the
+    /// preview as it is, see `preview(for:)`).
+    private func rawAction(for t: SwipeTracking) -> Action? {
+        if let grid = t.grid {
+            return ForkTrackpadGestureSequence.resolveGrid(
+                horizontal: grid.horizontal.map { (column: $0.column, span: $0.span) },
+                vertical: grid.vertical.map { (edge: $0.edge, span: $0.span) })
+        }
+        if let combined = t.combined {
+            return ForkTrackpadGestureSequence.resolve(horizontal: combined.horizontal, vertical: combined.vertical)
+        }
+        return nil
     }
 
     /// Scroll wheel sign conventions, checked on a trackpad: `dx < 0` is left,
@@ -403,8 +645,10 @@ struct ForkTrackpadGestureMachine {
     }
 
     private func preview(swipes steps: [ForkTrackpadSwipeDirection], on target: Target) -> Preview? {
-        guard !steps.isEmpty else { return nil }
-        return enabledAction(swipes: steps, on: target).map(Preview.action) ?? .unrecognized
+        guard !steps.isEmpty,
+              let raw = ForkTrackpadGestureSequence.resolve(swipes: steps, on: target)
+        else { return nil }
+        return enabled(raw).map(Preview.action) ?? .unrecognized
     }
 
     // MARK: - Pinch
@@ -414,10 +658,12 @@ struct ForkTrackpadGestureMachine {
         // A host that did not wake the machine in time: the silence already
         // ended the previous session, so finish it before opening another.
         if let deadline = gapDeadline, now >= deadline {
-            handleTick(now: deadline, effects: &effects)
+            // Only a pinch is ever waiting here: the grid modifier plays no
+            // part in it.
+            handleTick(now: deadline, gridModifierHeld: false, effects: &effects)
         }
         if case let .pinchAwaitingSecond(pending) = state, now >= pending.deadline {
-            handleTick(now: pending.deadline, effects: &effects)
+            handleTick(now: pending.deadline, gridModifierHeld: false, effects: &effects)
         }
 
         let lifted = phase == .ended || phase == .cancelled
@@ -524,6 +770,11 @@ struct ForkTrackpadGestureMachine {
         ForkTrackpadGestureSequence.resolve(swipes: steps, on: target).flatMap(enabled)
     }
 
+    private func enabledAction(horizontal: ForkTrackpadSwipeDirection?,
+                               vertical: ForkTrackpadSwipeDirection?) -> Action? {
+        ForkTrackpadGestureSequence.resolve(horizontal: horizontal, vertical: vertical).flatMap(enabled)
+    }
+
     private func enabledAction(pinches steps: [ForkTrackpadPinchDirection], on target: Target) -> Action? {
         ForkTrackpadGestureSequence.resolve(pinches: steps, on: target).flatMap(enabled)
     }
@@ -575,7 +826,8 @@ struct ForkTrackpadGestureMachine {
     private mutating func handleEscape(effects: inout [Effect]) -> Bool {
         switch state {
         case let .swipe(t):
-            abandon(pending: !t.steps.isEmpty || t.candidate != nil, reason: .escape, effects: &effects)
+            abandon(pending: !t.steps.isEmpty || t.candidate != nil || t.combined != nil
+                        || t.grid != nil, reason: .escape, effects: &effects)
             state = .swipeCancelled
             return true
         case let .pinch(p):
@@ -587,7 +839,7 @@ struct ForkTrackpadGestureMachine {
         }
     }
 
-    private mutating func handleTick(now: TimeInterval, effects: inout [Effect]) {
+    private mutating func handleTick(now: TimeInterval, gridModifierHeld: Bool, effects: inout [Effect]) {
         switch state {
         case var .swipe(t):
             // Compared with the deadline written as `nextDeadline` writes it,
@@ -595,17 +847,43 @@ struct ForkTrackpadGestureMachine {
             // the difference just under the delay at the deadline itself, and
             // a host woken right on time would never move on.
             if now >= t.lastMovementAt + configuration.cancelTimeout {
-                abandon(pending: !t.steps.isEmpty || t.candidate != nil, reason: .stillness,
-                        effects: &effects)
+                abandon(pending: !t.steps.isEmpty || t.candidate != nil || t.combined != nil
+                            || t.grid != nil, reason: .stillness, effects: &effects)
                 state = .swipeCancelled
             } else if let candidate = t.candidate, now >= t.lastMovementAt + configuration.stepPause {
                 t.steps.append(candidate)
                 t.candidate = nil
                 t.accX = 0
                 t.accY = 0
+                // Quarters only ever exist on a title bar: a Dock icon's own
+                // sequences (chaining windows) stay exact-match, one step
+                // deep, and must never seed this continuous tracking. Which
+                // of grid or plain tracking takes over, and when, is decided
+                // once, now, by the grid modifier's state at this very
+                // moment: the grid is held with one axis alone already (a
+                // third needs no vertical step to reach), while the plain
+                // half or quarter still waits for both, exactly as before.
+                if t.target == .titlebar {
+                    let enter = configuration.swipeThreshold
+                    let chain = ForkTrackpadGestureSequence.Chain(t.steps)
+                    if gridModifierHeld, t.grid == nil, chain.horizontal != nil || chain.vertical != nil {
+                        let seededAccX = Self.seedAccumulator(for: chain.horizontal, negative: .left, enter: enter)
+                        t.grid = GridTracking(
+                            horizontal: chain.horizontal.map { GridColumn(column: $0 == .left ? 0 : 2, span: 1) },
+                            vertical: chain.vertical.map { GridEdge(edge: $0, span: 1) },
+                            accX: seededAccX,
+                            accY: Self.seedAccumulator(for: chain.vertical, negative: .up, enter: enter),
+                            horizontalBase: seededAccX)
+                    } else if !gridModifierHeld, let zones = ForkTrackpadGestureSequence.combinedZones(t.steps) {
+                        t.combined = CombinedTracking(
+                            horizontal: zones.horizontal, vertical: zones.vertical,
+                            accX: Self.seedAccumulator(for: zones.horizontal, negative: .left, enter: enter),
+                            accY: Self.seedAccumulator(for: zones.vertical, negative: .up, enter: enter))
+                    }
+                }
                 state = .swipe(t)
                 effects.append(.haptic(.step))
-                show(preview(swipes: t.steps, on: t.target), effects: &effects)
+                if let update = preview(for: t) { show(update, effects: &effects) }
             }
 
         case let .pinch(p):

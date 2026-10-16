@@ -68,6 +68,53 @@ enum ForkTrackpadGestureAction: String, CaseIterable, Equatable {
     /// Close a minimized window from its thumbnail, as its red button would:
     /// the app stays open and may still ask to save.
     case closeMinimizedWindow
+    /// From an app's Dock icon, swiping right: its next window comes to the
+    /// front, cycling past its last back to its first.
+    case showNextWindow
+    /// The same, swiping left, to its previous window.
+    case showPreviousWindow
+
+    /// A held modifier's stronger reach of `minimize`: every window of the
+    /// app, not only the one the gesture began on.
+    case minimizeAllWindows
+    /// A held modifier's stronger reach of `maximize`: the official margin
+    /// maximize, filling the screen short of its margin rather than all
+    /// the way.
+    case marginMaximize
+    /// A held modifier's other reach of `leftHalf`: the window moves to the
+    /// display before this one instead of this display's left half.
+    case moveToPreviousDisplay
+    /// The same, after `rightHalf`, to the display after this one.
+    case moveToNextDisplay
+    /// A held modifier's other reach of `centerReduced`: undoes the window's
+    /// last trackpad placement instead of centering it.
+    case restorePlacement
+
+    /// Held with the grid modifier: a third or two thirds of the width, from
+    /// the left or the right edge, or — sliding on past two thirds — the
+    /// centre third itself, on the way to the far edge's own third. Unlike
+    /// a sixth's own centre column, the centre third has an official
+    /// placement of its own (`layoutAction` below): only reaching it by
+    /// gesture is new.
+    case leftThird, rightThird, leftTwoThirds, rightTwoThirds, centerThird
+    /// Held with the grid modifier, combined with a vertical half: a sixth
+    /// of the screen, one of its four corners.
+    case topLeftSixth, topRightSixth, bottomLeftSixth, bottomRightSixth
+    /// Held with the grid modifier, a vertical half pushed a second stop
+    /// further with no horizontal ever joining it: the sixth down that
+    /// half's own centre column. No key points straight at the centre
+    /// column — nothing reads a swipe as "towards the middle" — so this is
+    /// the only way to reach it, the same escape hatch Swish itself uses.
+    case topCenterSixth, bottomCenterSixth
+    /// Held with the grid modifier, once a vertical half has confined the
+    /// window to a row: sliding further across it reaches two of the row's
+    /// three sixths together — the one next to the edge sixth and the
+    /// centre sixth, or the centre sixth and the far edge sixth — on the
+    /// way from one corner sixth to the other. Neither Swish's own grid nor
+    /// the official Window Layout geometry has a shape for this on its
+    /// own; every other stop of the slide already matches an existing
+    /// sixth, third or half.
+    case topLeftTwoSixths, topRightTwoSixths, bottomLeftTwoSixths, bottomRightTwoSixths
 
     /// The placement the window layout engine already knows, when there is
     /// one. The other actions act on the window or the app directly.
@@ -83,10 +130,84 @@ enum ForkTrackpadGestureAction: String, CaseIterable, Equatable {
         case .bottomRightQuarter: return .bottomRight
         case .maximize: return .maximize
         case .toggleFullScreen: return .fullScreen
+        case .marginMaximize: return .marginMaximize
+        case .moveToPreviousDisplay: return .previousDisplay
+        case .moveToNextDisplay: return .nextDisplay
+        case .leftThird: return .leftThird
+        case .rightThird: return .rightThird
+        case .leftTwoThirds: return .leftTwoThirds
+        case .rightTwoThirds: return .rightTwoThirds
+        case .centerThird: return .centerThird
+        case .topLeftSixth: return .topLeftSixth
+        case .topRightSixth: return .topRightSixth
+        case .bottomLeftSixth: return .bottomLeftSixth
+        case .bottomRightSixth: return .bottomRightSixth
+        case .topCenterSixth: return .topCenterSixth
+        case .bottomCenterSixth: return .bottomCenterSixth
         case .minimize, .close, .centerReduced, .quitApp, .quitWindowApp, .emptyTrash,
-             .showAppWindows, .restoreMinimizedWindow, .closeMinimizedWindow: return nil
+             .showAppWindows, .restoreMinimizedWindow, .closeMinimizedWindow,
+             .showNextWindow, .showPreviousWindow,
+             .minimizeAllWindows, .restorePlacement,
+             .topLeftTwoSixths, .topRightTwoSixths, .bottomLeftTwoSixths, .bottomRightTwoSixths:
+            // No official geometry matches two of a row's three sixths
+            // together (see the case's own doc comment): their rectangle
+            // comes from `ForkTrackpadRowGeometry` instead.
+            return nil
         }
     }
+
+    /// Whether a gesture with this action can only ever begin on a window's
+    /// title bar: every action but the ones the Dock already carries out by
+    /// itself, which a window must never receive.
+    var isWindowAction: Bool {
+        switch self {
+        case .quitApp, .emptyTrash, .showAppWindows, .restoreMinimizedWindow, .closeMinimizedWindow,
+             .showNextWindow, .showPreviousWindow:
+            return false
+        default:
+            return true
+        }
+    }
+}
+
+/// What a modifier held through a gesture turns its plain action into: a
+/// second, stronger meaning for the same swipe, pinch or tap, decided once
+/// the gesture commits (or, for a preview, at every step). The base gesture's
+/// own on/off switch in settings already governs both: a modifier never
+/// revives an action switched off on its own, and `quitWindowApp` keeps its
+/// own switch even though a held modifier can also reach it from `close`.
+enum ForkTrackpadModifierRemap {
+    static func action(for action: ForkTrackpadGestureAction, modifierHeld: Bool,
+                       disabled: Set<ForkTrackpadGestureAction> = []) -> ForkTrackpadGestureAction {
+        guard modifierHeld else { return action }
+        let remapped: ForkTrackpadGestureAction
+        switch action {
+        case .minimize: remapped = .minimizeAllWindows
+        case .maximize: remapped = .marginMaximize
+        case .close: remapped = .quitWindowApp
+        case .leftHalf: remapped = .moveToPreviousDisplay
+        case .rightHalf: remapped = .moveToNextDisplay
+        case .centerReduced: remapped = .restorePlacement
+        default: return action
+        }
+        return disabled.contains(remapped) ? action : remapped
+    }
+}
+
+/// A key held through a gesture to reach another action with it. Which
+/// keys exactly is a setting (`ForkTrackpadModifierKeys`).
+enum ForkTrackpadHeldModifier: Equatable {
+    /// ⇧ by default: the stronger reach of a gesture (`ForkTrackpadModifierRemap`).
+    case shift
+    /// ⌥ by default: the six-zone grid.
+    case option
+
+    var keys: ForkTrackpadModifierKeys {
+        let current = ForkTrackpadModifierKeys.current()
+        return self == .shift ? current.stronger : current.grid
+    }
+
+    var symbol: String { keys.symbols }
 }
 
 enum ForkTrackpadSwipeDirection: Equatable {
@@ -184,20 +305,28 @@ enum ForkTrackpadGestureCatalog {
         /// action. For a quarter: the diagonal first, then both two-step
         /// orders.
         let triggers: [ForkTrackpadGestureTrigger]
+        /// The key held through the gesture, for a `modifierEntries` one.
+        let modifier: ForkTrackpadHeldModifier?
 
         init(action: ForkTrackpadGestureAction, target: ForkTrackpadGestureTarget,
-             triggers: [ForkTrackpadGestureTrigger]) {
-            self.init(action: action, targets: [target], triggers: triggers)
+             triggers: [ForkTrackpadGestureTrigger], modifier: ForkTrackpadHeldModifier? = nil) {
+            self.init(action: action, targets: [target], triggers: triggers, modifier: modifier)
         }
 
         init(action: ForkTrackpadGestureAction, targets: Set<ForkTrackpadGestureTarget>,
-             triggers: [ForkTrackpadGestureTrigger]) {
+             triggers: [ForkTrackpadGestureTrigger], modifier: ForkTrackpadHeldModifier? = nil) {
             self.action = action
             self.targets = targets
             self.triggers = triggers
+            self.modifier = modifier
         }
 
         var family: ForkTrackpadGestureFamily { triggers[0].family }
+
+        /// What the hand does, the held key first: "⌥ ← →".
+        var symbols: String {
+            [modifier?.symbol, triggers[0].symbols].compactMap { $0 }.joined(separator: " ")
+        }
     }
 
     /// In the order settings present them.
@@ -223,12 +352,45 @@ enum ForkTrackpadGestureCatalog {
         Entry(action: .quitApp, target: .dockApp, triggers: [.pinches([.in])]),
         Entry(action: .emptyTrash, target: .dockTrash, triggers: [.pinches([.in])]),
         Entry(action: .showAppWindows, targets: [.dockApp, .dockFinder], triggers: [.swipes([.up])]),
+        Entry(action: .showNextWindow, targets: [.dockApp, .dockFinder], triggers: [.swipes([.right])]),
+        Entry(action: .showPreviousWindow, targets: [.dockApp, .dockFinder], triggers: [.swipes([.left])]),
         Entry(action: .restoreMinimizedWindow, target: .dockMinimizedWindow, triggers: [.swipes([.up])]),
         Entry(action: .closeMinimizedWindow, target: .dockMinimizedWindow, triggers: [.pinches([.in])]),
     ]
 
+    /// The actions a held key reaches, for settings only: each is shown
+    /// with its own card and switch, but the machine never resolves them
+    /// from these triggers. ⇧ goes through `ForkTrackpadModifierRemap`, ⌥
+    /// through the grid tracking (`resolveGrid`). The triggers say what the
+    /// hand does, a slide further counted as one more step.
+    static let modifierEntries: [Entry] = [
+        Entry(action: .leftThird, target: .titlebar, triggers: [.swipes([.left])], modifier: .option),
+        Entry(action: .leftTwoThirds, target: .titlebar, triggers: [.swipes([.left, .right])], modifier: .option),
+        Entry(action: .centerThird, target: .titlebar, triggers: [.swipes([.left, .right, .right])], modifier: .option),
+        Entry(action: .rightTwoThirds, target: .titlebar, triggers: [.swipes([.right, .left])], modifier: .option),
+        Entry(action: .rightThird, target: .titlebar, triggers: [.swipes([.right])], modifier: .option),
+        Entry(action: .topLeftSixth, target: .titlebar, triggers: [.swipes([.upLeft])], modifier: .option),
+        Entry(action: .topCenterSixth, target: .titlebar, triggers: [.swipes([.up, .up])], modifier: .option),
+        Entry(action: .topRightSixth, target: .titlebar, triggers: [.swipes([.upRight])], modifier: .option),
+        Entry(action: .bottomLeftSixth, target: .titlebar, triggers: [.swipes([.downLeft])], modifier: .option),
+        Entry(action: .bottomCenterSixth, target: .titlebar, triggers: [.swipes([.down, .down])], modifier: .option),
+        Entry(action: .bottomRightSixth, target: .titlebar, triggers: [.swipes([.downRight])], modifier: .option),
+        Entry(action: .topLeftTwoSixths, target: .titlebar, triggers: [.swipes([.upLeft, .right])], modifier: .option),
+        Entry(action: .topRightTwoSixths, target: .titlebar, triggers: [.swipes([.upRight, .left])], modifier: .option),
+        Entry(action: .bottomLeftTwoSixths, target: .titlebar, triggers: [.swipes([.downLeft, .right])], modifier: .option),
+        Entry(action: .bottomRightTwoSixths, target: .titlebar, triggers: [.swipes([.downRight, .left])], modifier: .option),
+        Entry(action: .marginMaximize, target: .titlebar, triggers: [.swipes([.up])], modifier: .shift),
+        Entry(action: .minimizeAllWindows, target: .titlebar, triggers: [.swipes([.down])], modifier: .shift),
+        Entry(action: .moveToPreviousDisplay, target: .titlebar, triggers: [.swipes([.left])], modifier: .shift),
+        Entry(action: .moveToNextDisplay, target: .titlebar, triggers: [.swipes([.right])], modifier: .shift),
+        Entry(action: .restorePlacement, target: .titlebar, triggers: [.doubleTap], modifier: .shift),
+    ]
+
+    /// Everything settings show: the plain gestures, then the held keys'.
+    static var allEntries: [Entry] { entries + modifierEntries }
+
     static func entry(for action: ForkTrackpadGestureAction) -> Entry? {
-        entries.first { $0.action == action }
+        allEntries.first { $0.action == action }
     }
 
     /// Whether a family still has at least one enabled action on a target, or
@@ -251,7 +413,11 @@ enum ForkTrackpadGestureCatalog {
 /// the mechanics: the machine says "the person did ↓ then →", this table says
 /// "bottom right quarter".
 enum ForkTrackpadGestureSequence {
-    /// The state of a chain of swipe steps, replayed step by step.
+    /// The state of a chain of swipe steps, replayed step by step: how the
+    /// first quarter or half forms. Once it has, `ForkTrackpadGestureMachine`
+    /// stops replaying steps and tracks each axis on its own instead (see
+    /// its `CombinedTracking`), so this only ever builds the *first*
+    /// combination, never a later change of mind.
     ///
     /// Two axes, each with its current direction, and `hasCombined`: true as
     /// soon as both axes were set together, and never reset. That flag, not
@@ -262,6 +428,11 @@ enum ForkTrackpadGestureSequence {
         var horizontal: ForkTrackpadSwipeDirection?
         var vertical: ForkTrackpadSwipeDirection?
         var hasCombined = false
+        /// Whether `vertical` was just confirmed a second time in a row,
+        /// without a horizontal step in between: the only thing that tells
+        /// a lone ↑↑ (the top half) apart from a lone ↑ (maximize) once
+        /// neither has combined with a horizontal.
+        var verticalDoubled = false
         /// The previous step, to find two identical vertical steps in a row:
         /// a horizontal step between them breaks the pair.
         private var lastStep: ForkTrackpadSwipeDirection?
@@ -273,27 +444,19 @@ enum ForkTrackpadGestureSequence {
         private mutating func apply(_ step: ForkTrackpadSwipeDirection) {
             switch step {
             case .left, .right:
-                // Reversing the horizontal on a real quarter erases the
-                // vertical: ↑ → ← gives the left half, not the top left
-                // quarter. The vertical always combines: the latest ↑ or ↓
-                // wins without touching the horizontal.
-                if hasCombined, let current = horizontal, current != step {
-                    vertical = nil
-                }
                 horizontal = step
             case .up, .down:
+                verticalDoubled = lastStep == step
                 vertical = step
                 // Two ↑ (or two ↓) in a row go back to that half, even over a
                 // quarter already built. Vertical only: ←← and →→ change
                 // nothing.
-                if lastStep == step { horizontal = nil }
+                if verticalDoubled { horizontal = nil }
             case .upLeft, .upRight, .downLeft, .downRight:
-                // A diagonal sets the quarter at once, whatever came before,
-                // and then counts as a built quarter: ← or → the other way
-                // gives the half, ↑ or ↓ changes the row, and the half needs
-                // two ↑ (or ↓) — the diagonal is not the first of the two.
+                // A diagonal sets the quarter at once, whatever came before.
                 horizontal = step.horizontal
                 vertical = step.vertical
+                verticalDoubled = false
             }
             lastStep = step
             if horizontal != nil, vertical != nil { hasCombined = true }
@@ -315,7 +478,13 @@ enum ForkTrackpadGestureSequence {
                         on target: ForkTrackpadGestureTarget = .titlebar) -> ForkTrackpadGestureAction? {
         // Out of the Dock, the way a window comes up from it.
         switch target {
-        case .dockApp, .dockFinder: return steps == [.up] ? .showAppWindows : nil
+        case .dockApp, .dockFinder:
+            switch steps {
+            case [.up]: return .showAppWindows
+            case [.right]: return .showNextWindow
+            case [.left]: return .showPreviousWindow
+            default: return nil
+            }
         case .dockMinimizedWindow: return steps == [.up] ? .restoreMinimizedWindow : nil
         case .dockTrash: return nil
         case .titlebar: break
@@ -323,24 +492,35 @@ enum ForkTrackpadGestureSequence {
 
         let chain = Chain(steps)
 
-        // Never combined: a single axis, from the exact table and nothing
-        // else. ↑↓ or ←→ stay without action so that ↑↑ and ↓↓ keep meaning
-        // halves.
+        // Never combined: at most one axis is set (the other, by
+        // definition, since combining the two is what `hasCombined` means).
+        // A fresh vertical touch maximizes or minimizes; doubled without a
+        // horizontal step in between, it is the half instead. A reversal on
+        // either axis alone, at any point, simply lands on that axis's own
+        // latest meaning: changing one's mind before a quarter ever exists
+        // is still a plain answer, not a question mark.
         guard chain.hasCombined else {
-            switch steps {
-            case [.left]: return .leftHalf
-            case [.right]: return .rightHalf
-            case [.up]: return .maximize
-            case [.down]: return .minimize
-            case [.up, .up]: return .topHalf
-            case [.down, .down]: return .bottomHalf
-            default: return nil
+            if let horizontal = chain.horizontal {
+                return horizontal == .left ? .leftHalf : .rightHalf
             }
+            if let vertical = chain.vertical {
+                if chain.verticalDoubled {
+                    return vertical == .up ? .topHalf : .bottomHalf
+                }
+                return vertical == .up ? .maximize : .minimize
+            }
+            return nil
         }
+        return resolve(horizontal: chain.horizontal, vertical: chain.vertical)
+    }
 
-        // Combined: the current direction of each axis. Quarters work in
-        // either order; a single axis left after an erasure is a half.
-        switch (chain.horizontal, chain.vertical) {
+    /// The half or quarter two independent axis zones name, `nil` on neither
+    /// held. Shared by `resolve(swipes:on:)`, which builds the first
+    /// combination from a chain of steps, and `ForkTrackpadGestureMachine`'s
+    /// continuous tracking, which takes over from there.
+    static func resolve(horizontal: ForkTrackpadSwipeDirection?,
+                        vertical: ForkTrackpadSwipeDirection?) -> ForkTrackpadGestureAction? {
+        switch (horizontal, vertical) {
         case (.left?, .up?): return .topLeftQuarter
         case (.right?, .up?): return .topRightQuarter
         case (.left?, .down?): return .bottomLeftQuarter
@@ -350,6 +530,96 @@ enum ForkTrackpadGestureSequence {
         case (nil, .up?): return .topHalf
         case (nil, .down?): return .bottomHalf
         default: return nil
+        }
+    }
+
+    /// The two axis zones `steps` already combine into, the moment they
+    /// first do, for the continuous tracking that takes over from there to
+    /// seed itself from; `nil` before that moment.
+    static func combinedZones(_ steps: [ForkTrackpadSwipeDirection])
+        -> (horizontal: ForkTrackpadSwipeDirection?, vertical: ForkTrackpadSwipeDirection?)? {
+        let chain = Chain(steps)
+        return chain.hasCombined ? (chain.horizontal, chain.vertical) : nil
+    }
+
+    /// What the grid modifier's own axis tracking names. The horizontal is
+    /// given as a column (0 = left, 1 = centre, 2 = right) and a span (1 or
+    /// 2), the vertical as a direction and a span the same way.
+    ///
+    /// With no row chosen (no vertical held), the same five stops a row
+    /// slides across name a third, two thirds, or — in the middle —
+    /// `centerThird` itself. With no horizontal, a plain half, or — pushed
+    /// a second stop further — the sixth down that half's own centre
+    /// column (`topCenterSixth`). With both: every one of a row's five
+    /// stops names its own sixth or two sixths within it — the two-sixths
+    /// (`topLeftTwoSixths` and siblings) exist only here, nowhere reachable
+    /// without a row to confine them to.
+    static func resolveGrid(horizontal: (column: Int, span: Int)?,
+                            vertical: (edge: ForkTrackpadSwipeDirection, span: Int)?) -> ForkTrackpadGestureAction? {
+        switch (horizontal, vertical) {
+        case (nil, nil): return nil
+        case (nil, let v?):
+            switch v.edge {
+            case .up: return v.span >= 2 ? .topCenterSixth : .topHalf
+            case .down: return v.span >= 2 ? .bottomCenterSixth : .bottomHalf
+            default: return nil
+            }
+        case (let h?, nil):
+            switch (h.column, h.span) {
+            case (0, 1): return .leftThird
+            case (0, _): return .leftTwoThirds
+            case (1, 1): return .centerThird
+            case (1, _): return .rightTwoThirds
+            case (2, 1): return .rightThird
+            default: return nil
+            }
+        case (let h?, let v?):
+            let up = v.edge == .up
+            switch (h.column, h.span) {
+            case (0, 1): return up ? .topLeftSixth : .bottomLeftSixth
+            case (0, _): return up ? .topLeftTwoSixths : .bottomLeftTwoSixths
+            case (1, 1): return up ? .topCenterSixth : .bottomCenterSixth
+            case (1, _): return up ? .topRightTwoSixths : .bottomRightTwoSixths
+            case (2, 1): return up ? .topRightSixth : .bottomRightSixth
+            default: return nil
+            }
+        }
+    }
+
+    /// The rectangles of a row's own two middle stops (point 3): two of its
+    /// three sixths together, anchored at whichever screen edge that pair
+    /// touches. Kept apart from `WindowLayoutGeometry`, the official
+    /// service's own, which has no case for this shape and would be a much
+    /// bigger, conflict-prone diff to add four cases nothing outside this
+    /// ladder ever needs.
+    enum ForkTrackpadRowGeometry {
+        /// The existing sixth whose corner, anchoring and settle behaviour
+        /// this shape borrows: same corner, twice as wide.
+        static func anchor(for action: ForkTrackpadGestureAction) -> WindowLayoutAction? {
+            switch action {
+            case .topLeftTwoSixths: return .topLeftSixth
+            case .topRightTwoSixths: return .topRightSixth
+            case .bottomLeftTwoSixths: return .bottomLeftSixth
+            case .bottomRightTwoSixths: return .bottomRightSixth
+            default: return nil
+            }
+        }
+
+        static func rect(for action: ForkTrackpadGestureAction, visibleFrame: CGRect) -> CGRect? {
+            let width = visibleFrame.width * 2 / 3
+            let height = visibleFrame.height / 2
+            switch action {
+            case .topLeftTwoSixths:
+                return CGRect(x: visibleFrame.minX, y: visibleFrame.midY, width: width, height: height)
+            case .topRightTwoSixths:
+                return CGRect(x: visibleFrame.maxX - width, y: visibleFrame.midY, width: width, height: height)
+            case .bottomLeftTwoSixths:
+                return CGRect(x: visibleFrame.minX, y: visibleFrame.minY, width: width, height: height)
+            case .bottomRightTwoSixths:
+                return CGRect(x: visibleFrame.maxX - width, y: visibleFrame.minY, width: width, height: height)
+            default:
+                return nil
+            }
         }
     }
 
@@ -744,6 +1014,9 @@ enum ForkTrackpadPreviewContent: Equatable {
     case emptyTrash
     /// The app's icon alone: its windows are coming back.
     case showApp
+    /// A system symbol, drawn plain like the question mark: an action with
+    /// neither a zone nor a traffic light of its own.
+    case symbol(String)
     /// A sequence without action: the lift will do nothing.
     case unrecognized
 
@@ -755,9 +1028,13 @@ enum ForkTrackpadPreviewContent: Equatable {
         // 1,000 points brought down to 1: the geometry works in whole points.
         let side = 1000.0
         let reference = CGRect(x: 0, y: 0, width: side, height: side)
+        // A sliver at the edge the window is leaving through, since the
+        // official geometry for moving to another display only ever hands
+        // back the window's own, unchanged, current rectangle.
+        let edgeShare = 0.08
         let rect: CGRect
         switch action {
-        case .minimize:
+        case .minimize, .minimizeAllWindows:
             self = .light(.minimize)
             return
         case .toggleFullScreen:
@@ -772,14 +1049,29 @@ enum ForkTrackpadPreviewContent: Equatable {
         case .emptyTrash:
             self = .emptyTrash
             return
-        case .showAppWindows, .restoreMinimizedWindow:
+        case .showAppWindows, .restoreMinimizedWindow, .showNextWindow, .showPreviousWindow:
             self = .showApp
             return
         case .closeMinimizedWindow:
             self = .light(.close)
             return
+        case .restorePlacement:
+            self = .symbol("arrow.uturn.backward")
+            return
         case .centerReduced:
             rect = ForkTrackpadCenter.rect(in: reference, scale: centerScale)
+        case .moveToPreviousDisplay:
+            rect = CGRect(x: 0, y: 0, width: side * edgeShare, height: side)
+        case .moveToNextDisplay:
+            rect = CGRect(x: side * (1 - edgeShare), y: 0, width: side * edgeShare, height: side)
+        case .topLeftTwoSixths, .topRightTwoSixths, .bottomLeftTwoSixths, .bottomRightTwoSixths:
+            guard let own = ForkTrackpadGestureSequence.ForkTrackpadRowGeometry.rect(for: action,
+                                                                                     visibleFrame: reference)
+            else {
+                self = .unrecognized
+                return
+            }
+            rect = own
         default:
             guard let layoutAction = action.layoutAction else {
                 self = .unrecognized
@@ -793,11 +1085,11 @@ enum ForkTrackpadPreviewContent: Equatable {
     }
 
     /// Traffic lights sit on the pointer, like the button the gesture stands
-    /// for; zones need the room of a panel centered on the screen.
+    /// for; zones and symbols need the room of a panel centered on the screen.
     var isAtPointer: Bool {
         switch self {
         case .light, .quitApp, .emptyTrash, .showApp: return true
-        case .zone, .unrecognized: return false
+        case .zone, .symbol, .unrecognized: return false
         }
     }
 }

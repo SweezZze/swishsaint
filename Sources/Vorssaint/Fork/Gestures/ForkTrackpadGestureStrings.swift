@@ -22,8 +22,13 @@ struct ForkTrackpadGestureStrings {
     let gestureOff: String
     let groupTitlebar: String
     let groupTitlebarCaption: String
-    let groupQuarters: String
-    let groupQuartersCaption: String
+    let groupGrid4: String
+    let groupGrid4Caption: String
+    let groupGrid6: String
+    let groupGrid6Caption: String
+    let groupShift: String
+    let groupShiftCaption: String
+    let holdKeyTitle: String
     let groupPinch: String
     let groupPinchCaption: String
     let groupTap: String
@@ -38,8 +43,16 @@ struct ForkTrackpadGestureStrings {
     let actionQuitApp: String
     let actionEmptyTrash: String
     let actionShowAppWindows: String
+    let actionShowNextWindow: String
+    let actionShowPreviousWindow: String
     let actionRestoreMinimizedWindow: String
     let actionCloseMinimizedWindow: String
+    let actionMinimizeAllWindows: String
+    let actionRestorePlacement: String
+    let actionTopLeftTwoSixths: String
+    let actionTopRightTwoSixths: String
+    let actionBottomLeftTwoSixths: String
+    let actionBottomRightTwoSixths: String
     let centerSizeTitle: String
     let sizeSmall: String
     let sizeLarge: String
@@ -55,6 +68,7 @@ struct ForkTrackpadGestureStrings {
     let stepPauseCaption: String
     let cancelDelayTitle: String
     let cancelDelayCaption: String
+    let cancelEnabledTitle: String
     let shorter: String
     let longer: String
     let titlebarBandTitle: String
@@ -67,6 +81,11 @@ struct ForkTrackpadGestureStrings {
     let previewDetail: String
     let hapticsTitle: String
     let hapticsDetail: String
+    let diagnosticsTitle: String
+    let diagnosticSmartZoomOff: String
+    let diagnosticPinchToZoomOff: String
+    let diagnosticForceClickOff: String
+    let diagnosticsOpenTrackpadSettings: String
 }
 
 extension FeatureStrings {
@@ -108,8 +127,13 @@ extension ForkTrackpadGestureStrings {
         gestureOff: "Off",
         groupTitlebar: "Swipe on the title bar",
         groupTitlebarCaption: "Two fingers on a window’s title bar, even behind other windows.",
-        groupQuarters: "Swipe diagonally",
-        groupQuartersCaption: "One diagonal swipe for a quarter of the screen, or two directions with a short pause in between, without lifting your fingers.",
+        groupGrid4: "4-zone grid: halves and quarters",
+        groupGrid4Caption: "Swipe ← or → for a half, ↑↑ or ↓↓ for the top or bottom half. One diagonal swipe for a quarter, or two directions with a short pause in between, without lifting your fingers.",
+        groupGrid6: "6-zone grid: thirds and sixths",
+        groupGrid6Caption: "Hold the keys chosen below while you swipe. ← or → for a third; keep sliding the same way for two thirds, then the center third. Add ↑ or ↓, or swipe diagonally, for a sixth; push ↑ or ↓ further for the center sixth.",
+        groupShift: "Stronger gestures",
+        groupShiftCaption: "Hold the keys chosen below while you make a title bar gesture to reach its stronger version. Turn a card off to keep the plain gesture even with the keys held.",
+        holdKeyTitle: "Keys to hold",
         groupPinch: "Pinch",
         groupPinchCaption: "Pinch out or in on the title bar. Pinching in twice, lifting your fingers in between, quits the app.",
         groupTap: "Double-tap",
@@ -124,8 +148,16 @@ extension ForkTrackpadGestureStrings {
         actionQuitApp: "Quit from the Dock",
         actionEmptyTrash: "Empty the Trash",
         actionShowAppWindows: "Bring back the app’s windows",
+        actionShowNextWindow: "Show the app’s next window",
+        actionShowPreviousWindow: "Show the app’s previous window",
         actionRestoreMinimizedWindow: "Reopen the minimized window",
         actionCloseMinimizedWindow: "Close the minimized window",
+        actionMinimizeAllWindows: "Minimize all the app’s windows",
+        actionRestorePlacement: "Undo the last placement",
+        actionTopLeftTwoSixths: "Top left two sixths",
+        actionTopRightTwoSixths: "Top right two sixths",
+        actionBottomLeftTwoSixths: "Bottom left two sixths",
+        actionBottomRightTwoSixths: "Bottom right two sixths",
         centerSizeTitle: "Size of the centered window",
         sizeSmall: "Small",
         sizeLarge: "Large",
@@ -141,6 +173,7 @@ extension ForkTrackpadGestureStrings {
         stepPauseCaption: "Held still that long, a direction counts and another one can follow without lifting your fingers.",
         cancelDelayTitle: "Cancel delay",
         cancelDelayCaption: "Held still that long, the gesture is given up and nothing happens.",
+        cancelEnabledTitle: "Cancel a gesture held still",
         shorter: "Shorter",
         longer: "Longer",
         titlebarBandTitle: "Title bar zone",
@@ -152,7 +185,13 @@ extension ForkTrackpadGestureStrings {
         previewTitle: "Preview",
         previewDetail: "A small screen shows where the window will go.",
         hapticsTitle: "Haptic feedback",
-        hapticsDetail: "A light click at each step that counts."
+        hapticsDetail: "A light click at each step that counts.",
+        diagnosticsTitle: "Diagnostics",
+        diagnosticSmartZoomOff: "Smart zoom is off in System Settings › Trackpad, so the double tap does nothing.",
+        diagnosticPinchToZoomOff: "Pinch to zoom is off in System Settings › Trackpad, so pinching does nothing.",
+        diagnosticForceClickOff: "Force Click and haptic feedback are off in System Settings › Trackpad, "
+            + "so gestures never click.",
+        diagnosticsOpenTrackpadSettings: "Open Trackpad Settings"
     )
 
     static let ptBR = ForkTrackpadGestureStrings(
@@ -171,8 +210,13 @@ extension ForkTrackpadGestureStrings {
         gestureOff: "Desativado",
         groupTitlebar: "Deslizar na barra de título",
         groupTitlebarCaption: "Dois dedos na barra de título de uma janela, mesmo atrás de outras janelas.",
-        groupQuarters: "Deslizar na diagonal",
-        groupQuartersCaption: "Um deslize na diagonal para um quarto da tela, ou duas direções com uma breve pausa entre elas, sem levantar os dedos.",
+        groupGrid4: "Grade de 4 zonas: metades e quartos",
+        groupGrid4Caption: "Deslize ← ou → para uma metade, ↑↑ ou ↓↓ para a metade de cima ou de baixo. Um deslize na diagonal para um quarto, ou duas direções com uma pausa curta entre elas, sem levantar os dedos.",
+        groupGrid6: "Grade de 6 zonas: terços e sextos",
+        groupGrid6Caption: "Segure as teclas escolhidas abaixo enquanto desliza. ← ou → para um terço; continue deslizando no mesmo sentido para dois terços e depois o terço central. Acrescente ↑ ou ↓, ou deslize na diagonal, para um sexto; empurre ↑ ou ↓ mais longe para o sexto central.",
+        groupShift: "Gestos reforçados",
+        groupShiftCaption: "Segure as teclas escolhidas abaixo durante um gesto na barra de título para chegar à sua versão mais forte. Desative um cartão para manter o gesto normal mesmo com as teclas.",
+        holdKeyTitle: "Teclas a segurar",
         groupPinch: "Pinçar",
         groupPinchCaption: "Afaste ou junte os dedos na barra de título. Juntar duas vezes, levantando os dedos entre elas, encerra o app.",
         groupTap: "Tocar duas vezes",
@@ -187,8 +231,16 @@ extension ForkTrackpadGestureStrings {
         actionQuitApp: "Encerrar pelo Dock",
         actionEmptyTrash: "Esvaziar o Lixo",
         actionShowAppWindows: "Trazer de volta as janelas do app",
+        actionShowNextWindow: "Mostrar a próxima janela do app",
+        actionShowPreviousWindow: "Mostrar a janela anterior do app",
         actionRestoreMinimizedWindow: "Reabrir a janela minimizada",
         actionCloseMinimizedWindow: "Fechar a janela minimizada",
+        actionMinimizeAllWindows: "Minimizar todas as janelas do app",
+        actionRestorePlacement: "Desfazer o último posicionamento",
+        actionTopLeftTwoSixths: "Dois sextos em cima à esquerda",
+        actionTopRightTwoSixths: "Dois sextos em cima à direita",
+        actionBottomLeftTwoSixths: "Dois sextos embaixo à esquerda",
+        actionBottomRightTwoSixths: "Dois sextos embaixo à direita",
         centerSizeTitle: "Tamanho da janela centralizada",
         sizeSmall: "Pequena",
         sizeLarge: "Grande",
@@ -204,6 +256,7 @@ extension ForkTrackpadGestureStrings {
         stepPauseCaption: "Parado por esse tempo, uma direção é validada e outra pode vir em seguida sem levantar os dedos.",
         cancelDelayTitle: "Atraso de cancelamento",
         cancelDelayCaption: "Parado por esse tempo, o gesto é abandonado e nada acontece.",
+        cancelEnabledTitle: "Cancelar um gesto parado",
         shorter: "Mais curto",
         longer: "Mais longo",
         titlebarBandTitle: "Zona da barra de título",
@@ -215,7 +268,15 @@ extension ForkTrackpadGestureStrings {
         previewTitle: "Pré-visualização",
         previewDetail: "Uma pequena tela mostra para onde a janela vai.",
         hapticsTitle: "Resposta tátil",
-        hapticsDetail: "Um leve clique a cada etapa validada."
+        hapticsDetail: "Um leve clique a cada etapa validada.",
+        diagnosticsTitle: "Diagnóstico",
+        diagnosticSmartZoomOff: "O zoom inteligente está desativado em Ajustes do Sistema › Trackpad, "
+            + "então o toque duplo não faz nada.",
+        diagnosticPinchToZoomOff: "O pinçar para zoom está desativado em Ajustes do Sistema › Trackpad, "
+            + "então pinçar não faz nada.",
+        diagnosticForceClickOff: "O Force Click e o retorno háptico estão desativados em Ajustes do Sistema "
+            + "› Trackpad, então os gestos nunca clicam.",
+        diagnosticsOpenTrackpadSettings: "Abrir Ajustes do Trackpad"
     )
 
     static let tr = ForkTrackpadGestureStrings(
@@ -234,8 +295,13 @@ extension ForkTrackpadGestureStrings {
         gestureOff: "Kapalı",
         groupTitlebar: "Başlık çubuğunda kaydırın",
         groupTitlebarCaption: "Bir pencerenin başlık çubuğunda iki parmakla, başka pencerelerin arkasında olsa bile.",
-        groupQuarters: "Çapraz kaydırın",
-        groupQuartersCaption: "Ekranın çeyreği için tek bir çapraz kaydırma ya da parmaklarınızı kaldırmadan, aralarında kısa bir duraklamayla iki yön.",
+        groupGrid4: "4 bölgeli ızgara: yarımlar ve çeyrekler",
+        groupGrid4Caption: "Yarım için ← veya →, üst ya da alt yarım için ↑↑ veya ↓↓ kaydırın. Çeyrek için tek bir çapraz kaydırma ya da parmakları kaldırmadan arada kısa bir duraklamayla iki yön.",
+        groupGrid6: "6 bölgeli ızgara: üçte birler ve altıda birler",
+        groupGrid6Caption: "Kaydırırken aşağıda seçilen tuşları basılı tutun. Üçte bir için ← veya →; üçte iki ve ardından ortadaki üçte bir için aynı yönde kaydırmaya devam edin. Altıda bir için ↑ veya ↓ ekleyin ya da çapraz kaydırın; ortadaki altıda bir için ↑ veya ↓ yönünde daha ileri itin.",
+        groupShift: "Güçlendirilmiş hareketler",
+        groupShiftCaption: "Başlık çubuğu hareketinin güçlü sürümü için hareket sırasında aşağıda seçilen tuşları basılı tutun. Bu tuşlarla bile normal hareketi korumak için bir kartı kapatın.",
+        holdKeyTitle: "Basılı tutulacak tuşlar",
         groupPinch: "Kıstırın",
         groupPinchCaption: "Başlık çubuğunda parmaklarınızı açın veya kıstırın. Aralarında parmaklarınızı kaldırarak iki kez kıstırmak uygulamadan çıkar.",
         groupTap: "İki kez dokunun",
@@ -250,8 +316,16 @@ extension ForkTrackpadGestureStrings {
         actionQuitApp: "Dock’tan çık",
         actionEmptyTrash: "Çöp Sepeti’ni boşalt",
         actionShowAppWindows: "Uygulamanın pencerelerini geri getir",
+        actionShowNextWindow: "Uygulamanın sonraki penceresini göster",
+        actionShowPreviousWindow: "Uygulamanın önceki penceresini göster",
         actionRestoreMinimizedWindow: "Küçültülmüş pencereyi yeniden aç",
         actionCloseMinimizedWindow: "Küçültülmüş pencereyi kapat",
+        actionMinimizeAllWindows: "Uygulamanın tüm pencerelerini küçült",
+        actionRestorePlacement: "Son yerleşimi geri al",
+        actionTopLeftTwoSixths: "Sol üstte iki altıda bir",
+        actionTopRightTwoSixths: "Sağ üstte iki altıda bir",
+        actionBottomLeftTwoSixths: "Sol altta iki altıda bir",
+        actionBottomRightTwoSixths: "Sağ altta iki altıda bir",
         centerSizeTitle: "Ortalanan pencerenin boyutu",
         sizeSmall: "Küçük",
         sizeLarge: "Büyük",
@@ -267,6 +341,7 @@ extension ForkTrackpadGestureStrings {
         stepPauseCaption: "Bu kadar süre hareketsiz kalınca yön onaylanır ve parmaklarınızı kaldırmadan başka bir yön eklenebilir.",
         cancelDelayTitle: "İptal gecikmesi",
         cancelDelayCaption: "Bu kadar süre hareketsiz kalınca hareket bırakılır ve hiçbir şey olmaz.",
+        cancelEnabledTitle: "Hareketsiz kalan hareketi iptal et",
         shorter: "Daha kısa",
         longer: "Daha uzun",
         titlebarBandTitle: "Başlık çubuğu alanı",
@@ -278,7 +353,15 @@ extension ForkTrackpadGestureStrings {
         previewTitle: "Önizleme",
         previewDetail: "Küçük bir ekran pencerenin nereye gideceğini gösterir.",
         hapticsTitle: "Dokunsal geri bildirim",
-        hapticsDetail: "Onaylanan her adımda hafif bir tık."
+        hapticsDetail: "Onaylanan her adımda hafif bir tık.",
+        diagnosticsTitle: "Tanılama",
+        diagnosticSmartZoomOff: "Akıllı yakınlaştırma Sistem Ayarları › Trackpad’de kapalı, "
+            + "bu yüzden çift dokunuş hiçbir şey yapmıyor.",
+        diagnosticPinchToZoomOff: "Yakınlaştırmak için sıkıştırma Sistem Ayarları › Trackpad’de kapalı, "
+            + "bu yüzden sıkıştırma hiçbir şey yapmıyor.",
+        diagnosticForceClickOff: "Sert Tıklama ve dokunsal geri bildirim Sistem Ayarları › Trackpad’de kapalı, "
+            + "bu yüzden hareketler asla tıklamıyor.",
+        diagnosticsOpenTrackpadSettings: "Trackpad Ayarlarını Aç"
     )
 
     static let ru = ForkTrackpadGestureStrings(
@@ -297,8 +380,13 @@ extension ForkTrackpadGestureStrings {
         gestureOff: "Выкл.",
         groupTitlebar: "Смахивание по строке заголовка",
         groupTitlebarCaption: "Двумя пальцами на строке заголовка окна, даже если оно позади других окон.",
-        groupQuarters: "Смахивание по диагонали",
-        groupQuartersCaption: "Одно смахивание по диагонали для четверти экрана или два направления с короткой паузой между ними, не отрывая пальцев.",
+        groupGrid4: "Сетка из 4 зон: половины и четверти",
+        groupGrid4Caption: "Проведите ← или → для половины, ↑↑ или ↓↓ для верхней или нижней половины. Одно движение по диагонали для четверти, или два направления с короткой паузой между ними, не отрывая пальцев.",
+        groupGrid6: "Сетка из 6 зон: трети и шестые",
+        groupGrid6Caption: "Удерживайте выбранные ниже клавиши во время свайпа. ← или → для трети; продолжайте в том же направлении для двух третей, затем центральной трети. Добавьте ↑ или ↓ или проведите по диагонали для шестой части; продвиньте ↑ или ↓ дальше для центральной шестой.",
+        groupShift: "Усиленные жесты",
+        groupShiftCaption: "Удерживайте выбранные ниже клавиши во время жеста на заголовке окна, чтобы получить его усиленный вариант. Выключите карточку, чтобы сохранить обычный жест даже с этими клавишами.",
+        holdKeyTitle: "Удерживаемые клавиши",
         groupPinch: "Сведение и разведение",
         groupPinchCaption: "Разведите или сведите пальцы на строке заголовка. Двойное сведение, с отрывом пальцев между ними, завершает приложение.",
         groupTap: "Двойное касание",
@@ -313,8 +401,16 @@ extension ForkTrackpadGestureStrings {
         actionQuitApp: "Завершить из Dock",
         actionEmptyTrash: "Очистить Корзину",
         actionShowAppWindows: "Вернуть окна приложения",
+        actionShowNextWindow: "Показать следующее окно приложения",
+        actionShowPreviousWindow: "Показать предыдущее окно приложения",
         actionRestoreMinimizedWindow: "Открыть свёрнутое окно",
         actionCloseMinimizedWindow: "Закрыть свёрнутое окно",
+        actionMinimizeAllWindows: "Свернуть все окна приложения",
+        actionRestorePlacement: "Отменить последнее размещение",
+        actionTopLeftTwoSixths: "Две шестых слева вверху",
+        actionTopRightTwoSixths: "Две шестых справа вверху",
+        actionBottomLeftTwoSixths: "Две шестых слева внизу",
+        actionBottomRightTwoSixths: "Две шестых справа внизу",
         centerSizeTitle: "Размер окна по центру",
         sizeSmall: "Маленькое",
         sizeLarge: "Большое",
@@ -330,6 +426,7 @@ extension ForkTrackpadGestureStrings {
         stepPauseCaption: "Если держать пальцы неподвижно столько времени, направление засчитывается, и можно добавить следующее, не отрывая пальцев.",
         cancelDelayTitle: "Задержка отмены",
         cancelDelayCaption: "Если держать пальцы неподвижно столько времени, жест отменяется и ничего не происходит.",
+        cancelEnabledTitle: "Отменять неподвижный жест",
         shorter: "Короче",
         longer: "Дольше",
         titlebarBandTitle: "Зона строки заголовка",
@@ -341,7 +438,15 @@ extension ForkTrackpadGestureStrings {
         previewTitle: "Предпросмотр",
         previewDetail: "Маленький экран показывает, куда встанет окно.",
         hapticsTitle: "Тактильный отклик",
-        hapticsDetail: "Лёгкий щелчок на каждом засчитанном шаге."
+        hapticsDetail: "Лёгкий щелчок на каждом засчитанном шаге.",
+        diagnosticsTitle: "Диагностика",
+        diagnosticSmartZoomOff: "Функция «Смарт-зум» отключена в Системных настройках › Трекпад, "
+            + "поэтому двойное касание ничего не делает.",
+        diagnosticPinchToZoomOff: "Функция «Сжатие для масштабирования» отключена в Системных настройках "
+            + "› Трекпад, поэтому сжатие ничего не делает.",
+        diagnosticForceClickOff: "Функции Force Click и тактильный отклик отключены в Системных настройках "
+            + "› Трекпад, поэтому жесты никогда не «щёлкают».",
+        diagnosticsOpenTrackpadSettings: "Открыть настройки трекпада"
     )
 
     static let es = ForkTrackpadGestureStrings(
@@ -360,8 +465,13 @@ extension ForkTrackpadGestureStrings {
         gestureOff: "Desactivado",
         groupTitlebar: "Deslizar en la barra de título",
         groupTitlebarCaption: "Dos dedos en la barra de título de una ventana, incluso detrás de otras ventanas.",
-        groupQuarters: "Deslizar en diagonal",
-        groupQuartersCaption: "Un deslizamiento en diagonal para un cuarto de la pantalla, o dos direcciones con una breve pausa entre ellas, sin levantar los dedos.",
+        groupGrid4: "Cuadrícula de 4 zonas: mitades y cuartos",
+        groupGrid4Caption: "Desliza ← o → para una mitad, ↑↑ o ↓↓ para la mitad superior o inferior. Un deslizamiento en diagonal para un cuarto, o dos direcciones con una pausa corta entre ambas, sin levantar los dedos.",
+        groupGrid6: "Cuadrícula de 6 zonas: tercios y sextos",
+        groupGrid6Caption: "Mantén las teclas elegidas abajo mientras deslizas. ← o → para un tercio; sigue deslizando en el mismo sentido para dos tercios y luego el tercio central. Añade ↑ o ↓, o desliza en diagonal, para un sexto; empuja ↑ o ↓ más lejos para el sexto central.",
+        groupShift: "Gestos reforzados",
+        groupShiftCaption: "Mantén las teclas elegidas abajo durante un gesto en la barra de título para su versión reforzada. Desactiva una tarjeta para conservar el gesto normal incluso con las teclas.",
+        holdKeyTitle: "Teclas que mantener",
         groupPinch: "Pellizcar",
         groupPinchCaption: "Separa o junta los dedos en la barra de título. Juntarlos dos veces, levantando los dedos entre ambas, cierra la app.",
         groupTap: "Tocar dos veces",
@@ -376,8 +486,16 @@ extension ForkTrackpadGestureStrings {
         actionQuitApp: "Salir desde el Dock",
         actionEmptyTrash: "Vaciar la papelera",
         actionShowAppWindows: "Recuperar las ventanas de la app",
+        actionShowNextWindow: "Mostrar la siguiente ventana de la app",
+        actionShowPreviousWindow: "Mostrar la ventana anterior de la app",
         actionRestoreMinimizedWindow: "Reabrir la ventana minimizada",
         actionCloseMinimizedWindow: "Cerrar la ventana minimizada",
+        actionMinimizeAllWindows: "Minimizar todas las ventanas de la app",
+        actionRestorePlacement: "Deshacer la última colocación",
+        actionTopLeftTwoSixths: "Dos sextos arriba a la izquierda",
+        actionTopRightTwoSixths: "Dos sextos arriba a la derecha",
+        actionBottomLeftTwoSixths: "Dos sextos abajo a la izquierda",
+        actionBottomRightTwoSixths: "Dos sextos abajo a la derecha",
         centerSizeTitle: "Tamaño de la ventana centrada",
         sizeSmall: "Pequeña",
         sizeLarge: "Grande",
@@ -393,6 +511,7 @@ extension ForkTrackpadGestureStrings {
         stepPauseCaption: "Quieto ese tiempo, una dirección cuenta y puede seguirle otra sin levantar los dedos.",
         cancelDelayTitle: "Retardo de cancelación",
         cancelDelayCaption: "Quieto ese tiempo, el gesto se abandona y no pasa nada.",
+        cancelEnabledTitle: "Cancelar un gesto quieto",
         shorter: "Más corto",
         longer: "Más largo",
         titlebarBandTitle: "Zona de la barra de título",
@@ -404,7 +523,15 @@ extension ForkTrackpadGestureStrings {
         previewTitle: "Previsualización",
         previewDetail: "Una pequeña pantalla muestra adónde irá la ventana.",
         hapticsTitle: "Respuesta háptica",
-        hapticsDetail: "Un clic suave en cada paso que cuenta."
+        hapticsDetail: "Un clic suave en cada paso que cuenta.",
+        diagnosticsTitle: "Diagnóstico",
+        diagnosticSmartZoomOff: "El zoom inteligente está desactivado en Ajustes del Sistema › Trackpad, "
+            + "así que el doble toque no hace nada.",
+        diagnosticPinchToZoomOff: "Pellizcar para hacer zoom está desactivado en Ajustes del Sistema › "
+            + "Trackpad, así que pellizcar no hace nada.",
+        diagnosticForceClickOff: "Force Click y la respuesta háptica están desactivados en Ajustes del "
+            + "Sistema › Trackpad, así que los gestos nunca hacen clic.",
+        diagnosticsOpenTrackpadSettings: "Abrir ajustes del Trackpad"
     )
 
     static let sk = ForkTrackpadGestureStrings(
@@ -423,8 +550,13 @@ extension ForkTrackpadGestureStrings {
         gestureOff: "Vypnuté",
         groupTitlebar: "Potiahnutie na lište s názvom",
         groupTitlebarCaption: "Dvoma prstami na lište s názvom okna, aj keď je za inými oknami.",
-        groupQuarters: "Potiahnutie šikmo",
-        groupQuartersCaption: "Jedno šikmé potiahnutie pre štvrtinu obrazovky alebo dva smery s krátkou pauzou medzi nimi bez zdvihnutia prstov.",
+        groupGrid4: "Mriežka so 4 zónami: polovice a štvrtiny",
+        groupGrid4Caption: "Potiahnite ← alebo → pre polovicu, ↑↑ alebo ↓↓ pre hornú alebo dolnú polovicu. Jedno diagonálne potiahnutie pre štvrtinu, alebo dva smery s krátkou pauzou medzi nimi bez zdvihnutia prstov.",
+        groupGrid6: "Mriežka so 6 zónami: tretiny a šestiny",
+        groupGrid6Caption: "Pri potiahnutí držte klávesy vybrané nižšie. ← alebo → pre tretinu; pokračujte rovnakým smerom pre dve tretiny a potom strednú tretinu. Pridajte ↑ alebo ↓, alebo potiahnite diagonálne, pre šestinu; zatlačte ↑ alebo ↓ ďalej pre strednú šestinu.",
+        groupShift: "Zosilnené gestá",
+        groupShiftCaption: "Podržte klávesy vybrané nižšie počas gesta na titulnom pruhu pre jeho silnejšiu verziu. Vypnite kartu, ak chcete aj s týmito klávesmi ponechať bežné gesto.",
+        holdKeyTitle: "Klávesy na podržanie",
         groupPinch: "Stiahnutie a roztiahnutie",
         groupPinchCaption: "Roztiahnite alebo stiahnite prsty na lište s názvom. Dvojité stiahnutie so zdvihnutím prstov medzi nimi ukončí aplikáciu.",
         groupTap: "Dvojité ťuknutie",
@@ -439,8 +571,16 @@ extension ForkTrackpadGestureStrings {
         actionQuitApp: "Ukončiť z Docku",
         actionEmptyTrash: "Vyprázdniť Kôš",
         actionShowAppWindows: "Vrátiť okná aplikácie",
+        actionShowNextWindow: "Zobraziť ďalšie okno aplikácie",
+        actionShowPreviousWindow: "Zobraziť predchádzajúce okno aplikácie",
         actionRestoreMinimizedWindow: "Znova otvoriť minimalizované okno",
         actionCloseMinimizedWindow: "Zavrieť minimalizované okno",
+        actionMinimizeAllWindows: "Minimalizovať všetky okná apky",
+        actionRestorePlacement: "Vrátiť posledné umiestnenie",
+        actionTopLeftTwoSixths: "Dve šestiny vľavo hore",
+        actionTopRightTwoSixths: "Dve šestiny vpravo hore",
+        actionBottomLeftTwoSixths: "Dve šestiny vľavo dole",
+        actionBottomRightTwoSixths: "Dve šestiny vpravo dole",
         centerSizeTitle: "Veľkosť vycentrovaného okna",
         sizeSmall: "Malé",
         sizeLarge: "Veľké",
@@ -456,6 +596,7 @@ extension ForkTrackpadGestureStrings {
         stepPauseCaption: "Po takto dlhom pokoji sa smer započíta a môže nasledovať ďalší bez zdvihnutia prstov.",
         cancelDelayTitle: "Oneskorenie zrušenia",
         cancelDelayCaption: "Po takto dlhom pokoji sa gesto zruší a nič sa nestane.",
+        cancelEnabledTitle: "Zrušiť gesto, ktoré zostane nehybné",
         shorter: "Kratšie",
         longer: "Dlhšie",
         titlebarBandTitle: "Oblasť lišty s názvom",
@@ -467,7 +608,15 @@ extension ForkTrackpadGestureStrings {
         previewTitle: "Náhľad",
         previewDetail: "Malá obrazovka ukáže, kam sa okno presunie.",
         hapticsTitle: "Hmatová odozva",
-        hapticsDetail: "Jemné cvaknutie pri každom započítanom kroku."
+        hapticsDetail: "Jemné cvaknutie pri každom započítanom kroku.",
+        diagnosticsTitle: "Diagnostika",
+        diagnosticSmartZoomOff: "Inteligentné priblíženie je vypnuté v Nastaveniach systému › Trackpad, "
+            + "takže dvojité ťuknutie nič nerobí.",
+        diagnosticPinchToZoomOff: "Priblíženie stiahnutím prstov je vypnuté v Nastaveniach systému › "
+            + "Trackpad, takže stiahnutie prstov nič nerobí.",
+        diagnosticForceClickOff: "Force Click a haptická odozva sú vypnuté v Nastaveniach systému › "
+            + "Trackpad, takže gestá nikdy neklikajú.",
+        diagnosticsOpenTrackpadSettings: "Otvoriť Nastavenia trackpadu"
     )
 
     static let de = ForkTrackpadGestureStrings(
@@ -486,8 +635,13 @@ extension ForkTrackpadGestureStrings {
         gestureOff: "Aus",
         groupTitlebar: "Auf der Titelleiste streichen",
         groupTitlebarCaption: "Zwei Finger auf der Titelleiste eines Fensters, auch hinter anderen Fenstern.",
-        groupQuarters: "Diagonal streichen",
-        groupQuartersCaption: "Ein diagonales Streichen für ein Bildschirmviertel, oder zwei Richtungen mit einer kurzen Pause dazwischen, ohne die Finger anzuheben.",
+        groupGrid4: "4-Zonen-Raster: Hälften und Viertel",
+        groupGrid4Caption: "Wische ← oder → für eine Hälfte, ↑↑ oder ↓↓ für die obere oder untere Hälfte. Ein diagonales Wischen für ein Viertel, oder zwei Richtungen mit einer kurzen Pause dazwischen, ohne die Finger zu heben.",
+        groupGrid6: "6-Zonen-Raster: Drittel und Sechstel",
+        groupGrid6Caption: "Halte beim Wischen die unten gewählten Tasten. ← oder → für ein Drittel; weiter in dieselbe Richtung für zwei Drittel, dann das mittlere Drittel. Füge ↑ oder ↓ hinzu oder wische diagonal für ein Sechstel; ↑ oder ↓ weiter schieben für das mittlere Sechstel.",
+        groupShift: "Verstärkte Gesten",
+        groupShiftCaption: "Halte die unten gewählten Tasten während einer Titelleisten-Geste für ihre stärkere Version. Schalte eine Karte aus, um auch mit diesen Tasten die normale Geste zu behalten.",
+        holdKeyTitle: "Zu haltende Tasten",
         groupPinch: "Zusammen- und aufziehen",
         groupPinchCaption: "Finger auf der Titelleiste aufziehen oder zusammenziehen. Zweimal zusammenziehen, mit angehobenen Fingern dazwischen, beendet die App.",
         groupTap: "Zweimal tippen",
@@ -502,8 +656,16 @@ extension ForkTrackpadGestureStrings {
         actionQuitApp: "Aus dem Dock beenden",
         actionEmptyTrash: "Papierkorb entleeren",
         actionShowAppWindows: "Fenster der App zurückholen",
+        actionShowNextWindow: "Nächstes Fenster der App zeigen",
+        actionShowPreviousWindow: "Vorheriges Fenster der App zeigen",
         actionRestoreMinimizedWindow: "Minimiertes Fenster wieder öffnen",
         actionCloseMinimizedWindow: "Minimiertes Fenster schließen",
+        actionMinimizeAllWindows: "Alle Fenster der App minimieren",
+        actionRestorePlacement: "Letzte Platzierung rückgängig",
+        actionTopLeftTwoSixths: "Zwei Sechstel oben links",
+        actionTopRightTwoSixths: "Zwei Sechstel oben rechts",
+        actionBottomLeftTwoSixths: "Zwei Sechstel unten links",
+        actionBottomRightTwoSixths: "Zwei Sechstel unten rechts",
         centerSizeTitle: "Größe des zentrierten Fensters",
         sizeSmall: "Klein",
         sizeLarge: "Groß",
@@ -519,6 +681,7 @@ extension ForkTrackpadGestureStrings {
         stepPauseCaption: "So lange still, zählt eine Richtung, und eine weitere kann folgen, ohne die Finger anzuheben.",
         cancelDelayTitle: "Abbruchverzögerung",
         cancelDelayCaption: "So lange still, wird die Geste aufgegeben und nichts passiert.",
+        cancelEnabledTitle: "Stillgehaltene Geste abbrechen",
         shorter: "Kürzer",
         longer: "Länger",
         titlebarBandTitle: "Titelleistenbereich",
@@ -530,7 +693,15 @@ extension ForkTrackpadGestureStrings {
         previewTitle: "Vorschau",
         previewDetail: "Ein kleiner Bildschirm zeigt, wohin das Fenster geht.",
         hapticsTitle: "Haptisches Feedback",
-        hapticsDetail: "Ein leichtes Klicken bei jedem gezählten Schritt."
+        hapticsDetail: "Ein leichtes Klicken bei jedem gezählten Schritt.",
+        diagnosticsTitle: "Diagnose",
+        diagnosticSmartZoomOff: "Der intelligente Zoom ist in den Systemeinstellungen › Trackpad "
+            + "deaktiviert, daher bewirkt der Doppeltipp nichts.",
+        diagnosticPinchToZoomOff: "Zum Zoomen zusammenziehen ist in den Systemeinstellungen › Trackpad "
+            + "deaktiviert, daher bewirkt das Zusammenziehen nichts.",
+        diagnosticForceClickOff: "Force Click und haptisches Feedback sind in den Systemeinstellungen › "
+            + "Trackpad deaktiviert, daher klicken die Gesten nie.",
+        diagnosticsOpenTrackpadSettings: "Trackpad-Einstellungen öffnen"
     )
 
     static let fr = ForkTrackpadGestureStrings(
@@ -549,8 +720,13 @@ extension ForkTrackpadGestureStrings {
         gestureOff: "Coupé",
         groupTitlebar: "Balayer sur la barre de titre",
         groupTitlebarCaption: "Deux doigts sur la barre de titre d’une fenêtre, même derrière d’autres fenêtres.",
-        groupQuarters: "Balayer en diagonale",
-        groupQuartersCaption: "D’un seul geste en diagonale pour un quart d’écran, ou deux directions avec une courte pause entre les deux, sans lever les doigts.",
+        groupGrid4: "Grille 4 cases : moitiés et quarts",
+        groupGrid4Caption: "Balayez ← ou → pour une moitié, ↑↑ ou ↓↓ pour la moitié haute ou basse. Un seul geste en diagonale pour un quart, ou deux directions avec une courte pause entre les deux, sans lever les doigts.",
+        groupGrid6: "Grille 6 cases : tiers et sixièmes",
+        groupGrid6Caption: "Maintenez les touches choisies ci-dessous pendant le balayage. ← ou → pour un tiers ; continuez de glisser dans le même sens pour deux tiers, puis le tiers central. Ajoutez ↑ ou ↓, ou balayez en diagonale, pour un sixième ; poussez ↑ ou ↓ plus loin pour le sixième central.",
+        groupShift: "Gestes renforcés",
+        groupShiftCaption: "Maintenez les touches choisies ci-dessous pendant un geste sur la barre de titre pour obtenir sa version renforcée. Coupez une carte pour garder le geste normal même avec ces touches.",
+        holdKeyTitle: "Touches à maintenir",
         groupPinch: "Pincer",
         groupPinchCaption: "Écartez ou pincez deux doigts sur la barre de titre. Pincer deux fois, en levant les doigts entre les deux, quitte l’app.",
         groupTap: "Toucher deux fois",
@@ -565,8 +741,16 @@ extension ForkTrackpadGestureStrings {
         actionQuitApp: "Quitter depuis le Dock",
         actionEmptyTrash: "Vider la Corbeille",
         actionShowAppWindows: "Ramener les fenêtres de l’app",
+        actionShowNextWindow: "Montrer la fenêtre suivante de l’app",
+        actionShowPreviousWindow: "Montrer la fenêtre précédente de l’app",
         actionRestoreMinimizedWindow: "Rouvrir la fenêtre réduite",
         actionCloseMinimizedWindow: "Fermer la fenêtre réduite",
+        actionMinimizeAllWindows: "Réduire toutes les fenêtres de l’app",
+        actionRestorePlacement: "Annuler le dernier placement",
+        actionTopLeftTwoSixths: "Deux sixièmes en haut à gauche",
+        actionTopRightTwoSixths: "Deux sixièmes en haut à droite",
+        actionBottomLeftTwoSixths: "Deux sixièmes en bas à gauche",
+        actionBottomRightTwoSixths: "Deux sixièmes en bas à droite",
         centerSizeTitle: "Taille de la fenêtre centrée",
         sizeSmall: "Petite",
         sizeLarge: "Grande",
@@ -582,6 +766,7 @@ extension ForkTrackpadGestureStrings {
         stepPauseCaption: "Immobile aussi longtemps, une direction est validée et une autre peut suivre sans lever les doigts.",
         cancelDelayTitle: "Délai d’annulation",
         cancelDelayCaption: "Immobile aussi longtemps, le geste est abandonné et rien ne se passe.",
+        cancelEnabledTitle: "Annuler un geste resté immobile",
         shorter: "Plus courte",
         longer: "Plus longue",
         titlebarBandTitle: "Zone de la barre de titre",
@@ -593,7 +778,15 @@ extension ForkTrackpadGestureStrings {
         previewTitle: "Aperçu",
         previewDetail: "Un petit écran montre où ira la fenêtre.",
         hapticsTitle: "Retour haptique",
-        hapticsDetail: "Un léger clic à chaque étape validée."
+        hapticsDetail: "Un léger clic à chaque étape validée.",
+        diagnosticsTitle: "Diagnostics",
+        diagnosticSmartZoomOff: "Le zoom intelligent est désactivé dans Réglages Système › Trackpad, "
+            + "donc le double-tap ne fait rien.",
+        diagnosticPinchToZoomOff: "Le pincement pour zoomer est désactivé dans Réglages Système › "
+            + "Trackpad, donc pincer ne fait rien.",
+        diagnosticForceClickOff: "Force Click et le retour haptique sont désactivés dans Réglages Système "
+            + "› Trackpad, donc les gestes ne cliquent jamais.",
+        diagnosticsOpenTrackpadSettings: "Ouvrir les réglages du Trackpad"
     )
 
     static let it = ForkTrackpadGestureStrings(
@@ -612,8 +805,13 @@ extension ForkTrackpadGestureStrings {
         gestureOff: "Disattivato",
         groupTitlebar: "Scorri sulla barra del titolo",
         groupTitlebarCaption: "Due dita sulla barra del titolo di una finestra, anche dietro ad altre finestre.",
-        groupQuarters: "Scorri in diagonale",
-        groupQuartersCaption: "Uno scorrimento in diagonale per un quarto dello schermo, oppure due direzioni con una breve pausa tra l’una e l’altra, senza sollevare le dita.",
+        groupGrid4: "Griglia a 4 zone: metà e quarti",
+        groupGrid4Caption: "Scorri ← o → per una metà, ↑↑ o ↓↓ per la metà superiore o inferiore. Uno scorrimento in diagonale per un quarto, o due direzioni con una breve pausa in mezzo, senza sollevare le dita.",
+        groupGrid6: "Griglia a 6 zone: terzi e sesti",
+        groupGrid6Caption: "Tieni premuti i tasti scelti qui sotto mentre scorri. ← o → per un terzo; continua a scorrere nello stesso verso per due terzi, poi il terzo centrale. Aggiungi ↑ o ↓, o scorri in diagonale, per un sesto; spingi ↑ o ↓ più in là per il sesto centrale.",
+        groupShift: "Gesti rafforzati",
+        groupShiftCaption: "Tieni premuti i tasti scelti qui sotto durante un gesto sulla barra del titolo per la sua versione rafforzata. Disattiva una scheda per mantenere il gesto normale anche con i tasti.",
+        holdKeyTitle: "Tasti da tenere premuti",
         groupPinch: "Pizzica",
         groupPinchCaption: "Allarga o avvicina le dita sulla barra del titolo. Avvicinarle due volte, sollevando le dita tra l’una e l’altra, chiude l’app.",
         groupTap: "Tocca due volte",
@@ -628,8 +826,16 @@ extension ForkTrackpadGestureStrings {
         actionQuitApp: "Esci dal Dock",
         actionEmptyTrash: "Svuota il Cestino",
         actionShowAppWindows: "Riporta le finestre dell’app",
+        actionShowNextWindow: "Mostra la finestra successiva dell’app",
+        actionShowPreviousWindow: "Mostra la finestra precedente dell’app",
         actionRestoreMinimizedWindow: "Riapri la finestra ridotta",
         actionCloseMinimizedWindow: "Chiudi la finestra ridotta",
+        actionMinimizeAllWindows: "Riduci tutte le finestre dell’app",
+        actionRestorePlacement: "Annulla l’ultimo posizionamento",
+        actionTopLeftTwoSixths: "Due sesti in alto a sinistra",
+        actionTopRightTwoSixths: "Due sesti in alto a destra",
+        actionBottomLeftTwoSixths: "Due sesti in basso a sinistra",
+        actionBottomRightTwoSixths: "Due sesti in basso a destra",
         centerSizeTitle: "Dimensione della finestra centrata",
         sizeSmall: "Piccola",
         sizeLarge: "Grande",
@@ -645,6 +851,7 @@ extension ForkTrackpadGestureStrings {
         stepPauseCaption: "Ferme così a lungo, una direzione viene convalidata e un’altra può seguire senza sollevare le dita.",
         cancelDelayTitle: "Ritardo di annullamento",
         cancelDelayCaption: "Ferme così a lungo, il gesto viene abbandonato e non succede nulla.",
+        cancelEnabledTitle: "Annulla un gesto rimasto fermo",
         shorter: "Più breve",
         longer: "Più lunga",
         titlebarBandTitle: "Zona della barra del titolo",
@@ -656,7 +863,15 @@ extension ForkTrackpadGestureStrings {
         previewTitle: "Anteprima",
         previewDetail: "Un piccolo schermo mostra dove andrà la finestra.",
         hapticsTitle: "Feedback aptico",
-        hapticsDetail: "Un leggero clic a ogni passaggio convalidato."
+        hapticsDetail: "Un leggero clic a ogni passaggio convalidato.",
+        diagnosticsTitle: "Diagnostica",
+        diagnosticSmartZoomOff: "Lo zoom intelligente è disattivato in Impostazioni di Sistema › Trackpad, "
+            + "quindi il doppio tocco non fa nulla.",
+        diagnosticPinchToZoomOff: "Pizzica per zoomare è disattivato in Impostazioni di Sistema › Trackpad, "
+            + "quindi pizzicare non fa nulla.",
+        diagnosticForceClickOff: "Force Click e il feedback aptico sono disattivati in Impostazioni di "
+            + "Sistema › Trackpad, quindi i gesti non fanno mai clic.",
+        diagnosticsOpenTrackpadSettings: "Apri Impostazioni Trackpad"
     )
 
     static let ja = ForkTrackpadGestureStrings(
@@ -675,8 +890,13 @@ extension ForkTrackpadGestureStrings {
         gestureOff: "オフ",
         groupTitlebar: "タイトルバーでスワイプ",
         groupTitlebarCaption: "ウインドウのタイトルバーに2本指で。ほかのウインドウの後ろにあっても使えます。",
-        groupQuarters: "斜めにスワイプ",
-        groupQuartersCaption: "斜めに1回スワイプすると画面の4分の1に。または指を離さずに、短く止めて2方向にスワイプします。",
+        groupGrid4: "4分割グリッド：半分と4分の1",
+        groupGrid4Caption: "← または → で半分、↑↑ または ↓↓ で上半分または下半分。斜めに1回スワイプで4分の1、または指を離さずに短く止めて2方向へ。",
+        groupGrid6: "6分割グリッド：3分の1と6分の1",
+        groupGrid6Caption: "下で選んだキーを押したままスワイプします。← または → で3分の1。同じ方向に滑らせ続けると3分の2、次に中央の3分の1。↑ または ↓ を加えるか斜めにスワイプすると6分の1。↑ または ↓ をさらに押し進めると中央の6分の1。",
+        groupShift: "強化ジェスチャ",
+        groupShiftCaption: "タイトルバーのジェスチャ中に下で選んだキーを押すと強化版になります。キーを押しても通常のジェスチャのままにするにはカードをオフにします。",
+        holdKeyTitle: "押したままにするキー",
         groupPinch: "ピンチ",
         groupPinchCaption: "タイトルバーで指を広げる、またはピンチします。指を離してから2回ピンチするとアプリを終了します。",
         groupTap: "ダブルタップ",
@@ -691,8 +911,16 @@ extension ForkTrackpadGestureStrings {
         actionQuitApp: "Dockから終了",
         actionEmptyTrash: "ゴミ箱を空にする",
         actionShowAppWindows: "アプリのウインドウを戻す",
+        actionShowNextWindow: "アプリの次のウインドウを表示",
+        actionShowPreviousWindow: "アプリの前のウインドウを表示",
         actionRestoreMinimizedWindow: "しまったウインドウを開く",
         actionCloseMinimizedWindow: "しまったウインドウを閉じる",
+        actionMinimizeAllWindows: "アプリのすべてのウインドウをしまう",
+        actionRestorePlacement: "最後の配置を取り消す",
+        actionTopLeftTwoSixths: "左上の6分の2",
+        actionTopRightTwoSixths: "右上の6分の2",
+        actionBottomLeftTwoSixths: "左下の6分の2",
+        actionBottomRightTwoSixths: "右下の6分の2",
         centerSizeTitle: "中央に配置したウインドウのサイズ",
         sizeSmall: "小",
         sizeLarge: "大",
@@ -708,6 +936,7 @@ extension ForkTrackpadGestureStrings {
         stepPauseCaption: "この時間だけ止めると方向が確定し、指を離さずに次の方向を続けられます。",
         cancelDelayTitle: "キャンセルまでの時間",
         cancelDelayCaption: "この時間だけ止めるとジェスチャは取り消され、何も起きません。",
+        cancelEnabledTitle: "止まったままのジェスチャを取り消す",
         shorter: "短く",
         longer: "長く",
         titlebarBandTitle: "タイトルバーの領域",
@@ -719,7 +948,13 @@ extension ForkTrackpadGestureStrings {
         previewTitle: "プレビュー",
         previewDetail: "小さな画面でウインドウの移動先を示します。",
         hapticsTitle: "触覚フィードバック",
-        hapticsDetail: "確定した各ステップで軽いクリック。"
+        hapticsDetail: "確定した各ステップで軽いクリック。",
+        diagnosticsTitle: "診断",
+        diagnosticSmartZoomOff: "システム設定 › トラックパッドで「スマートズーム」がオフのため、ダブルタップは何も行いません。",
+        diagnosticPinchToZoomOff: "システム設定 › トラックパッドで「ピンチでズーム」がオフのため、ピンチは何も行いません。",
+        diagnosticForceClickOff: "システム設定 › トラックパッドで「Force Clickと触覚フィードバック」がオフのため、"
+            + "ジェスチャーがクリックしません。",
+        diagnosticsOpenTrackpadSettings: "トラックパッド設定を開く"
     )
 
     static let ko = ForkTrackpadGestureStrings(
@@ -738,8 +973,13 @@ extension ForkTrackpadGestureStrings {
         gestureOff: "끔",
         groupTitlebar: "제목 막대에서 쓸어넘기기",
         groupTitlebarCaption: "윈도우의 제목 막대에 두 손가락을 올립니다. 다른 윈도우 뒤에 있어도 됩니다.",
-        groupQuarters: "대각선으로 쓸어넘기기",
-        groupQuartersCaption: "대각선으로 한 번 쓸어넘기면 화면의 4분의 1로, 또는 손가락을 떼지 않고 잠깐 멈춘 뒤 두 방향으로 쓸어넘깁니다.",
+        groupGrid4: "4구역 그리드: 절반과 4분의 1",
+        groupGrid4Caption: "← 또는 →로 절반, ↑↑ 또는 ↓↓로 위쪽 또는 아래쪽 절반. 대각선으로 한 번 쓸어 4분의 1, 또는 손가락을 떼지 않고 짧게 멈춘 뒤 두 방향으로.",
+        groupGrid6: "6구역 그리드: 3분의 1과 6분의 1",
+        groupGrid6Caption: "아래에서 고른 키를 누른 채 쓸어 넘기세요. ← 또는 →로 3분의 1, 같은 방향으로 계속 밀면 3분의 2, 그다음 가운데 3분의 1. ↑ 또는 ↓를 더하거나 대각선으로 쓸면 6분의 1, ↑ 또는 ↓를 더 밀면 가운데 6분의 1.",
+        groupShift: "강화된 제스처",
+        groupShiftCaption: "제목 막대 제스처 중 아래에서 고른 키를 누르면 더 강한 버전이 됩니다. 키를 눌러도 기본 제스처를 유지하려면 카드를 끄세요.",
+        holdKeyTitle: "누르고 있을 키",
         groupPinch: "핀치",
         groupPinchCaption: "제목 막대에서 손가락을 벌리거나 오므립니다. 손가락을 뗐다가 두 번 오므리면 앱을 종료합니다.",
         groupTap: "두 번 탭하기",
@@ -754,8 +994,16 @@ extension ForkTrackpadGestureStrings {
         actionQuitApp: "Dock에서 종료",
         actionEmptyTrash: "휴지통 비우기",
         actionShowAppWindows: "앱 윈도우 되돌리기",
+        actionShowNextWindow: "앱의 다음 윈도우 보기",
+        actionShowPreviousWindow: "앱의 이전 윈도우 보기",
         actionRestoreMinimizedWindow: "최소화된 윈도우 다시 열기",
         actionCloseMinimizedWindow: "최소화된 윈도우 닫기",
+        actionMinimizeAllWindows: "앱의 모든 윈도우 최소화",
+        actionRestorePlacement: "마지막 배치 되돌리기",
+        actionTopLeftTwoSixths: "왼쪽 위 6분의 2",
+        actionTopRightTwoSixths: "오른쪽 위 6분의 2",
+        actionBottomLeftTwoSixths: "왼쪽 아래 6분의 2",
+        actionBottomRightTwoSixths: "오른쪽 아래 6분의 2",
         centerSizeTitle: "가운데로 옮긴 윈도우의 크기",
         sizeSmall: "작게",
         sizeLarge: "크게",
@@ -771,6 +1019,7 @@ extension ForkTrackpadGestureStrings {
         stepPauseCaption: "이만큼 멈추면 방향이 확정되고, 손가락을 떼지 않고 다른 방향을 이어갈 수 있습니다.",
         cancelDelayTitle: "취소 지연 시간",
         cancelDelayCaption: "이만큼 멈추면 제스처가 취소되고 아무 일도 일어나지 않습니다.",
+        cancelEnabledTitle: "멈춘 제스처 취소",
         shorter: "짧게",
         longer: "길게",
         titlebarBandTitle: "제목 막대 영역",
@@ -782,7 +1031,13 @@ extension ForkTrackpadGestureStrings {
         previewTitle: "미리보기",
         previewDetail: "작은 화면이 윈도우가 갈 위치를 보여줍니다.",
         hapticsTitle: "햅틱 피드백",
-        hapticsDetail: "확정된 단계마다 가벼운 클릭."
+        hapticsDetail: "확정된 단계마다 가벼운 클릭.",
+        diagnosticsTitle: "진단",
+        diagnosticSmartZoomOff: "시스템 설정 › 트랙패드에서 “스마트 확대/축소”가 꺼져 있어 더블 탭이 아무 동작도 하지 않습니다.",
+        diagnosticPinchToZoomOff: "시스템 설정 › 트랙패드에서 “오므려서 확대/축소”가 꺼져 있어 오므리기가 아무 동작도 하지 않습니다.",
+        diagnosticForceClickOff: "시스템 설정 › 트랙패드에서 “Force Click 및 햅틱 피드백”이 꺼져 있어 제스처가 "
+            + "클릭되지 않습니다.",
+        diagnosticsOpenTrackpadSettings: "트랙패드 설정 열기"
     )
 
     static let zhHans = ForkTrackpadGestureStrings(
@@ -801,8 +1056,13 @@ extension ForkTrackpadGestureStrings {
         gestureOff: "关闭",
         groupTitlebar: "在标题栏上轻扫",
         groupTitlebarCaption: "双指放在窗口的标题栏上，即使窗口在其他窗口后面。",
-        groupQuarters: "沿对角线轻扫",
-        groupQuartersCaption: "沿对角线轻扫一次即可占据四分之一屏幕，或在不抬起手指的情况下，短暂停顿后向两个方向轻扫。",
+        groupGrid4: "4 格网格：二分之一和四分之一",
+        groupGrid4Caption: "向 ← 或 → 轻扫得到半屏，↑↑ 或 ↓↓ 得到上半屏或下半屏。斜向轻扫一次得到四分之一，或不抬手指、中间短暂停顿后朝两个方向轻扫。",
+        groupGrid6: "6 格网格：三分之一和六分之一",
+        groupGrid6Caption: "轻扫时按住下方选择的按键。← 或 → 得到三分之一；继续朝同一方向滑动得到三分之二，然后是中间三分之一。加上 ↑ 或 ↓，或斜向轻扫，得到六分之一；把 ↑ 或 ↓ 推得更远得到中间六分之一。",
+        groupShift: "加强手势",
+        groupShiftCaption: "在标题栏手势中按住下方选择的按键可得到它的加强版本。关闭某张卡片，即使按住这些按键也保留普通手势。",
+        holdKeyTitle: "要按住的按键",
         groupPinch: "捏合",
         groupPinchCaption: "在标题栏上张开或捏合双指。捏合两次（中间抬起手指）会退出应用。",
         groupTap: "轻点两下",
@@ -817,8 +1077,16 @@ extension ForkTrackpadGestureStrings {
         actionQuitApp: "从程序坞退出",
         actionEmptyTrash: "清倒废纸篓",
         actionShowAppWindows: "找回应用的窗口",
+        actionShowNextWindow: "显示应用的下一个窗口",
+        actionShowPreviousWindow: "显示应用的上一个窗口",
         actionRestoreMinimizedWindow: "重新打开最小化的窗口",
         actionCloseMinimizedWindow: "关闭最小化的窗口",
+        actionMinimizeAllWindows: "最小化该 App 的所有窗口",
+        actionRestorePlacement: "撤销上一次放置",
+        actionTopLeftTwoSixths: "左上两个六分之一",
+        actionTopRightTwoSixths: "右上两个六分之一",
+        actionBottomLeftTwoSixths: "左下两个六分之一",
+        actionBottomRightTwoSixths: "右下两个六分之一",
         centerSizeTitle: "居中窗口的大小",
         sizeSmall: "小",
         sizeLarge: "大",
@@ -834,6 +1102,7 @@ extension ForkTrackpadGestureStrings {
         stepPauseCaption: "静止这么久后，方向会被确认，不抬起手指即可接着另一个方向。",
         cancelDelayTitle: "取消延迟",
         cancelDelayCaption: "静止这么久后，手势会被放弃，什么也不会发生。",
+        cancelEnabledTitle: "取消静止不动的手势",
         shorter: "较短",
         longer: "较长",
         titlebarBandTitle: "标题栏区域",
@@ -845,7 +1114,12 @@ extension ForkTrackpadGestureStrings {
         previewTitle: "预览",
         previewDetail: "一个小屏幕显示窗口将要去的位置。",
         hapticsTitle: "触觉反馈",
-        hapticsDetail: "每个确认的步骤都有一次轻微点击。"
+        hapticsDetail: "每个确认的步骤都有一次轻微点击。",
+        diagnosticsTitle: "诊断",
+        diagnosticSmartZoomOff: "系统设置›触控板中的“智能缩放”已关闭，因此双指双击没有任何效果。",
+        diagnosticPinchToZoomOff: "系统设置›触控板中的“捏合缩放”已关闭，因此捏合手势没有任何效果。",
+        diagnosticForceClickOff: "系统设置›触控板中的“触感点按和触感反馈”已关闭，因此手势永远不会触发点按。",
+        diagnosticsOpenTrackpadSettings: "打开触控板设置"
     )
 
     static let zhTW = ForkTrackpadGestureStrings(
@@ -864,8 +1138,13 @@ extension ForkTrackpadGestureStrings {
         gestureOff: "關閉",
         groupTitlebar: "在標題列上滑動",
         groupTitlebarCaption: "雙指放在視窗的標題列上，即使視窗在其他視窗後面。",
-        groupQuarters: "沿對角線滑動",
-        groupQuartersCaption: "沿對角線滑動一次即可佔據四分之一螢幕，或在不抬起手指的情況下，短暫停頓後往兩個方向滑動。",
+        groupGrid4: "4 格網格：二分之一與四分之一",
+        groupGrid4Caption: "向 ← 或 → 滑動得到半個螢幕，↑↑ 或 ↓↓ 得到上半部或下半部。斜向滑動一次得到四分之一，或不抬起手指、中間短暫停頓後朝兩個方向滑動。",
+        groupGrid6: "6 格網格：三分之一與六分之一",
+        groupGrid6Caption: "滑動時按住下方選擇的按鍵。← 或 → 得到三分之一；繼續朝同一方向滑動得到三分之二，接著是中間三分之一。加上 ↑ 或 ↓，或斜向滑動，得到六分之一；把 ↑ 或 ↓ 推得更遠得到中間六分之一。",
+        groupShift: "加強手勢",
+        groupShiftCaption: "在標題列手勢中按住下方選擇的按鍵可得到它的加強版本。關閉某張卡片，即使按住這些按鍵也保留一般手勢。",
+        holdKeyTitle: "要按住的按鍵",
         groupPinch: "捏合",
         groupPinchCaption: "在標題列上張開或捏合雙指。捏合兩次（中間抬起手指）會結束 App。",
         groupTap: "點兩下",
@@ -880,8 +1159,16 @@ extension ForkTrackpadGestureStrings {
         actionQuitApp: "從 Dock 結束",
         actionEmptyTrash: "清空垃圾桶",
         actionShowAppWindows: "找回 App 的視窗",
+        actionShowNextWindow: "顯示 App 的下一個視窗",
+        actionShowPreviousWindow: "顯示 App 的上一個視窗",
         actionRestoreMinimizedWindow: "重新打開縮到最小的視窗",
         actionCloseMinimizedWindow: "關閉縮到最小的視窗",
+        actionMinimizeAllWindows: "最小化該 App 的所有視窗",
+        actionRestorePlacement: "還原上一次的擺放",
+        actionTopLeftTwoSixths: "左上兩個六分之一",
+        actionTopRightTwoSixths: "右上兩個六分之一",
+        actionBottomLeftTwoSixths: "左下兩個六分之一",
+        actionBottomRightTwoSixths: "右下兩個六分之一",
         centerSizeTitle: "置中視窗的大小",
         sizeSmall: "小",
         sizeLarge: "大",
@@ -897,6 +1184,7 @@ extension ForkTrackpadGestureStrings {
         stepPauseCaption: "靜止這麼久後，方向會被確認，不抬起手指即可接著另一個方向。",
         cancelDelayTitle: "取消延遲",
         cancelDelayCaption: "靜止這麼久後，手勢會被放棄，什麼也不會發生。",
+        cancelEnabledTitle: "取消靜止不動的手勢",
         shorter: "較短",
         longer: "較長",
         titlebarBandTitle: "標題列區域",
@@ -908,7 +1196,12 @@ extension ForkTrackpadGestureStrings {
         previewTitle: "預覽",
         previewDetail: "一個小螢幕顯示視窗將前往的位置。",
         hapticsTitle: "觸覺回饋",
-        hapticsDetail: "每個確認的步驟都有一次輕微點按。"
+        hapticsDetail: "每個確認的步驟都有一次輕微點按。",
+        diagnosticsTitle: "診斷",
+        diagnosticSmartZoomOff: "「系統設定」›「觸控式軌跡板」中的「智慧型縮放」已關閉，因此雙指點兩下沒有任何作用。",
+        diagnosticPinchToZoomOff: "「系統設定」›「觸控式軌跡板」中的「以兩指縮放」已關閉，因此縮放手勢沒有任何作用。",
+        diagnosticForceClickOff: "「系統設定」›「觸控式軌跡板」中的「觸壓感應點按與觸覺回饋」已關閉，因此手勢永遠不會點按。",
+        diagnosticsOpenTrackpadSettings: "打開觸控式軌跡板設定"
     )
 
     static let zhHK = ForkTrackpadGestureStrings(
@@ -927,8 +1220,13 @@ extension ForkTrackpadGestureStrings {
         gestureOff: "關閉",
         groupTitlebar: "在標題列上掃動",
         groupTitlebarCaption: "雙指放在視窗的標題列上，即使視窗在其他視窗後面。",
-        groupQuarters: "沿對角線掃動",
-        groupQuartersCaption: "沿對角線掃動一次即可佔據四分之一螢幕，或在不抬起手指的情況下，短暫停頓後向兩個方向掃動。",
+        groupGrid4: "4 格網格：二分之一與四分之一",
+        groupGrid4Caption: "向 ← 或 → 掃動得到半個螢幕，↑↑ 或 ↓↓ 得到上半部或下半部。斜向掃動一次得到四分之一，或不提起手指、中間短暫停頓後朝兩個方向掃動。",
+        groupGrid6: "6 格網格：三分之一與六分之一",
+        groupGrid6Caption: "掃動時按住下方選擇的按鍵。← 或 → 得到三分之一；繼續朝同一方向掃動得到三分之二，接著是中間三分之一。加上 ↑ 或 ↓，或斜向掃動，得到六分之一；把 ↑ 或 ↓ 推得更遠得到中間六分之一。",
+        groupShift: "加強手勢",
+        groupShiftCaption: "在標題列手勢中按住下方選擇的按鍵可得到它的加強版本。關閉某張卡片，即使按住這些按鍵也保留一般手勢。",
+        holdKeyTitle: "要按住的按鍵",
         groupPinch: "捏合",
         groupPinchCaption: "在標題列上張開或捏合雙指。捏合兩次（中間抬起手指）會結束 App。",
         groupTap: "點兩下",
@@ -943,8 +1241,16 @@ extension ForkTrackpadGestureStrings {
         actionQuitApp: "從 Dock 結束",
         actionEmptyTrash: "清空垃圾桶",
         actionShowAppWindows: "找回 App 的視窗",
+        actionShowNextWindow: "顯示 App 的下一個視窗",
+        actionShowPreviousWindow: "顯示 App 的上一個視窗",
         actionRestoreMinimizedWindow: "重新打開最小化的視窗",
         actionCloseMinimizedWindow: "關閉最小化的視窗",
+        actionMinimizeAllWindows: "最小化該 App 的所有視窗",
+        actionRestorePlacement: "還原上一次的擺放",
+        actionTopLeftTwoSixths: "左上兩個六分之一",
+        actionTopRightTwoSixths: "右上兩個六分之一",
+        actionBottomLeftTwoSixths: "左下兩個六分之一",
+        actionBottomRightTwoSixths: "右下兩個六分之一",
         centerSizeTitle: "置中視窗的大小",
         sizeSmall: "小",
         sizeLarge: "大",
@@ -960,6 +1266,7 @@ extension ForkTrackpadGestureStrings {
         stepPauseCaption: "靜止這麼久後，方向會被確認，不抬起手指即可接着另一個方向。",
         cancelDelayTitle: "取消延遲",
         cancelDelayCaption: "靜止這麼久後，手勢會被放棄，甚麼也不會發生。",
+        cancelEnabledTitle: "取消靜止不動的手勢",
         shorter: "較短",
         longer: "較長",
         titlebarBandTitle: "標題列區域",
@@ -971,7 +1278,12 @@ extension ForkTrackpadGestureStrings {
         previewTitle: "預覽",
         previewDetail: "一個小螢幕顯示視窗將前往的位置。",
         hapticsTitle: "觸覺回饋",
-        hapticsDetail: "每個確認的步驟都有一次輕微點按。"
+        hapticsDetail: "每個確認的步驟都有一次輕微點按。",
+        diagnosticsTitle: "診斷",
+        diagnosticSmartZoomOff: "「系統設定」›「觸控式軌跡板」中的「智慧型縮放」已關閉，因此雙指點兩下沒有任何作用。",
+        diagnosticPinchToZoomOff: "「系統設定」›「觸控式軌跡板」中的「以兩指縮放」已關閉，因此縮放手勢沒有任何作用。",
+        diagnosticForceClickOff: "「系統設定」›「觸控式軌跡板」中的「觸壓感應點按與觸覺回饋」已關閉，因此手勢永遠不會點按。",
+        diagnosticsOpenTrackpadSettings: "打開觸控式軌跡板設定"
     )
 
     static let uk = ForkTrackpadGestureStrings(
@@ -990,8 +1302,13 @@ extension ForkTrackpadGestureStrings {
         gestureOff: "Вимк.",
         groupTitlebar: "Змахування на смузі заголовка",
         groupTitlebarCaption: "Двома пальцями на смузі заголовка вікна, навіть якщо воно позаду інших вікон.",
-        groupQuarters: "Змахування по діагоналі",
-        groupQuartersCaption: "Одне змахування по діагоналі для чверті екрана або два напрямки з короткою паузою між ними, не відриваючи пальців.",
+        groupGrid4: "Сітка з 4 зон: половини й чверті",
+        groupGrid4Caption: "Проведіть ← або → для половини, ↑↑ або ↓↓ для верхньої чи нижньої половини. Один рух по діагоналі для чверті, або два напрямки з короткою паузою між ними, не відриваючи пальців.",
+        groupGrid6: "Сітка з 6 зон: третини й шості",
+        groupGrid6Caption: "Утримуйте вибрані нижче клавіші під час свайпу. ← або → для третини; продовжуйте в тому ж напрямку для двох третин, а потім центральної третини. Додайте ↑ або ↓ чи проведіть по діагоналі для шостої частини; просуньте ↑ або ↓ далі для центральної шостої.",
+        groupShift: "Посилені жести",
+        groupShiftCaption: "Утримуйте вибрані нижче клавіші під час жесту на смузі заголовка, щоб отримати його посилений варіант. Вимкніть картку, щоб залишити звичайний жест навіть із цими клавішами.",
+        holdKeyTitle: "Клавіші для утримання",
         groupPinch: "Зведення й розведення",
         groupPinchCaption: "Розведіть або зведіть пальці на смузі заголовка. Подвійне зведення, з відриванням пальців між ними, завершує програму.",
         groupTap: "Подвійне торкання",
@@ -1006,8 +1323,16 @@ extension ForkTrackpadGestureStrings {
         actionQuitApp: "Завершити з Dock",
         actionEmptyTrash: "Очистити Смітник",
         actionShowAppWindows: "Повернути вікна програми",
+        actionShowNextWindow: "Показати наступне вікно програми",
+        actionShowPreviousWindow: "Показати попереднє вікно програми",
         actionRestoreMinimizedWindow: "Відкрити згорнуте вікно",
         actionCloseMinimizedWindow: "Закрити згорнуте вікно",
+        actionMinimizeAllWindows: "Згорнути всі вікна програми",
+        actionRestorePlacement: "Скасувати останнє розміщення",
+        actionTopLeftTwoSixths: "Дві шості ліворуч угорі",
+        actionTopRightTwoSixths: "Дві шості праворуч угорі",
+        actionBottomLeftTwoSixths: "Дві шості ліворуч унизу",
+        actionBottomRightTwoSixths: "Дві шості праворуч унизу",
         centerSizeTitle: "Розмір вікна по центру",
         sizeSmall: "Маленьке",
         sizeLarge: "Велике",
@@ -1023,6 +1348,7 @@ extension ForkTrackpadGestureStrings {
         stepPauseCaption: "Якщо тримати пальці нерухомо стільки часу, напрямок зараховується, і можна додати наступний, не відриваючи пальців.",
         cancelDelayTitle: "Затримка скасування",
         cancelDelayCaption: "Якщо тримати пальці нерухомо стільки часу, жест скасовується і нічого не відбувається.",
+        cancelEnabledTitle: "Скасовувати нерухомий жест",
         shorter: "Коротше",
         longer: "Довше",
         titlebarBandTitle: "Зона смуги заголовка",
@@ -1034,6 +1360,14 @@ extension ForkTrackpadGestureStrings {
         previewTitle: "Попередній перегляд",
         previewDetail: "Маленький екран показує, куди стане вікно.",
         hapticsTitle: "Тактильний відгук",
-        hapticsDetail: "Легке клацання на кожному зарахованому кроці."
+        hapticsDetail: "Легке клацання на кожному зарахованому кроці.",
+        diagnosticsTitle: "Діагностика",
+        diagnosticSmartZoomOff: "Функція «Розумне масштабування» вимкнена в Системних налаштуваннях › "
+            + "Трекпад, тому подвійний дотик нічого не робить.",
+        diagnosticPinchToZoomOff: "Функція «Стискання для масштабування» вимкнена в Системних "
+            + "налаштуваннях › Трекпад, тому стискання нічого не робить.",
+        diagnosticForceClickOff: "Force Click і тактильний відгук вимкнені в Системних налаштуваннях › "
+            + "Трекпад, тому жести ніколи не клацають.",
+        diagnosticsOpenTrackpadSettings: "Відкрити налаштування трекпада"
     )
 }

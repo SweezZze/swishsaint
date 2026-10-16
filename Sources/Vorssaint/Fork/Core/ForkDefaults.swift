@@ -14,6 +14,12 @@ enum ForkDefaultsKey {
     static let pinchSensitivityStep = "fork.gestures.pinchSensitivityStep"
     static let stepPauseStep = "fork.gestures.stepPauseStep"
     static let cancelDelayStep = "fork.gestures.cancelDelayStep"
+    /// Off: a still gesture is never given up, only Escape or the lift end it.
+    static let cancelEnabled = "fork.gestures.cancelEnabled"
+    /// The keys held for the six-zone grid, and for the stronger gestures:
+    /// `ForkTrackpadModifierKeys` raw values.
+    static let gridModifierKeys = "fork.gestures.gridModifierKeys"
+    static let strongerModifierKeys = "fork.gestures.strongerModifierKeys"
     static let titlebarBandStep = "fork.gestures.titlebarBandStep"
     static let previewEnabled = "fork.gestures.preview"
     static let hapticsEnabled = "fork.gestures.haptics"
@@ -32,6 +38,9 @@ enum ForkDefaults {
         ForkDefaultsKey.pinchSensitivityStep: ForkTrackpadTuning.pinchSensitivity.defaultStep,
         ForkDefaultsKey.stepPauseStep: ForkTrackpadTuning.stepPause.defaultStep,
         ForkDefaultsKey.cancelDelayStep: ForkTrackpadTuning.cancelDelay.defaultStep,
+        ForkDefaultsKey.cancelEnabled: true,
+        ForkDefaultsKey.gridModifierKeys: ForkTrackpadModifierKeys.gridDefault.rawValue,
+        ForkDefaultsKey.strongerModifierKeys: ForkTrackpadModifierKeys.strongerDefault.rawValue,
         ForkDefaultsKey.titlebarBandStep: ForkTrackpadTuning.titlebarBand.defaultStep,
         ForkDefaultsKey.previewEnabled: true,
         ForkDefaultsKey.hapticsEnabled: true,

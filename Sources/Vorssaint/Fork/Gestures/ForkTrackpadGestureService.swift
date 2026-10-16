@@ -46,6 +46,11 @@ final class ForkTrackpadGestureService {
         /// Where the event happened, in Accessibility coordinates. Only the
         /// event that opens a gesture uses it, for the hit test.
         var location: CGPoint
+        /// The keys held when this event was read. Matched on the main
+        /// thread against the stronger gestures' keys (a gesture's modified
+        /// meaning, decided fresh at every step and at the commit alike) and
+        /// the grid's (in place of the plain half or quarter).
+        var heldKeys: ForkTrackpadModifierKeys
     }
 
     /// What the gesture in progress started on. The action goes there even if
@@ -67,6 +72,19 @@ final class ForkTrackpadGestureService {
     private var target: Target?
     /// Where the gesture in progress began, for the light on the pointer.
     private var gestureOrigin = CGPoint.zero
+    /// The keys each held meaning needs, as chosen in settings.
+    private var strongerKeys = ForkTrackpadModifierKeys.strongerDefault
+    private var gridKeys = ForkTrackpadModifierKeys.gridDefault
+    /// The stronger keys, as of the last event: a gesture's stronger meaning, read fresh
+    /// for every preview step and for the commit alike.
+    private var modifierHeld = false
+    /// The grid keys, as of the last event: the grid modifier the machine itself
+    /// needs, to decide which continuous tracking a swipe takes up the
+    /// moment it first combines.
+    private var gridModifierHeld = false
+    /// The window last chained to on an app's Dock icon, so the next swipe
+    /// in either direction knows where it left off.
+    private var chainedWindow: [pid_t: CGWindowID] = [:]
     private var deadlineTimer: Timer?
     private var scheduledDeadline: TimeInterval?
     private(set) var isRunning = false
@@ -88,6 +106,7 @@ final class ForkTrackpadGestureService {
         titlebarBandHeight = ForkTrackpadTuning.titlebarBand.current
         previewEnabled = UserDefaults.standard.bool(forKey: ForkDefaultsKey.previewEnabled)
         hapticsEnabled = UserDefaults.standard.bool(forKey: ForkDefaultsKey.hapticsEnabled)
+        (gridKeys, strongerKeys) = ForkTrackpadModifierKeys.current()
         if let port = tapStateLock.withLock({ tap }) {
             CGEvent.tapEnable(tap: port, enable: true)
             isRunning = true
@@ -141,6 +160,7 @@ final class ForkTrackpadGestureService {
         // Events already on their way still arrive; they find the machine
         // reset and a gesture that never began.
         resetGesture()
+        chainedWindow.removeAll()
         isRunning = false
     }
 
@@ -170,7 +190,8 @@ final class ForkTrackpadGestureService {
             return nil
         }
         guard let decoded else { return }
-        let input = Input(event: decoded, time: time, location: event.location)
+        let input = Input(event: decoded, time: time, location: event.location,
+                          heldKeys: ForkTrackpadModifierKeys(flags: event.flags))
         DispatchQueue.main.async { [weak self] in self?.handle(input) }
     }
 
@@ -208,8 +229,10 @@ final class ForkTrackpadGestureService {
 
     private func handle(_ input: Input) {
         guard isRunning else { return }
+        modifierHeld = input.heldKeys == strongerKeys
+        gridModifierHeld = input.heldKeys == gridKeys
         let now = clock.time(for: input.time)
-        let output = machine.handle(input.event, at: now) { [self] in
+        let output = machine.handle(input.event, at: now, gridModifierHeld: gridModifierHeld) { [self] in
             gestureOrigin = input.location
             let dockHit = Self.dockItem(at: input.location)
             switch dockHit?.verdict {
@@ -245,7 +268,7 @@ final class ForkTrackpadGestureService {
         scheduledDeadline = nil
         guard isRunning else { return }
         let now = clock.time(for: ProcessInfo.processInfo.systemUptime)
-        perform(machine.handle(.tick, at: now) { nil }.effects)
+        perform(machine.handle(.tick, at: now, gridModifierHeld: gridModifierHeld) { nil }.effects)
         scheduleDeadline()
     }
 
@@ -280,7 +303,9 @@ final class ForkTrackpadGestureService {
     private func perform(_ effects: [ForkTrackpadGestureMachine.Effect]) {
         for effect in effects {
             switch effect {
-            case .commit(let action):
+            case .commit(let rawAction):
+                let action = ForkTrackpadModifierRemap.action(for: rawAction, modifierHeld: modifierHeld,
+                                                              disabled: machine.configuration.disabledActions)
                 switch (target, action) {
                 case (.dockApp(let pid)?, .quitApp):
                     Self.quitDockApp(pid: pid)
@@ -288,13 +313,16 @@ final class ForkTrackpadGestureService {
                     Self.emptyTrash()
                 case (.dockApp(let pid)?, .showAppWindows), (.dockFinder(let pid)?, .showAppWindows):
                     Self.showAppWindows(pid: pid)
+                case (.dockApp(let pid)?, .showNextWindow), (.dockFinder(let pid)?, .showNextWindow):
+                    showAdjacentWindow(pid: pid, forward: true)
+                case (.dockApp(let pid)?, .showPreviousWindow), (.dockFinder(let pid)?, .showPreviousWindow):
+                    showAdjacentWindow(pid: pid, forward: false)
                 case (.dockMinimizedWindow(let item, _)?, .restoreMinimizedWindow):
                     // A click on the thumbnail: the Dock brings that window back.
                     AXUIElementPerformAction(item, kAXPressAction as CFString)
                 case (.dockMinimizedWindow(_, let window?)?, .closeMinimizedWindow):
                     Self.closeMinimizedWindow(window.element)
-                case (.window(let window, _)?, _)
-                    where ForkTrackpadGestureCatalog.entry(for: action)?.targets == [.titlebar]:
+                case (.window(let window, _)?, _) where action.isWindowAction:
                     ForkTrackpadWindowPlacer.shared.apply(action, to: window)
                 default:
                     // The table pairs each action with its kind of target, so
@@ -325,7 +353,16 @@ final class ForkTrackpadGestureService {
         return false
     }
 
-    private func showPreview(_ preview: ForkTrackpadGestureMachine.Preview) {
+    private func showPreview(_ rawPreview: ForkTrackpadGestureMachine.Preview) {
+        // The preview announces the gesture's held-modifier meaning too, so
+        // it never shows one thing and acts on another.
+        let preview: ForkTrackpadGestureMachine.Preview
+        if case .action(let action) = rawPreview {
+            preview = .action(ForkTrackpadModifierRemap.action(for: action, modifierHeld: modifierHeld,
+                                                                disabled: machine.configuration.disabledActions))
+        } else {
+            preview = rawPreview
+        }
         // On a title bar a "?" says the lift will do nothing. On the Dock,
         // where a sideways scroll is no attempt at a gesture, it would only
         // get in the way: nothing shows until the gesture means something.
@@ -446,6 +483,54 @@ final class ForkTrackpadGestureService {
         let configuration = NSWorkspace.OpenConfiguration()
         configuration.activates = true
         NSWorkspace.shared.openApplication(at: url, configuration: configuration)
+    }
+
+    /// Brings the window after (or before) the app's current one to the
+    /// front, cycling past the last back to the first: swiping the same way
+    /// again on its Dock icon keeps stepping through them. A minimized
+    /// window never counts, so chaining never un-minimizes one by surprise:
+    /// with only one left visible, that one simply comes forward; with none
+    /// at all, every minimized window comes back, exactly as `showAppWindows`
+    /// would, since there is then nothing of its own left to chain to.
+    ///
+    /// Ordered by window ID, not by which one macOS currently shows in
+    /// front: raising a window to the front is itself what every step does,
+    /// so that order changes under this very gesture. The window ID does
+    /// not, and `chainedWindow` remembers the one last raised, so forward
+    /// and back always mean the same thing from one swipe to the next.
+    private func showAdjacentWindow(pid: pid_t, forward: Bool) {
+        guard pid != ProcessInfo.processInfo.processIdentifier,
+              let running = NSRunningApplication(processIdentifier: pid), !running.isTerminated
+        else { return }
+        let app = AXUIElementCreateApplication(pid)
+        AXUIElementSetMessagingTimeout(app, 0.35)
+        let windows = (Self.elements(app, kAXWindowsAttribute) ?? []).filter {
+            Self.bool($0, kAXMinimizedAttribute) != true
+        }
+        let ordered = windows.compactMap { window in
+            AXWindowResolver.windowID(for: window).map { (id: $0, element: window) }
+        }.sorted { $0.id < $1.id }
+        guard ordered.count > 1 else {
+            guard let only = ordered.first else {
+                Self.showAppWindows(pid: pid)
+                return
+            }
+            chainedWindow[pid] = only.id
+            running.unhide()
+            _ = running.activate(options: [])
+            AXUIElementPerformAction(only.element, kAXRaiseAction as CFString)
+            return
+        }
+        let currentIndex = chainedWindow[pid].flatMap { id in ordered.firstIndex { $0.id == id } }
+        let nextIndex = ForkTrackpadWindowChain.nextIndex(current: currentIndex, count: ordered.count,
+                                                          forward: forward)
+        let next = ordered[nextIndex]
+        chainedWindow[pid] = next.id
+        running.unhide()
+        _ = running.activate(options: [])
+        AXUIElementPerformAction(next.element, kAXRaiseAction as CFString)
+        AXUIElementSetAttributeValue(next.element, kAXMainAttribute as CFString, kCFBooleanTrue)
+        AXUIElementSetAttributeValue(next.element, kAXFocusedAttribute as CFString, kCFBooleanTrue)
     }
 
     /// The minimized window a thumbnail's title names, among the windows of

@@ -18,10 +18,12 @@ FORK_SOURCES=(
     Sources/Vorssaint/Fork/Core/ForkExtrasStrings.swift
     Sources/Vorssaint/Fork/Gestures/ForkLayoutComplement.swift
     Sources/Vorssaint/Fork/Gestures/ForkLinkedResizeSupport.swift
+    Sources/Vorssaint/Fork/Gestures/ForkTrackpadDiagnosticsSupport.swift
     Sources/Vorssaint/Fork/Gestures/ForkTrackpadGestureGroups.swift
     Sources/Vorssaint/Fork/Gestures/ForkTrackpadGestureMachine.swift
     Sources/Vorssaint/Fork/Gestures/ForkTrackpadGestureStrings.swift
     Sources/Vorssaint/Fork/Gestures/ForkTrackpadGestureSupport.swift
+    Sources/Vorssaint/Fork/Gestures/ForkTrackpadModifierKeys.swift
     Sources/Vorssaint/Fork/Gestures/ForkTrackpadTuning.swift
     Sources/Vorssaint/Fork/Update/ForkUpdateStrings.swift
     Sources/Vorssaint/Fork/Update/ForkUpdateSupport.swift

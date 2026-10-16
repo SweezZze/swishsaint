@@ -184,8 +184,9 @@ private final class ForkTrackpadPreviewWindow {
             glass.layer?.cornerRadius = Self.cornerRadius
             glass.layer?.cornerCurve = .continuous
             glass.layer?.masksToBounds = true
-            glass.layer?.borderWidth = 0.5
-            glass.layer?.borderColor = NSColor.white.withAlphaComponent(0.18).cgColor
+            // No border of our own: on macOS 26, the hud material already
+            // draws its own Liquid Glass rim, and a second one on top of it
+            // reads as a stray, badly matched edge.
             hosting.frame = glass.bounds
             hosting.autoresizingMask = [.width, .height]
             glass.addSubview(hosting)
@@ -239,6 +240,11 @@ private struct ForkTrackpadPreviewView: View {
                         .shadow(color: .black.opacity(0.3), radius: 2, y: 1)
                         .transition(.move(edge: .bottom).combined(with: .opacity))
                 }
+            case .symbol(let name):
+                Image(systemName: name)
+                    .font(.system(size: 44, weight: .semibold))
+                    .foregroundStyle(.secondary)
+                    .transition(.scale(scale: 0.8).combined(with: .opacity))
             case .unrecognized:
                 Image(systemName: "questionmark")
                     .font(.system(size: 44, weight: .semibold))

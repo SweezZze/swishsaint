@@ -10,19 +10,29 @@ import Foundation
 /// catalog one day finds its place alone, and the test checking that every
 /// gesture shows exactly once catches it if the rule no longer suffices.
 enum ForkTrackpadGestureGroup: String, CaseIterable {
-    /// One swipe, or the same one twice: halves, maximize, minimize.
+    /// The 2 × 2 grid: the four halves, and the quarters (one diagonal, or
+    /// two directions with a pause).
+    case grid4
+    /// The 3 × 2 grid, Option held: thirds, two thirds, sixths.
+    case grid6
+    /// The other title bar swipes: maximize, minimize.
     case titlebar
-    /// The quarters: one diagonal, or two directions with a pause.
-    case quarters
     /// Pinching out and in on a title bar, and pinching in twice.
     case pinch
     /// Two taps with two fingers on a title bar.
     case tap
+    /// Shift held: the stronger reach of a title bar gesture.
+    case shift
     /// On a Dock icon: an app's, Finder's, a minimized window's, or the
     /// Trash.
     case dock
 
     static func of(_ entry: ForkTrackpadGestureCatalog.Entry) -> ForkTrackpadGestureGroup {
+        switch entry.modifier {
+        case .option?: return .grid6
+        case .shift?: return .shift
+        case nil: break
+        }
         if !entry.targets.contains(.titlebar) { return .dock }
         switch entry.family {
         case .pinch: return .pinch
@@ -31,14 +41,15 @@ enum ForkTrackpadGestureGroup: String, CaseIterable {
         }
         if case let .swipes(steps) = entry.triggers[0],
            steps.contains(where: \.isDiagonal) || Set(steps).count > 1 {
-            return .quarters
+            return .grid4
         }
+        if entry.action.layoutAction.flatMap(ForkLayoutHalf.init) != nil { return .grid4 }
         return .titlebar
     }
 
     /// The groups that have gestures, each with its gestures in catalog
     /// order.
-    static func grouped(_ entries: [ForkTrackpadGestureCatalog.Entry] = ForkTrackpadGestureCatalog.entries)
+    static func grouped(_ entries: [ForkTrackpadGestureCatalog.Entry] = ForkTrackpadGestureCatalog.allEntries)
         -> [(group: ForkTrackpadGestureGroup, entries: [ForkTrackpadGestureCatalog.Entry])] {
         allCases.compactMap { group in
             let members = entries.filter { of($0) == group }
@@ -106,8 +117,16 @@ enum ForkTrackpadGestureTitle {
         case .quitApp: return text.actionQuitApp
         case .emptyTrash: return text.actionEmptyTrash
         case .showAppWindows: return text.actionShowAppWindows
+        case .showNextWindow: return text.actionShowNextWindow
+        case .showPreviousWindow: return text.actionShowPreviousWindow
         case .restoreMinimizedWindow: return text.actionRestoreMinimizedWindow
         case .closeMinimizedWindow: return text.actionCloseMinimizedWindow
+        case .minimizeAllWindows: return text.actionMinimizeAllWindows
+        case .restorePlacement: return text.actionRestorePlacement
+        case .topLeftTwoSixths: return text.actionTopLeftTwoSixths
+        case .topRightTwoSixths: return text.actionTopRightTwoSixths
+        case .bottomLeftTwoSixths: return text.actionBottomLeftTwoSixths
+        case .bottomRightTwoSixths: return text.actionBottomRightTwoSixths
         default: return action.layoutAction?.title(layoutText) ?? action.rawValue
         }
     }

@@ -238,3 +238,43 @@ struct ForkLayoutHalfMemory<Window: Equatable> {
             && abs(actual.height - recorded.height) <= moveTolerance
     }
 }
+
+/// Where a repeated left, right or top half gesture goes: the official size
+/// cycle, picked up only while the window still sits at the frame the
+/// previous gesture left it at. Lets a swipe repeated right after (left,
+/// lift, left again) reach two thirds then a third exactly as repeating its
+/// keyboard shortcut would, and keeps a top half repeated the official
+/// shortcut's own rule: straight to maximize.
+enum ForkWindowSizeCycle {
+    static func effectiveAction(for action: WindowLayoutAction,
+                                current: WindowLayoutFrame,
+                                previous: (action: WindowLayoutAction, frame: WindowLayoutFrame)?,
+                                tolerance: CGFloat,
+                                cyclesThirds: Bool) -> WindowLayoutAction {
+        guard action == .leftHalf || action == .rightHalf || action == .topHalf else { return action }
+        let previousAction = previous.flatMap { entry in
+            current.isClose(to: entry.frame, tolerance: tolerance) ? entry.action : nil
+        }
+        return WindowLayoutGeometry.effectiveAction(for: action, current: .zero, visibleFrame: .zero,
+                                                     previousAction: previousAction,
+                                                     sideRepeatCyclesThirds: cyclesThirds)
+    }
+}
+
+/// Where chaining a Dock icon's windows goes next: the window after (or
+/// before) the one last chained to, in a fixed order, cycling past the last
+/// back to the first.
+///
+/// The order must hold steady from one gesture to the next, so it cannot be
+/// "whichever window macOS currently shows in front": raising one to the
+/// front is itself what every gesture does, which would move the goalposts
+/// on the very next swipe. The caller instead orders windows by something
+/// that does not change underneath it (their window ID) and remembers which
+/// one it chained to last.
+enum ForkTrackpadWindowChain {
+    static func nextIndex(current: Int?, count: Int, forward: Bool) -> Int {
+        guard count > 0 else { return 0 }
+        let currentIndex = current.map { ($0 % count + count) % count } ?? 0
+        return forward ? (currentIndex + 1) % count : (currentIndex - 1 + count) % count
+    }
+}
