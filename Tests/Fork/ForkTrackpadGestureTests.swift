@@ -1046,6 +1046,32 @@ enum ForkTrackpadGestureTests {
                         && Placement.frame(size: CGSize(width: 44, height: 44), centeredOn: CGPoint(x: 100, y: 50))
                         == CGRect(x: 78, y: 28, width: 44, height: 44),
                      "the HUD is centered on the usable area and the light on the pointer")
+
+        typealias Anchor = ForkTrackpadPreviewAnchor
+        let close = ForkTrackpadPreviewContent(.action(.close))
+        let minimize = ForkTrackpadPreviewContent(.action(.minimize))
+        let half = ForkTrackpadPreviewContent(.action(.leftHalf))
+        let icon = CGRect(x: 700, y: 840, width: 50, height: 50)
+        suite.expect(Anchor.resolve(close, dockItemFrame: nil, zonesAtPointer: false) == .pointer
+                        && Anchor.resolve(minimize, dockItemFrame: nil, zonesAtPointer: false) == .pointer,
+                     "closing and minimizing sit on the pointer even with zones at the center")
+        suite.expect(Anchor.resolve(half, dockItemFrame: nil, zonesAtPointer: false) == .screenCenter
+                        && Anchor.resolve(half, dockItemFrame: nil, zonesAtPointer: true) == .pointer,
+                     "zones go where Settings put them")
+        suite.expect(Anchor.resolve(.quitApp, dockItemFrame: icon, zonesAtPointer: true) == .dockItem(icon)
+                        && Anchor.resolve(.showApp, dockItemFrame: icon, zonesAtPointer: false) == .dockItem(icon)
+                        && !Anchor.dockItem(icon).hidesPointer && Anchor.pointer.hidesPointer
+                        && !Anchor.screenCenter.hidesPointer,
+                     "a Dock icon's preview is centered on it and leaves the pointer")
+        suite.expect(Anchor.pointer.scale(chosen: 1, centeredScale: 2.5) == 1
+                        && Anchor.screenCenter.scale(chosen: 1, centeredScale: 2.5) == 2.5
+                        && abs(Anchor.dockItem(icon).scale(chosen: 2, centeredScale: 2.5) - 50 * 0.6 / 22) < 0.001
+                        && Anchor.dockItem(CGRect(x: 0, y: 0, width: 4, height: 4))
+                            .scale(chosen: 1, centeredScale: 2.5) == 0.8,
+                     "on the pointer the chosen size, on the Dock the icon's, within bounds")
+        suite.expect(Placement.frame(size: CGSize(width: 80, height: 80), centeredOnItem: icon)
+                        == CGRect(x: 685, y: 825, width: 80, height: 80),
+                     "a Dock preview stays centered on its icon, even past the screen's edge")
     }
 
     // MARK: - Gestures switched off one by one
@@ -2281,7 +2307,7 @@ enum ForkTrackpadGestureTests {
         suite.expect(service.contains("case .haptic(.step):\n                guard hapticsEnabled else { break }")
                         && service.contains("case .haptic(.cancel):\n                guard hapticsEnabled else { break }")
                         && service.contains("guard previewEnabled else { break }\n                showPreview(preview)")
-                        && service.contains("case .hidePreview:\n                ForkTrackpadGesturePreview.shared.hide()"),
+                        && service.contains("case .hidePreview:\n                ForkTrackpadGesturePreview.shared.hide(committed: commits)"),
                      "haptics and the preview follow their switches, and a shown preview always goes away")
         suite.expect(service.contains("centerScale: ForkTrackpadTuning.centerSize.current)"),
                      "the live preview shows the tuned center size")
@@ -2361,7 +2387,7 @@ enum ForkTrackpadGestureTests {
                         && body.contains("event.postToPid(finder.processIdentifier)")
                         && !body.contains("removeItem") && !body.contains("NSAppleScript"),
                      "Finder empties the Trash itself, brought forward so its question shows")
-        suite.expect(tap.contains("appIcon: preview == .action(.emptyTrash)\n                                                    ? NSImage(named: NSImage.trashFullName)"),
+        suite.expect(tap.contains("let appIcon = preview == .action(.emptyTrash)\n            ? NSImage(named: NSImage.trashFullName)"),
                      "the preview shows the Trash's icon")
     }
 
@@ -2658,8 +2684,8 @@ enum ForkTrackpadGestureTests {
                         && tap.contains("ForkTrackpadDock.itemIndex("),
                      "the Dock is asked about first, only inside its strip and while it is on screen")
         suite.expect(tap.contains("case .showPreview(let preview):")
-                        && tap.contains("ForkTrackpadGesturePreview.shared.show(")
-                        && tap.contains("case .hidePreview:\n                ForkTrackpadGesturePreview.shared.hide()"),
+                        && tap.contains("shown.show(content, anchor: anchor,")
+                        && tap.contains("case .hidePreview:\n                ForkTrackpadGesturePreview.shared.hide(committed: commits)"),
                      "the gesture's preview follows what the machine announces")
     }
 

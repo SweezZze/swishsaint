@@ -1094,6 +1094,50 @@ enum ForkTrackpadPreviewContent: Equatable {
     }
 }
 
+/// Where one preview shows, picked afresh at each change of a gesture: ↓
+/// minimizes on the pointer, ↓ then → is a quarter at the chosen place.
+enum ForkTrackpadPreviewAnchor: Equatable {
+    /// In place of the pointer, which hides meanwhile, at the chosen size.
+    case pointer
+    /// Larger, in the middle of the target's screen.
+    case screenCenter
+    /// Centered on the Dock icon the gesture touched, sized after it; the
+    /// pointer stays, since the icon itself shows what is acted on.
+    case dockItem(CGRect)
+
+    /// The light's diameter at scale 1, as the preview view draws it.
+    static let lightDiameter: CGFloat = 22
+    /// The share of a Dock icon a light covers: the icon still shows around it.
+    static let dockIconShare: CGFloat = 0.6
+    /// An icon's side when the Dock does not give its frame.
+    static let fallbackIconSide: CGFloat = 48
+
+    /// A Dock icon always takes its own preview. On a title bar, window
+    /// buttons sit on the pointer, like the button the gesture stands for;
+    /// zones and symbols go where Settings put them.
+    static func resolve(_ content: ForkTrackpadPreviewContent,
+                        dockItemFrame: CGRect?,
+                        zonesAtPointer: Bool) -> ForkTrackpadPreviewAnchor {
+        if let dockItemFrame { return .dockItem(dockItemFrame) }
+        if content.isAtPointer { return .pointer }
+        return zonesAtPointer ? .pointer : .screenCenter
+    }
+
+    var hidesPointer: Bool { self == .pointer }
+
+    /// The preview's scale, from the size chosen in Settings, or, on the
+    /// Dock, from the icon's.
+    func scale(chosen: CGFloat, centeredScale: CGFloat) -> CGFloat {
+        switch self {
+        case .pointer: return chosen
+        case .screenCenter: return chosen * centeredScale
+        case .dockItem(let frame):
+            let side = min(frame.width, frame.height)
+            return min(max(side * Self.dockIconShare / Self.lightDiameter, 0.8), 3)
+        }
+    }
+}
+
 /// Where the preview panel goes, in Accessibility coordinates (origin at the
 /// top left).
 enum ForkTrackpadPreviewPlacement {
@@ -1124,6 +1168,12 @@ enum ForkTrackpadPreviewPlacement {
 
     /// Centered on the pointer, but moved in just enough to stay whole on its
     /// screen: a title bar sits at the top, often against the menu bar.
+    /// Centered on the icon, even past the screen's bottom edge: a Dock icon
+    /// sits close to it, and the light must stay on the icon.
+    static func frame(size: CGSize, centeredOnItem item: CGRect) -> CGRect {
+        frame(size: size, centeredOn: CGPoint(x: item.midX, y: item.midY))
+    }
+
     static func frame(size: CGSize, centeredOn pointer: CGPoint, within screen: CGRect) -> CGRect {
         var frame = frame(size: size, centeredOn: pointer)
         frame.origin.x = min(max(frame.minX, screen.minX), screen.maxX - size.width)

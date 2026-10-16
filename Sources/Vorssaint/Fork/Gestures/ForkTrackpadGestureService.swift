@@ -72,6 +72,9 @@ final class ForkTrackpadGestureService {
     private var target: Target?
     /// Where the gesture in progress began, for the light on the pointer.
     private var gestureOrigin = CGPoint.zero
+    /// The Dock icon the gesture began on, in Accessibility coordinates: its
+    /// preview is centered on it.
+    private var dockItemFrame: CGRect?
     /// The keys each held meaning needs, as chosen in settings.
     private var strongerKeys = ForkTrackpadModifierKeys.strongerDefault
     private var gridKeys = ForkTrackpadModifierKeys.gridDefault
@@ -235,6 +238,7 @@ final class ForkTrackpadGestureService {
         let output = machine.handle(input.event, at: now, gridModifierHeld: gridModifierHeld) { [self] in
             gestureOrigin = input.location
             let dockHit = Self.dockItem(at: input.location)
+            dockItemFrame = dockHit.flatMap { Self.frame(of: $0.item) }
             switch dockHit?.verdict {
             case .app(let app)?:
                 target = .dockApp(app.pid)
@@ -301,11 +305,20 @@ final class ForkTrackpadGestureService {
     }
 
     private func perform(_ effects: [ForkTrackpadGestureMachine.Effect]) {
+        // The preview is hidden just before the commit it announced: it then
+        // leaves the way its action goes rather than fading as for a cancel.
+        let commits = effects.contains { if case .commit = $0 { return true } else { return false } }
+        let hidesPreview = effects.contains { if case .hidePreview = $0 { return true } else { return false } }
         for effect in effects {
             switch effect {
             case .commit(let rawAction):
                 let action = ForkTrackpadModifierRemap.action(for: rawAction, modifierHeld: modifierHeld,
                                                               disabled: machine.configuration.disabledActions)
+                // An action no preview announced, a double tap's, still shows
+                // what it does, before the window it acts on moves or goes.
+                if previewEnabled, !hidesPreview, !ForkTrackpadGesturePreview.shared.isShown {
+                    showPreview(.action(rawAction), flash: true)
+                }
                 switch (target, action) {
                 case (.dockApp(let pid)?, .quitApp):
                     Self.quitDockApp(pid: pid)
@@ -341,7 +354,7 @@ final class ForkTrackpadGestureService {
                 guard previewEnabled else { break }
                 showPreview(preview)
             case .hidePreview:
-                ForkTrackpadGesturePreview.shared.hide()
+                ForkTrackpadGesturePreview.shared.hide(committed: commits)
             case .cancelled:
                 break
             }
@@ -353,7 +366,7 @@ final class ForkTrackpadGestureService {
         return false
     }
 
-    private func showPreview(_ rawPreview: ForkTrackpadGestureMachine.Preview) {
+    private func showPreview(_ rawPreview: ForkTrackpadGestureMachine.Preview, flash: Bool = false) {
         // The preview announces the gesture's held-modifier meaning too, so
         // it never shows one thing and acts on another.
         let preview: ForkTrackpadGestureMachine.Preview
@@ -390,13 +403,24 @@ final class ForkTrackpadGestureService {
         case nil:
             break
         }
-        ForkTrackpadGesturePreview.shared.show(ForkTrackpadPreviewContent(preview,
-                                                                              centerScale: ForkTrackpadTuning.centerSize.current),
-                                                 targetFrame: targetFrame,
-                                                 pointer: gestureOrigin,
-                                                 appIcon: preview == .action(.emptyTrash)
-                                                    ? NSImage(named: NSImage.trashFullName)
-                                                    : pid.flatMap { NSRunningApplication(processIdentifier: $0)?.icon })
+        let content = ForkTrackpadPreviewContent(preview, centerScale: ForkTrackpadTuning.centerSize.current)
+        // On the Dock without the icon's frame, a frame of a usual icon's
+        // size around the pointer, which sits on it.
+        let side = ForkTrackpadPreviewAnchor.fallbackIconSide
+        let itemFrame = target == nil || isOnWindow ? nil : (dockItemFrame
+            ?? CGRect(x: gestureOrigin.x - side / 2, y: gestureOrigin.y - side / 2, width: side, height: side))
+        let anchor = ForkTrackpadPreviewAnchor.resolve(
+            content, dockItemFrame: itemFrame,
+            zonesAtPointer: UserDefaults.standard.bool(forKey: ForkDefaultsKey.previewAtPointer))
+        let appIcon = preview == .action(.emptyTrash)
+            ? NSImage(named: NSImage.trashFullName)
+            : pid.flatMap { NSRunningApplication(processIdentifier: $0)?.icon }
+        let shown = ForkTrackpadGesturePreview.shared
+        if flash {
+            shown.flash(content, anchor: anchor, targetFrame: targetFrame, pointer: gestureOrigin, appIcon: appIcon)
+        } else {
+            shown.show(content, anchor: anchor, targetFrame: targetFrame, pointer: gestureOrigin, appIcon: appIcon)
+        }
     }
 
     // MARK: - Dock
