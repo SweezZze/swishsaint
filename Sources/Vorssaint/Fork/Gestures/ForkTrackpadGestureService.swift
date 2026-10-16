@@ -46,13 +46,11 @@ final class ForkTrackpadGestureService {
         /// Where the event happened, in Accessibility coordinates. Only the
         /// event that opens a gesture uses it, for the hit test.
         var location: CGPoint
-        /// Whether Shift was held when this event was read: a gesture's
-        /// stronger, modified meaning, decided fresh at every step and at
-        /// the commit alike.
-        var modifierHeld: Bool
-        /// Whether Option was held when this event was read: the grid, in
-        /// place of the plain half or quarter a swipe would otherwise form.
-        var gridModifierHeld: Bool
+        /// The keys held when this event was read. Matched on the main
+        /// thread against the stronger gestures' keys (a gesture's modified
+        /// meaning, decided fresh at every step and at the commit alike) and
+        /// the grid's (in place of the plain half or quarter).
+        var heldKeys: ForkTrackpadModifierKeys
     }
 
     /// What the gesture in progress started on. The action goes there even if
@@ -74,10 +72,13 @@ final class ForkTrackpadGestureService {
     private var target: Target?
     /// Where the gesture in progress began, for the light on the pointer.
     private var gestureOrigin = CGPoint.zero
-    /// Shift, as of the last event: a gesture's stronger meaning, read fresh
+    /// The keys each held meaning needs, as chosen in settings.
+    private var strongerKeys = ForkTrackpadModifierKeys.strongerDefault
+    private var gridKeys = ForkTrackpadModifierKeys.gridDefault
+    /// The stronger keys, as of the last event: a gesture's stronger meaning, read fresh
     /// for every preview step and for the commit alike.
     private var modifierHeld = false
-    /// Option, as of the last event: the grid modifier the machine itself
+    /// The grid keys, as of the last event: the grid modifier the machine itself
     /// needs, to decide which continuous tracking a swipe takes up the
     /// moment it first combines.
     private var gridModifierHeld = false
@@ -105,6 +106,7 @@ final class ForkTrackpadGestureService {
         titlebarBandHeight = ForkTrackpadTuning.titlebarBand.current
         previewEnabled = UserDefaults.standard.bool(forKey: ForkDefaultsKey.previewEnabled)
         hapticsEnabled = UserDefaults.standard.bool(forKey: ForkDefaultsKey.hapticsEnabled)
+        (gridKeys, strongerKeys) = ForkTrackpadModifierKeys.current()
         if let port = tapStateLock.withLock({ tap }) {
             CGEvent.tapEnable(tap: port, enable: true)
             isRunning = true
@@ -189,8 +191,7 @@ final class ForkTrackpadGestureService {
         }
         guard let decoded else { return }
         let input = Input(event: decoded, time: time, location: event.location,
-                          modifierHeld: event.flags.contains(.maskShift),
-                          gridModifierHeld: event.flags.contains(.maskAlternate))
+                          heldKeys: ForkTrackpadModifierKeys(flags: event.flags))
         DispatchQueue.main.async { [weak self] in self?.handle(input) }
     }
 
@@ -228,8 +229,8 @@ final class ForkTrackpadGestureService {
 
     private func handle(_ input: Input) {
         guard isRunning else { return }
-        modifierHeld = input.modifierHeld
-        gridModifierHeld = input.gridModifierHeld
+        modifierHeld = input.heldKeys == strongerKeys
+        gridModifierHeld = input.heldKeys == gridKeys
         let now = clock.time(for: input.time)
         let output = machine.handle(input.event, at: now, gridModifierHeld: gridModifierHeld) { [self] in
             gestureOrigin = input.location

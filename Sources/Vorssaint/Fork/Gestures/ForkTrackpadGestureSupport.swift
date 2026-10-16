@@ -194,6 +194,22 @@ enum ForkTrackpadModifierRemap {
     }
 }
 
+/// A key held through a gesture to reach another action with it. Which
+/// keys exactly is a setting (`ForkTrackpadModifierKeys`).
+enum ForkTrackpadHeldModifier: Equatable {
+    /// ⇧ by default: the stronger reach of a gesture (`ForkTrackpadModifierRemap`).
+    case shift
+    /// ⌥ by default: the six-zone grid.
+    case option
+
+    var keys: ForkTrackpadModifierKeys {
+        let current = ForkTrackpadModifierKeys.current()
+        return self == .shift ? current.stronger : current.grid
+    }
+
+    var symbol: String { keys.symbols }
+}
+
 enum ForkTrackpadSwipeDirection: Equatable {
     case left
     case right
@@ -289,20 +305,28 @@ enum ForkTrackpadGestureCatalog {
         /// action. For a quarter: the diagonal first, then both two-step
         /// orders.
         let triggers: [ForkTrackpadGestureTrigger]
+        /// The key held through the gesture, for a `modifierEntries` one.
+        let modifier: ForkTrackpadHeldModifier?
 
         init(action: ForkTrackpadGestureAction, target: ForkTrackpadGestureTarget,
-             triggers: [ForkTrackpadGestureTrigger]) {
-            self.init(action: action, targets: [target], triggers: triggers)
+             triggers: [ForkTrackpadGestureTrigger], modifier: ForkTrackpadHeldModifier? = nil) {
+            self.init(action: action, targets: [target], triggers: triggers, modifier: modifier)
         }
 
         init(action: ForkTrackpadGestureAction, targets: Set<ForkTrackpadGestureTarget>,
-             triggers: [ForkTrackpadGestureTrigger]) {
+             triggers: [ForkTrackpadGestureTrigger], modifier: ForkTrackpadHeldModifier? = nil) {
             self.action = action
             self.targets = targets
             self.triggers = triggers
+            self.modifier = modifier
         }
 
         var family: ForkTrackpadGestureFamily { triggers[0].family }
+
+        /// What the hand does, the held key first: "⌥ ← →".
+        var symbols: String {
+            [modifier?.symbol, triggers[0].symbols].compactMap { $0 }.joined(separator: " ")
+        }
     }
 
     /// In the order settings present them.
@@ -334,8 +358,39 @@ enum ForkTrackpadGestureCatalog {
         Entry(action: .closeMinimizedWindow, target: .dockMinimizedWindow, triggers: [.pinches([.in])]),
     ]
 
+    /// The actions a held key reaches, for settings only: each is shown
+    /// with its own card and switch, but the machine never resolves them
+    /// from these triggers. ⇧ goes through `ForkTrackpadModifierRemap`, ⌥
+    /// through the grid tracking (`resolveGrid`). The triggers say what the
+    /// hand does, a slide further counted as one more step.
+    static let modifierEntries: [Entry] = [
+        Entry(action: .leftThird, target: .titlebar, triggers: [.swipes([.left])], modifier: .option),
+        Entry(action: .leftTwoThirds, target: .titlebar, triggers: [.swipes([.left, .right])], modifier: .option),
+        Entry(action: .centerThird, target: .titlebar, triggers: [.swipes([.left, .right, .right])], modifier: .option),
+        Entry(action: .rightTwoThirds, target: .titlebar, triggers: [.swipes([.right, .left])], modifier: .option),
+        Entry(action: .rightThird, target: .titlebar, triggers: [.swipes([.right])], modifier: .option),
+        Entry(action: .topLeftSixth, target: .titlebar, triggers: [.swipes([.upLeft])], modifier: .option),
+        Entry(action: .topCenterSixth, target: .titlebar, triggers: [.swipes([.up, .up])], modifier: .option),
+        Entry(action: .topRightSixth, target: .titlebar, triggers: [.swipes([.upRight])], modifier: .option),
+        Entry(action: .bottomLeftSixth, target: .titlebar, triggers: [.swipes([.downLeft])], modifier: .option),
+        Entry(action: .bottomCenterSixth, target: .titlebar, triggers: [.swipes([.down, .down])], modifier: .option),
+        Entry(action: .bottomRightSixth, target: .titlebar, triggers: [.swipes([.downRight])], modifier: .option),
+        Entry(action: .topLeftTwoSixths, target: .titlebar, triggers: [.swipes([.upLeft, .right])], modifier: .option),
+        Entry(action: .topRightTwoSixths, target: .titlebar, triggers: [.swipes([.upRight, .left])], modifier: .option),
+        Entry(action: .bottomLeftTwoSixths, target: .titlebar, triggers: [.swipes([.downLeft, .right])], modifier: .option),
+        Entry(action: .bottomRightTwoSixths, target: .titlebar, triggers: [.swipes([.downRight, .left])], modifier: .option),
+        Entry(action: .marginMaximize, target: .titlebar, triggers: [.swipes([.up])], modifier: .shift),
+        Entry(action: .minimizeAllWindows, target: .titlebar, triggers: [.swipes([.down])], modifier: .shift),
+        Entry(action: .moveToPreviousDisplay, target: .titlebar, triggers: [.swipes([.left])], modifier: .shift),
+        Entry(action: .moveToNextDisplay, target: .titlebar, triggers: [.swipes([.right])], modifier: .shift),
+        Entry(action: .restorePlacement, target: .titlebar, triggers: [.doubleTap], modifier: .shift),
+    ]
+
+    /// Everything settings show: the plain gestures, then the held keys'.
+    static var allEntries: [Entry] { entries + modifierEntries }
+
     static func entry(for action: ForkTrackpadGestureAction) -> Entry? {
-        entries.first { $0.action == action }
+        allEntries.first { $0.action == action }
     }
 
     /// Whether a family still has at least one enabled action on a target, or

@@ -17,8 +17,11 @@ enum ForkDefaultsTests {
                      "every fork setting lives under fork., where the official app never writes")
         suite.expect(Set(ForkDefaults.registered.keys).isDisjoint(with: Defaults.registeredDefaults.keys),
                      "no fork setting shadows an official one")
-        suite.expect(Set(ForkDefaults.legacyKeys.values).isSubset(of: ForkDefaults.registered.keys)
-                        && ForkDefaults.legacyKeys.count == ForkDefaults.registered.count,
+        // Settings added since the fork never had a pre-fork name.
+        let addedSinceFork: Set<String> = [ForkDefaultsKey.cancelEnabled, ForkDefaultsKey.gridModifierKeys,
+                                           ForkDefaultsKey.strongerModifierKeys]
+        suite.expect(Set(ForkDefaults.legacyKeys.values) == Set(ForkDefaults.registered.keys).subtracting(addedSinceFork)
+                        && ForkDefaults.legacyKeys.count == ForkDefaults.registered.count - addedSinceFork.count,
                      "every setting of the pre-fork test builds has its new name, and only those")
     }
 

@@ -62,7 +62,7 @@ struct ForkTrackpadGestureMachine {
         /// follow without lifting the fingers. Only ↑↑, ↓↓ and changes of mind
         /// need it now that diagonals give quarters in one movement.
         var stepPause: TimeInterval = 0.15
-        /// Stillness that cancels the gesture.
+        /// Stillness that cancels the gesture. Infinite: stillness never does.
         var cancelTimeout: TimeInterval = 0.8
         /// Silence that stands for "fingers lifted" on a pinch without phase.
         var pinchSessionGap: TimeInterval = 0.15
@@ -278,13 +278,14 @@ struct ForkTrackpadGestureMachine {
             if t.candidate != nil {
                 deadline = min(deadline, t.lastMovementAt + configuration.stepPause)
             }
-            return deadline
+            // An infinite cancel delay is no deadline to wake up for.
+            return deadline.isFinite ? deadline : nil
         case let .pinch(p):
             var deadline = p.lastMovementAt + configuration.cancelTimeout
             if !p.usesPhase {
                 deadline = min(deadline, p.lastEventAt + configuration.pinchSessionGap)
             }
-            return deadline
+            return deadline.isFinite ? deadline : nil
         case let .pinchCancelled(lastEventAt, usesPhase),
              let .pinchPassThrough(lastEventAt, usesPhase):
             return usesPhase ? nil : lastEventAt + configuration.pinchSessionGap

@@ -2083,25 +2083,62 @@ enum ForkTrackpadGestureTests {
         typealias Group = ForkTrackpadGestureGroup
         let grouped = Group.grouped()
         let shown = grouped.flatMap { $0.entries.map(\.action) }
-        suite.expect(shown.count == ForkTrackpadGestureCatalog.entries.count
-                        && Set(shown) == Set(ForkTrackpadGestureCatalog.entries.map(\.action)),
-                     "every gesture of the catalog shows exactly once on the Trackpad page")
-        suite.expect(grouped.map(\.group) == [.titlebar, .quarters, .pinch, .tap, .dock],
-                     "the groups read title bar, quarters, pinch, tap, then Dock")
+        suite.expect(shown.count == ForkTrackpadGestureCatalog.allEntries.count
+                        && Set(shown) == Set(ForkTrackpadGestureCatalog.allEntries.map(\.action))
+                        && Set(shown) == Set(Action.allCases),
+                     "every gesture, a held key's included, shows exactly once on the Trackpad page")
+        suite.expect(grouped.map(\.group) == [.grid4, .grid6, .titlebar, .pinch, .tap, .shift, .dock],
+                     "the groups read 4-zone grid, 6-zone grid, title bar, pinch, tap, Shift, then Dock")
         func group(_ action: Action) -> Group? {
             ForkTrackpadGestureCatalog.entry(for: action).map(Group.of)
         }
-        suite.expect(group(.leftHalf) == .titlebar && group(.topHalf) == .titlebar
-                        && group(.minimize) == .titlebar,
-                     "one swipe, or the same one twice, goes with the title bar swipes")
-        suite.expect(group(.topLeftQuarter) == .quarters && group(.bottomRightQuarter) == .quarters,
-                     "a diagonal goes with the quarters")
+        suite.expect(group(.leftHalf) == .grid4 && group(.topHalf) == .grid4
+                        && group(.maximize) == .titlebar && group(.minimize) == .titlebar,
+                     "the halves go with the 4-zone grid, maximize and minimize with the title bar swipes")
+        suite.expect(group(.topLeftQuarter) == .grid4 && group(.bottomRightQuarter) == .grid4,
+                     "a diagonal goes with the 4-zone grid")
+        suite.expect(group(.leftThird) == .grid6 && group(.topCenterSixth) == .grid6
+                        && group(.bottomRightTwoSixths) == .grid6
+                        && group(.marginMaximize) == .shift && group(.restorePlacement) == .shift,
+                     "Option's thirds and sixths go with the 6-zone grid, Shift's gestures with Shift")
+        suite.expect(ForkTrackpadGestureCatalog.entry(for: .leftTwoThirds)?.symbols == "⌥ ← →"
+                        && ForkTrackpadGestureCatalog.entry(for: .minimizeAllWindows)?.symbols == "⇧ ↓"
+                        && ForkTrackpadGestureCatalog.entry(for: .close)?.symbols == "⤡",
+                     "a card shows its held key before the movement")
+        typealias Keys = ForkTrackpadModifierKeys
+        suite.expect(Keys(flags: [.maskAlternate, .maskAlphaShift]) == .option
+                        && Keys(flags: [.maskShift, .maskCommand]) == [.shift, .command]
+                        && Keys([.command, .control, .option]).symbols == "⌃⌥⌘",
+                     "held keys read ⌃ ⌥ ⇧ ⌘ only, written in macOS order")
+        let suiteName = "fork.tests.modifierKeys"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        defaults.removePersistentDomain(forName: suiteName)
+        suite.expect(Keys.current(defaults) == (Keys.option, Keys.shift),
+                     "the grid starts on Option and the stronger gestures on Shift")
+        defaults.set(Keys([.control, .command]).rawValue, forKey: ForkDefaultsKey.gridModifierKeys)
+        defaults.set(Keys.option.rawValue, forKey: ForkDefaultsKey.strongerModifierKeys)
+        suite.expect(Keys.current(defaults) == (Keys([.control, .command]), Keys.option),
+                     "any combination of keys can be chosen for either")
+        defaults.set(Keys.option.rawValue, forKey: ForkDefaultsKey.gridModifierKeys)
+        suite.expect(Keys.current(defaults) == (Keys.option, Keys.shift),
+                     "two identical choices fall back to the defaults rather than collide")
+        defaults.set(0, forKey: ForkDefaultsKey.strongerModifierKeys)
+        suite.expect(Keys.current(defaults).stronger == .shift, "an empty choice falls back to its default")
+        defaults.removePersistentDomain(forName: suiteName)
+        for entry in ForkTrackpadGestureCatalog.modifierEntries where entry.modifier == .option {
+            guard case let .swipes(steps) = entry.triggers[0] else { continue }
+            let chain = ForkTrackpadGestureSequence.Chain([steps[0]])
+            let first = ForkTrackpadGestureSequence.resolveGrid(
+                horizontal: chain.horizontal.map { (column: $0 == .left ? 0 : 2, span: 1) },
+                vertical: chain.vertical.map { (edge: $0, span: 1) })
+            suite.expect(first != nil, "\(entry.action)'s first ⌥ step already names a zone")
+        }
         suite.expect(group(.toggleFullScreen) == .pinch && group(.quitWindowApp) == .pinch
                         && group(.centerReduced) == .tap && group(.quitApp) == .dock,
                      "pinches, the double tap and the Dock each have their group")
         let chained = ForkTrackpadGestureCatalog.Entry(action: .topLeftQuarter, target: .titlebar,
                                                          triggers: [.swipes([.up, .left])])
-        suite.expect(Group.of(chained) == .quarters,
+        suite.expect(Group.of(chained) == .grid4,
                      "two different directions chained go with the quarters too")
 
         let pinches = grouped.first { $0.group == .pinch }?.entries ?? []
@@ -2157,7 +2194,9 @@ enum ForkTrackpadGestureTests {
                         && all.allSatisfy { !$0.modeTrackpad.isEmpty && !$0.groupDockCaption.isEmpty
                             && !$0.actionCenter.isEmpty && !$0.disableAll.isEmpty },
                      "every gesture has a distinct name, and the page reads in every language")
-        suite.expect(Set(all.map(\.groupQuartersCaption)).count >= 14 && Set(all.map(\.activate)).count >= 14,
+        suite.expect(Set(all.map(\.groupGrid4Caption)).count >= 14
+                        && Set(all.map(\.groupGrid6Caption)).count >= 14
+                        && all.allSatisfy { !$0.cancelEnabledTitle.isEmpty && !$0.actionTopLeftTwoSixths.isEmpty } && Set(all.map(\.activate)).count >= 14,
                      "the Trackpad page is translated, not copied from English")
     }
 
@@ -2188,10 +2227,16 @@ enum ForkTrackpadGestureTests {
                         && Tuning.stepPause.value(atStep: 3) == 0.25,
                      "a stored step off the ladder lands on its nearest end")
         var configuration = Machine.Configuration()
-        Tuning.apply(to: &configuration) { $0.steps.last! }
+        Tuning.apply(to: &configuration, cancelEnabled: true) { $0.steps.last! }
         suite.expect(configuration.swipeThreshold == 3 && configuration.pinchThreshold == 0.012
                         && configuration.stepPause == 0.5 && configuration.cancelTimeout == 2,
                      "the tuned values reach the gesture machine")
+        var endless = Machine.Configuration()
+        Tuning.apply(to: &endless, cancelEnabled: false) { $0.defaultValue }
+        suite.expect(endless.cancelTimeout == .infinity
+                        && ForkDefaults.registered[ForkDefaultsKey.cancelEnabled] as? Bool == true
+                        && ForkDefaults.backupKeys.contains(ForkDefaultsKey.cancelEnabled),
+                     "the cancel can be switched off, starts on, and travels with the backup")
         suite.expect(Set(Tuning.allCases.map(\.key)).count == Tuning.allCases.count
                         && Tuning.allCases.allSatisfy {
                             ForkDefaults.registered[$0.key] as? Int == $0.defaultStep
@@ -2588,8 +2633,10 @@ enum ForkTrackpadGestureTests {
                         && quitBody.contains("ForkTrackpadDock.protectedBundleIdentifiers"),
                      "a pinch on a Dock icon quits that app politely, never this app nor a protected one")
         suite.expect(commit.contains("ForkTrackpadModifierRemap.action(for: rawAction, modifierHeld: modifierHeld,")
-                        && tap.contains("modifierHeld: event.flags.contains(.maskShift)")
-                        && tap.contains("modifierHeld = input.modifierHeld")
+                        && tap.contains("heldKeys: ForkTrackpadModifierKeys(flags: event.flags)")
+                        && tap.contains("modifierHeld = input.heldKeys == strongerKeys")
+                        && tap.contains("gridModifierHeld = input.heldKeys == gridKeys")
+                        && tap.contains("(gridKeys, strongerKeys) = ForkTrackpadModifierKeys.current()")
                         && tap.contains("ForkTrackpadModifierRemap.action(for: action, modifierHeld: modifierHeld,"),
                      "a held modifier remaps both the commit and the live preview, read fresh from every event")
         let hit = tap.components(

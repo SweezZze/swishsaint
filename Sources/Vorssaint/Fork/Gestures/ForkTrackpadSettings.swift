@@ -29,11 +29,19 @@ struct ForkTrackpadSettingsSections: View {
     private var stepPauseStep = ForkTrackpadTuning.stepPause.defaultStep
     @AppStorage(ForkDefaultsKey.cancelDelayStep)
     private var cancelDelayStep = ForkTrackpadTuning.cancelDelay.defaultStep
+    @AppStorage(ForkDefaultsKey.cancelEnabled) private var cancelEnabled = true
+    @AppStorage(ForkDefaultsKey.gridModifierKeys)
+    private var gridKeysRaw = ForkTrackpadModifierKeys.gridDefault.rawValue
+    @AppStorage(ForkDefaultsKey.strongerModifierKeys)
+    private var strongerKeysRaw = ForkTrackpadModifierKeys.strongerDefault.rawValue
     @AppStorage(ForkDefaultsKey.titlebarBandStep)
     private var titlebarBandStep = ForkTrackpadTuning.titlebarBand.defaultStep
     @AppStorage(ForkDefaultsKey.previewEnabled) private var previewEnabled = true
     @AppStorage(ForkDefaultsKey.hapticsEnabled) private var hapticsEnabled = true
     @State private var showsAdvanced = false
+    /// The groups unfolded. Only the most used one at first: thirty cards
+    /// shown at once are too much to take in.
+    @State private var expandedGroups: Set<ForkTrackpadGestureGroup> = [.grid4]
     @ObservedObject private var diagnostics = ForkTrackpadDiagnosticsMonitor.shared
     @State private var diagnosticsSurface = UUID()
 
@@ -92,37 +100,63 @@ struct ForkTrackpadSettingsSections: View {
     private func groupSection(_ group: ForkTrackpadGestureGroup,
                               entries: [ForkTrackpadGestureCatalog.Entry]) -> some View {
         let allOff = ForkTrackpadGestureGroup.allDisabled(entries, in: disabled)
+        let enabledCount = entries.filter { !disabled.contains($0.action) }.count
+        let isExpanded = Binding(
+            get: { expandedGroups.contains(group) },
+            set: { open in
+                if open { expandedGroups.insert(group) } else { expandedGroups.remove(group) }
+            })
         return Section {
-            Text(caption(group))
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
-            LazyVGrid(columns: Self.columns, alignment: .leading, spacing: 10) {
-                ForEach(entries, id: \.action) { entry in
-                    ForkTrackpadGestureCard(entry: entry,
-                                              centerScale: centerScale,
-                                              title: title(of: entry.action),
-                                              isEnabled: !disabled.contains(entry.action),
-                                              onText: text.gestureOn,
-                                              offText: text.gestureOff) {
-                        toggle(entry.action)
+            DisclosureGroup(isExpanded: isExpanded) {
+                VStack(alignment: .leading, spacing: 10) {
+                    Text(caption(group))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                    if group == .grid6 {
+                        ForkTrackpadModifierKeyPicker(title: text.holdKeyTitle, value: $gridKeysRaw,
+                                                        other: strongerKeysRaw,
+                                                        fallback: .gridDefault)
+                    } else if group == .shift {
+                        ForkTrackpadModifierKeyPicker(title: text.holdKeyTitle, value: $strongerKeysRaw,
+                                                        other: gridKeysRaw,
+                                                        fallback: .strongerDefault)
+                    }
+                    LazyVGrid(columns: Self.columns, alignment: .leading, spacing: 10) {
+                        ForEach(entries, id: \.action) { entry in
+                            ForkTrackpadGestureCard(entry: entry,
+                                                      symbols: symbols(of: entry),
+                                                      centerScale: centerScale,
+                                                      title: title(of: entry.action),
+                                                      isEnabled: !disabled.contains(entry.action),
+                                                      onText: text.gestureOn,
+                                                      offText: text.gestureOff) {
+                                toggle(entry.action)
+                            }
+                        }
+                    }
+                    .padding(.vertical, 2)
+                    if group == .tap {
+                        centerSizeControl
                     }
                 }
-            }
-            .padding(.vertical, 2)
-            if group == .tap {
-                centerSizeControl
-            }
-        } header: {
-            HStack(alignment: .firstTextBaseline) {
-                Text(title(group))
-                Spacer()
-                Button(allOff ? text.enableAll : text.disableAll) {
-                    store(ForkTrackpadGestureGroup.setting(entries, enabled: allOff, in: disabled))
+                .padding(.top, 6)
+            } label: {
+                // Folded, the row still says what is on, and still switches
+                // the whole group.
+                HStack(alignment: .firstTextBaseline) {
+                    Text(title(group))
+                        .font(.headline)
+                    Text("\(enabledCount)/\(entries.count)")
+                        .font(.caption.monospacedDigit())
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                    Button(allOff ? text.enableAll : text.disableAll) {
+                        store(ForkTrackpadGestureGroup.setting(entries, enabled: allOff, in: disabled))
+                    }
+                    .buttonStyle(.link)
+                    .font(.caption)
                 }
-                .buttonStyle(.link)
-                .font(.caption)
-                .textCase(nil)
             }
         }
     }
@@ -217,9 +251,13 @@ struct ForkTrackpadSettingsSections: View {
                                              lowLabel: text.shorter, highLabel: text.longer,
                                              step: $stepPauseStep)
                     note(text.stepPauseCaption)
+                    Toggle(text.cancelEnabledTitle, isOn: $cancelEnabled)
+                        .onChange(of: cancelEnabled) { _, _ in ForkGestures.sync() }
                     ForkTrackpadStepSlider(title: text.cancelDelayTitle, tuning: .cancelDelay,
                                              lowLabel: text.shorter, highLabel: text.longer,
                                              step: $cancelDelayStep)
+                        .disabled(!cancelEnabled)
+                        .opacity(cancelEnabled ? 1 : 0.5)
                     note(text.cancelDelayCaption)
                     ForkTrackpadStepSlider(title: text.titlebarBandTitle, tuning: .titlebarBand,
                                              lowLabel: text.bandThin, highLabel: text.bandTall,
@@ -240,6 +278,7 @@ struct ForkTrackpadSettingsSections: View {
             && pinchSensitivityStep == ForkTrackpadTuning.pinchSensitivity.defaultStep
             && stepPauseStep == ForkTrackpadTuning.stepPause.defaultStep
             && cancelDelayStep == ForkTrackpadTuning.cancelDelay.defaultStep
+            && cancelEnabled
             && titlebarBandStep == ForkTrackpadTuning.titlebarBand.defaultStep
     }
 
@@ -248,6 +287,7 @@ struct ForkTrackpadSettingsSections: View {
         pinchSensitivityStep = ForkTrackpadTuning.pinchSensitivity.defaultStep
         stepPauseStep = ForkTrackpadTuning.stepPause.defaultStep
         cancelDelayStep = ForkTrackpadTuning.cancelDelay.defaultStep
+        cancelEnabled = true
         titlebarBandStep = ForkTrackpadTuning.titlebarBand.defaultStep
         ForkGestures.sync()
     }
@@ -263,22 +303,37 @@ struct ForkTrackpadSettingsSections: View {
 
     private func title(_ group: ForkTrackpadGestureGroup) -> String {
         switch group {
+        case .grid4: return text.groupGrid4
+        case .grid6: return text.groupGrid6
         case .titlebar: return text.groupTitlebar
-        case .quarters: return text.groupQuarters
         case .pinch: return text.groupPinch
         case .tap: return text.groupTap
+        case .shift: return text.groupShift
         case .dock: return text.groupDock
         }
     }
 
     private func caption(_ group: ForkTrackpadGestureGroup) -> String {
         switch group {
+        case .grid4: return text.groupGrid4Caption
+        case .grid6: return text.groupGrid6Caption
         case .titlebar: return text.groupTitlebarCaption
-        case .quarters: return text.groupQuartersCaption
         case .pinch: return text.groupPinchCaption
         case .tap: return text.groupTapCaption
+        case .shift: return text.groupShiftCaption
         case .dock: return text.groupDockCaption
         }
+    }
+
+    /// Read from the stored keys here, so every card follows the pickers.
+    private func symbols(of entry: ForkTrackpadGestureCatalog.Entry) -> String {
+        let keys: ForkTrackpadModifierKeys?
+        switch entry.modifier {
+        case .option?: keys = ForkTrackpadModifierKeys(rawValue: gridKeysRaw)
+        case .shift?: keys = ForkTrackpadModifierKeys(rawValue: strongerKeysRaw)
+        case nil: keys = nil
+        }
+        return [keys?.symbols, entry.triggers[0].symbols].compactMap { $0 }.joined(separator: " ")
     }
 
     private func title(of action: ForkTrackpadGestureAction) -> String {
@@ -445,6 +500,8 @@ private struct ForkTrackpadToggleCard<Content: View>: View {
 /// One gesture: its drawing, its name, and what the fingers do.
 private struct ForkTrackpadGestureCard: View {
     let entry: ForkTrackpadGestureCatalog.Entry
+    /// What the hand does, its held keys first.
+    let symbols: String
     let centerScale: Double
     let title: String
     let isEnabled: Bool
@@ -469,7 +526,7 @@ private struct ForkTrackpadGestureCard: View {
                     .saturation(isEnabled ? 1 : 0)
                     .opacity(isEnabled ? 1 : 0.6)
                 ForkTrackpadCardTitle(title: title, isEnabled: isEnabled)
-                Text(entry.triggers[0].symbols)
+                Text(symbols)
                     .font(.system(.caption, design: .monospaced))
                     .foregroundStyle(.secondary)
             }
@@ -477,7 +534,7 @@ private struct ForkTrackpadGestureCard: View {
                 if hovering { play() }
             }
         }
-        .accessibilityLabel("\(title), \(entry.triggers[0].symbols)")
+        .accessibilityLabel("\(title), \(symbols)")
     }
 
     /// Replays the gesture: the window leaves from its place, then goes back.
@@ -552,6 +609,64 @@ private struct ForkTrackpadOptionCard: View {
             }
         }
         .accessibilityLabel(title)
+    }
+}
+
+/// The keys to hold, as key caps the way Window Layout picks its own: any
+/// combination of ⌃ ⌥ ⇧ ⌘, never none, and never the very same as the other
+/// held meaning's, which would make one gesture mean two things.
+private struct ForkTrackpadModifierKeyPicker: View {
+    let title: String
+    @Binding var value: Int
+    let other: Int
+    let fallback: ForkTrackpadModifierKeys
+
+    private var keys: ForkTrackpadModifierKeys {
+        ForkTrackpadModifierKeys.valid(ForkTrackpadModifierKeys(rawValue: value), fallback: fallback)
+    }
+
+    var body: some View {
+        HStack(spacing: 7) {
+            Text(title)
+            Spacer(minLength: 6)
+            ForEach(ForkTrackpadModifierKeys.ordered, id: \.symbol) { choice in
+                let selected = keys.contains(choice.key)
+                Button {
+                    toggle(choice.key)
+                } label: {
+                    Text(choice.symbol)
+                        .font(.system(size: 14, weight: .semibold, design: .rounded))
+                        .frame(width: 30, height: 25)
+                        .foregroundStyle(selected ? Color.accentColor : Color.secondary)
+                        .background(
+                            RoundedRectangle(cornerRadius: 6, style: .continuous)
+                                .fill(selected ? Color.accentColor.opacity(0.14) : Color.primary.opacity(0.045))
+                        )
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 6, style: .continuous)
+                                .strokeBorder(selected ? Color.accentColor.opacity(0.5) : Color.primary.opacity(0.1))
+                        )
+                }
+                .buttonStyle(.plain)
+                .disabled(next(toggling: choice.key) == nil)
+                .accessibilityAddTraits(selected ? [.isButton, .isSelected] : .isButton)
+            }
+        }
+    }
+
+    /// The keys after one is pressed, `nil` when that would leave none or
+    /// match the other choice.
+    private func next(toggling key: ForkTrackpadModifierKeys) -> ForkTrackpadModifierKeys? {
+        var next = keys
+        if next.contains(key) { next.remove(key) } else { next.insert(key) }
+        guard !next.isEmpty, next.rawValue != other else { return nil }
+        return next
+    }
+
+    private func toggle(_ key: ForkTrackpadModifierKeys) {
+        guard let next = next(toggling: key) else { return }
+        value = next.rawValue
+        ForkGestures.sync()
     }
 }
 
@@ -663,7 +778,7 @@ struct ForkTrackpadGestureDrawing: View {
 
     private var target: CGRect {
         switch action {
-        case .minimize:
+        case .minimize, .minimizeAllWindows:
             let icon = Self.dockIconFrame(Metric.dockTarget)
             return CGRect(x: icon.midX - 5, y: icon.minY, width: 10, height: 6)
         case .toggleFullScreen:
@@ -708,7 +823,7 @@ struct ForkTrackpadGestureDrawing: View {
 
     private var showsGhost: Bool {
         switch action {
-        case .close, .quitApp, .quitWindowApp, .toggleFullScreen, .minimize, .emptyTrash,
+        case .close, .quitApp, .quitWindowApp, .toggleFullScreen, .minimize, .minimizeAllWindows, .emptyTrash,
              .showAppWindows, .restoreMinimizedWindow, .closeMinimizedWindow: return false
         default: return isDone
         }
@@ -748,7 +863,7 @@ struct ForkTrackpadGestureDrawing: View {
         let lit: Int?
         switch action {
         case .close, .quitApp, .quitWindowApp: lit = 0
-        case .minimize: lit = 1
+        case .minimize, .minimizeAllWindows: lit = 1
         case .toggleFullScreen: lit = 2
         default: lit = nil
         }
@@ -762,7 +877,7 @@ struct ForkTrackpadGestureDrawing: View {
     /// where the window goes.
     private var dockIndex: Int? {
         switch action {
-        case .minimize, .quitApp: return Metric.dockTarget
+        case .minimize, .minimizeAllWindows, .quitApp: return Metric.dockTarget
         case .emptyTrash: return Metric.dockTrash
         case .showAppWindows: return Metric.dockApp
         case .restoreMinimizedWindow, .closeMinimizedWindow: return Metric.dockMinimized
@@ -833,7 +948,7 @@ struct ForkTrackpadGestureDrawing: View {
     }
 
     private var fingerAnchor: CGPoint {
-        if action != .minimize, let index = dockIndex {
+        if action != .minimize, action != .minimizeAllWindows, let index = dockIndex {
             let icon = Self.dockIconFrame(index)
             return CGPoint(x: icon.midX, y: icon.midY - 6)
         }

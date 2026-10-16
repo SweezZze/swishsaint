@@ -80,12 +80,20 @@ enum ForkTrackpadTuning: CaseIterable {
         return value(atStep: defaults.integer(forKey: key))
     }
 
+    /// Whether stillness gives a gesture up at all. A missing key reads as on.
+    static var cancelEnabled: Bool {
+        UserDefaults.standard.object(forKey: ForkDefaultsKey.cancelEnabled) as? Bool ?? true
+    }
+
     /// The gesture machine's configuration with every tuned value in it.
+    /// With the cancel switched off, the delay is infinite: the machine then
+    /// waits on no deadline for it (see `nextDeadline`).
     static func apply(to configuration: inout ForkTrackpadGestureMachine.Configuration,
+                      cancelEnabled: Bool = ForkTrackpadTuning.cancelEnabled,
                       value: (ForkTrackpadTuning) -> Double = { $0.current }) {
         configuration.swipeThreshold = value(.swipeSensitivity)
         configuration.pinchThreshold = value(.pinchSensitivity)
         configuration.stepPause = value(.stepPause)
-        configuration.cancelTimeout = value(.cancelDelay)
+        configuration.cancelTimeout = cancelEnabled ? value(.cancelDelay) : .infinity
     }
 }
