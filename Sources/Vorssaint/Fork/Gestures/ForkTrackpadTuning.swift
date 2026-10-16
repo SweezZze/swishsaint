@@ -86,6 +86,10 @@ enum ForkTrackpadTuning: CaseIterable {
     }
 
     /// Whether stillness gives a gesture up at all. A missing key reads as on.
+    static var sizeCycleEnabled: Bool {
+        UserDefaults.standard.object(forKey: ForkDefaultsKey.sizeCycleEnabled) as? Bool ?? true
+    }
+
     static var cancelEnabled: Bool {
         UserDefaults.standard.object(forKey: ForkDefaultsKey.cancelEnabled) as? Bool ?? true
     }

@@ -20,7 +20,7 @@ enum ForkDefaultsTests {
         // Settings added since the fork never had a pre-fork name.
         let addedSinceFork: Set<String> = [ForkDefaultsKey.cancelEnabled, ForkDefaultsKey.gridModifierKeys,
                                            ForkDefaultsKey.strongerModifierKeys, ForkDefaultsKey.previewAtPointer,
-                                           ForkDefaultsKey.claudeUsageEnabled]
+                                           ForkDefaultsKey.claudeUsageEnabled, ForkDefaultsKey.sizeCycleEnabled]
         suite.expect(Set(ForkDefaults.legacyKeys.values) == Set(ForkDefaults.registered.keys).subtracting(addedSinceFork)
                         && ForkDefaults.legacyKeys.count == ForkDefaults.registered.count - addedSinceFork.count,
                      "every setting of the pre-fork test builds has its new name, and only those")

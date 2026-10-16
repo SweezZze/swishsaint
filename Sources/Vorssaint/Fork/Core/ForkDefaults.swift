@@ -16,6 +16,9 @@ enum ForkDefaultsKey {
     static let cancelDelayStep = "fork.gestures.cancelDelayStep"
     /// Off: a still gesture is never given up, only Escape or the lift end it.
     static let cancelEnabled = "fork.gestures.cancelEnabled"
+    /// On: a left or right half swiped again right after goes to two thirds,
+    /// then a third, then back to the half. Off: it stays at the half.
+    static let sizeCycleEnabled = "fork.gestures.sizeCycle"
     /// The keys held for the six-zone grid, and for the stronger gestures:
     /// `ForkTrackpadModifierKeys` raw values.
     static let gridModifierKeys = "fork.gestures.gridModifierKeys"
@@ -44,6 +47,7 @@ enum ForkDefaults {
         ForkDefaultsKey.stepPauseStep: ForkTrackpadTuning.stepPause.defaultStep,
         ForkDefaultsKey.cancelDelayStep: ForkTrackpadTuning.cancelDelay.defaultStep,
         ForkDefaultsKey.cancelEnabled: true,
+        ForkDefaultsKey.sizeCycleEnabled: true,
         ForkDefaultsKey.gridModifierKeys: ForkTrackpadModifierKeys.gridDefault.rawValue,
         ForkDefaultsKey.strongerModifierKeys: ForkTrackpadModifierKeys.strongerDefault.rawValue,
         ForkDefaultsKey.titlebarBandStep: ForkTrackpadTuning.titlebarBand.defaultStep,
