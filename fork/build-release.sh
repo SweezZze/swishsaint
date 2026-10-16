@@ -70,6 +70,11 @@ if [ -n "$REPO" ]; then
     plutil -replace ForkUpdateRepository -string "$REPO" "$PLIST"
 fi
 
+# Dictée vocale (Fork/Dictation) : sans ce texte, macOS ferme l'app dès qu'elle demande la
+# reconnaissance vocale. L'Info.plist officiel n'est jamais modifié : on l'ajoute ici.
+plutil -replace NSSpeechRecognitionUsageDescription -string \
+    "Vorssaint turns your voice into text only while you hold the dictation key you chose, then types it where your cursor is." "$PLIST"
+
 # Textes des demandes d'autorisation : « Vorssaint utilise… » → « <Nom> utilise… ».
 # (Le copyright « © Vorssaint » reste : la GPL impose de conserver les mentions d'auteur.)
 rename_product() { FORK_APP_NAME="$FORK_APP_NAME" perl -pe 's/\bVorssaint\b/$ENV{FORK_APP_NAME}/g'; }

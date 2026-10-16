@@ -28,6 +28,12 @@ enum ForkDefaultsKey {
     static let previewSizeStep = "fork.gestures.previewSizeStep"
     /// Claude's plan limits read from the account by Claude Code.
     static let claudeUsageEnabled = "fork.claudeUsage.enabled"
+    /// Dictation: the key held to speak (`ForkDictationTrigger`), the
+    /// language (empty: the person's own) and the start and end sounds.
+    static let dictationEnabled = "fork.dictation.enabled"
+    static let dictationTrigger = "fork.dictation.trigger"
+    static let dictationLocale = "fork.dictation.locale"
+    static let dictationSounds = "fork.dictation.sounds"
     /// The build the person answered "Later" for. Machine state: kept out
     /// of the settings backup.
     static let updatePostponedBuild = "fork.update.postponedBuild"
@@ -52,6 +58,10 @@ enum ForkDefaults {
         ForkDefaultsKey.previewAtPointer: false,
         ForkDefaultsKey.previewSizeStep: ForkTrackpadTuning.previewSize.defaultStep,
         ForkDefaultsKey.claudeUsageEnabled: false,
+        ForkDefaultsKey.dictationEnabled: false,
+        ForkDefaultsKey.dictationTrigger: ForkDictationTrigger.fallback.rawValue,
+        ForkDefaultsKey.dictationLocale: "",
+        ForkDefaultsKey.dictationSounds: true,
     ]
 
     /// Where each setting lived in the test builds made before the fork

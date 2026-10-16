@@ -17,6 +17,8 @@ FORK_SOURCES=(
     Sources/Vorssaint/Fork/Core/ForkBackup.swift
     Sources/Vorssaint/Fork/Core/ForkDefaults.swift
     Sources/Vorssaint/Fork/Core/ForkExtrasStrings.swift
+    Sources/Vorssaint/Fork/Dictation/ForkDictationStrings.swift
+    Sources/Vorssaint/Fork/Dictation/ForkDictationSupport.swift
     Sources/Vorssaint/Fork/Gestures/ForkLayoutComplement.swift
     Sources/Vorssaint/Fork/Gestures/ForkLinkedResizeSupport.swift
     Sources/Vorssaint/Fork/Gestures/ForkTrackpadDiagnosticsSupport.swift
