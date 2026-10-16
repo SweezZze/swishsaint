@@ -9,6 +9,7 @@ import SwiftUI
 struct ForkExtrasSettings: View {
     @ObservedObject private var l10n = L10n.shared
     @ObservedObject private var permissions = Permissions.shared
+    @AppStorage(ForkDefaultsKey.claudeUsageEnabled) private var claudeUsageEnabled = false
 
     private var text: ForkExtrasStrings { ForkExtrasStrings.strings(l10n.language) }
 
@@ -31,6 +32,10 @@ struct ForkExtrasSettings: View {
                 Section(l10n.s.permissionRequired) {
                     PermissionRow(kind: .accessibility)
                 }
+            }
+
+            if claudeUsageEnabled {
+                ForkClaudeUsageStatus(text: text)
             }
 
             ForkTrackpadSettingsSections(text: FeatureStrings.forkTrackpadGestures(l10n.language),
@@ -188,6 +193,33 @@ private struct ForkUpdatesSection: View {
         switch updates.state {
         case .checking, .downloading, .installing: return true
         default: return false
+        }
+    }
+}
+
+/// Where the Claude limits read by Claude Code stand.
+private struct ForkClaudeUsageStatus: View {
+    let text: ForkExtrasStrings
+    @ObservedObject private var usage = ForkClaudeUsage.shared
+    @Environment(\.locale) private var locale
+
+    var body: some View {
+        Section(text.claudeUsageTitle) {
+            TimelineView(.periodic(from: .now, by: 30)) { context in
+                HStack(alignment: .top, spacing: 8) {
+                    if let reading = usage.lastReading {
+                        Image(systemName: "checkmark.circle.fill").foregroundStyle(.green)
+                        Text(text.claudeUsageStatus(min(reading, context.date)
+                            .formatted(.relative(presentation: .named).locale(locale))))
+                    } else {
+                        Image(systemName: "clock").foregroundStyle(.secondary)
+                        Text(text.claudeUsageWaiting)
+                    }
+                    Spacer(minLength: 0)
+                }
+                .font(.callout)
+                .fixedSize(horizontal: false, vertical: true)
+            }
         }
     }
 }

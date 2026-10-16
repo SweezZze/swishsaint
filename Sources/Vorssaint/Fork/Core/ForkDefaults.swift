@@ -20,6 +20,8 @@ enum ForkDefaultsKey {
     /// The preview stands in for the pointer instead of the screen's center.
     static let previewAtPointer = "fork.gestures.previewAtPointer"
     static let previewSizeStep = "fork.gestures.previewSizeStep"
+    /// Claude's plan limits read from the account by Claude Code.
+    static let claudeUsageEnabled = "fork.claudeUsage.enabled"
     /// The build the person answered "Later" for. Machine state: kept out
     /// of the settings backup.
     static let updatePostponedBuild = "fork.update.postponedBuild"
@@ -40,6 +42,7 @@ enum ForkDefaults {
         ForkDefaultsKey.hapticsEnabled: true,
         ForkDefaultsKey.previewAtPointer: false,
         ForkDefaultsKey.previewSizeStep: ForkTrackpadTuning.previewSize.defaultStep,
+        ForkDefaultsKey.claudeUsageEnabled: false,
     ]
 
     /// Where each setting lived in the test builds made before the fork
@@ -61,7 +64,7 @@ enum ForkDefaults {
     ]
 
     /// Settings born in the fork, which no pre-fork build ever had.
-    static let addedInFork: Set<String> = [ForkDefaultsKey.previewAtPointer]
+    static let addedInFork: Set<String> = [ForkDefaultsKey.previewAtPointer, ForkDefaultsKey.claudeUsageEnabled]
 
     /// What a settings backup may bring back for the fork (`ForkBackup`):
     /// every fork setting, and the old names so a backup from a pre-fork
