@@ -1121,4 +1121,13 @@ enum ForkTrackpadPreviewPlacement {
         CGRect(x: pointer.x - size.width / 2, y: pointer.y - size.height / 2,
                width: size.width, height: size.height)
     }
+
+    /// Centered on the pointer, but moved in just enough to stay whole on its
+    /// screen: a title bar sits at the top, often against the menu bar.
+    static func frame(size: CGSize, centeredOn pointer: CGPoint, within screen: CGRect) -> CGRect {
+        var frame = frame(size: size, centeredOn: pointer)
+        frame.origin.x = min(max(frame.minX, screen.minX), screen.maxX - size.width)
+        frame.origin.y = min(max(frame.minY, screen.minY), screen.maxY - size.height)
+        return frame
+    }
 }

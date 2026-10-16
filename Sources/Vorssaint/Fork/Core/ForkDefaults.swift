@@ -23,6 +23,11 @@ enum ForkDefaultsKey {
     static let titlebarBandStep = "fork.gestures.titlebarBandStep"
     static let previewEnabled = "fork.gestures.preview"
     static let hapticsEnabled = "fork.gestures.haptics"
+    /// The preview stands in for the pointer instead of the screen's center.
+    static let previewAtPointer = "fork.gestures.previewAtPointer"
+    static let previewSizeStep = "fork.gestures.previewSizeStep"
+    /// Claude's plan limits read from the account by Claude Code.
+    static let claudeUsageEnabled = "fork.claudeUsage.enabled"
     /// The build the person answered "Later" for. Machine state: kept out
     /// of the settings backup.
     static let updatePostponedBuild = "fork.update.postponedBuild"
@@ -44,6 +49,9 @@ enum ForkDefaults {
         ForkDefaultsKey.titlebarBandStep: ForkTrackpadTuning.titlebarBand.defaultStep,
         ForkDefaultsKey.previewEnabled: true,
         ForkDefaultsKey.hapticsEnabled: true,
+        ForkDefaultsKey.previewAtPointer: false,
+        ForkDefaultsKey.previewSizeStep: ForkTrackpadTuning.previewSize.defaultStep,
+        ForkDefaultsKey.claudeUsageEnabled: false,
     ]
 
     /// Where each setting lived in the test builds made before the fork
@@ -61,6 +69,7 @@ enum ForkDefaults {
         "windowTrackpadTitlebarBandStep": ForkDefaultsKey.titlebarBandStep,
         "windowTrackpadPreviewEnabled": ForkDefaultsKey.previewEnabled,
         "windowTrackpadHapticsEnabled": ForkDefaultsKey.hapticsEnabled,
+        "windowTrackpadPreviewSizeStep": ForkDefaultsKey.previewSizeStep,
     ]
 
     /// What a settings backup may bring back for the fork (`ForkBackup`):
