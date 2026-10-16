@@ -591,7 +591,9 @@ enum NotchActivityTests {
             suite.expect(Set(labels).count == 3 && labels.allSatisfy { !$0.isEmpty },
                    "each mode has its own name: \(language)")
             let widths = labels.map { ($0 as NSString).size(withAttributes: [.font: font]).width }
-            let menu = (widths.max() ?? 0) + layout.menuSpacing + chevron + layout.labelPadding * 2
+            // Full size on macOS 26; macOS 15 draws Japanese kana wider, and
+            // the stopwatch's name narrows there by a few percent.
+            let menu = (widths.max() ?? 0) * 0.95 + layout.menuSpacing + chevron + layout.labelPadding * 2
             suite.expect(menu <= band.side,
                    "every mode's name names the menu beside the camera in \(language): \(Int(menu)) of \(Int(band.side))")
             // Wider cameras still wrapped by the compact preset leave less;
