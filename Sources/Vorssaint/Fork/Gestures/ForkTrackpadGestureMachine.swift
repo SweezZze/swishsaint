@@ -152,6 +152,10 @@ struct ForkTrackpadGestureMachine {
         var candidate: ForkTrackpadSwipeDirection?
         var accX: Double = 0
         var accY: Double = 0
+        /// Movement away from the candidate's way since the fingers last went
+        /// along it: a turn, which validates the step without a pause.
+        var turnX: Double = 0
+        var turnY: Double = 0
         var lastMovementAt: TimeInterval
         /// False while the gesture was only armed by `mayBegin` (fingers down,
         /// not moved yet): the `began` that follows continues this gesture
@@ -326,10 +330,15 @@ struct ForkTrackpadGestureMachine {
         case .changed:
             switch state {
             case var .swipe(t):
-                move(&t, dx: dx, dy: dy, now: now)
+                if move(&t, dx: dx, dy: dy, now: now) { effects.append(.haptic(.step)) }
                 state = .swipe(t)
-                show(preview(swipes: t.steps + [t.candidate].compactMap { $0 }, on: t.target),
-                     effects: &effects)
+                // Coming back through the start on the way to the other side
+                // leaves nothing to preview for a moment: the preview stays
+                // rather than blinking out and back.
+                let next = preview(swipes: t.steps + [t.candidate].compactMap { $0 }, on: t.target)
+                if next != nil || shownPreview == nil {
+                    show(next, effects: &effects)
+                }
                 return true
             case .swipeCancelled:
                 return true
@@ -372,14 +381,57 @@ struct ForkTrackpadGestureMachine {
         }
     }
 
-    private func move(_ t: inout SwipeTracking, dx: Double, dy: Double, now: TimeInterval) {
-        guard abs(dx) + abs(dy) >= configuration.scrollMovementEpsilon else { return }
-        t.accX += dx
-        t.accY += dy
+    /// True when the fingers turned: the candidate became a step on its own,
+    /// the way a pause validates one, and the turn starts the next. So → then
+    /// ↓ in one movement is a quarter, and → then ← the left half, without
+    /// ever stopping.
+    @discardableResult
+    private func move(_ t: inout SwipeTracking, dx: Double, dy: Double, now: TimeInterval) -> Bool {
+        guard abs(dx) + abs(dy) >= configuration.scrollMovementEpsilon else { return false }
         t.lastMovementAt = now
+        var turned = false
+        if let current = t.candidate, !current.isDiagonal {
+            let (alongX, alongY) = Self.unit(current)
+            let along = dx * alongX + dy * alongY
+            let across = abs(dx * alongY - dy * alongX)
+            if along > 0, across <= along {
+                t.turnX = 0
+                t.turnY = 0
+            } else {
+                t.turnX += dx
+                t.turnY += dy
+            }
+            if max(abs(t.turnX), abs(t.turnY)) >= configuration.swipeThreshold {
+                t.steps.append(current)
+                t.accX = t.turnX
+                t.accY = t.turnY
+                t.turnX = 0
+                t.turnY = 0
+                turned = true
+            } else {
+                t.accX += dx
+                t.accY += dy
+            }
+        } else {
+            t.accX += dx
+            t.accY += dy
+        }
         t.candidate = max(abs(t.accX), abs(t.accY)) >= configuration.swipeThreshold
             ? Self.direction(dx: t.accX, dy: t.accY, diagonalRatio: configuration.diagonalRatio)
             : nil
+        return turned
+    }
+
+    /// The way an axis direction points, in scroll coordinates (`dy > 0` is
+    /// down).
+    private static func unit(_ direction: ForkTrackpadSwipeDirection) -> (Double, Double) {
+        switch direction {
+        case .left: return (-1, 0)
+        case .right: return (1, 0)
+        case .up: return (0, -1)
+        case .down: return (0, 1)
+        default: return (0, 0)
+        }
     }
 
     /// Scroll wheel sign conventions, checked on a trackpad: `dx < 0` is left,
@@ -603,6 +655,8 @@ struct ForkTrackpadGestureMachine {
                 t.candidate = nil
                 t.accX = 0
                 t.accY = 0
+                t.turnX = 0
+                t.turnY = 0
                 state = .swipe(t)
                 effects.append(.haptic(.step))
                 show(preview(swipes: t.steps, on: t.target), effects: &effects)

@@ -31,6 +31,9 @@ struct ForkTrackpadSettingsSections: View {
     private var cancelDelayStep = ForkTrackpadTuning.cancelDelay.defaultStep
     @AppStorage(ForkDefaultsKey.titlebarBandStep)
     private var titlebarBandStep = ForkTrackpadTuning.titlebarBand.defaultStep
+    @AppStorage(ForkDefaultsKey.previewSizeStep)
+    private var previewSizeStep = ForkTrackpadTuning.previewSize.defaultStep
+    @AppStorage(ForkDefaultsKey.previewAtPointer) private var previewAtPointer = false
     @AppStorage(ForkDefaultsKey.previewEnabled) private var previewEnabled = true
     @AppStorage(ForkDefaultsKey.hapticsEnabled) private var hapticsEnabled = true
     @State private var showsAdvanced = false
@@ -175,9 +178,32 @@ struct ForkTrackpadSettingsSections: View {
                 }
             }
             .padding(.vertical, 2)
+            previewSizeControl
         } header: {
             Text(text.duringTitle)
         }
+    }
+
+    /// Where the preview shows, then its size, the badge drawn beside the
+    /// slider at its size on the pointer, so the size shows while the knob
+    /// moves. At the center of the screen it is drawn larger.
+    private var previewSizeControl: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Picker(text.previewPositionTitle, selection: $previewAtPointer) {
+                Text(text.previewAtCenter).tag(false)
+                Text(text.previewAtPointer).tag(true)
+            }
+            .pickerStyle(.segmented)
+            HStack(alignment: .center, spacing: 16) {
+                ForkTrackpadStepSlider(title: text.previewSizeTitle, tuning: .previewSize,
+                                       lowLabel: text.sizeSmall, highLabel: text.sizeLarge,
+                                       step: $previewSizeStep)
+                ForkTrackpadPreviewSizeSample(scale: ForkTrackpadTuning.previewSize.value(atStep: previewSizeStep))
+                    .frame(width: 112, height: 76)
+            }
+        }
+        .disabled(!previewEnabled)
+        .opacity(previewEnabled ? 1 : 0.5)
     }
 
     // MARK: Advanced
@@ -506,6 +532,33 @@ private struct ForkTrackpadOptionCard: View {
 /// A tuned setting as notches between two words, never a number: each
 /// notch is one step of its `ForkTrackpadTuning` ladder, and the words
 /// say which way is which.
+/// The live preview's badge as the gestures draw it, a left half chosen, at
+/// the size the slider picks.
+private struct ForkTrackpadPreviewSizeSample: View {
+    let scale: Double
+
+    var body: some View {
+        let size = CGSize(width: 44 * scale, height: 29 * scale)
+        let inset = 2.5 * scale
+        let accent = Color(nsColor: .controlAccentColor)
+        ZStack(alignment: .topLeading) {
+            RoundedRectangle(cornerRadius: 6 * scale, style: .continuous)
+                .fill(.regularMaterial)
+            RoundedRectangle(cornerRadius: 6 * scale, style: .continuous)
+                .strokeBorder(Color.primary.opacity(0.35), lineWidth: max(1, scale))
+            RoundedRectangle(cornerRadius: 3 * scale, style: .continuous)
+                .fill(LinearGradient(colors: [accent.opacity(0.95), accent.opacity(0.8)],
+                                     startPoint: .top, endPoint: .bottom))
+                .frame(width: size.width / 2 - 2 * inset, height: size.height - 2 * inset)
+                .offset(x: inset, y: inset)
+        }
+        .frame(width: size.width, height: size.height)
+        .shadow(color: .black.opacity(0.2), radius: 3, y: 1)
+        .animation(.spring(response: 0.25, dampingFraction: 0.8), value: scale)
+        .accessibilityHidden(true)
+    }
+}
+
 private struct ForkTrackpadStepSlider: View {
     let title: String
     let tuning: ForkTrackpadTuning

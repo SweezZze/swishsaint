@@ -181,8 +181,7 @@ enum ForkTrackpadGestureCatalog {
         /// included, while a pinch on Finder's still does nothing.
         let targets: Set<ForkTrackpadGestureTarget>
         /// The first one is the form to show; the others reach the same
-        /// action. For a quarter: the diagonal first, then both two-step
-        /// orders.
+        /// action. A quarter has one: its side, then its row.
         let triggers: [ForkTrackpadGestureTrigger]
 
         init(action: ForkTrackpadGestureAction, target: ForkTrackpadGestureTarget,
@@ -208,14 +207,10 @@ enum ForkTrackpadGestureCatalog {
         Entry(action: .minimize, target: .titlebar, triggers: [.swipes([.down])]),
         Entry(action: .topHalf, target: .titlebar, triggers: [.swipes([.up, .up])]),
         Entry(action: .bottomHalf, target: .titlebar, triggers: [.swipes([.down, .down])]),
-        Entry(action: .topLeftQuarter, target: .titlebar,
-              triggers: [.swipes([.upLeft]), .swipes([.up, .left]), .swipes([.left, .up])]),
-        Entry(action: .topRightQuarter, target: .titlebar,
-              triggers: [.swipes([.upRight]), .swipes([.up, .right]), .swipes([.right, .up])]),
-        Entry(action: .bottomLeftQuarter, target: .titlebar,
-              triggers: [.swipes([.downLeft]), .swipes([.down, .left]), .swipes([.left, .down])]),
-        Entry(action: .bottomRightQuarter, target: .titlebar,
-              triggers: [.swipes([.downRight]), .swipes([.down, .right]), .swipes([.right, .down])]),
+        Entry(action: .topLeftQuarter, target: .titlebar, triggers: [.swipes([.left, .up])]),
+        Entry(action: .topRightQuarter, target: .titlebar, triggers: [.swipes([.right, .up])]),
+        Entry(action: .bottomLeftQuarter, target: .titlebar, triggers: [.swipes([.left, .down])]),
+        Entry(action: .bottomRightQuarter, target: .titlebar, triggers: [.swipes([.right, .down])]),
         Entry(action: .toggleFullScreen, target: .titlebar, triggers: [.pinches([.out])]),
         Entry(action: .close, target: .titlebar, triggers: [.pinches([.in])]),
         Entry(action: .quitWindowApp, target: .titlebar, triggers: [.pinches([.in, .in])]),
@@ -253,17 +248,23 @@ enum ForkTrackpadGestureCatalog {
 enum ForkTrackpadGestureSequence {
     /// The state of a chain of swipe steps, replayed step by step.
     ///
-    /// Two axes, each with its current direction, and `hasCombined`: true as
-    /// soon as both axes were set together, and never reset. That flag, not
-    /// the current axes, is what tells a real quarter the person changes their
-    /// mind about from a single axis going back and forth (↑↓), which stays
-    /// without action.
+    /// A quarter is built side first: ← or → picks the half, then ↑ or ↓
+    /// picks the corner on that side. The latest side always wins (→ then ←
+    /// is the left half) and takes the corner away; ↑ or ↓ then switch the
+    /// corner. A diagonal counts for the part that comes next: its side while
+    /// no side is chosen, its row once one is, so a quarter cannot start by
+    /// accident on a slanted swipe.
     struct Chain: Equatable {
-        var horizontal: ForkTrackpadSwipeDirection?
-        var vertical: ForkTrackpadSwipeDirection?
-        var hasCombined = false
-        /// The previous step, to find two identical vertical steps in a row:
-        /// a horizontal step between them breaks the pair.
+        var side: ForkTrackpadSwipeDirection?
+        var row: ForkTrackpadSwipeDirection?
+        /// Two identical vertical steps in a row: the top or bottom half,
+        /// even over a quarter.
+        var verticalHalf: ForkTrackpadSwipeDirection?
+        /// The latest vertical step with no side chosen: maximize or minimize.
+        var lastVertical: ForkTrackpadSwipeDirection?
+        /// ↑ twice on a side (← ↑, then ↑ again): the whole screen, the way
+        /// ↑ alone fills it.
+        var maximizes = false
         private var lastStep: ForkTrackpadSwipeDirection?
 
         init(_ steps: [ForkTrackpadSwipeDirection]) {
@@ -271,32 +272,45 @@ enum ForkTrackpadGestureSequence {
         }
 
         private mutating func apply(_ step: ForkTrackpadSwipeDirection) {
+            let resolved: ForkTrackpadSwipeDirection
             switch step {
-            case .left, .right:
-                // Reversing the horizontal on a real quarter erases the
-                // vertical: ↑ → ← gives the left half, not the top left
-                // quarter. The vertical always combines: the latest ↑ or ↓
-                // wins without touching the horizontal.
-                if hasCombined, let current = horizontal, current != step {
-                    vertical = nil
-                }
-                horizontal = step
-            case .up, .down:
-                vertical = step
-                // Two ↑ (or two ↓) in a row go back to that half, even over a
-                // quarter already built. Vertical only: ←← and →→ change
-                // nothing.
-                if lastStep == step { horizontal = nil }
             case .upLeft, .upRight, .downLeft, .downRight:
-                // A diagonal sets the quarter at once, whatever came before,
-                // and then counts as a built quarter: ← or → the other way
-                // gives the half, ↑ or ↓ changes the row, and the half needs
-                // two ↑ (or ↓) — the diagonal is not the first of the two.
-                horizontal = step.horizontal
-                vertical = step.vertical
+                resolved = (side == nil ? step.horizontal : step.vertical) ?? step
+            default:
+                resolved = step
             }
-            lastStep = step
-            if horizontal != nil, vertical != nil { hasCombined = true }
+            switch resolved {
+            case .left, .right:
+                side = resolved
+                row = nil
+                verticalHalf = nil
+                lastVertical = nil
+                maximizes = false
+            case .up, .down:
+                let repeated = lastStep == resolved
+                if repeated, resolved == .up, side != nil || maximizes {
+                    side = nil
+                    row = nil
+                    verticalHalf = nil
+                    maximizes = true
+                } else if repeated {
+                    maximizes = false
+                    side = nil
+                    row = nil
+                    verticalHalf = resolved
+                } else if side != nil {
+                    row = resolved
+                    verticalHalf = nil
+                    maximizes = false
+                } else {
+                    verticalHalf = nil
+                    maximizes = false
+                }
+                lastVertical = resolved
+            default:
+                break
+            }
+            lastStep = resolved
         }
     }
 
@@ -322,33 +336,24 @@ enum ForkTrackpadGestureSequence {
         }
 
         let chain = Chain(steps)
-
-        // Never combined: a single axis, from the exact table and nothing
-        // else. ↑↓ or ←→ stay without action so that ↑↑ and ↓↓ keep meaning
-        // halves.
-        guard chain.hasCombined else {
-            switch steps {
-            case [.left]: return .leftHalf
-            case [.right]: return .rightHalf
-            case [.up]: return .maximize
-            case [.down]: return .minimize
-            case [.up, .up]: return .topHalf
-            case [.down, .down]: return .bottomHalf
-            default: return nil
-            }
-        }
-
-        // Combined: the current direction of each axis. Quarters work in
-        // either order; a single axis left after an erasure is a half.
-        switch (chain.horizontal, chain.vertical) {
+        if chain.maximizes { return .maximize }
+        switch (chain.side, chain.row) {
         case (.left?, .up?): return .topLeftQuarter
         case (.right?, .up?): return .topRightQuarter
         case (.left?, .down?): return .bottomLeftQuarter
         case (.right?, .down?): return .bottomRightQuarter
         case (.left?, nil): return .leftHalf
         case (.right?, nil): return .rightHalf
-        case (nil, .up?): return .topHalf
-        case (nil, .down?): return .bottomHalf
+        default: break
+        }
+        switch chain.verticalHalf {
+        case .up?: return .topHalf
+        case .down?: return .bottomHalf
+        default: break
+        }
+        switch chain.lastVertical {
+        case .up?: return .maximize
+        case .down?: return .minimize
         default: return nil
         }
     }
@@ -828,5 +833,14 @@ enum ForkTrackpadPreviewPlacement {
     static func frame(size: CGSize, centeredOn pointer: CGPoint) -> CGRect {
         CGRect(x: pointer.x - size.width / 2, y: pointer.y - size.height / 2,
                width: size.width, height: size.height)
+    }
+
+    /// Centered on the pointer, but moved in just enough to stay whole on its
+    /// screen: a title bar sits at the top, often against the menu bar.
+    static func frame(size: CGSize, centeredOn pointer: CGPoint, within screen: CGRect) -> CGRect {
+        var frame = frame(size: size, centeredOn: pointer)
+        frame.origin.x = min(max(frame.minX, screen.minX), screen.maxX - size.width)
+        frame.origin.y = min(max(frame.minY, screen.minY), screen.maxY - size.height)
+        return frame
     }
 }

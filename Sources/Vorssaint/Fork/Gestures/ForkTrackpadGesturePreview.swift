@@ -4,33 +4,46 @@
 import AppKit
 import SwiftUI
 
-/// What the lift will do, shown while a trackpad window gesture is under way.
+/// What the lift will do, shown while a trackpad window gesture is under way:
+/// at the center of the screen by default, or, by choice in Settings, in
+/// place of the pointer, the way Swish shows it.
 ///
-/// Two panels, picked by what the preview says:
+/// One panel and one view for every preview, so the gesture never jumps from
+/// one window to another: a glass plate shaped like the screen carries the
+/// target zone (halves, quarters, fill, center, or a question mark for a
+/// sequence without action), and morphs into a traffic light (close,
+/// minimize, full screen, quit) when the gesture comes to mean one. Every
+/// change is a spring, the zone sliding from a half to a quarter.
 ///
-/// - **A traffic light on the pointer** (close, minimize, full screen, quit):
-///   the button the gesture stands for, where the pointer rests. The pointer
-///   does not move during a two-finger gesture, so its tip lands in the middle
-///   of the light.
-/// - **A glass HUD centered on the target's screen** (halves, quarters, fill,
-///   center, or a question mark for a sequence without action): a small screen
-///   with the target zone in the accent color. Screen-relative geometry would
-///   be cramped, even cut, next to a title bar at the top of the screen.
-///
-/// One gesture can go from one to the other (↓ minimizes, ↓ then → is a
-/// quarter), so each has its own panel and one fades out as the other fades
-/// in. Neither ever takes focus or the mouse.
+/// On the pointer: the pointer does not move during a two-finger gesture, so
+/// the preview is centered on it, moved in just enough to stay whole near a
+/// screen edge, and the pointer itself hides meanwhile. At the center: a
+/// larger preview in the middle of the target's screen, the pointer left
+/// alone. The panel never takes focus or the mouse.
 final class ForkTrackpadGesturePreview {
     static let shared = ForkTrackpadGesturePreview()
 
-    private let hud = ForkTrackpadPreviewWindow(style: .hud)
-    private let pointerLight = ForkTrackpadPreviewWindow(style: .pointerLight)
+    /// The panel's side at scale 1: the screen badge or the light, plus room
+    /// for their shadow.
+    static let panelSide: CGFloat = 64
+    /// How much larger the preview is at the center of the screen, where it
+    /// sits away from the eye, than on the pointer.
+    static let centeredScale: CGFloat = 2.5
+    static let disappearDelay: TimeInterval = 0.16
+
+    private let model = ForkTrackpadPreviewModel()
+    private var panel: NSPanel?
+    /// Bumped on every appearance: a late fade-out must not close the panel of
+    /// the next gesture.
+    private var generation = 0
+    private var isShown = false
+    private var pointerHidden = false
 
     private init() {}
 
     /// - Parameters:
-    ///   - targetFrame: the target window, in Accessibility coordinates: its
-    ///     screen hosts the HUD. `nil` for a Dock icon, which uses the
+    ///   - targetFrame: the target window, in Accessibility coordinates: the
+    ///     mini screen draws its screen. `nil` for a Dock icon, which uses the
     ///     pointer's screen.
     ///   - pointer: where the gesture began, in Accessibility coordinates.
     ///   - appIcon: for quitting, the icon of the app about to quit; for
@@ -40,113 +53,100 @@ final class ForkTrackpadGesturePreview {
               targetFrame: CGRect?,
               pointer: CGPoint,
               appIcon: NSImage?) {
-        let (shown, other) = content.isAtPointer ? (pointerLight, hud) : (hud, pointerLight)
-        other.hide()
-        shown.show(content, appIcon: appIcon, targetFrame: targetFrame, pointer: pointer)
-    }
-
-    func hide() {
-        hud.hide()
-        pointerLight.hide()
-    }
-}
-
-// MARK: - One preview panel
-
-private final class ForkTrackpadPreviewWindow {
-    enum Style {
-        /// A 160 pt glass HUD, centered on the target's screen.
-        case hud
-        /// A 22 pt light on the pointer, without a background.
-        case pointerLight
-
-        var size: CGSize {
-            switch self {
-            case .hud: return CGSize(width: 160, height: 160)
-            // The light, plus room for its shadow and the quit icon's corner.
-            case .pointerLight: return CGSize(width: 44, height: 44)
+        if isShown {
+            // An update: the view springs from one content to the next.
+            withAnimation(Self.change) {
+                model.appIcon = appIcon
+                model.content = content
             }
+            return
         }
-    }
-
-    static let cornerRadius: CGFloat = 32
-    static let lightDiameter: CGFloat = 22
-    static let appearDuration: TimeInterval = 0.12
-    static let disappearDuration: TimeInterval = 0.1
-    static let appearScale: CGFloat = 0.92
-
-    let style: Style
-    private var panel: NSPanel?
-    private let model = ForkTrackpadPreviewModel()
-    /// Bumped on every appearance: a late fade-out must not close the panel of
-    /// the next gesture.
-    private var generation = 0
-    private var isShown = false
-
-    init(style: Style) {
-        self.style = style
-    }
-
-    func show(_ content: ForkTrackpadPreviewContent,
-              appIcon: NSImage?,
-              targetFrame: CGRect?,
-              pointer: CGPoint) {
-        model.appIcon = appIcon
-        model.content = content
-        // An update: the view animates from one content to the next.
-        guard !isShown else { return }
 
         let screens = NSScreen.screens
         guard let primaryHeight = screens.first?.frame.maxY else { return }
-        let targetAX: CGRect
-        switch style {
-        case .hud:
-            let frames = screens.map { Self.axRect(fromAppKit: $0.frame, primaryHeight: primaryHeight) }
-            guard let index = ForkTrackpadPreviewPlacement.screenIndex(targetFrame: targetFrame,
-                                                                        pointer: pointer,
-                                                                        screens: frames)
-            else { return }
-            model.screenAspect = frames[index].width / max(frames[index].height, 1)
+        let frames = screens.map { Self.axRect(fromAppKit: $0.frame, primaryHeight: primaryHeight) }
+        guard let index = ForkTrackpadPreviewPlacement.screenIndex(targetFrame: targetFrame,
+                                                                    pointer: pointer,
+                                                                    screens: frames)
+        else { return }
+        let pointerIndex = ForkTrackpadPreviewPlacement.screenIndex(targetFrame: nil,
+                                                                      pointer: pointer,
+                                                                      screens: frames) ?? index
+        let atPointer = UserDefaults.standard.bool(forKey: ForkDefaultsKey.previewAtPointer)
+        let scale = CGFloat(ForkTrackpadTuning.previewSize.current) * (atPointer ? 1 : Self.centeredScale)
+        let side = Self.panelSide * scale
+        let size = CGSize(width: side, height: side)
+        let frameAX: CGRect
+        if atPointer {
+            frameAX = ForkTrackpadPreviewPlacement.frame(size: size, centeredOn: pointer,
+                                                         within: frames[pointerIndex])
+        } else {
             let visible = Self.axRect(fromAppKit: screens[index].visibleFrame, primaryHeight: primaryHeight)
-            targetAX = ForkTrackpadPreviewPlacement.frame(size: style.size, centeredIn: visible)
-        case .pointerLight:
-            targetAX = ForkTrackpadPreviewPlacement.frame(size: style.size, centeredOn: pointer)
+            frameAX = ForkTrackpadPreviewPlacement.frame(size: size, centeredIn: visible)
         }
         // The same flip both ways: Accessibility's origin is the top left of
         // the main screen, AppKit's its bottom left.
-        let target = Self.axRect(fromAppKit: targetAX, primaryHeight: primaryHeight)
+        let frame = Self.axRect(fromAppKit: frameAX, primaryHeight: primaryHeight)
 
         isShown = true
         generation += 1
         let panel = self.panel ?? makePanel()
         self.panel = panel
 
-        let reduceMotion = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
-        let start = reduceMotion ? target : target.insetBy(dx: target.width * (1 - Self.appearScale) / 2,
-                                                            dy: target.height * (1 - Self.appearScale) / 2)
-        panel.setFrame(start, display: false)
-        panel.alphaValue = 0
-        panel.orderFrontRegardless()
-        NSAnimationContext.runAnimationGroup { context in
-            context.duration = Self.appearDuration
-            context.timingFunction = CAMediaTimingFunction(name: .easeOut)
-            panel.animator().alphaValue = 1
-            if !reduceMotion { panel.animator().setFrame(target, display: true) }
+        // Set without animation, then grown in: no stale content flashes.
+        var still = Transaction()
+        still.disablesAnimations = true
+        withTransaction(still) {
+            model.scale = scale
+            model.screenAspect = frames[index].width / max(frames[index].height, 1)
+            model.appIcon = appIcon
+            model.content = content
+            model.visible = false
         }
+        panel.setFrame(frame, display: true)
+        panel.alphaValue = 1
+        panel.orderFrontRegardless()
+        withAnimation(Self.appear) { model.visible = true }
+        setPointerHidden(atPointer)
     }
 
     func hide() {
+        setPointerHidden(false)
         guard isShown, let panel else { return }
         isShown = false
         let hiding = generation
-        NSAnimationContext.runAnimationGroup { context in
-            context.duration = Self.disappearDuration
-            context.timingFunction = CAMediaTimingFunction(name: .easeIn)
-            panel.animator().alphaValue = 0
-        } completionHandler: { [weak self, weak panel] in
+        withAnimation(.easeIn(duration: Self.disappearDelay * 0.8)) { model.visible = false }
+        DispatchQueue.main.asyncAfter(deadline: .now() + Self.disappearDelay) { [weak self, weak panel] in
             // A new gesture may have brought the panel back during the fade.
             guard let self, let panel, self.generation == hiding, !self.isShown else { return }
             panel.orderOut(nil)
+        }
+    }
+
+    private static var reduceMotion: Bool {
+        NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
+    }
+
+    static var change: Animation {
+        reduceMotion ? .easeInOut(duration: 0.1) : .spring(response: 0.26, dampingFraction: 0.8)
+    }
+
+    private static var appear: Animation {
+        reduceMotion ? .easeOut(duration: 0.1) : .spring(response: 0.22, dampingFraction: 0.72)
+    }
+
+    /// Hidden once per gesture and shown back once, so the system's hide count
+    /// stays balanced. A background app may only touch the cursor with the
+    /// window server's leave; if it ever refuses, the pointer simply stays.
+    private func setPointerHidden(_ hidden: Bool) {
+        guard hidden != pointerHidden else { return }
+        pointerHidden = hidden
+        if hidden {
+            ForkBackgroundCursor.acquire()
+            CGDisplayHideCursor(CGMainDisplayID())
+        } else {
+            CGDisplayShowCursor(CGMainDisplayID())
+            ForkBackgroundCursor.release()
         }
     }
 
@@ -155,12 +155,15 @@ private final class ForkTrackpadPreviewWindow {
     }
 
     private func makePanel() -> NSPanel {
-        let panel = OverlayPanel(contentRect: CGRect(origin: .zero, size: style.size),
+        let side = Self.panelSide
+        let panel = OverlayPanel(contentRect: CGRect(x: 0, y: 0, width: side, height: side),
                                  styleMask: [.borderless, .nonactivatingPanel],
                                  backing: .buffered,
                                  defer: false)
         panel.backgroundColor = .clear
         panel.isOpaque = false
+        // The view draws its own shadow, which follows the plate as it morphs.
+        panel.hasShadow = false
         panel.ignoresMouseEvents = true
         panel.hidesOnDeactivate = false
         panel.isReleasedWhenClosed = false
@@ -168,33 +171,9 @@ private final class ForkTrackpadPreviewWindow {
         panel.level = .statusBar
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .transient, .ignoresCycle]
         panel.animationBehavior = .none
-
-        let hosting = NSHostingView(rootView: ForkTrackpadPreviewView(model: model, style: style))
+        let hosting = NSHostingView(rootView: ForkTrackpadPreviewView(model: model))
         hosting.setAccessibilityElement(false)
-        switch style {
-        case .hud:
-            panel.hasShadow = true
-            // The glass of Window Layout's directional ring: follows light and
-            // dark mode and Reduce Transparency on its own.
-            let glass = NSVisualEffectView(frame: CGRect(origin: .zero, size: style.size))
-            glass.material = .hudWindow
-            glass.blendingMode = .behindWindow
-            glass.state = .active
-            glass.wantsLayer = true
-            glass.layer?.cornerRadius = Self.cornerRadius
-            glass.layer?.cornerCurve = .continuous
-            glass.layer?.masksToBounds = true
-            glass.layer?.borderWidth = 0.5
-            glass.layer?.borderColor = NSColor.white.withAlphaComponent(0.18).cgColor
-            hosting.frame = glass.bounds
-            hosting.autoresizingMask = [.width, .height]
-            glass.addSubview(hosting)
-            panel.contentView = glass
-        case .pointerLight:
-            // No background: the light alone, its shadow drawn by the view.
-            panel.hasShadow = false
-            panel.contentView = hosting
-        }
+        panel.contentView = hosting
         return panel
     }
 }
@@ -205,30 +184,47 @@ private final class ForkTrackpadPreviewModel: ObservableObject {
     @Published var content: ForkTrackpadPreviewContent = .unrecognized
     @Published var appIcon: NSImage?
     @Published var screenAspect: CGFloat = 16 / 10
+    /// The preview size chosen in Settings.
+    @Published var scale: CGFloat = 1
+    @Published var visible = false
 }
 
 private struct ForkTrackpadPreviewView: View {
     @ObservedObject var model: ForkTrackpadPreviewModel
-    let style: ForkTrackpadPreviewWindow.Style
+
+    static let cornerRadius: CGFloat = 6
+    static let lightDiameter: CGFloat = 22
 
     var body: some View {
+        let scale = model.scale
+        let plate = plateSize
         ZStack {
+            // The glass plate: the screen for a zone, shrunk to the light's
+            // disc and faded under it for a button, so one becomes the other.
+            RoundedRectangle(cornerRadius: plateRadius, style: .continuous)
+                .fill(.regularMaterial)
+                .overlay(RoundedRectangle(cornerRadius: plateRadius, style: .continuous)
+                    .fill(Color(nsColor: .windowBackgroundColor).opacity(0.45)))
+                .frame(width: plate.width, height: plate.height)
+                .shadow(color: .black.opacity(0.28), radius: 4 * scale, y: 1.5 * scale)
+                .opacity(showsPlate ? 1 : 0)
+
             switch model.content {
             case .zone(let zone):
                 // One view for every zone, so going from a half to a quarter
                 // slides the zone rather than swapping pictures.
-                ForkTrackpadMiniScreen(zone: zone, aspect: model.screenAspect)
-                    .transition(.opacity)
+                ForkTrackpadMiniScreen(zone: zone, aspect: model.screenAspect, scale: scale)
+                    .frame(width: plate.width, height: plate.height)
+                    .transition(.scale(scale: 0.6).combined(with: .opacity))
             case .light(let light):
                 ForkTrackpadLightView(light: light, diameter: diameter)
-                    .shadow(color: .black.opacity(0.3), radius: 2, y: 1)
+                    .shadow(color: .black.opacity(0.3), radius: 2 * scale, y: scale)
                     .id(light)
-                    .transition(.scale(scale: 0.8).combined(with: .opacity))
+                    .transition(.scale(scale: 0.5).combined(with: .opacity))
             case .quitApp, .emptyTrash:
-                ForkTrackpadQuitLightView(icon: model.appIcon, diameter: diameter,
-                                            iconSize: style == .hud ? 30 : 16)
-                    .shadow(color: .black.opacity(0.3), radius: 2, y: 1)
-                    .transition(.scale(scale: 0.8).combined(with: .opacity))
+                ForkTrackpadQuitLightView(icon: model.appIcon, diameter: diameter, iconSize: 16 * scale)
+                    .shadow(color: .black.opacity(0.3), radius: 2 * scale, y: scale)
+                    .transition(.scale(scale: 0.5).combined(with: .opacity))
             case .showApp:
                 // The icon a little above its Dock place, the way its windows
                 // will rise.
@@ -236,61 +232,75 @@ private struct ForkTrackpadPreviewView: View {
                     Image(nsImage: icon)
                         .resizable()
                         .frame(width: diameter, height: diameter)
-                        .shadow(color: .black.opacity(0.3), radius: 2, y: 1)
+                        .shadow(color: .black.opacity(0.3), radius: 2 * scale, y: scale)
                         .transition(.move(edge: .bottom).combined(with: .opacity))
                 }
             case .unrecognized:
                 Image(systemName: "questionmark")
-                    .font(.system(size: 44, weight: .semibold))
+                    .font(.system(size: 14 * scale, weight: .semibold))
                     .foregroundStyle(.secondary)
-                    .transition(.scale(scale: 0.8).combined(with: .opacity))
+                    .transition(.scale(scale: 0.6).combined(with: .opacity))
             }
         }
-        .animation(NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
-                   ? .easeInOut(duration: 0.1)
-                   : .spring(response: 0.22, dampingFraction: 0.82),
-                   value: model.content)
-        .frame(width: style.size.width, height: style.size.height)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .scaleEffect(model.visible ? 1 : 0.7)
+        .opacity(model.visible ? 1 : 0)
     }
 
-    private var diameter: CGFloat {
-        style == .hud ? 72 : ForkTrackpadPreviewWindow.lightDiameter
+    private var diameter: CGFloat { Self.lightDiameter * model.scale }
+
+    private var showsPlate: Bool {
+        switch model.content {
+        case .zone, .unrecognized: return true
+        case .light, .quitApp, .emptyTrash, .showApp: return false
+        }
+    }
+
+    private var plateSize: CGSize {
+        guard showsPlate else { return CGSize(width: diameter, height: diameter) }
+        let size = ForkTrackpadMiniScreen.fitted(aspect: model.screenAspect)
+        return CGSize(width: size.width * model.scale, height: size.height * model.scale)
+    }
+
+    private var plateRadius: CGFloat {
+        showsPlate ? Self.cornerRadius * model.scale : diameter / 2
     }
 }
 
-/// A small screen at the real screen's proportions, the target zone filled
-/// like Window Layout's drag-to-edge preview: accent tint, accent outline.
+/// The badge's drawing: the glass behind it is the screen, so only its rim
+/// and the target zone are drawn, the zone in the accent color like Window
+/// Layout's drag-to-edge preview.
 private struct ForkTrackpadMiniScreen: View {
     let zone: CGRect
     let aspect: CGFloat
+    var scale: CGFloat = 1
 
-    private static let maxSize = CGSize(width: 112, height: 72)
-    private static let inset: CGFloat = 3
+    static let maxSize = CGSize(width: 44, height: 30)
+    private static let inset: CGFloat = 2.5
 
-    var body: some View {
-        let size = fitted
-        let accent = Color(nsColor: .controlAccentColor)
-        ZStack(alignment: .topLeading) {
-            RoundedRectangle(cornerRadius: 7, style: .continuous)
-                .fill(Color.primary.opacity(0.06))
-            RoundedRectangle(cornerRadius: 7, style: .continuous)
-                .strokeBorder(Color.primary.opacity(0.35), lineWidth: 1.5)
-            RoundedRectangle(cornerRadius: 4, style: .continuous)
-                .fill(LinearGradient(colors: [accent.opacity(0.95), accent.opacity(0.75)],
-                                     startPoint: .top, endPoint: .bottom))
-                .overlay(RoundedRectangle(cornerRadius: 4, style: .continuous)
-                    .strokeBorder(Color.white.opacity(0.25), lineWidth: 0.5))
-                .frame(width: max(zone.width * size.width - 2 * Self.inset, 1),
-                       height: max(zone.height * size.height - 2 * Self.inset, 1))
-                .offset(x: zone.minX * size.width + Self.inset,
-                        y: zone.minY * size.height + Self.inset)
-        }
-        .frame(width: size.width, height: size.height)
+    /// The badge's size: the real screen's proportions within `maxSize`.
+    static func fitted(aspect: CGFloat) -> CGSize {
+        let width = min(maxSize.width, maxSize.height * aspect)
+        return CGSize(width: width, height: width / max(aspect, 0.1))
     }
 
-    private var fitted: CGSize {
-        let width = min(Self.maxSize.width, Self.maxSize.height * aspect)
-        return CGSize(width: width, height: width / max(aspect, 0.1))
+    var body: some View {
+        GeometryReader { proxy in
+            let size = proxy.size
+            let accent = Color(nsColor: .controlAccentColor)
+            let inset = Self.inset * scale
+            ZStack(alignment: .topLeading) {
+                RoundedRectangle(cornerRadius: ForkTrackpadPreviewView.cornerRadius * scale, style: .continuous)
+                    .strokeBorder(Color.primary.opacity(0.35), lineWidth: max(1, scale))
+                RoundedRectangle(cornerRadius: 3 * scale, style: .continuous)
+                    .fill(LinearGradient(colors: [accent.opacity(0.95), accent.opacity(0.8)],
+                                         startPoint: .top, endPoint: .bottom))
+                    .frame(width: max(zone.width * size.width - 2 * inset, 1),
+                           height: max(zone.height * size.height - 2 * inset, 1))
+                    .offset(x: zone.minX * size.width + inset,
+                            y: zone.minY * size.height + inset)
+            }
+        }
     }
 }
 

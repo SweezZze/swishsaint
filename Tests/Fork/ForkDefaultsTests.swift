@@ -18,7 +18,9 @@ enum ForkDefaultsTests {
         suite.expect(Set(ForkDefaults.registered.keys).isDisjoint(with: Defaults.registeredDefaults.keys),
                      "no fork setting shadows an official one")
         suite.expect(Set(ForkDefaults.legacyKeys.values).isSubset(of: ForkDefaults.registered.keys)
-                        && ForkDefaults.legacyKeys.count == ForkDefaults.registered.count,
+                        && Set(ForkDefaults.legacyKeys.values).isDisjoint(with: ForkDefaults.addedInFork)
+                        && ForkDefaults.legacyKeys.count + ForkDefaults.addedInFork.count
+                            == ForkDefaults.registered.count,
                      "every setting of the pre-fork test builds has its new name, and only those")
     }
 

@@ -65,6 +65,10 @@ struct ForkTrackpadGestureStrings {
     let duringCaption: String
     let previewTitle: String
     let previewDetail: String
+    let previewSizeTitle: String
+    let previewPositionTitle: String
+    let previewAtCenter: String
+    let previewAtPointer: String
     let hapticsTitle: String
     let hapticsDetail: String
 }
@@ -108,8 +112,8 @@ extension ForkTrackpadGestureStrings {
         gestureOff: "Off",
         groupTitlebar: "Swipe on the title bar",
         groupTitlebarCaption: "Two fingers on a window’s title bar, even behind other windows.",
-        groupQuarters: "Swipe diagonally",
-        groupQuartersCaption: "One diagonal swipe for a quarter of the screen, or two directions with a short pause in between, without lifting your fingers.",
+        groupQuarters: "Side, then corner",
+        groupQuartersCaption: "Pick the side first, then slide up or down for the corner, fingers down. Turning is enough, no pause needed.",
         groupPinch: "Pinch",
         groupPinchCaption: "Pinch out or in on the title bar. Pinching in twice, lifting your fingers in between, quits the app.",
         groupTap: "Double-tap",
@@ -151,6 +155,10 @@ extension ForkTrackpadGestureStrings {
         duringCaption: "What Vorssaint shows and makes you feel before you lift your fingers.",
         previewTitle: "Preview",
         previewDetail: "A small screen shows where the window will go.",
+        previewSizeTitle: "Preview size",
+        previewPositionTitle: "Preview position",
+        previewAtCenter: "Screen center",
+        previewAtPointer: "On the pointer",
         hapticsTitle: "Haptic feedback",
         hapticsDetail: "A light click at each step that counts."
     )
@@ -171,8 +179,8 @@ extension ForkTrackpadGestureStrings {
         gestureOff: "Desativado",
         groupTitlebar: "Deslizar na barra de título",
         groupTitlebarCaption: "Dois dedos na barra de título de uma janela, mesmo atrás de outras janelas.",
-        groupQuarters: "Deslizar na diagonal",
-        groupQuartersCaption: "Um deslize na diagonal para um quarto da tela, ou duas direções com uma breve pausa entre elas, sem levantar os dedos.",
+        groupQuarters: "Lado, depois canto",
+        groupQuartersCaption: "Escolha primeiro o lado e depois deslize para cima ou para baixo para o canto, sem levantar os dedos. Basta virar, sem pausa.",
         groupPinch: "Pinçar",
         groupPinchCaption: "Afaste ou junte os dedos na barra de título. Juntar duas vezes, levantando os dedos entre elas, encerra o app.",
         groupTap: "Tocar duas vezes",
@@ -214,6 +222,10 @@ extension ForkTrackpadGestureStrings {
         duringCaption: "O que o Vorssaint mostra e faz sentir antes de você levantar os dedos.",
         previewTitle: "Pré-visualização",
         previewDetail: "Uma pequena tela mostra para onde a janela vai.",
+        previewSizeTitle: "Tamanho da prévia",
+        previewPositionTitle: "Posição da prévia",
+        previewAtCenter: "Centro da tela",
+        previewAtPointer: "No ponteiro",
         hapticsTitle: "Resposta tátil",
         hapticsDetail: "Um leve clique a cada etapa validada."
     )
@@ -234,8 +246,8 @@ extension ForkTrackpadGestureStrings {
         gestureOff: "Kapalı",
         groupTitlebar: "Başlık çubuğunda kaydırın",
         groupTitlebarCaption: "Bir pencerenin başlık çubuğunda iki parmakla, başka pencerelerin arkasında olsa bile.",
-        groupQuarters: "Çapraz kaydırın",
-        groupQuartersCaption: "Ekranın çeyreği için tek bir çapraz kaydırma ya da parmaklarınızı kaldırmadan, aralarında kısa bir duraklamayla iki yön.",
+        groupQuarters: "Önce taraf, sonra köşe",
+        groupQuartersCaption: "Önce tarafı seçin, ardından köşe için parmaklarınızı kaldırmadan yukarı veya aşağı kaydırın. Dönmek yeterli, beklemeye gerek yok.",
         groupPinch: "Kıstırın",
         groupPinchCaption: "Başlık çubuğunda parmaklarınızı açın veya kıstırın. Aralarında parmaklarınızı kaldırarak iki kez kıstırmak uygulamadan çıkar.",
         groupTap: "İki kez dokunun",
@@ -277,6 +289,10 @@ extension ForkTrackpadGestureStrings {
         duringCaption: "Parmaklarınızı kaldırmadan önce Vorssaint’in gösterdikleri ve hissettirdikleri.",
         previewTitle: "Önizleme",
         previewDetail: "Küçük bir ekran pencerenin nereye gideceğini gösterir.",
+        previewSizeTitle: "Önizleme boyutu",
+        previewPositionTitle: "Önizleme konumu",
+        previewAtCenter: "Ekranın ortası",
+        previewAtPointer: "İmlecin üstünde",
         hapticsTitle: "Dokunsal geri bildirim",
         hapticsDetail: "Onaylanan her adımda hafif bir tık."
     )
@@ -297,8 +313,8 @@ extension ForkTrackpadGestureStrings {
         gestureOff: "Выкл.",
         groupTitlebar: "Смахивание по строке заголовка",
         groupTitlebarCaption: "Двумя пальцами на строке заголовка окна, даже если оно позади других окон.",
-        groupQuarters: "Смахивание по диагонали",
-        groupQuartersCaption: "Одно смахивание по диагонали для четверти экрана или два направления с короткой паузой между ними, не отрывая пальцев.",
+        groupQuarters: "Сторона, затем угол",
+        groupQuartersCaption: "Сначала выберите сторону, затем, не отрывая пальцев, проведите вверх или вниз, чтобы выбрать угол. Достаточно повернуть, без паузы.",
         groupPinch: "Сведение и разведение",
         groupPinchCaption: "Разведите или сведите пальцы на строке заголовка. Двойное сведение, с отрывом пальцев между ними, завершает приложение.",
         groupTap: "Двойное касание",
@@ -340,6 +356,10 @@ extension ForkTrackpadGestureStrings {
         duringCaption: "Что Vorssaint показывает и даёт почувствовать, пока вы не оторвали пальцы.",
         previewTitle: "Предпросмотр",
         previewDetail: "Маленький экран показывает, куда встанет окно.",
+        previewSizeTitle: "Размер превью",
+        previewPositionTitle: "Положение превью",
+        previewAtCenter: "Центр экрана",
+        previewAtPointer: "На указателе",
         hapticsTitle: "Тактильный отклик",
         hapticsDetail: "Лёгкий щелчок на каждом засчитанном шаге."
     )
@@ -360,8 +380,8 @@ extension ForkTrackpadGestureStrings {
         gestureOff: "Desactivado",
         groupTitlebar: "Deslizar en la barra de título",
         groupTitlebarCaption: "Dos dedos en la barra de título de una ventana, incluso detrás de otras ventanas.",
-        groupQuarters: "Deslizar en diagonal",
-        groupQuartersCaption: "Un deslizamiento en diagonal para un cuarto de la pantalla, o dos direcciones con una breve pausa entre ellas, sin levantar los dedos.",
+        groupQuarters: "Lado y luego esquina",
+        groupQuartersCaption: "Elige primero el lado y luego desliza hacia arriba o hacia abajo para la esquina, sin levantar los dedos. Basta con girar, sin pausa.",
         groupPinch: "Pellizcar",
         groupPinchCaption: "Separa o junta los dedos en la barra de título. Juntarlos dos veces, levantando los dedos entre ambas, cierra la app.",
         groupTap: "Tocar dos veces",
@@ -403,6 +423,10 @@ extension ForkTrackpadGestureStrings {
         duringCaption: "Lo que Vorssaint muestra y hace sentir antes de que levantes los dedos.",
         previewTitle: "Previsualización",
         previewDetail: "Una pequeña pantalla muestra adónde irá la ventana.",
+        previewSizeTitle: "Tamaño de la vista previa",
+        previewPositionTitle: "Posición de la vista previa",
+        previewAtCenter: "Centro de la pantalla",
+        previewAtPointer: "En el puntero",
         hapticsTitle: "Respuesta háptica",
         hapticsDetail: "Un clic suave en cada paso que cuenta."
     )
@@ -423,8 +447,8 @@ extension ForkTrackpadGestureStrings {
         gestureOff: "Vypnuté",
         groupTitlebar: "Potiahnutie na lište s názvom",
         groupTitlebarCaption: "Dvoma prstami na lište s názvom okna, aj keď je za inými oknami.",
-        groupQuarters: "Potiahnutie šikmo",
-        groupQuartersCaption: "Jedno šikmé potiahnutie pre štvrtinu obrazovky alebo dva smery s krátkou pauzou medzi nimi bez zdvihnutia prstov.",
+        groupQuarters: "Strana, potom roh",
+        groupQuartersCaption: "Najprv vyberte stranu, potom bez zdvihnutia prstov potiahnite nahor alebo nadol a vyberte roh. Stačí zatočiť, bez pauzy.",
         groupPinch: "Stiahnutie a roztiahnutie",
         groupPinchCaption: "Roztiahnite alebo stiahnite prsty na lište s názvom. Dvojité stiahnutie so zdvihnutím prstov medzi nimi ukončí aplikáciu.",
         groupTap: "Dvojité ťuknutie",
@@ -466,6 +490,10 @@ extension ForkTrackpadGestureStrings {
         duringCaption: "Čo Vorssaint ukáže a dá pocítiť skôr, než zdvihnete prsty.",
         previewTitle: "Náhľad",
         previewDetail: "Malá obrazovka ukáže, kam sa okno presunie.",
+        previewSizeTitle: "Veľkosť náhľadu",
+        previewPositionTitle: "Poloha náhľadu",
+        previewAtCenter: "Stred obrazovky",
+        previewAtPointer: "Na ukazovateli",
         hapticsTitle: "Hmatová odozva",
         hapticsDetail: "Jemné cvaknutie pri každom započítanom kroku."
     )
@@ -486,8 +514,8 @@ extension ForkTrackpadGestureStrings {
         gestureOff: "Aus",
         groupTitlebar: "Auf der Titelleiste streichen",
         groupTitlebarCaption: "Zwei Finger auf der Titelleiste eines Fensters, auch hinter anderen Fenstern.",
-        groupQuarters: "Diagonal streichen",
-        groupQuartersCaption: "Ein diagonales Streichen für ein Bildschirmviertel, oder zwei Richtungen mit einer kurzen Pause dazwischen, ohne die Finger anzuheben.",
+        groupQuarters: "Seite, dann Ecke",
+        groupQuartersCaption: "Zuerst die Seite wählen, dann ohne die Finger zu heben nach oben oder unten wischen, um die Ecke zu wählen. Abbiegen genügt, ohne Pause.",
         groupPinch: "Zusammen- und aufziehen",
         groupPinchCaption: "Finger auf der Titelleiste aufziehen oder zusammenziehen. Zweimal zusammenziehen, mit angehobenen Fingern dazwischen, beendet die App.",
         groupTap: "Zweimal tippen",
@@ -529,6 +557,10 @@ extension ForkTrackpadGestureStrings {
         duringCaption: "Was Vorssaint zeigt und spüren lässt, bevor du die Finger anhebst.",
         previewTitle: "Vorschau",
         previewDetail: "Ein kleiner Bildschirm zeigt, wohin das Fenster geht.",
+        previewSizeTitle: "Größe der Vorschau",
+        previewPositionTitle: "Position der Vorschau",
+        previewAtCenter: "Bildschirmmitte",
+        previewAtPointer: "Am Zeiger",
         hapticsTitle: "Haptisches Feedback",
         hapticsDetail: "Ein leichtes Klicken bei jedem gezählten Schritt."
     )
@@ -549,8 +581,8 @@ extension ForkTrackpadGestureStrings {
         gestureOff: "Coupé",
         groupTitlebar: "Balayer sur la barre de titre",
         groupTitlebarCaption: "Deux doigts sur la barre de titre d’une fenêtre, même derrière d’autres fenêtres.",
-        groupQuarters: "Balayer en diagonale",
-        groupQuartersCaption: "D’un seul geste en diagonale pour un quart d’écran, ou deux directions avec une courte pause entre les deux, sans lever les doigts.",
+        groupQuarters: "Le côté, puis le coin",
+        groupQuartersCaption: "Choisissez d’abord le côté, puis glissez vers le haut ou le bas pour le coin, sans lever les doigts. Il suffit de tourner, sans pause.",
         groupPinch: "Pincer",
         groupPinchCaption: "Écartez ou pincez deux doigts sur la barre de titre. Pincer deux fois, en levant les doigts entre les deux, quitte l’app.",
         groupTap: "Toucher deux fois",
@@ -592,6 +624,10 @@ extension ForkTrackpadGestureStrings {
         duringCaption: "Ce que Vorssaint montre et fait sentir avant que vous leviez les doigts.",
         previewTitle: "Aperçu",
         previewDetail: "Un petit écran montre où ira la fenêtre.",
+        previewSizeTitle: "Taille de l’aperçu",
+        previewPositionTitle: "Position de l’aperçu",
+        previewAtCenter: "Centre de l’écran",
+        previewAtPointer: "Sur le pointeur",
         hapticsTitle: "Retour haptique",
         hapticsDetail: "Un léger clic à chaque étape validée."
     )
@@ -612,8 +648,8 @@ extension ForkTrackpadGestureStrings {
         gestureOff: "Disattivato",
         groupTitlebar: "Scorri sulla barra del titolo",
         groupTitlebarCaption: "Due dita sulla barra del titolo di una finestra, anche dietro ad altre finestre.",
-        groupQuarters: "Scorri in diagonale",
-        groupQuartersCaption: "Uno scorrimento in diagonale per un quarto dello schermo, oppure due direzioni con una breve pausa tra l’una e l’altra, senza sollevare le dita.",
+        groupQuarters: "Lato, poi angolo",
+        groupQuartersCaption: "Scegli prima il lato, poi scorri verso l’alto o verso il basso per l’angolo, senza sollevare le dita. Basta girare, senza pause.",
         groupPinch: "Pizzica",
         groupPinchCaption: "Allarga o avvicina le dita sulla barra del titolo. Avvicinarle due volte, sollevando le dita tra l’una e l’altra, chiude l’app.",
         groupTap: "Tocca due volte",
@@ -655,6 +691,10 @@ extension ForkTrackpadGestureStrings {
         duringCaption: "Ciò che Vorssaint mostra e fa sentire prima che tu sollevi le dita.",
         previewTitle: "Anteprima",
         previewDetail: "Un piccolo schermo mostra dove andrà la finestra.",
+        previewSizeTitle: "Dimensione dell’anteprima",
+        previewPositionTitle: "Posizione dell’anteprima",
+        previewAtCenter: "Centro dello schermo",
+        previewAtPointer: "Sul puntatore",
         hapticsTitle: "Feedback aptico",
         hapticsDetail: "Un leggero clic a ogni passaggio convalidato."
     )
@@ -675,8 +715,8 @@ extension ForkTrackpadGestureStrings {
         gestureOff: "オフ",
         groupTitlebar: "タイトルバーでスワイプ",
         groupTitlebarCaption: "ウインドウのタイトルバーに2本指で。ほかのウインドウの後ろにあっても使えます。",
-        groupQuarters: "斜めにスワイプ",
-        groupQuartersCaption: "斜めに1回スワイプすると画面の4分の1に。または指を離さずに、短く止めて2方向にスワイプします。",
+        groupQuarters: "左右、次に角",
+        groupQuartersCaption: "まず左右を選び、指を離さずに上下にスワイプして角を選びます。曲げるだけで、止まる必要はありません。",
         groupPinch: "ピンチ",
         groupPinchCaption: "タイトルバーで指を広げる、またはピンチします。指を離してから2回ピンチするとアプリを終了します。",
         groupTap: "ダブルタップ",
@@ -718,6 +758,10 @@ extension ForkTrackpadGestureStrings {
         duringCaption: "指を離す前に Vorssaint が表示し、感じさせるもの。",
         previewTitle: "プレビュー",
         previewDetail: "小さな画面でウインドウの移動先を示します。",
+        previewSizeTitle: "プレビューのサイズ",
+        previewPositionTitle: "プレビューの位置",
+        previewAtCenter: "画面の中央",
+        previewAtPointer: "ポインタの位置",
         hapticsTitle: "触覚フィードバック",
         hapticsDetail: "確定した各ステップで軽いクリック。"
     )
@@ -738,8 +782,8 @@ extension ForkTrackpadGestureStrings {
         gestureOff: "끔",
         groupTitlebar: "제목 막대에서 쓸어넘기기",
         groupTitlebarCaption: "윈도우의 제목 막대에 두 손가락을 올립니다. 다른 윈도우 뒤에 있어도 됩니다.",
-        groupQuarters: "대각선으로 쓸어넘기기",
-        groupQuartersCaption: "대각선으로 한 번 쓸어넘기면 화면의 4분의 1로, 또는 손가락을 떼지 않고 잠깐 멈춘 뒤 두 방향으로 쓸어넘깁니다.",
+        groupQuarters: "측면, 그다음 모서리",
+        groupQuartersCaption: "먼저 왼쪽이나 오른쪽을 고른 다음, 손가락을 떼지 않고 위나 아래로 쓸어 모서리를 고릅니다. 멈출 필요 없이 꺾기만 하면 됩니다.",
         groupPinch: "핀치",
         groupPinchCaption: "제목 막대에서 손가락을 벌리거나 오므립니다. 손가락을 뗐다가 두 번 오므리면 앱을 종료합니다.",
         groupTap: "두 번 탭하기",
@@ -781,6 +825,10 @@ extension ForkTrackpadGestureStrings {
         duringCaption: "손가락을 떼기 전에 Vorssaint가 보여주고 느끼게 하는 것입니다.",
         previewTitle: "미리보기",
         previewDetail: "작은 화면이 윈도우가 갈 위치를 보여줍니다.",
+        previewSizeTitle: "미리보기 크기",
+        previewPositionTitle: "미리보기 위치",
+        previewAtCenter: "화면 가운데",
+        previewAtPointer: "포인터 위치",
         hapticsTitle: "햅틱 피드백",
         hapticsDetail: "확정된 단계마다 가벼운 클릭."
     )
@@ -801,8 +849,8 @@ extension ForkTrackpadGestureStrings {
         gestureOff: "关闭",
         groupTitlebar: "在标题栏上轻扫",
         groupTitlebarCaption: "双指放在窗口的标题栏上，即使窗口在其他窗口后面。",
-        groupQuarters: "沿对角线轻扫",
-        groupQuartersCaption: "沿对角线轻扫一次即可占据四分之一屏幕，或在不抬起手指的情况下，短暂停顿后向两个方向轻扫。",
+        groupQuarters: "先左右，再角落",
+        groupQuartersCaption: "先选左右，再不抬起手指向上或向下轻扫选择角落。转向即可，无需停顿。",
         groupPinch: "捏合",
         groupPinchCaption: "在标题栏上张开或捏合双指。捏合两次（中间抬起手指）会退出应用。",
         groupTap: "轻点两下",
@@ -844,6 +892,10 @@ extension ForkTrackpadGestureStrings {
         duringCaption: "在你抬起手指之前，Vorssaint 显示和让你感受到的内容。",
         previewTitle: "预览",
         previewDetail: "一个小屏幕显示窗口将要去的位置。",
+        previewSizeTitle: "预览大小",
+        previewPositionTitle: "预览位置",
+        previewAtCenter: "屏幕中央",
+        previewAtPointer: "指针处",
         hapticsTitle: "触觉反馈",
         hapticsDetail: "每个确认的步骤都有一次轻微点击。"
     )
@@ -864,8 +916,8 @@ extension ForkTrackpadGestureStrings {
         gestureOff: "關閉",
         groupTitlebar: "在標題列上滑動",
         groupTitlebarCaption: "雙指放在視窗的標題列上，即使視窗在其他視窗後面。",
-        groupQuarters: "沿對角線滑動",
-        groupQuartersCaption: "沿對角線滑動一次即可佔據四分之一螢幕，或在不抬起手指的情況下，短暫停頓後往兩個方向滑動。",
+        groupQuarters: "先左右，再角落",
+        groupQuartersCaption: "先選左右，再不抬起手指向上或向下滑動選擇角落。轉向即可，不需停頓。",
         groupPinch: "捏合",
         groupPinchCaption: "在標題列上張開或捏合雙指。捏合兩次（中間抬起手指）會結束 App。",
         groupTap: "點兩下",
@@ -907,6 +959,10 @@ extension ForkTrackpadGestureStrings {
         duringCaption: "在你抬起手指之前，Vorssaint 顯示和讓你感受到的內容。",
         previewTitle: "預覽",
         previewDetail: "一個小螢幕顯示視窗將前往的位置。",
+        previewSizeTitle: "預覽大小",
+        previewPositionTitle: "預覽位置",
+        previewAtCenter: "螢幕中央",
+        previewAtPointer: "指標處",
         hapticsTitle: "觸覺回饋",
         hapticsDetail: "每個確認的步驟都有一次輕微點按。"
     )
@@ -927,8 +983,8 @@ extension ForkTrackpadGestureStrings {
         gestureOff: "關閉",
         groupTitlebar: "在標題列上掃動",
         groupTitlebarCaption: "雙指放在視窗的標題列上，即使視窗在其他視窗後面。",
-        groupQuarters: "沿對角線掃動",
-        groupQuartersCaption: "沿對角線掃動一次即可佔據四分之一螢幕，或在不抬起手指的情況下，短暫停頓後向兩個方向掃動。",
+        groupQuarters: "先左右，再角落",
+        groupQuartersCaption: "先揀左右，再唔提起手指向上或向下掃動選擇角落。轉向即可，毋須停頓。",
         groupPinch: "捏合",
         groupPinchCaption: "在標題列上張開或捏合雙指。捏合兩次（中間抬起手指）會結束 App。",
         groupTap: "點兩下",
@@ -970,6 +1026,10 @@ extension ForkTrackpadGestureStrings {
         duringCaption: "在你抬起手指之前，Vorssaint 顯示和讓你感受到的內容。",
         previewTitle: "預覽",
         previewDetail: "一個小螢幕顯示視窗將前往的位置。",
+        previewSizeTitle: "預覽大小",
+        previewPositionTitle: "預覽位置",
+        previewAtCenter: "螢幕中央",
+        previewAtPointer: "指標處",
         hapticsTitle: "觸覺回饋",
         hapticsDetail: "每個確認的步驟都有一次輕微點按。"
     )
@@ -990,8 +1050,8 @@ extension ForkTrackpadGestureStrings {
         gestureOff: "Вимк.",
         groupTitlebar: "Змахування на смузі заголовка",
         groupTitlebarCaption: "Двома пальцями на смузі заголовка вікна, навіть якщо воно позаду інших вікон.",
-        groupQuarters: "Змахування по діагоналі",
-        groupQuartersCaption: "Одне змахування по діагоналі для чверті екрана або два напрямки з короткою паузою між ними, не відриваючи пальців.",
+        groupQuarters: "Бік, потім кут",
+        groupQuartersCaption: "Спершу виберіть бік, потім, не відриваючи пальців, проведіть угору чи вниз, щоб вибрати кут. Досить повернути, без паузи.",
         groupPinch: "Зведення й розведення",
         groupPinchCaption: "Розведіть або зведіть пальці на смузі заголовка. Подвійне зведення, з відриванням пальців між ними, завершує програму.",
         groupTap: "Подвійне торкання",
@@ -1033,6 +1093,10 @@ extension ForkTrackpadGestureStrings {
         duringCaption: "Що Vorssaint показує й дає відчути, поки ви не відірвали пальці.",
         previewTitle: "Попередній перегляд",
         previewDetail: "Маленький екран показує, куди стане вікно.",
+        previewSizeTitle: "Розмір попереднього перегляду",
+        previewPositionTitle: "Положення попереднього перегляду",
+        previewAtCenter: "Центр екрана",
+        previewAtPointer: "На вказівнику",
         hapticsTitle: "Тактильний відгук",
         hapticsDetail: "Легке клацання на кожному зарахованому кроці."
     )

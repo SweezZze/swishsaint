@@ -24,6 +24,8 @@ enum ForkTrackpadTuning: CaseIterable {
     case cancelDelay
     /// How far from the top of a window a hand-drawn title bar still counts.
     case titlebarBand
+    /// How big the preview standing in for the pointer is, as a scale.
+    case previewSize
 
     var key: String {
         switch self {
@@ -33,6 +35,7 @@ enum ForkTrackpadTuning: CaseIterable {
         case .stepPause: return ForkDefaultsKey.stepPauseStep
         case .cancelDelay: return ForkDefaultsKey.cancelDelayStep
         case .titlebarBand: return ForkDefaultsKey.titlebarBandStep
+        case .previewSize: return ForkDefaultsKey.previewSizeStep
         }
     }
 
@@ -47,6 +50,7 @@ enum ForkTrackpadTuning: CaseIterable {
         case .stepPause: return [0.1, 0.15, 0.2, 0.25, 0.3, 0.4, 0.5]
         case .cancelDelay: return [0.6, 0.8, 1, 1.2, 1.5, 2]
         case .titlebarBand: return [24, 32, 40, 52, 64, 80, 100]
+        case .previewSize: return [0.6, 0.8, 1, 1.25, 1.5, 2, 2.5]
         }
     }
 
@@ -58,6 +62,7 @@ enum ForkTrackpadTuning: CaseIterable {
         case .stepPause: return 1
         case .cancelDelay: return 1
         case .titlebarBand: return 2
+        case .previewSize: return 2
         }
     }
 
