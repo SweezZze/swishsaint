@@ -40,7 +40,7 @@ final class ForkLinkedResizeService {
         guard enabled != self.enabled else { return }
         self.enabled = enabled
         if enabled {
-            WindowBackgroundCursor.setEnabled(true)
+            ForkBackgroundCursor.acquire()
             activationObserver = NSWorkspace.shared.notificationCenter.addObserver(
                 forName: NSWorkspace.didActivateApplicationNotification, object: nil, queue: .main
             ) { [weak self] _ in
@@ -62,7 +62,7 @@ final class ForkLinkedResizeService {
                 handle.orderOut(nil)
             }
             handles = []
-            WindowBackgroundCursor.setEnabled(false)
+            ForkBackgroundCursor.release()
         }
     }
 
@@ -466,12 +466,26 @@ extension ForkLinkedResizeService {
 /// Private window server call, `CGSSetConnectionProperty(connection,
 /// connection, "SetsCursorInBackground", true)`, looked up at run time like
 /// `SymbolicHotKeys`: if a future macOS drops it, the cursor stops changing
-/// and nothing else breaks. Only on while linked windows are.
-private enum WindowBackgroundCursor {
+/// and nothing else breaks. On while someone holds it: the linked windows,
+/// and a gesture preview that stands in for the pointer.
+enum ForkBackgroundCursor {
     private typealias DefaultConnection = @convention(c) () -> Int32
     private typealias SetConnectionProperty = @convention(c) (Int32, Int32, CFString, CFTypeRef) -> Int32
 
-    static func setEnabled(_ enabled: Bool) {
+    private static var holders = 0
+
+    static func acquire() {
+        holders += 1
+        if holders == 1 { setEnabled(true) }
+    }
+
+    static func release() {
+        guard holders > 0 else { return }
+        holders -= 1
+        if holders == 0 { setEnabled(false) }
+    }
+
+    private static func setEnabled(_ enabled: Bool) {
         let handle = UnsafeMutableRawPointer(bitPattern: -2) // RTLD_DEFAULT
         guard let connectionSymbol = dlsym(handle, "_CGSDefaultConnection"),
               let setSymbol = dlsym(handle, "CGSSetConnectionProperty")

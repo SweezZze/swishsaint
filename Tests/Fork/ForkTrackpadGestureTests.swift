@@ -1021,6 +1021,14 @@ enum ForkTrackpadGestureTests {
 
     private static func previewPlacement(_ suite: TestSuite) {
         typealias Placement = ForkTrackpadPreviewPlacement
+        let screen = CGRect(x: 0, y: 0, width: 1440, height: 900)
+        suite.expect(Placement.frame(size: CGSize(width: 54, height: 54), centeredOn: CGPoint(x: 700, y: 400),
+                                     within: screen) == CGRect(x: 673, y: 373, width: 54, height: 54)
+                        && Placement.frame(size: CGSize(width: 54, height: 54), centeredOn: CGPoint(x: 10, y: 5),
+                                           within: screen) == CGRect(x: 0, y: 0, width: 54, height: 54)
+                        && Placement.frame(size: CGSize(width: 54, height: 54), centeredOn: CGPoint(x: 1435, y: 898),
+                                           within: screen) == CGRect(x: 1386, y: 846, width: 54, height: 54),
+                     "the badge sits on the pointer and moves in just enough to stay on its screen")
         let left = CGRect(x: 0, y: 0, width: 1440, height: 900)
         let right = CGRect(x: 1440, y: 0, width: 1920, height: 1080)
         let screens = [left, right]

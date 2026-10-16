@@ -13,6 +13,7 @@ struct ForkTests {
             ("fork-defaults", { ForkDefaultsTests.run(suite) }),
             ("window-trackpad", { ForkTrackpadGestureTests.run(suite) }),
             ("fork-update", { ForkUpdateTests.run(suite) }),
+            ("fork-claude-usage", { ForkClaudeUsageTests.run(suite) }),
         ]
         var selected = Set<String>()
         var listOnly = false

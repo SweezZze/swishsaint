@@ -9,6 +9,7 @@ import Foundation
 /// official files. A feature added here appears on the Extras page alone.
 enum ForkFeature: String, CaseIterable, Identifiable {
     case trackpadGestures
+    case claudeUsage
 
     var id: String { rawValue }
 
@@ -16,24 +17,28 @@ enum ForkFeature: String, CaseIterable, Identifiable {
     var enabledKey: String {
         switch self {
         case .trackpadGestures: return ForkDefaultsKey.gesturesEnabled
+        case .claudeUsage: return ForkDefaultsKey.claudeUsageEnabled
         }
     }
 
     var symbol: String {
         switch self {
         case .trackpadGestures: return "hand.draw"
+        case .claudeUsage: return "gauge.with.dots.needle.33percent"
         }
     }
 
     func title(_ text: ForkExtrasStrings) -> String {
         switch self {
         case .trackpadGestures: return text.gesturesTitle
+        case .claudeUsage: return text.claudeUsageTitle
         }
     }
 
     func summary(_ text: ForkExtrasStrings) -> String {
         switch self {
         case .trackpadGestures: return text.gesturesSummary
+        case .claudeUsage: return text.claudeUsageSummary
         }
     }
 
@@ -43,6 +48,7 @@ enum ForkFeature: String, CaseIterable, Identifiable {
     func sync() {
         switch self {
         case .trackpadGestures: ForkGestures.sync()
+        case .claudeUsage: if !isEnabled { ForkClaudeUsage.reset() }
         }
     }
 }

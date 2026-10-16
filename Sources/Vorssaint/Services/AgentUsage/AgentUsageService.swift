@@ -679,6 +679,7 @@ final class AgentUsageService: ObservableObject {
     /// places them at `now` on every call, since a session ages out between
     /// saves. Runs on `queue`.
     private func readClaudeApp(now: Date) {
+        if ForkClaudeUsage.apply(to: store, readsClaude: enabled.contains(.claude), now: now) { return } // FORK(claude-usage)
         guard enabled.contains(.claude) else {
             if store.limits[.claude]?.source == .claudeApp { store.clearLimits(.claude) }
             claudeAppModified = nil

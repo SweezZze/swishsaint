@@ -37,6 +37,9 @@ struct ForkTrackpadSettingsSections: View {
     @AppStorage(ForkDefaultsKey.titlebarBandStep)
     private var titlebarBandStep = ForkTrackpadTuning.titlebarBand.defaultStep
     @AppStorage(ForkDefaultsKey.previewEnabled) private var previewEnabled = true
+    @AppStorage(ForkDefaultsKey.previewAtPointer) private var previewAtPointer = false
+    @AppStorage(ForkDefaultsKey.previewSizeStep)
+    private var previewSizeStep = ForkTrackpadTuning.previewSize.defaultStep
     @AppStorage(ForkDefaultsKey.hapticsEnabled) private var hapticsEnabled = true
     @State private var showsAdvanced = false
     /// The groups unfolded. Only the most used one at first: thirty cards
@@ -229,9 +232,42 @@ struct ForkTrackpadSettingsSections: View {
                 }
             }
             .padding(.vertical, 2)
+            previewPositionControl
         } header: {
             Text(text.duringTitle)
         }
+    }
+
+    /// Where the preview shows, as two cards side by side, the chosen one
+    /// checked, then its size: the badge drawn beside the slider, so the
+    /// size shows while the knob moves. The size counts for both places; at
+    /// the center the preview is drawn larger (`centeredScale`).
+    private var previewPositionControl: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text(text.previewPositionTitle)
+            HStack(spacing: 10) {
+                ForkTrackpadPreviewPositionCard(atPointer: false, title: text.previewAtCenter,
+                                                  detail: text.previewAtCenterDetail,
+                                                  isSelected: !previewAtPointer) { choosePreviewAtPointer(false) }
+                ForkTrackpadPreviewPositionCard(atPointer: true, title: text.previewAtPointer,
+                                                  detail: text.previewAtPointerDetail,
+                                                  isSelected: previewAtPointer) { choosePreviewAtPointer(true) }
+            }
+            HStack(alignment: .center, spacing: 16) {
+                ForkTrackpadStepSlider(title: text.previewSizeTitle, tuning: .previewSize,
+                                         lowLabel: text.sizeSmall, highLabel: text.sizeLarge,
+                                         step: $previewSizeStep)
+                ForkTrackpadPreviewSizeSample(scale: ForkTrackpadTuning.previewSize.value(atStep: previewSizeStep))
+                    .frame(width: 112, height: 76)
+            }
+        }
+        .disabled(!previewEnabled)
+        .opacity(previewEnabled ? 1 : 0.5)
+    }
+
+    private func choosePreviewAtPointer(_ atPointer: Bool) {
+        withAnimation(.spring(response: 0.3, dampingFraction: 0.85)) { previewAtPointer = atPointer }
+        ForkGestures.sync()
     }
 
     // MARK: Advanced
@@ -673,6 +709,104 @@ private struct ForkTrackpadModifierKeyPicker: View {
 /// A tuned setting as notches between two words, never a number: each
 /// notch is one step of its `ForkTrackpadTuning` ladder, and the words
 /// say which way is which.
+/// One place for the preview: a small screen with the badge where it will
+/// show, in the middle or on a pointer, and a check on the chosen one.
+private struct ForkTrackpadPreviewPositionCard: View {
+    let atPointer: Bool
+    let title: String
+    let detail: String
+    let isSelected: Bool
+    let choose: () -> Void
+
+    var body: some View {
+        Button(action: choose) {
+            VStack(alignment: .leading, spacing: 8) {
+                screen
+                    .frame(height: 64)
+                    .frame(maxWidth: .infinity)
+                HStack(spacing: 6) {
+                    Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
+                        .foregroundStyle(isSelected ? AnyShapeStyle(Color.accentColor) : AnyShapeStyle(.tertiary))
+                    Text(title)
+                        .font(.callout.weight(.semibold))
+                        .foregroundStyle(.primary)
+                }
+                Text(detail)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .padding(10)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            .background(
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .fill(isSelected ? Color.accentColor.opacity(0.1) : Color.primary.opacity(0.04))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .strokeBorder(isSelected ? Color.accentColor.opacity(0.6) : Color.primary.opacity(0.1),
+                                  lineWidth: isSelected ? 1.5 : 1)
+            )
+            .contentShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(title)
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
+    }
+
+    /// The screen, a window's title bar, and the badge at its place: large in
+    /// the middle, or small over the pointer on the title bar.
+    private var screen: some View {
+        let badge = ForkTrackpadPreviewSizeSample(scale: atPointer ? 0.45 : 0.8)
+        return ZStack {
+            RoundedRectangle(cornerRadius: 6, style: .continuous)
+                .fill(Color.primary.opacity(0.06))
+            RoundedRectangle(cornerRadius: 6, style: .continuous)
+                .strokeBorder(Color.primary.opacity(0.18))
+            RoundedRectangle(cornerRadius: 3, style: .continuous)
+                .fill(Color.primary.opacity(0.1))
+                .frame(width: 64, height: 36)
+                .overlay(alignment: .top) {
+                    Rectangle().fill(Color.primary.opacity(0.12)).frame(height: 6)
+                }
+                .offset(x: -12, y: 4)
+            if atPointer {
+                badge.offset(x: -4, y: -12)
+            } else {
+                badge
+            }
+        }
+        .frame(width: 104, height: 64)
+    }
+}
+
+/// The preview's badge as the gestures draw it, a left half chosen,
+/// at the size the slider picks.
+private struct ForkTrackpadPreviewSizeSample: View {
+    let scale: Double
+
+    var body: some View {
+        let size = CGSize(width: 44 * scale, height: 29 * scale)
+        let inset = 2.5 * scale
+        let accent = Color(nsColor: .controlAccentColor)
+        ZStack(alignment: .topLeading) {
+            RoundedRectangle(cornerRadius: 6 * scale, style: .continuous)
+                .fill(.regularMaterial)
+            RoundedRectangle(cornerRadius: 6 * scale, style: .continuous)
+                .strokeBorder(Color.primary.opacity(0.35), lineWidth: max(1, scale))
+            RoundedRectangle(cornerRadius: 3 * scale, style: .continuous)
+                .fill(LinearGradient(colors: [accent.opacity(0.95), accent.opacity(0.8)],
+                                     startPoint: .top, endPoint: .bottom))
+                .frame(width: size.width / 2 - 2 * inset, height: size.height - 2 * inset)
+                .offset(x: inset, y: inset)
+        }
+        .frame(width: size.width, height: size.height)
+        .shadow(color: .black.opacity(0.2), radius: 3, y: 1)
+        .animation(.spring(response: 0.25, dampingFraction: 0.8), value: scale)
+        .accessibilityHidden(true)
+    }
+}
+
 private struct ForkTrackpadStepSlider: View {
     let title: String
     let tuning: ForkTrackpadTuning

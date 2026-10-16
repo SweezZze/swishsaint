@@ -13,3 +13,4 @@ settings       Sources/Vorssaint/UI/Settings/FeatureVisibilitySupport.swift   # 
 settings2      Sources/Vorssaint/UI/Settings/SettingsView.swift               # page « Extras » : affiche son contenu
 settings3      Sources/Vorssaint/UI/Settings/SettingsDirectory.swift          # page « Extras » : sa ligne dans la barre latérale et la recherche
 window-layout  Sources/Vorssaint/Services/WindowLayout/WindowLayoutService.swift  # gestes du trackpad : suivent chaque synchro et chaque arrêt de Disposition des fenêtres
+claude-usage   Sources/Vorssaint/Services/AgentUsage/AgentUsageService.swift  # limites Claude lues par Claude Code : passent avant celles de l'app Claude
