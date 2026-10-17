@@ -674,15 +674,21 @@ enum SwitcherSupport {
         }
     }
 
-    /// A program that is not an app, such as the Java a game runs on, has no
-    /// bundle identifier and is listed by its path instead (issue #3033).
+    /// A program that is not an app, such as the Java a game runs on, is
+    /// listed by its path (issue #3033) and matched the way the mouse
+    /// exceptions and Window Layout match it, by that path as well as by its
+    /// bundle identifier. A JVM that AWT registers reports the identifier of
+    /// Java's launcher, the same for every program that runtime runs, so only
+    /// the path tells the runtime that was picked apart. The path is read only
+    /// while the list names one.
     static func shouldPausePreviewCapture(frontmostBundleIdentifier: String?,
                                           frontmostExecutablePath: @autoclosure () -> String? = nil,
                                           excludedBundleIdentifiers: [String]) -> Bool {
-        guard let identity = MouseAppExceptionSupport.identity(bundleID: frontmostBundleIdentifier,
-                                                               executablePath: frontmostExecutablePath())
-        else { return false }
-        return excludedBundleIdentifiers.contains(identity)
+        MouseAppExceptionSupport.identities(
+            bundleID: frontmostBundleIdentifier,
+            executablePath: frontmostExecutablePath(),
+            readsPath: excludedBundleIdentifiers.contains(where: MouseAppExceptionSupport.isExecutablePathIdentity))
+            .contains(where: excludedBundleIdentifiers.contains)
     }
 
     static func needsScreenRecording(switcherEnabled: Bool,
@@ -1053,10 +1059,15 @@ enum SwitcherSupport {
     }
 
     /// When Accessibility does not match a hidden app's WindowServer surface,
-    /// its Space assignment distinguishes a real window from a leftover.
+    /// its Space assignment distinguishes a real window from a leftover. A
+    /// window the app had already closed keeps its Space too, and used to
+    /// come back with the app's hidden badge (issues #512 and #2628), so a
+    /// surface the window server did not hide along with the app is not
+    /// confirmed. `isHiddenWithApp` is nil when the window server cannot say.
     static func isConfirmedHiddenAppWindow(appIsHidden: Bool,
-                                           windowSpaces: [UInt64]) -> Bool {
-        appIsHidden && !windowSpaces.isEmpty
+                                           windowSpaces: [UInt64],
+                                           isHiddenWithApp: Bool?) -> Bool {
+        appIsHidden && !windowSpaces.isEmpty && isHiddenWithApp != false
     }
 
     /// A partial Accessibility list cannot veto windows on another desktop.
@@ -1525,14 +1536,16 @@ enum SwitcherSupport {
     }
 
     /// ↑/↓ on a wrapped icon row steps a row of icons, not of windows: an app
-    /// row lands on the target app's first window. Nil keeps the selection.
+    /// row lands on the target app's entry, its window here in current-desktop
+    /// mode. Nil keeps the selection.
     static func iconRowSelectionIndex(after selectedIndex: Int,
                                       items: [SwitcherItem],
                                       windowRow: Bool,
                                       columns: Int,
-                                      movingDown: Bool) -> Int? {
+                                      movingDown: Bool,
+                                      currentSpaceOnly: Bool = false) -> Int? {
         guard items.indices.contains(selectedIndex) else { return nil }
-        let groups = windowRow ? [] : appGroups(items: items)
+        let groups = windowRow ? [] : appGroups(items: items, currentSpaceOnly: currentSpaceOnly)
         let selectedPID = items[selectedIndex].pid
         guard let iconIndex = windowRow ? selectedIndex : groups.firstIndex(where: { $0.pid == selectedPID })
         else { return nil }

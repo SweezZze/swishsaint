@@ -414,6 +414,105 @@ enum NotchTests {
                      "a chosen width narrower than the player still limits it, and its row then sits below the camera")
     }
 
+    /// Without a floating Explore button each page's row starts with the
+    /// island's own way to the sections. A page with a width of its own grows
+    /// by it beside a camera, up to the chosen width, so its controls keep
+    /// the room they have while the button floats; the home page's levels
+    /// keep their narrowest past it, or share the row below the camera; and
+    /// a level reading drops only its percentage where a side has no room.
+    private static func sectionsButtonContracts(_ suite: TestSuite) {
+        let screen = CGRect(x: 0, y: 0, width: 1710, height: 1112)
+        let home: [NotchControlItem] = [.volume, .brightness, .music, .mixer, .keepAwake, .timer, .calendar]
+        let button = NotchBand.sectionsButtonRoom
+        let least = NotchLayout.bandLevelMinimumWidth
+        var sizes: [(NotchSize, Double)] = [(.compact, NotchSize.defaultWidth), (.spacious, NotchSize.defaultWidth)]
+        sizes += stride(from: NotchSize.widthRange.lowerBound, through: NotchSize.widthRange.upperBound, by: 20).map { (.custom, $0) }
+        var unchanged = true, widths = true, sides = true, levels = true, below = true, rows = true
+        var readings = true, player = true
+        var narrowestPlayer = CGFloat.infinity
+        var movedLevels = 0
+        for camera: CGFloat in [0, 156, 170, 180, 185, 190, 200, 208, 210, 224] {
+            for (size, custom) in sizes {
+                let base = NotchGeometry(screen: screen, safeAreaTop: camera > 0 ? 32 : 0, cameraWidth: camera, layout: size,
+                                         customWidth: custom, silhouette: camera > 0 ? .notch : .capsule)
+                for module in NotchModule.allCases {
+                    let floating = base.page(module, controls: home, sectionsButton: false)
+                    let leading = base.page(module, controls: home, sectionsButton: true)
+                    let floatingBand = NotchBand(geometry: floating, contentWidth: floating.contentWidth)
+                    let band = NotchBand(geometry: leading, contentWidth: leading.contentWidth)
+                    unchanged = unchanged && !floatingBand.sectionsButton && floatingBand.leadingRoom == floatingBand.side
+                        && floating.expandedWidth == {
+                            var plain = base
+                            plain.pageTop = module.pageTop
+                            plain.pageContentWidth = NotchLayout.naturalContentWidth(module, controls: home, within: base.contentWidth)
+                            return plain.expandedWidth
+                        }()
+                    // The player lays out its leading side itself, without the button.
+                    sides = sides && band.sectionsButton == (module.pageTop != .wrapsCamera)
+                        && band.leadingRoom == band.side - (band.sectionsButton ? button : 0)
+                    if band.besideCamera, band.sectionsButton, floating.pageContentWidth != nil {
+                        // Each side past the button keeps what a page's row keeps
+                        // beside a camera, unless the chosen width stops the island.
+                        widths = widths && leading.expandedWidth <= floating.expandedWidth + button * 2
+                            && (band.leadingRoom >= floating.pageBandSide - NotchBand.cameraClearance
+                                || leading.expandedWidth == base.expandedWidth)
+                    } else {
+                        // Lists keep the chosen width, and a full row holds the button.
+                        widths = widths && leading.expandedWidth == floating.expandedWidth
+                    }
+                    if band.besideCamera, module.pageTop != .wrapsCamera {
+                        readings = readings && band.side >= NotchLayout.levelReadingDetailWidth
+                    }
+                }
+                let page = base.page(.controls, controls: home, sectionsButton: true)
+                let band = NotchBand(geometry: page, contentWidth: page.contentWidth)
+                let floating = base.page(.controls, controls: home, sectionsButton: false)
+                for count in 1...3 {
+                    let inRow = NotchLayout.bandLevelCount(count, band: band)
+                    if band.besideCamera {
+                        // In the row the first level keeps its narrowest past the button.
+                        levels = levels && (inRow == 0 || (inRow == count && band.side - button >= least))
+                            && (count == 3 || inRow == count || band.side - button < least)
+                        // A preset adds the row below the camera to the island when the levels move there.
+                        let moved = inRow == 0 && NotchLayout.bandLevelCount(count, band: NotchBand(
+                            geometry: floating, contentWidth: floating.contentWidth)) == count
+                        if moved, size != .custom {
+                            movedLevels += 1
+                            below = below && page.expandedSize(module: .controls, sliderCount: count).height
+                                - floating.expandedSize(module: .controls, sliderCount: count).height
+                                == NotchLayout.levelRowHeight + NotchLayout.rowSpacing
+                        }
+                    } else {
+                        // Across the top every level keeps its narrowest after the button.
+                        let held = CGFloat(count) * least + CGFloat(count - 1) * NotchLayout.bandLevelSpacing
+                        rows = rows && inRow == count && button + held + NotchLayout.bandLevelSpacing <= band.side
+                            && (NotchLayout.homeReadingWidth(levels: count, side: band.leadingRoom).map {
+                                button + held + NotchLayout.bandLevelSpacing + $0 <= band.side } ?? true)
+                    }
+                }
+                let music = base.page(.music, controls: home, sectionsButton: true)
+                let musicBand = NotchBand(geometry: music, contentWidth: music.contentWidth)
+                if musicBand.besideCamera {
+                    // Across from the cover the reading keeps its glyph and a meter.
+                    narrowestPlayer = min(narrowestPlayer, musicBand.side)
+                    player = player && musicBand.side < NotchLayout.levelReadingDetailWidth
+                        && musicBand.side - 18 - 8 >= 36
+                }
+            }
+        }
+        suite.expect(unchanged, "with Explore floating the row and every page's width stay as they were")
+        suite.expect(sides, "every page but the player starts its row with the sections button, and its controls follow it")
+        suite.expect(widths,
+                     "a page with a width of its own grows by the sections button beside a camera, up to the chosen width; lists and full rows keep theirs")
+        suite.expect(levels, "a level beside the camera keeps its narrowest past the sections button, or the levels share the row below")
+        suite.expect(below && movedLevels > 0,
+                     "a preset island grows by the row below the camera when the levels move there: \(movedLevels) islands")
+        suite.expect(rows, "a full row holds every level at its narrowest after the sections button, a reading too")
+        suite.expect(readings, "every page's row but the player's keeps a level reading's percentage beside a camera")
+        suite.expect(player && narrowestPlayer.isFinite,
+                     "across from the player's cover a reading keeps its glyph and a meter at least 36 points long: \(narrowestPlayer)")
+    }
+
     private static func noticeLayoutContracts(_ suite: TestSuite) {
         let font = NSFont.monospacedDigitSystemFont(ofSize: 11, weight: .medium)
         func width(_ text: String) -> CGFloat {
@@ -1161,6 +1260,7 @@ enum NotchTests {
         captureControlsLayoutContracts(suite)
         pageTopContracts(suite)
         pageWidthContracts(suite)
+        sectionsButtonContracts(suite)
         noticeLayoutContracts(suite)
         simulatedMenuBoundsContracts(suite)
         simulatedDisplayContracts(suite)
@@ -1387,10 +1487,11 @@ enum NotchTests {
                        == NotchLayout.levelRowHeight + NotchLayout.rowSpacing
                },
                "the levels sit in the top row, and three beside a camera share one slim row below it")
-        func levelBand(side: CGFloat, besideCamera: Bool) -> NotchBand {
+        func levelBand(side: CGFloat, besideCamera: Bool, sectionsButton: Bool = false) -> NotchBand {
             var band = NotchBand()
             band.besideCamera = besideCamera
             band.side = side
+            band.sectionsButton = sectionsButton
             return band
         }
         let fullRow = levelBand(side: 304, besideCamera: false)
@@ -1399,6 +1500,13 @@ enum NotchTests {
                && NotchLayout.bandLevelCount(2, band: levelBand(side: 114, besideCamera: true)) == 2
                && NotchLayout.bandLevelCount(1, band: levelBand(side: 114, besideCamera: true)) == 1,
                "a full row holds every level, and a camera's sides only levels they split evenly")
+        suite.expect(NotchLayout.bandLevelCount(3, band: levelBand(side: 304, besideCamera: false, sectionsButton: true)) == 3
+               && NotchLayout.bandLevelCount(3, band: levelBand(side: 290, besideCamera: false, sectionsButton: true)) == 0
+               && NotchLayout.bandLevelCount(2, band: levelBand(side: 114, besideCamera: true, sectionsButton: true)) == 2
+               && NotchLayout.bandLevelCount(2, band: levelBand(side: 104, besideCamera: true, sectionsButton: true)) == 0
+               && NotchLayout.bandLevelCount(1, band: levelBand(side: 104, besideCamera: true, sectionsButton: true)) == 0
+               && NotchLayout.bandLevelCount(2, band: levelBand(side: 104, besideCamera: true)) == 2,
+               "past the sections button a level keeps its narrowest, or the levels move to the row below")
         suite.expect(NotchLayout.homeReadingWidth(levels: 3, side: 504) == NotchLayout.homeReadingWidth
                && NotchLayout.homeReadingWidth(levels: 3, side: 440) == 440 - 12 - 252
                && NotchLayout.homeReadingWidth(levels: 3, side: 304) == nil
@@ -2695,6 +2803,8 @@ enum NotchTests {
                "fine volume preserves the system quarter-step")
         suite.expect((0..<9).map { NotchClipboardPastePress.index(
                     keyCode: [18, 19, 20, 21, 23, 22, 26, 28, 25][$0], commandOnly: true) } == (0..<9).map { $0 }
+               && (0..<9).map { NotchClipboardPastePress.index(
+                    keyCode: [83, 84, 85, 86, 87, 88, 89, 91, 92][$0], commandOnly: true) } == (0..<9).map { $0 }
                && NotchClipboardPastePress.index(keyCode: 18, commandOnly: false) == nil
                && NotchClipboardPastePress.index(keyCode: 29, commandOnly: true) == nil,
                "⌘1 to ⌘9 on the clipboard page name the first nine entries, and nothing else does")

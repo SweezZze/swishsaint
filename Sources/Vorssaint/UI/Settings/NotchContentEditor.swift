@@ -113,7 +113,7 @@ struct NotchIslandPreview: View {
                 if geometry.headerRowHeight > 0 {
                     NotchBandRow(band: band) {
                         if !wraps {
-                            if !NotchQuickAccessConfiguration.current().actions.contains(.explore) {
+                            if band.sectionsButton {
                                 Image(systemName: "square.grid.2x2")
                                     .font(.system(size: 12, weight: .medium))
                                     .foregroundStyle(.white.opacity(0.55))

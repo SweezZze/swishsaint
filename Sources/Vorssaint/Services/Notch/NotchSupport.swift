@@ -95,11 +95,13 @@ struct NotchClipboardPastePress: Equatable {
     let serial: Int
     let index: Int
 
-    /// The digit row by physical key, so every layout keeps the shortcut.
+    /// The digit row by physical key, so every layout keeps the shortcut,
+    /// and the numeric keypad's digits.
     static func index(keyCode: UInt16, commandOnly: Bool) -> Int? {
         guard commandOnly else { return nil }
         let digitKeys: [UInt16] = [18, 19, 20, 21, 23, 22, 26, 28, 25]
-        return digitKeys.firstIndex(of: keyCode)
+        let keypadKeys: [UInt16] = [83, 84, 85, 86, 87, 88, 89, 91, 92]
+        return digitKeys.firstIndex(of: keyCode) ?? keypadKeys.firstIndex(of: keyCode)
     }
 }
 
@@ -217,6 +219,9 @@ extension NotchModule {
 struct NotchBand: Equatable {
     /// Room every control keeps from the camera.
     static let cameraClearance: CGFloat = 8
+    /// The island's way to its sections: a 28-point button and the row's
+    /// spacing after it.
+    static let sectionsButtonRoom: CGFloat = 28 + 6
 
     /// The row wraps a physical camera, half of it on either side.
     var besideCamera = false
@@ -224,6 +229,9 @@ struct NotchBand: Equatable {
     /// Each side's width beside the camera, past the clearance; without a
     /// camera, the whole row.
     var side: CGFloat = 0
+    /// The island's way to its sections leads the row, before the page's
+    /// own controls.
+    var sectionsButton = false
 
     init() {}
 
@@ -232,7 +240,11 @@ struct NotchBand: Equatable {
         height = geometry.headerRowHeight
         side = besideCamera
             ? max(0, (contentWidth - geometry.headerCameraGap) / 2 - Self.cameraClearance) : max(0, contentWidth)
+        sectionsButton = geometry.rowShowsSectionsButton
     }
+
+    /// What the leading side leaves the page's own controls.
+    var leadingRoom: CGFloat { max(0, side - (sectionsButton ? Self.sectionsButtonRoom : 0)) }
 }
 
 /// Shared measurements keep the window's content budget and its SwiftUI
@@ -509,19 +521,30 @@ enum NotchLayout {
         }
     }
 
-    /// How many of the home page's levels the island's top row holds. A full
-    /// row holds them all. Beside a camera they sit one on each side only
+    /// How many of the home page's levels the island's top row holds, each
+    /// at least at its narrowest after the sections button. A full row
+    /// holds them all. Beside a camera they sit one on each side only
     /// while they split evenly; three would leave one side with two and
-    /// nothing under the other, so they share a row below the camera's.
+    /// nothing under the other, so they share a row below the camera's,
+    /// as they do where the button leaves the first one too little.
     static func bandLevelCount(_ levels: Int, band: NotchBand) -> Int {
         let count = max(0, levels)
-        return !band.besideCamera || count <= 2 ? count : 0
+        guard band.besideCamera else {
+            // The trailing end keeps the row's spacing before the island's marks.
+            let held = CGFloat(count) * bandLevelMinimumWidth + CGFloat(max(0, count - 1)) * bandLevelSpacing
+            return held + bandLevelSpacing <= band.leadingRoom ? count : 0
+        }
+        return count <= 2 && band.leadingRoom >= bandLevelMinimumWidth ? count : 0
     }
 
     /// A level reading at the trailing end of the home page's full row,
     /// where the levels make room for it.
     static let homeReadingWidth: CGFloat = 220
     static let homeReadingMinimumWidth: CGFloat = 160
+    /// The narrowest side a level reading names its percentage in: the
+    /// least a page's row keeps beside a camera. Across from the player's
+    /// cover a side has less, and the reading keeps its glyph and a meter.
+    static let levelReadingDetailWidth: CGFloat = 92
 
     /// How wide that reading is while every level keeps its narrowest; nil
     /// when the row is too narrow for both, and the reading covers the
@@ -2149,6 +2172,9 @@ struct NotchGeometry: Equatable {
     /// The width the open page reads best at, inside the width the person
     /// chose, which stays the limit; nil takes all of it, as lists do.
     var pageContentWidth: CGFloat? = nil
+    /// Nothing floating beside the island leads to its sections, so the
+    /// open page's row starts with the island's own button for them.
+    var sectionsButtonInRow = false
     private var allowsActivityFooter = true
     private var minimumCompactWidth: CGFloat = 0
     /// Narrower wings than this are dropped rather than drawn cramped.
@@ -2225,6 +2251,20 @@ struct NotchGeometry: Equatable {
     }
     /// What each side of the camera keeps for the page's row.
     var pageBandSide: CGFloat { pageTop == .wrapsCamera ? NotchLayout.musicBandSide : 100 }
+    /// The sections button leads the row, unless the page lays out its
+    /// leading side itself, as the player does.
+    var rowShowsSectionsButton: Bool { sectionsButtonInRow && pageTop != .wrapsCamera }
+
+    /// The island opened on `module` at rest: the page's top row and the
+    /// width it reads best at, with the sections button where nothing
+    /// floating beside the island offers them.
+    func page(_ module: NotchModule, controls: [NotchControlItem], sectionsButton: Bool) -> NotchGeometry {
+        var result = self
+        result.pageTop = module.pageTop
+        result.pageContentWidth = NotchLayout.naturalContentWidth(module, controls: controls, within: contentWidth)
+        result.sectionsButtonInRow = sectionsButton
+        return result
+    }
     /// A capsule's row keeps clear of its rounded top corners, its 28-point
     /// buttons as far from the top edge as the page is from the bottom. A
     /// page with no row starts as far from the top as it ends from the bottom.
@@ -2521,9 +2561,12 @@ struct NotchGeometry: Equatable {
     var expandedWidth: CGFloat {
         let chosen = NotchLayout.preferredWidth(layout, custom: customWidth)
         // A page with a width of its own takes no more, still wrapping the
-        // camera with its row where the chosen width would have.
+        // camera with its row where the chosen width would have. Each side
+        // keeps its room for the page's controls past the sections button,
+        // as the camera's sides are as wide as each other.
+        let wing = pageBandSide + (rowShowsSectionsButton ? NotchBand.sectionsButtonRoom : 0)
         let preferred = pageContentWidth.map { natural in
-            min(chosen, max(natural, isNotched ? cameraWidth + pageBandSide * 2 : 0) + NotchLayout.horizontalInset * 2)
+            min(chosen, max(natural, isNotched ? cameraWidth + wing * 2 : 0) + NotchLayout.horizontalInset * 2)
         } ?? chosen
         return min(max(preferred, cameraWidth + 36), screen.width - 24 - NotchQuickAccessLayout.gutter * 2)
     }

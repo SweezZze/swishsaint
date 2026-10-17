@@ -1215,6 +1215,10 @@ enum RecorderFeatureTests {
             encoding: .utf8)) ?? ""
         suite.expect(recorderControllerSource.contains("rect: rect,\n                                      strength: item.strength)"),
                "redrawing a blur's area keeps its strength")
+        let copyGIFSource = recorderControllerSource.components(separatedBy: "func copyGIF()").last?
+            .components(separatedBy: "\n    func ").first ?? ""
+        suite.expect(copyGIFSource.contains("GeneralPasteboardAccess.shared.async({\n                RecorderGIFClipboard.publish(fileURL: url)"),
+               "Copy as GIF checks and publishes the file on the pasteboard lane, off the main thread")
         let blurredDocument = RecorderEditDocument.decoded(
             RecorderEditDocument(blurs: [blur]).encoded())
         suite.expect(blurredDocument.blurs == [blur],
