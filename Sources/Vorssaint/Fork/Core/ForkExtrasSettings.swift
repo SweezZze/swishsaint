@@ -10,6 +10,7 @@ struct ForkExtrasSettings: View {
     @ObservedObject private var l10n = L10n.shared
     @ObservedObject private var permissions = Permissions.shared
     @AppStorage(ForkDefaultsKey.claudeUsageEnabled) private var claudeUsageEnabled = false
+    @AppStorage(ForkDefaultsKey.dictationEnabled) private var dictationEnabled = false
 
     private var text: ForkExtrasStrings { ForkExtrasStrings.strings(l10n.language) }
 
@@ -36,6 +37,10 @@ struct ForkExtrasSettings: View {
 
             if claudeUsageEnabled {
                 ForkClaudeUsageStatus(text: text)
+            }
+
+            if dictationEnabled {
+                ForkDictationSettingsSection(title: text.dictationTitle)
             }
 
             ForkTrackpadSettingsSections(text: FeatureStrings.forkTrackpadGestures(l10n.language),

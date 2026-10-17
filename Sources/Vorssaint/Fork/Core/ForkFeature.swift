@@ -10,6 +10,7 @@ import Foundation
 enum ForkFeature: String, CaseIterable, Identifiable {
     case trackpadGestures
     case claudeUsage
+    case dictation
 
     var id: String { rawValue }
 
@@ -18,6 +19,7 @@ enum ForkFeature: String, CaseIterable, Identifiable {
         switch self {
         case .trackpadGestures: return ForkDefaultsKey.gesturesEnabled
         case .claudeUsage: return ForkDefaultsKey.claudeUsageEnabled
+        case .dictation: return ForkDefaultsKey.dictationEnabled
         }
     }
 
@@ -25,6 +27,7 @@ enum ForkFeature: String, CaseIterable, Identifiable {
         switch self {
         case .trackpadGestures: return "hand.draw"
         case .claudeUsage: return "gauge.with.dots.needle.33percent"
+        case .dictation: return "waveform"
         }
     }
 
@@ -32,6 +35,7 @@ enum ForkFeature: String, CaseIterable, Identifiable {
         switch self {
         case .trackpadGestures: return text.gesturesTitle
         case .claudeUsage: return text.claudeUsageTitle
+        case .dictation: return text.dictationTitle
         }
     }
 
@@ -39,6 +43,7 @@ enum ForkFeature: String, CaseIterable, Identifiable {
         switch self {
         case .trackpadGestures: return text.gesturesSummary
         case .claudeUsage: return text.claudeUsageSummary
+        case .dictation: return text.dictationSummary
         }
     }
 
@@ -49,6 +54,7 @@ enum ForkFeature: String, CaseIterable, Identifiable {
         switch self {
         case .trackpadGestures: ForkGestures.sync()
         case .claudeUsage: if !isEnabled { ForkClaudeUsage.reset() }
+        case .dictation: ForkDictationService.sync()
         }
     }
 }

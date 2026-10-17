@@ -17,6 +17,7 @@ enum ForkBootstrap {
         // gestures follow both themselves.
         DispatchQueue.main.async {
             ForkGestures.sync()
+            ForkDictationService.startFollowingPermissions()
             accessibilityObserver = Permissions.shared.$accessibility
                 .removeDuplicates()
                 .dropFirst()
@@ -30,12 +31,14 @@ enum ForkBootstrap {
     /// At the end of every official Window Layout sync (seam `window-layout`).
     static func windowLayoutDidSync() {
         ForkGestures.sync()
+        ForkDictationService.sync()
     }
 
     /// When the official Window Layout suspends its inputs, before
     /// Accessibility is revoked or the app quits (seam `window-layout`).
     static func windowLayoutWillSuspend() {
         ForkGestures.suspend()
+        ForkDictationService.suspend()
     }
 }
 
