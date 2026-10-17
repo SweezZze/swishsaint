@@ -253,6 +253,10 @@ struct ForkTrackpadSettingsSections: View {
                                                   detail: text.previewAtPointerDetail,
                                                   isSelected: previewAtPointer) { choosePreviewAtPointer(true) }
             }
+            Text(text.previewPositionNote)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
             HStack(alignment: .center, spacing: 16) {
                 ForkTrackpadStepSlider(title: text.previewSizeTitle, tuning: .previewSize,
                                          lowLabel: text.sizeSmall, highLabel: text.sizeLarge,

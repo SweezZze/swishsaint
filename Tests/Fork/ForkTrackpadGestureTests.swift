@@ -876,7 +876,7 @@ enum ForkTrackpadGestureTests {
         suite.expect(trash.commits.isEmpty && trash.effects.isEmpty && Set(trash.dispositions) == [.pass],
                      "a swipe on the Trash is left to the Dock")
         let service = sourceCode("Sources/Vorssaint/Fork/Gestures/ForkTrackpadGestureService.swift")
-        suite.expect(service.contains("if preview == .unrecognized, !isOnWindow {\n            ForkTrackpadGesturePreview.shared.hide()\n            return\n        }"),
+        suite.expect(service.contains("if preview == .unrecognized, !isOnWindow {\n            ForkTrackpadGesturePreview.shared.hide()\n            ForkTrackpadDockWindowPreview.shared.hide()\n            return\n        }"),
                      "on the Dock, a gesture that means nothing shows no question mark")
 
         var titlebar = Driver(suite)
@@ -1046,6 +1046,46 @@ enum ForkTrackpadGestureTests {
                         && Placement.frame(size: CGSize(width: 44, height: 44), centeredOn: CGPoint(x: 100, y: 50))
                         == CGRect(x: 78, y: 28, width: 44, height: 44),
                      "the HUD is centered on the usable area and the light on the pointer")
+
+        typealias Anchor = ForkTrackpadPreviewAnchor
+        let close = ForkTrackpadPreviewContent(.action(.close))
+        let minimize = ForkTrackpadPreviewContent(.action(.minimize))
+        let half = ForkTrackpadPreviewContent(.action(.leftHalf))
+        let icon = CGRect(x: 700, y: 840, width: 50, height: 50)
+        suite.expect(Anchor.resolve(close, dockItemFrame: nil, zonesAtPointer: false) == .pointer
+                        && Anchor.resolve(minimize, dockItemFrame: nil, zonesAtPointer: false) == .pointer,
+                     "closing and minimizing sit on the pointer even with zones at the center")
+        suite.expect(Anchor.resolve(half, dockItemFrame: nil, zonesAtPointer: false) == .screenCenter
+                        && Anchor.resolve(half, dockItemFrame: nil, zonesAtPointer: true) == .pointer,
+                     "zones go where Settings put them")
+        suite.expect(Anchor.resolve(.quitApp, dockItemFrame: icon, zonesAtPointer: true) == .dockItem(icon)
+                        && Anchor.resolve(.showApp, dockItemFrame: icon, zonesAtPointer: false) == .dockItem(icon)
+                        && !Anchor.dockItem(icon).hidesPointer && Anchor.pointer.hidesPointer
+                        && !Anchor.screenCenter.hidesPointer,
+                     "a Dock icon's preview is centered on it and leaves the pointer")
+        suite.expect(Anchor.pointer.scale(chosen: 1, centeredScale: 2.5) == 0.75
+                        && Anchor.screenCenter.scale(chosen: 1, centeredScale: 2.5) == 2.5
+                        && abs(Anchor.dockItem(icon).scale(chosen: 2, centeredScale: 2.5) - 50 * 0.4 / 22) < 0.001
+                        && Anchor.dockItem(CGRect(x: 0, y: 0, width: 4, height: 4))
+                            .scale(chosen: 1, centeredScale: 2.5) == 0.6,
+                     "on the pointer the chosen size, on the Dock the icon's, within bounds")
+        suite.expect(Placement.frame(size: CGSize(width: 80, height: 80), centeredOnItem: icon)
+                        == CGRect(x: 685, y: 825, width: 80, height: 80),
+                     "a Dock preview stays centered on its icon, even past the screen's edge")
+        let display = CGRect(x: 0, y: 0, width: 1440, height: 900)
+        let card = CGSize(width: 200, height: 150)
+        suite.expect(Placement.dockEdge(of: icon, on: display) == .bottom
+                        && Placement.frame(size: card, beside: icon, within: display, gap: 10)
+                            == CGRect(x: 625, y: 680, width: 200, height: 150),
+                     "window previews rise above an icon of a Dock at the bottom")
+        let leftIcon = CGRect(x: 4, y: 400, width: 50, height: 50)
+        let rightIcon = CGRect(x: 1386, y: 10, width: 50, height: 50)
+        suite.expect(Placement.dockEdge(of: leftIcon, on: display) == .left
+                        && Placement.frame(size: card, beside: leftIcon, within: display, gap: 10).minX == 64
+                        && Placement.dockEdge(of: rightIcon, on: display) == .right
+                        && Placement.frame(size: card, beside: rightIcon, within: display, gap: 10)
+                            == CGRect(x: 1176, y: 0, width: 200, height: 150),
+                     "beside a Dock on the left or right, kept whole on the screen")
     }
 
     // MARK: - Gestures switched off one by one
@@ -2281,7 +2321,7 @@ enum ForkTrackpadGestureTests {
         suite.expect(service.contains("case .haptic(.step):\n                guard hapticsEnabled else { break }")
                         && service.contains("case .haptic(.cancel):\n                guard hapticsEnabled else { break }")
                         && service.contains("guard previewEnabled else { break }\n                showPreview(preview)")
-                        && service.contains("case .hidePreview:\n                ForkTrackpadGesturePreview.shared.hide()"),
+                        && service.contains("case .hidePreview:\n                ForkTrackpadGesturePreview.shared.hide(committed: commits)"),
                      "haptics and the preview follow their switches, and a shown preview always goes away")
         suite.expect(service.contains("centerScale: ForkTrackpadTuning.centerSize.current)"),
                      "the live preview shows the tuned center size")
@@ -2361,7 +2401,7 @@ enum ForkTrackpadGestureTests {
                         && body.contains("event.postToPid(finder.processIdentifier)")
                         && !body.contains("removeItem") && !body.contains("NSAppleScript"),
                      "Finder empties the Trash itself, brought forward so its question shows")
-        suite.expect(tap.contains("appIcon: preview == .action(.emptyTrash)\n                                                    ? NSImage(named: NSImage.trashFullName)"),
+        suite.expect(tap.contains("let appIcon = preview == .action(.emptyTrash)\n            ? NSImage(named: NSImage.trashFullName)"),
                      "the preview shows the Trash's icon")
     }
 
@@ -2413,9 +2453,13 @@ enum ForkTrackpadGestureTests {
         suite.expect(tap.contains("case (.dockApp(let pid)?, .showNextWindow), (.dockFinder(let pid)?, .showNextWindow):\n                    showAdjacentWindow(pid: pid, forward: true)")
                         && tap.contains("case (.dockApp(let pid)?, .showPreviousWindow), (.dockFinder(let pid)?, .showPreviousWindow):\n                    showAdjacentWindow(pid: pid, forward: false)"),
                      "only a gesture begun on an app's icon chains its windows")
-        let chain = tap.components(separatedBy: "private func showAdjacentWindow(pid: pid_t, forward: Bool) {")
-            .dropFirst().first?.components(separatedBy: "\n    }\n").first ?? ""
-        suite.expect(chain.contains("Self.bool($0, kAXMinimizedAttribute) != true")
+        // The step itself, and the two helpers it shares with the window preview.
+        let chain = ["private func showAdjacentWindow(pid: pid_t, forward: Bool) {",
+                     "private static func chainableWindows(pid: pid_t)",
+                     "private func adjacentIndex(in ordered:"].map {
+            tap.components(separatedBy: $0).dropFirst().first?.components(separatedBy: "\n    }\n").first ?? ""
+        }.joined(separator: "\n")
+        suite.expect(chain.contains("bool($0, kAXMinimizedAttribute) != true")
                         && chain.contains("AXWindowResolver.windowID(for: window)")
                         && chain.contains(".sorted { $0.id < $1.id }")
                         && chain.contains("guard let only = ordered.first else {\n                Self.showAppWindows(pid: pid)")
@@ -2658,8 +2702,8 @@ enum ForkTrackpadGestureTests {
                         && tap.contains("ForkTrackpadDock.itemIndex("),
                      "the Dock is asked about first, only inside its strip and while it is on screen")
         suite.expect(tap.contains("case .showPreview(let preview):")
-                        && tap.contains("ForkTrackpadGesturePreview.shared.show(")
-                        && tap.contains("case .hidePreview:\n                ForkTrackpadGesturePreview.shared.hide()"),
+                        && tap.contains("shown.show(content, anchor: anchor,")
+                        && tap.contains("case .hidePreview:\n                ForkTrackpadGesturePreview.shared.hide(committed: commits)"),
                      "the gesture's preview follows what the machine announces")
     }
 

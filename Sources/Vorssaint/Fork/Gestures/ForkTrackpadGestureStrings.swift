@@ -86,6 +86,7 @@ struct ForkTrackpadGestureStrings {
     let previewAtCenterDetail: String
     let previewAtPointer: String
     let previewAtPointerDetail: String
+    let previewPositionNote: String
     let previewSizeTitle: String
     let diagnosticsTitle: String
     let diagnosticSmartZoomOff: String
@@ -197,6 +198,7 @@ extension ForkTrackpadGestureStrings {
         previewAtCenterDetail: "Large, in the middle of the screen.",
         previewAtPointer: "On the pointer",
         previewAtPointerDetail: "In place of the pointer, like Swish. The pointer hides during the gesture.",
+        previewPositionNote: "Window buttons always show on the pointer, Dock actions on their icon.",
         previewSizeTitle: "Preview size",
         diagnosticsTitle: "Diagnostics",
         diagnosticSmartZoomOff: "Smart zoom is off in System Settings › Trackpad, so the double tap does nothing.",
@@ -286,6 +288,7 @@ extension ForkTrackpadGestureStrings {
         previewAtCenterDetail: "Grande, no meio da tela.",
         previewAtPointer: "No ponteiro",
         previewAtPointerDetail: "No lugar do ponteiro, como no Swish. O ponteiro some durante o gesto.",
+        previewPositionNote: "Os botões de janela aparecem sempre no ponteiro, e as ações do Dock no seu ícone.",
         previewSizeTitle: "Tamanho da prévia",
         diagnosticsTitle: "Diagnóstico",
         diagnosticSmartZoomOff: "O zoom inteligente está desativado em Ajustes do Sistema › Trackpad, "
@@ -377,6 +380,7 @@ extension ForkTrackpadGestureStrings {
         previewAtCenterDetail: "Büyük, ekranın ortasında.",
         previewAtPointer: "İmlecin üstünde",
         previewAtPointerDetail: "Swish’teki gibi imlecin yerinde. İmleç hareket sırasında gizlenir.",
+        previewPositionNote: "Pencere düğmeleri her zaman imlecin üstünde, Dock eylemleri kendi simgesinde görünür.",
         previewSizeTitle: "Önizleme boyutu",
         diagnosticsTitle: "Tanılama",
         diagnosticSmartZoomOff: "Akıllı yakınlaştırma Sistem Ayarları › Trackpad’de kapalı, "
@@ -468,6 +472,7 @@ extension ForkTrackpadGestureStrings {
         previewAtCenterDetail: "Крупно, посередине экрана.",
         previewAtPointer: "На указателе",
         previewAtPointerDetail: "На месте указателя, как в Swish. Во время жеста указатель скрыт.",
+        previewPositionNote: "Кнопки окна всегда показываются на указателе, действия в Dock — на их значке.",
         previewSizeTitle: "Размер превью",
         diagnosticsTitle: "Диагностика",
         diagnosticSmartZoomOff: "Функция «Смарт-зум» отключена в Системных настройках › Трекпад, "
@@ -559,6 +564,7 @@ extension ForkTrackpadGestureStrings {
         previewAtCenterDetail: "Grande, en el medio de la pantalla.",
         previewAtPointer: "En el puntero",
         previewAtPointerDetail: "En lugar del puntero, como en Swish. El puntero se oculta durante el gesto.",
+        previewPositionNote: "Los botones de ventana se muestran siempre en el puntero, y las acciones del Dock en su icono.",
         previewSizeTitle: "Tamaño de la vista previa",
         diagnosticsTitle: "Diagnóstico",
         diagnosticSmartZoomOff: "El zoom inteligente está desactivado en Ajustes del Sistema › Trackpad, "
@@ -650,6 +656,7 @@ extension ForkTrackpadGestureStrings {
         previewAtCenterDetail: "Veľký, v strede obrazovky.",
         previewAtPointer: "Na ukazovateli",
         previewAtPointerDetail: "Namiesto ukazovateľa, ako vo Swish. Počas gesta sa ukazovateľ skryje.",
+        previewPositionNote: "Tlačidlá okna sa vždy zobrazia na ukazovateli, akcie v Docku na ich ikone.",
         previewSizeTitle: "Veľkosť náhľadu",
         diagnosticsTitle: "Diagnostika",
         diagnosticSmartZoomOff: "Inteligentné priblíženie je vypnuté v Nastaveniach systému › Trackpad, "
@@ -741,6 +748,7 @@ extension ForkTrackpadGestureStrings {
         previewAtCenterDetail: "Groß, in der Mitte des Bildschirms.",
         previewAtPointer: "Am Zeiger",
         previewAtPointerDetail: "Anstelle des Zeigers, wie bei Swish. Der Zeiger verschwindet während der Geste.",
+        previewPositionNote: "Fenstertasten erscheinen immer am Zeiger, Dock-Aktionen auf ihrem Symbol.",
         previewSizeTitle: "Größe der Vorschau",
         diagnosticsTitle: "Diagnose",
         diagnosticSmartZoomOff: "Der intelligente Zoom ist in den Systemeinstellungen › Trackpad "
@@ -832,6 +840,7 @@ extension ForkTrackpadGestureStrings {
         previewAtCenterDetail: "En grand, au milieu de l’écran.",
         previewAtPointer: "Sur le pointeur",
         previewAtPointerDetail: "À la place du pointeur, comme dans Swish. Le pointeur se cache pendant le geste.",
+        previewPositionNote: "Les boutons de fenêtre s’affichent toujours sur le pointeur, les actions du Dock sur leur icône.",
         previewSizeTitle: "Taille de l’aperçu",
         diagnosticsTitle: "Diagnostics",
         diagnosticSmartZoomOff: "Le zoom intelligent est désactivé dans Réglages Système › Trackpad, "
@@ -923,6 +932,7 @@ extension ForkTrackpadGestureStrings {
         previewAtCenterDetail: "Grande, al centro dello schermo.",
         previewAtPointer: "Sul puntatore",
         previewAtPointerDetail: "Al posto del puntatore, come in Swish. Il puntatore si nasconde durante il gesto.",
+        previewPositionNote: "I pulsanti della finestra compaiono sempre sul puntatore, le azioni del Dock sulla loro icona.",
         previewSizeTitle: "Dimensione dell’anteprima",
         diagnosticsTitle: "Diagnostica",
         diagnosticSmartZoomOff: "Lo zoom intelligente è disattivato in Impostazioni di Sistema › Trackpad, "
@@ -1014,6 +1024,7 @@ extension ForkTrackpadGestureStrings {
         previewAtCenterDetail: "画面の中央に大きく表示します。",
         previewAtPointer: "ポインタの位置",
         previewAtPointerDetail: "Swishのようにポインタの代わりに表示します。ジェスチャ中はポインタが隠れます。",
+        previewPositionNote: "ウインドウボタンは常にポインタの位置に、Dockの操作はそのアイコンの上に表示します。",
         previewSizeTitle: "プレビューのサイズ",
         diagnosticsTitle: "診断",
         diagnosticSmartZoomOff: "システム設定 › トラックパッドで「スマートズーム」がオフのため、ダブルタップは何も行いません。",
@@ -1103,6 +1114,7 @@ extension ForkTrackpadGestureStrings {
         previewAtCenterDetail: "화면 가운데에 크게 표시합니다.",
         previewAtPointer: "포인터 위치",
         previewAtPointerDetail: "Swish처럼 포인터 대신 표시합니다. 제스처 중에는 포인터가 숨겨집니다.",
+        previewPositionNote: "윈도우 버튼은 항상 포인터 위치에, Dock 동작은 해당 아이콘 위에 표시됩니다.",
         previewSizeTitle: "미리보기 크기",
         diagnosticsTitle: "진단",
         diagnosticSmartZoomOff: "시스템 설정 › 트랙패드에서 “스마트 확대/축소”가 꺼져 있어 더블 탭이 아무 동작도 하지 않습니다.",
@@ -1192,6 +1204,7 @@ extension ForkTrackpadGestureStrings {
         previewAtCenterDetail: "在屏幕中央大尺寸显示。",
         previewAtPointer: "指针处",
         previewAtPointerDetail: "像 Swish 一样显示在指针的位置。手势期间指针会隐藏。",
+        previewPositionNote: "窗口按钮始终显示在指针处，程序坞操作显示在其图标上。",
         previewSizeTitle: "预览大小",
         diagnosticsTitle: "诊断",
         diagnosticSmartZoomOff: "系统设置›触控板中的“智能缩放”已关闭，因此双指双击没有任何效果。",
@@ -1280,6 +1293,7 @@ extension ForkTrackpadGestureStrings {
         previewAtCenterDetail: "在螢幕中央以大尺寸顯示。",
         previewAtPointer: "指標處",
         previewAtPointerDetail: "像 Swish 一樣顯示在指標的位置。手勢期間指標會隱藏。",
+        previewPositionNote: "視窗按鈕一律顯示在指標處，Dock 動作則顯示在其圖像上。",
         previewSizeTitle: "預覽大小",
         diagnosticsTitle: "診斷",
         diagnosticSmartZoomOff: "「系統設定」›「觸控式軌跡板」中的「智慧型縮放」已關閉，因此雙指點兩下沒有任何作用。",
@@ -1368,6 +1382,7 @@ extension ForkTrackpadGestureStrings {
         previewAtCenterDetail: "喺螢幕中央以大尺寸顯示。",
         previewAtPointer: "指標處",
         previewAtPointerDetail: "好似 Swish 咁顯示喺指標嘅位置。手勢期間指標會隱藏。",
+        previewPositionNote: "視窗按鈕一律顯示喺指標度，Dock 動作就顯示喺佢嘅圖像上面。",
         previewSizeTitle: "預覽大小",
         diagnosticsTitle: "診斷",
         diagnosticSmartZoomOff: "「系統設定」›「觸控式軌跡板」中的「智慧型縮放」已關閉，因此雙指點兩下沒有任何作用。",
@@ -1456,6 +1471,7 @@ extension ForkTrackpadGestureStrings {
         previewAtCenterDetail: "Великий, посередині екрана.",
         previewAtPointer: "На вказівнику",
         previewAtPointerDetail: "На місці вказівника, як у Swish. Під час жесту вказівник ховається.",
+        previewPositionNote: "Кнопки вікна завжди показуються на вказівнику, дії в Dock — на їхній іконці.",
         previewSizeTitle: "Розмір попереднього перегляду",
         diagnosticsTitle: "Діагностика",
         diagnosticSmartZoomOff: "Функція «Розумне масштабування» вимкнена в Системних налаштуваннях › "
