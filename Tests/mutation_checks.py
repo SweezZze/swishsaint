@@ -451,6 +451,16 @@ MUTATIONS = [
      "return volume.isFinite ? min(max(volume, 0), 1) : nil",
      "return volume",
      "positive infinity main gain is hidden"),
+    ("an output level the labels show as 0% stays unmuted", "mixer",
+     "Sources/Vorssaint/Services/Audio/AppVolumeMixer.swift",
+     "                let mutes = MixerRoutingSupport.mutesOutput(atVolume: value)\n",
+     "                let mutes = value == 0\n",
+     "a coarse key step from a reading a hair above one step lands on 0% and mutes"),
+    ("the panel and command bar leave a zero level unmuted", "mixer",
+     "Sources/Vorssaint/Services/Audio/AppVolumeMixer.swift",
+     "        setOutputMuted(MixerRoutingSupport.mutesOutput(atVolume: level), for: device)\n",
+     "        if level > 0 { setOutputMuted(false, for: device) }\n",
+     "the command bar's volume 0 mutes the output"),
 ]
 
 

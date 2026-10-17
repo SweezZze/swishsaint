@@ -69,6 +69,8 @@ struct ForkTrackpadGestureStrings {
     let cancelDelayTitle: String
     let cancelDelayCaption: String
     let cancelEnabledTitle: String
+    let sizeCycleTitle: String
+    let sizeCycleCaption: String
     let shorter: String
     let longer: String
     let titlebarBandTitle: String
@@ -86,6 +88,7 @@ struct ForkTrackpadGestureStrings {
     let previewAtCenterDetail: String
     let previewAtPointer: String
     let previewAtPointerDetail: String
+    let previewPositionNote: String
     let previewSizeTitle: String
     let diagnosticsTitle: String
     let diagnosticSmartZoomOff: String
@@ -180,6 +183,8 @@ extension ForkTrackpadGestureStrings {
         cancelDelayTitle: "Cancel delay",
         cancelDelayCaption: "Held still that long, the gesture is given up and nothing happens.",
         cancelEnabledTitle: "Cancel a gesture held still",
+        sizeCycleTitle: "Repeat a side swipe to cycle ½, ⅔, ⅓",
+        sizeCycleCaption: "Swiping left or right again right after makes the window two thirds, then a third, then half again. Off, it stays at half.",
         shorter: "Shorter",
         longer: "Longer",
         titlebarBandTitle: "Title bar zone",
@@ -197,6 +202,7 @@ extension ForkTrackpadGestureStrings {
         previewAtCenterDetail: "Large, in the middle of the screen.",
         previewAtPointer: "On the pointer",
         previewAtPointerDetail: "In place of the pointer, like Swish. The pointer hides during the gesture.",
+        previewPositionNote: "Window buttons always show on the pointer, Dock actions on their icon.",
         previewSizeTitle: "Preview size",
         diagnosticsTitle: "Diagnostics",
         diagnosticSmartZoomOff: "Smart zoom is off in System Settings › Trackpad, so the double tap does nothing.",
@@ -269,6 +275,8 @@ extension ForkTrackpadGestureStrings {
         cancelDelayTitle: "Atraso de cancelamento",
         cancelDelayCaption: "Parado por esse tempo, o gesto é abandonado e nada acontece.",
         cancelEnabledTitle: "Cancelar um gesto parado",
+        sizeCycleTitle: "Repetir o deslize lateral alterna ½, ⅔, ⅓",
+        sizeCycleCaption: "Deslizar de novo para a esquerda ou a direita logo em seguida passa a janela para dois terços, depois um terço, depois volta à metade. Desligado, ela fica na metade.",
         shorter: "Mais curto",
         longer: "Mais longo",
         titlebarBandTitle: "Zona da barra de título",
@@ -286,6 +294,7 @@ extension ForkTrackpadGestureStrings {
         previewAtCenterDetail: "Grande, no meio da tela.",
         previewAtPointer: "No ponteiro",
         previewAtPointerDetail: "No lugar do ponteiro, como no Swish. O ponteiro some durante o gesto.",
+        previewPositionNote: "Os botões de janela aparecem sempre no ponteiro, e as ações do Dock no seu ícone.",
         previewSizeTitle: "Tamanho da prévia",
         diagnosticsTitle: "Diagnóstico",
         diagnosticSmartZoomOff: "O zoom inteligente está desativado em Ajustes do Sistema › Trackpad, "
@@ -360,6 +369,8 @@ extension ForkTrackpadGestureStrings {
         cancelDelayTitle: "İptal gecikmesi",
         cancelDelayCaption: "Bu kadar süre hareketsiz kalınca hareket bırakılır ve hiçbir şey olmaz.",
         cancelEnabledTitle: "Hareketsiz kalan hareketi iptal et",
+        sizeCycleTitle: "Yan kaydırmayı tekrarlamak ½, ⅔, ⅓ arasında geçer",
+        sizeCycleCaption: "Hemen ardından yeniden sola veya sağa kaydırmak pencereyi üçte ikiye, sonra üçte bire, sonra yeniden yarıya getirir. Kapalıyken yarıda kalır.",
         shorter: "Daha kısa",
         longer: "Daha uzun",
         titlebarBandTitle: "Başlık çubuğu alanı",
@@ -377,6 +388,7 @@ extension ForkTrackpadGestureStrings {
         previewAtCenterDetail: "Büyük, ekranın ortasında.",
         previewAtPointer: "İmlecin üstünde",
         previewAtPointerDetail: "Swish’teki gibi imlecin yerinde. İmleç hareket sırasında gizlenir.",
+        previewPositionNote: "Pencere düğmeleri her zaman imlecin üstünde, Dock eylemleri kendi simgesinde görünür.",
         previewSizeTitle: "Önizleme boyutu",
         diagnosticsTitle: "Tanılama",
         diagnosticSmartZoomOff: "Akıllı yakınlaştırma Sistem Ayarları › Trackpad’de kapalı, "
@@ -451,6 +463,8 @@ extension ForkTrackpadGestureStrings {
         cancelDelayTitle: "Задержка отмены",
         cancelDelayCaption: "Если держать пальцы неподвижно столько времени, жест отменяется и ничего не происходит.",
         cancelEnabledTitle: "Отменять неподвижный жест",
+        sizeCycleTitle: "Повтор бокового свайпа: ½, ⅔, ⅓",
+        sizeCycleCaption: "Повторный свайп влево или вправо сразу после делает окно на две трети, затем на треть, затем снова на половину. Если выключено, окно остаётся на половине.",
         shorter: "Короче",
         longer: "Дольше",
         titlebarBandTitle: "Зона строки заголовка",
@@ -468,6 +482,7 @@ extension ForkTrackpadGestureStrings {
         previewAtCenterDetail: "Крупно, посередине экрана.",
         previewAtPointer: "На указателе",
         previewAtPointerDetail: "На месте указателя, как в Swish. Во время жеста указатель скрыт.",
+        previewPositionNote: "Кнопки окна всегда показываются на указателе, действия в Dock — на их значке.",
         previewSizeTitle: "Размер превью",
         diagnosticsTitle: "Диагностика",
         diagnosticSmartZoomOff: "Функция «Смарт-зум» отключена в Системных настройках › Трекпад, "
@@ -542,6 +557,8 @@ extension ForkTrackpadGestureStrings {
         cancelDelayTitle: "Retardo de cancelación",
         cancelDelayCaption: "Quieto ese tiempo, el gesto se abandona y no pasa nada.",
         cancelEnabledTitle: "Cancelar un gesto quieto",
+        sizeCycleTitle: "Repetir el deslizamiento lateral alterna ½, ⅔, ⅓",
+        sizeCycleCaption: "Deslizar de nuevo a la izquierda o a la derecha justo después pasa la ventana a dos tercios, luego a un tercio y vuelve a la mitad. Desactivado, se queda en la mitad.",
         shorter: "Más corto",
         longer: "Más largo",
         titlebarBandTitle: "Zona de la barra de título",
@@ -559,6 +576,7 @@ extension ForkTrackpadGestureStrings {
         previewAtCenterDetail: "Grande, en el medio de la pantalla.",
         previewAtPointer: "En el puntero",
         previewAtPointerDetail: "En lugar del puntero, como en Swish. El puntero se oculta durante el gesto.",
+        previewPositionNote: "Los botones de ventana se muestran siempre en el puntero, y las acciones del Dock en su icono.",
         previewSizeTitle: "Tamaño de la vista previa",
         diagnosticsTitle: "Diagnóstico",
         diagnosticSmartZoomOff: "El zoom inteligente está desactivado en Ajustes del Sistema › Trackpad, "
@@ -633,6 +651,8 @@ extension ForkTrackpadGestureStrings {
         cancelDelayTitle: "Oneskorenie zrušenia",
         cancelDelayCaption: "Po takto dlhom pokoji sa gesto zruší a nič sa nestane.",
         cancelEnabledTitle: "Zrušiť gesto, ktoré zostane nehybné",
+        sizeCycleTitle: "Opakované potiahnutie do strany prepína ½, ⅔, ⅓",
+        sizeCycleCaption: "Ďalšie potiahnutie doľava alebo doprava hneď potom zmení okno na dve tretiny, potom na tretinu a potom späť na polovicu. Keď je vypnuté, zostane na polovici.",
         shorter: "Kratšie",
         longer: "Dlhšie",
         titlebarBandTitle: "Oblasť lišty s názvom",
@@ -650,6 +670,7 @@ extension ForkTrackpadGestureStrings {
         previewAtCenterDetail: "Veľký, v strede obrazovky.",
         previewAtPointer: "Na ukazovateli",
         previewAtPointerDetail: "Namiesto ukazovateľa, ako vo Swish. Počas gesta sa ukazovateľ skryje.",
+        previewPositionNote: "Tlačidlá okna sa vždy zobrazia na ukazovateli, akcie v Docku na ich ikone.",
         previewSizeTitle: "Veľkosť náhľadu",
         diagnosticsTitle: "Diagnostika",
         diagnosticSmartZoomOff: "Inteligentné priblíženie je vypnuté v Nastaveniach systému › Trackpad, "
@@ -724,6 +745,8 @@ extension ForkTrackpadGestureStrings {
         cancelDelayTitle: "Abbruchverzögerung",
         cancelDelayCaption: "So lange still, wird die Geste aufgegeben und nichts passiert.",
         cancelEnabledTitle: "Stillgehaltene Geste abbrechen",
+        sizeCycleTitle: "Seitliches Wischen wiederholen wechselt ½, ⅔, ⅓",
+        sizeCycleCaption: "Direkt danach erneut nach links oder rechts wischen macht das Fenster zwei Drittel, dann ein Drittel, dann wieder halb so breit. Aus bleibt es bei der Hälfte.",
         shorter: "Kürzer",
         longer: "Länger",
         titlebarBandTitle: "Titelleistenbereich",
@@ -741,6 +764,7 @@ extension ForkTrackpadGestureStrings {
         previewAtCenterDetail: "Groß, in der Mitte des Bildschirms.",
         previewAtPointer: "Am Zeiger",
         previewAtPointerDetail: "Anstelle des Zeigers, wie bei Swish. Der Zeiger verschwindet während der Geste.",
+        previewPositionNote: "Fenstertasten erscheinen immer am Zeiger, Dock-Aktionen auf ihrem Symbol.",
         previewSizeTitle: "Größe der Vorschau",
         diagnosticsTitle: "Diagnose",
         diagnosticSmartZoomOff: "Der intelligente Zoom ist in den Systemeinstellungen › Trackpad "
@@ -815,6 +839,8 @@ extension ForkTrackpadGestureStrings {
         cancelDelayTitle: "Délai d’annulation",
         cancelDelayCaption: "Immobile aussi longtemps, le geste est abandonné et rien ne se passe.",
         cancelEnabledTitle: "Annuler un geste resté immobile",
+        sizeCycleTitle: "Répéter un balayage latéral alterne ½, ⅔, ⅓",
+        sizeCycleCaption: "Balayer encore vers la gauche ou la droite juste après passe la fenêtre aux deux tiers, puis au tiers, puis de nouveau à la moitié. Désactivé, elle reste à la moitié.",
         shorter: "Plus courte",
         longer: "Plus longue",
         titlebarBandTitle: "Zone de la barre de titre",
@@ -832,6 +858,7 @@ extension ForkTrackpadGestureStrings {
         previewAtCenterDetail: "En grand, au milieu de l’écran.",
         previewAtPointer: "Sur le pointeur",
         previewAtPointerDetail: "À la place du pointeur, comme dans Swish. Le pointeur se cache pendant le geste.",
+        previewPositionNote: "Les boutons de fenêtre s’affichent toujours sur le pointeur, les actions du Dock sur leur icône.",
         previewSizeTitle: "Taille de l’aperçu",
         diagnosticsTitle: "Diagnostics",
         diagnosticSmartZoomOff: "Le zoom intelligent est désactivé dans Réglages Système › Trackpad, "
@@ -906,6 +933,8 @@ extension ForkTrackpadGestureStrings {
         cancelDelayTitle: "Ritardo di annullamento",
         cancelDelayCaption: "Ferme così a lungo, il gesto viene abbandonato e non succede nulla.",
         cancelEnabledTitle: "Annulla un gesto rimasto fermo",
+        sizeCycleTitle: "Ripetere lo scorrimento laterale alterna ½, ⅔, ⅓",
+        sizeCycleCaption: "Scorrere di nuovo a sinistra o a destra subito dopo porta la finestra a due terzi, poi a un terzo, poi di nuovo a metà. Se disattivato, resta a metà.",
         shorter: "Più breve",
         longer: "Più lunga",
         titlebarBandTitle: "Zona della barra del titolo",
@@ -923,6 +952,7 @@ extension ForkTrackpadGestureStrings {
         previewAtCenterDetail: "Grande, al centro dello schermo.",
         previewAtPointer: "Sul puntatore",
         previewAtPointerDetail: "Al posto del puntatore, come in Swish. Il puntatore si nasconde durante il gesto.",
+        previewPositionNote: "I pulsanti della finestra compaiono sempre sul puntatore, le azioni del Dock sulla loro icona.",
         previewSizeTitle: "Dimensione dell’anteprima",
         diagnosticsTitle: "Diagnostica",
         diagnosticSmartZoomOff: "Lo zoom intelligente è disattivato in Impostazioni di Sistema › Trackpad, "
@@ -997,6 +1027,8 @@ extension ForkTrackpadGestureStrings {
         cancelDelayTitle: "キャンセルまでの時間",
         cancelDelayCaption: "この時間だけ止めるとジェスチャは取り消され、何も起きません。",
         cancelEnabledTitle: "止まったままのジェスチャを取り消す",
+        sizeCycleTitle: "横スワイプを繰り返すと ½、⅔、⅓ を切り替え",
+        sizeCycleCaption: "続けてもう一度左右にスワイプすると、ウインドウが3分の2、3分の1、そして再び半分になります。オフのときは半分のままです。",
         shorter: "短く",
         longer: "長く",
         titlebarBandTitle: "タイトルバーの領域",
@@ -1014,6 +1046,7 @@ extension ForkTrackpadGestureStrings {
         previewAtCenterDetail: "画面の中央に大きく表示します。",
         previewAtPointer: "ポインタの位置",
         previewAtPointerDetail: "Swishのようにポインタの代わりに表示します。ジェスチャ中はポインタが隠れます。",
+        previewPositionNote: "ウインドウボタンは常にポインタの位置に、Dockの操作はそのアイコンの上に表示します。",
         previewSizeTitle: "プレビューのサイズ",
         diagnosticsTitle: "診断",
         diagnosticSmartZoomOff: "システム設定 › トラックパッドで「スマートズーム」がオフのため、ダブルタップは何も行いません。",
@@ -1086,6 +1119,8 @@ extension ForkTrackpadGestureStrings {
         cancelDelayTitle: "취소 지연 시간",
         cancelDelayCaption: "이만큼 멈추면 제스처가 취소되고 아무 일도 일어나지 않습니다.",
         cancelEnabledTitle: "멈춘 제스처 취소",
+        sizeCycleTitle: "옆으로 스와이프를 반복하면 ½, ⅔, ⅓ 전환",
+        sizeCycleCaption: "바로 이어서 다시 왼쪽이나 오른쪽으로 스와이프하면 윈도우가 3분의 2, 3분의 1, 다시 절반이 됩니다. 끄면 절반에 머뭅니다.",
         shorter: "짧게",
         longer: "길게",
         titlebarBandTitle: "제목 막대 영역",
@@ -1103,6 +1138,7 @@ extension ForkTrackpadGestureStrings {
         previewAtCenterDetail: "화면 가운데에 크게 표시합니다.",
         previewAtPointer: "포인터 위치",
         previewAtPointerDetail: "Swish처럼 포인터 대신 표시합니다. 제스처 중에는 포인터가 숨겨집니다.",
+        previewPositionNote: "윈도우 버튼은 항상 포인터 위치에, Dock 동작은 해당 아이콘 위에 표시됩니다.",
         previewSizeTitle: "미리보기 크기",
         diagnosticsTitle: "진단",
         diagnosticSmartZoomOff: "시스템 설정 › 트랙패드에서 “스마트 확대/축소”가 꺼져 있어 더블 탭이 아무 동작도 하지 않습니다.",
@@ -1175,6 +1211,8 @@ extension ForkTrackpadGestureStrings {
         cancelDelayTitle: "取消延迟",
         cancelDelayCaption: "静止这么久后，手势会被放弃，什么也不会发生。",
         cancelEnabledTitle: "取消静止不动的手势",
+        sizeCycleTitle: "重复横向轻扫可在 ½、⅔、⅓ 间切换",
+        sizeCycleCaption: "紧接着再向左或向右轻扫，窗口会变为三分之二，然后三分之一，再回到一半。关闭时保持一半。",
         shorter: "较短",
         longer: "较长",
         titlebarBandTitle: "标题栏区域",
@@ -1192,6 +1230,7 @@ extension ForkTrackpadGestureStrings {
         previewAtCenterDetail: "在屏幕中央大尺寸显示。",
         previewAtPointer: "指针处",
         previewAtPointerDetail: "像 Swish 一样显示在指针的位置。手势期间指针会隐藏。",
+        previewPositionNote: "窗口按钮始终显示在指针处，程序坞操作显示在其图标上。",
         previewSizeTitle: "预览大小",
         diagnosticsTitle: "诊断",
         diagnosticSmartZoomOff: "系统设置›触控板中的“智能缩放”已关闭，因此双指双击没有任何效果。",
@@ -1263,6 +1302,8 @@ extension ForkTrackpadGestureStrings {
         cancelDelayTitle: "取消延遲",
         cancelDelayCaption: "靜止這麼久後，手勢會被放棄，什麼也不會發生。",
         cancelEnabledTitle: "取消靜止不動的手勢",
+        sizeCycleTitle: "重複橫向滑動可在 ½、⅔、⅓ 間切換",
+        sizeCycleCaption: "緊接著再向左或向右滑動，視窗會變為三分之二，然後三分之一，再回到一半。關閉時維持一半。",
         shorter: "較短",
         longer: "較長",
         titlebarBandTitle: "標題列區域",
@@ -1280,6 +1321,7 @@ extension ForkTrackpadGestureStrings {
         previewAtCenterDetail: "在螢幕中央以大尺寸顯示。",
         previewAtPointer: "指標處",
         previewAtPointerDetail: "像 Swish 一樣顯示在指標的位置。手勢期間指標會隱藏。",
+        previewPositionNote: "視窗按鈕一律顯示在指標處，Dock 動作則顯示在其圖像上。",
         previewSizeTitle: "預覽大小",
         diagnosticsTitle: "診斷",
         diagnosticSmartZoomOff: "「系統設定」›「觸控式軌跡板」中的「智慧型縮放」已關閉，因此雙指點兩下沒有任何作用。",
@@ -1351,6 +1393,8 @@ extension ForkTrackpadGestureStrings {
         cancelDelayTitle: "取消延遲",
         cancelDelayCaption: "靜止這麼久後，手勢會被放棄，甚麼也不會發生。",
         cancelEnabledTitle: "取消靜止不動的手勢",
+        sizeCycleTitle: "重複橫向掃動可以喺 ½、⅔、⅓ 之間切換",
+        sizeCycleCaption: "緊接住再向左或者向右掃，視窗會變成三分之二，跟住三分之一，再返去一半。關閉時保持一半。",
         shorter: "較短",
         longer: "較長",
         titlebarBandTitle: "標題列區域",
@@ -1368,6 +1412,7 @@ extension ForkTrackpadGestureStrings {
         previewAtCenterDetail: "喺螢幕中央以大尺寸顯示。",
         previewAtPointer: "指標處",
         previewAtPointerDetail: "好似 Swish 咁顯示喺指標嘅位置。手勢期間指標會隱藏。",
+        previewPositionNote: "視窗按鈕一律顯示喺指標度，Dock 動作就顯示喺佢嘅圖像上面。",
         previewSizeTitle: "預覽大小",
         diagnosticsTitle: "診斷",
         diagnosticSmartZoomOff: "「系統設定」›「觸控式軌跡板」中的「智慧型縮放」已關閉，因此雙指點兩下沒有任何作用。",
@@ -1439,6 +1484,8 @@ extension ForkTrackpadGestureStrings {
         cancelDelayTitle: "Затримка скасування",
         cancelDelayCaption: "Якщо тримати пальці нерухомо стільки часу, жест скасовується і нічого не відбувається.",
         cancelEnabledTitle: "Скасовувати нерухомий жест",
+        sizeCycleTitle: "Повтор бічного свайпу: ½, ⅔, ⅓",
+        sizeCycleCaption: "Повторний свайп ліворуч або праворуч одразу після робить вікно на дві третини, потім на третину, потім знову на половину. Якщо вимкнено, вікно лишається на половині.",
         shorter: "Коротше",
         longer: "Довше",
         titlebarBandTitle: "Зона смуги заголовка",
@@ -1456,6 +1503,7 @@ extension ForkTrackpadGestureStrings {
         previewAtCenterDetail: "Великий, посередині екрана.",
         previewAtPointer: "На вказівнику",
         previewAtPointerDetail: "На місці вказівника, як у Swish. Під час жесту вказівник ховається.",
+        previewPositionNote: "Кнопки вікна завжди показуються на вказівнику, дії в Dock — на їхній іконці.",
         previewSizeTitle: "Розмір попереднього перегляду",
         diagnosticsTitle: "Діагностика",
         diagnosticSmartZoomOff: "Функція «Розумне масштабування» вимкнена в Системних налаштуваннях › "

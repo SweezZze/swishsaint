@@ -5,9 +5,12 @@
 import AppKit
 import SwiftUI
 
-/// What the lift will do, shown while a trackpad window gesture is under way:
-/// at the center of the screen by default, or, by choice in Settings, in
-/// place of the pointer, the way Swish shows it.
+/// What the lift will do, shown while a trackpad window gesture is under way.
+/// Where depends on what it says (`ForkTrackpadPreviewAnchor`): window buttons
+/// in place of the pointer, at the size chosen in Settings; anything on the
+/// Dock centered on the icon touched, the pointer left; zones at the center
+/// of the screen or on the pointer, as chosen in Settings. Once the lift
+/// acts, the preview leaves the way its action goes.
 ///
 /// One panel and one view for every preview, so the gesture never jumps from
 /// one window to another: a glass plate shaped like the screen carries the
@@ -20,7 +23,8 @@ import SwiftUI
 /// the preview is centered on it, moved in just enough to stay whole near a
 /// screen edge, and the pointer itself hides meanwhile. At the center: a
 /// larger preview in the middle of the target's screen, the pointer left
-/// alone. The panel never takes focus or the mouse.
+/// alone. A gesture that goes from one place to the other pops in again at
+/// the new one. The panel never takes focus or the mouse.
 final class ForkTrackpadGesturePreview {
     static let shared = ForkTrackpadGesturePreview()
 
@@ -31,18 +35,26 @@ final class ForkTrackpadGesturePreview {
     /// sits away from the eye, than on the pointer.
     static let centeredScale: CGFloat = 2.5
     static let disappearDelay: TimeInterval = 0.16
+    /// Longer than a cancel's fade: the gesture's own exit (the yellow light
+    /// dropping to the Dock, the green one opening out) has to be seen.
+    static let commitDelay: TimeInterval = 0.3
+    /// How long a preview shown only at the commit, a double tap's, stays.
+    static let flashDuration: TimeInterval = 0.2
 
     private let model = ForkTrackpadPreviewModel()
     private var panel: NSPanel?
     /// Bumped on every appearance: a late fade-out must not close the panel of
     /// the next gesture.
     private var generation = 0
-    private var isShown = false
+    private(set) var isShown = false
+    private var shownAnchor: ForkTrackpadPreviewAnchor?
     private var pointerHidden = false
 
     private init() {}
 
     /// - Parameters:
+    ///   - anchor: where the preview goes; a change during the gesture moves
+    ///     it there, a new pop at the new place.
     ///   - targetFrame: the target window, in Accessibility coordinates: the
     ///     mini screen draws its screen. `nil` for a Dock icon, which uses the
     ///     pointer's screen.
@@ -51,10 +63,11 @@ final class ForkTrackpadGesturePreview {
     ///     emptying the Trash, the Trash's; for calling windows back, their
     ///     app's.
     func show(_ content: ForkTrackpadPreviewContent,
+              anchor: ForkTrackpadPreviewAnchor,
               targetFrame: CGRect?,
               pointer: CGPoint,
               appIcon: NSImage?) {
-        if isShown {
+        if isShown, anchor == shownAnchor {
             // An update: the view springs from one content to the next.
             withAnimation(Self.change) {
                 model.appIcon = appIcon
@@ -73,23 +86,27 @@ final class ForkTrackpadGesturePreview {
         let pointerIndex = ForkTrackpadPreviewPlacement.screenIndex(targetFrame: nil,
                                                                       pointer: pointer,
                                                                       screens: frames) ?? index
-        let atPointer = UserDefaults.standard.bool(forKey: ForkDefaultsKey.previewAtPointer)
-        let scale = CGFloat(ForkTrackpadTuning.previewSize.current) * (atPointer ? 1 : Self.centeredScale)
+        let scale = anchor.scale(chosen: CGFloat(ForkTrackpadTuning.previewSize.current),
+                                 centeredScale: Self.centeredScale)
         let side = Self.panelSide * scale
         let size = CGSize(width: side, height: side)
         let frameAX: CGRect
-        if atPointer {
+        switch anchor {
+        case .pointer:
             frameAX = ForkTrackpadPreviewPlacement.frame(size: size, centeredOn: pointer,
                                                          within: frames[pointerIndex])
-        } else {
+        case .screenCenter:
             let visible = Self.axRect(fromAppKit: screens[index].visibleFrame, primaryHeight: primaryHeight)
             frameAX = ForkTrackpadPreviewPlacement.frame(size: size, centeredIn: visible)
+        case .dockItem(let item):
+            frameAX = ForkTrackpadPreviewPlacement.frame(size: size, centeredOnItem: item)
         }
         // The same flip both ways: Accessibility's origin is the top left of
         // the main screen, AppKit's its bottom left.
         let frame = Self.axRect(fromAppKit: frameAX, primaryHeight: primaryHeight)
 
         isShown = true
+        shownAnchor = anchor
         generation += 1
         let panel = self.panel ?? makePanel()
         self.panel = panel
@@ -102,25 +119,51 @@ final class ForkTrackpadGesturePreview {
             model.screenAspect = frames[index].width / max(frames[index].height, 1)
             model.appIcon = appIcon
             model.content = content
+            model.onDock = { if case .dockItem = anchor { return true } else { return false } }()
+            model.exit = .cancel
             model.visible = false
         }
         panel.setFrame(frame, display: true)
         panel.alphaValue = 1
         panel.orderFrontRegardless()
         withAnimation(Self.appear) { model.visible = true }
-        setPointerHidden(atPointer)
+        setPointerHidden(anchor.hidesPointer)
     }
 
-    func hide() {
+    /// - Parameter committed: the lift acts; the preview then leaves the way
+    ///   its action goes, a cancel only fades.
+    func hide(committed: Bool = false) {
         setPointerHidden(false)
         guard isShown, let panel else { return }
         isShown = false
+        shownAnchor = nil
         let hiding = generation
-        withAnimation(.easeIn(duration: Self.disappearDelay * 0.8)) { model.visible = false }
-        DispatchQueue.main.asyncAfter(deadline: .now() + Self.disappearDelay) { [weak self, weak panel] in
+        let exits = committed && !Self.reduceMotion
+        var still = Transaction()
+        still.disablesAnimations = true
+        withTransaction(still) { model.exit = committed ? .commit : .cancel }
+        withAnimation(exits ? .easeOut(duration: Self.commitDelay * 0.85)
+                            : .easeIn(duration: Self.disappearDelay * 0.8)) { model.visible = false }
+        let delay = exits ? Self.commitDelay : Self.disappearDelay
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self, weak panel] in
             // A new gesture may have brought the panel back during the fade.
             guard let self, let panel, self.generation == hiding, !self.isShown else { return }
             panel.orderOut(nil)
+        }
+    }
+
+    /// For an action with no preview before it, a double tap's: shown, then
+    /// gone the way it acts, so every gesture answers.
+    func flash(_ content: ForkTrackpadPreviewContent,
+               anchor: ForkTrackpadPreviewAnchor,
+               targetFrame: CGRect?,
+               pointer: CGPoint,
+               appIcon: NSImage?) {
+        show(content, anchor: anchor, targetFrame: targetFrame, pointer: pointer, appIcon: appIcon)
+        let flashing = generation
+        DispatchQueue.main.asyncAfter(deadline: .now() + Self.flashDuration) { [weak self] in
+            guard let self, self.generation == flashing, self.isShown else { return }
+            self.hide(committed: true)
         }
     }
 
@@ -188,6 +231,17 @@ private final class ForkTrackpadPreviewModel: ObservableObject {
     /// The preview size chosen in Settings.
     @Published var scale: CGFloat = 1
     @Published var visible = false
+    /// On a Dock icon: the icon coming back hops up from its place.
+    @Published var onDock = false
+    /// How the preview leaves once `visible` turns off.
+    @Published var exit: ForkTrackpadPreviewExit = .cancel
+}
+
+enum ForkTrackpadPreviewExit {
+    /// Nothing happens: the preview shrinks back and fades.
+    case cancel
+    /// The action fires: the preview leaves the way it goes.
+    case commit
 }
 
 private struct ForkTrackpadPreviewView: View {
@@ -228,12 +282,13 @@ private struct ForkTrackpadPreviewView: View {
                     .transition(.scale(scale: 0.5).combined(with: .opacity))
             case .showApp:
                 // The icon a little above its Dock place, the way its windows
-                // will rise.
+                // will rise; on the icon itself, a hop like the Dock's bounce.
                 if let icon = model.appIcon {
                     Image(nsImage: icon)
                         .resizable()
                         .frame(width: diameter, height: diameter)
                         .shadow(color: .black.opacity(0.3), radius: 2 * scale, y: scale)
+                        .offset(y: model.onDock && model.visible ? -diameter * 0.3 : 0)
                         .transition(.move(edge: .bottom).combined(with: .opacity))
                 }
             case .symbol(let name):
@@ -249,11 +304,36 @@ private struct ForkTrackpadPreviewView: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .scaleEffect(model.visible ? 1 : 0.7)
+        .scaleEffect(model.visible ? 1 : exitScale)
+        .offset(y: model.visible ? 0 : exitOffset)
         .opacity(model.visible ? 1 : 0)
     }
 
     private var diameter: CGFloat { Self.lightDiameter * model.scale }
+
+    /// A cancel shrinks back. An action leaves its own way: closing and
+    /// quitting puff out, full screen opens wide, the zone settles in place.
+    private var exitScale: CGFloat {
+        guard model.exit == .commit else { return 0.7 }
+        switch model.content {
+        case .light(.minimize): return 0.3
+        case .light(.close), .quitApp, .emptyTrash: return 1.3
+        case .light(.fullScreen): return 1.9
+        case .showApp: return 1.05
+        case .zone, .symbol: return 1.08
+        case .unrecognized: return 0.7
+        }
+    }
+
+    /// Minimizing drops toward the Dock, windows coming back rise from it.
+    private var exitOffset: CGFloat {
+        guard model.exit == .commit else { return 0 }
+        switch model.content {
+        case .light(.minimize): return diameter * 0.9
+        case .showApp: return -diameter * 0.6
+        default: return 0
+        }
+    }
 
     private var showsPlate: Bool {
         switch model.content {
