@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 Hector Passerat
 
-import Foundation
+import SwiftUI
 
 /// The fork's features, each with its own switch on the Extras page.
 ///
@@ -28,6 +28,24 @@ enum ForkFeature: String, CaseIterable, Identifiable {
         case .trackpadGestures: return "hand.draw"
         case .claudeUsage: return "gauge.with.dots.needle.33percent"
         case .dictation: return "waveform"
+        }
+    }
+
+    /// The tile behind the symbol in the Extras list.
+    var tint: Color {
+        switch self {
+        case .trackpadGestures: return .blue
+        case .claudeUsage: return .orange
+        case .dictation: return .purple
+        }
+    }
+
+    /// Whether it watches input or acts on other apps, which takes
+    /// Accessibility.
+    var needsAccessibility: Bool {
+        switch self {
+        case .trackpadGestures, .dictation: return true
+        case .claudeUsage: return false
         }
     }
 
