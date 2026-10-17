@@ -37,6 +37,10 @@ enum ForkDefaultsKey {
     static let dictationTrigger = "fork.dictation.trigger"
     static let dictationLocale = "fork.dictation.locale"
     static let dictationSounds = "fork.dictation.sounds"
+    /// The person's words (one per line) and replacements (one per line,
+    /// heard and written separated by a tab).
+    static let dictationVocabulary = "fork.dictation.vocabulary"
+    static let dictationReplacements = "fork.dictation.replacements"
     /// The build the person answered "Later" for. Machine state: kept out
     /// of the settings backup.
     static let updatePostponedBuild = "fork.update.postponedBuild"
@@ -66,6 +70,8 @@ enum ForkDefaults {
         ForkDefaultsKey.dictationTrigger: ForkDictationTrigger.fallback.rawValue,
         ForkDefaultsKey.dictationLocale: "",
         ForkDefaultsKey.dictationSounds: true,
+        ForkDefaultsKey.dictationVocabulary: "",
+        ForkDefaultsKey.dictationReplacements: "",
     ]
 
     /// Where each setting lived in the test builds made before the fork

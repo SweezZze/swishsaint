@@ -94,6 +94,8 @@ struct ForkDictationSettingsSection: View {
             }
         }
         .onAppear { service.refreshAuthorization() }
+
+        ForkDictationVocabularySection(text: text)
     }
 
     @ViewBuilder
@@ -130,5 +132,112 @@ struct ForkDictationSettingsSection: View {
                 }
             }
         }
+    }
+}
+
+/// The person's words and replacements, like a dictation app's dictionary:
+/// words favored by the recognizer, and fixes for what it keeps mishearing.
+private struct ForkDictationVocabularySection: View {
+    let text: ForkDictationStrings
+
+    @AppStorage(ForkDefaultsKey.dictationVocabulary) private var vocabularyStorage = ""
+    @AppStorage(ForkDefaultsKey.dictationReplacements) private var replacementsStorage = ""
+    @State private var newWord = ""
+    @State private var newHeard = ""
+    @State private var newWritten = ""
+
+    private var words: [String] { ForkDictationSupport.vocabulary(from: vocabularyStorage) }
+    private var replacements: [ForkDictationSupport.Replacement] {
+        ForkDictationSupport.replacements(from: replacementsStorage)
+    }
+
+    var body: some View {
+        Section(text.vocabularyTitle) {
+            caption(text.vocabularyCaption)
+            ForEach(words, id: \.self) { word in
+                HStack {
+                    Text(word)
+                    Spacer()
+                    removeButton { remove(word: word) }
+                }
+            }
+            HStack {
+                TextField("", text: $newWord, prompt: Text(text.vocabularyPlaceholder))
+                    .textFieldStyle(.roundedBorder)
+                    .onSubmit(addWord)
+                Button(text.addButton, action: addWord)
+                    .disabled(newWord.trimmingCharacters(in: .whitespaces).isEmpty
+                              || words.count >= ForkDictationSupport.vocabularyLimit)
+            }
+        }
+
+        Section(text.replacementsTitle) {
+            caption(text.replacementsCaption)
+            ForEach(replacements, id: \.self) { replacement in
+                HStack(spacing: 8) {
+                    Text(replacement.heard)
+                        .foregroundStyle(.secondary)
+                    Image(systemName: "arrow.right")
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
+                    Text(replacement.written)
+                    Spacer()
+                    removeButton { remove(replacement) }
+                }
+            }
+            HStack(spacing: 8) {
+                TextField("", text: $newHeard, prompt: Text(text.heardPlaceholder))
+                    .textFieldStyle(.roundedBorder)
+                Image(systemName: "arrow.right")
+                    .font(.caption)
+                    .foregroundStyle(.tertiary)
+                TextField("", text: $newWritten, prompt: Text(text.writtenPlaceholder))
+                    .textFieldStyle(.roundedBorder)
+                    .onSubmit(addReplacement)
+                Button(text.addButton, action: addReplacement)
+                    .disabled(newHeard.trimmingCharacters(in: .whitespaces).isEmpty)
+            }
+        }
+    }
+
+    private func caption(_ string: String) -> some View {
+        Text(string)
+            .font(.caption)
+            .foregroundStyle(.secondary)
+            .fixedSize(horizontal: false, vertical: true)
+    }
+
+    private func removeButton(_ action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: "minus.circle.fill")
+                .foregroundStyle(.secondary)
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func addWord() {
+        let word = newWord.trimmingCharacters(in: .whitespaces)
+        guard !word.isEmpty else { return }
+        vocabularyStorage = ForkDictationSupport.storedVocabulary(words + [word])
+        newWord = ""
+    }
+
+    private func remove(word: String) {
+        vocabularyStorage = ForkDictationSupport.storedVocabulary(words.filter { $0 != word })
+    }
+
+    private func addReplacement() {
+        let heard = newHeard.trimmingCharacters(in: .whitespaces)
+        guard !heard.isEmpty else { return }
+        let others = replacements.filter { $0.heard.lowercased() != heard.lowercased() }
+        let added = ForkDictationSupport.Replacement(heard: heard,
+                                                     written: newWritten.trimmingCharacters(in: .whitespaces))
+        replacementsStorage = ForkDictationSupport.storedReplacements(others + [added])
+        newHeard = ""
+        newWritten = ""
+    }
+
+    private func remove(_ replacement: ForkDictationSupport.Replacement) {
+        replacementsStorage = ForkDictationSupport.storedReplacements(replacements.filter { $0 != replacement })
     }
 }

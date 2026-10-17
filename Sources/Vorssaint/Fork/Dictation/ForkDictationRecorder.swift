@@ -32,7 +32,7 @@ final class ForkDictationRecorder {
 
     /// Opens the microphone and starts recognizing. False when the
     /// recognizer or the microphone is not available.
-    func start(localeID: String) -> Bool {
+    func start(localeID: String, vocabulary: [String] = []) -> Bool {
         guard !isRunning,
               let recognizer = SFSpeechRecognizer(locale: Locale(identifier: localeID)),
               recognizer.isAvailable
@@ -42,6 +42,7 @@ final class ForkDictationRecorder {
         request.shouldReportPartialResults = true
         request.taskHint = .dictation
         request.addsPunctuation = true
+        request.contextualStrings = vocabulary
         if recognizer.supportsOnDeviceRecognition {
             request.requiresOnDeviceRecognition = true
         }

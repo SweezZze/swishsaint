@@ -212,7 +212,9 @@ final class ForkDictationService: ObservableObject {
     private func begin() {
         let text = ForkDictationStrings.strings(L10n.shared.language)
         guard let problem = problemBeforeStarting(text) else {
-            guard let localeID = Self.localeID, recorder.start(localeID: localeID) else {
+            let vocabulary = ForkDictationSupport.vocabulary(
+                from: UserDefaults.standard.string(forKey: ForkDefaultsKey.dictationVocabulary) ?? "")
+            guard let localeID = Self.localeID, recorder.start(localeID: localeID, vocabulary: vocabulary) else {
                 fail(text.problemUnavailable)
                 return
             }
@@ -276,7 +278,10 @@ final class ForkDictationService: ObservableObject {
         recorder.finish { [weak self] transcript in
             guard let self, self.session == current else { return }
             ForkDictationHUD.shared.hide()
-            guard let text = ForkDictationSupport.insertion(transcript) else { return }
+            let replacements = ForkDictationSupport.replacements(
+                from: UserDefaults.standard.string(forKey: ForkDefaultsKey.dictationReplacements) ?? "")
+            guard let text = ForkDictationSupport.insertion(
+                ForkDictationSupport.applying(replacements, to: transcript)) else { return }
             TransientPaste.shared.paste(text)
         }
     }

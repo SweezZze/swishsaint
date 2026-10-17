@@ -184,6 +184,64 @@ enum ForkDictationSupport {
         return supported.contains("en-US") ? "en-US" : supported.sorted().first
     }
 
+    // MARK: - Vocabulary
+
+    /// The most words handed to the recognizer: it weighs them all on each
+    /// guess, and Apple advises keeping the list short.
+    static let vocabularyLimit = 100
+
+    /// The person's own words, stored one per line: hints for the
+    /// recognizer, for names and terms it would otherwise mishear.
+    static func vocabulary(from stored: String) -> [String] {
+        var seen = Set<String>()
+        return stored.components(separatedBy: .newlines)
+            .map { $0.trimmingCharacters(in: .whitespaces) }
+            .filter { !$0.isEmpty && seen.insert($0.lowercased()).inserted }
+            .prefix(vocabularyLimit)
+            .map { $0 }
+    }
+
+    static func storedVocabulary(_ words: [String]) -> String {
+        words.joined(separator: "\n")
+    }
+
+    struct Replacement: Equatable, Hashable {
+        var heard: String
+        var written: String
+    }
+
+    /// Stored one per line, what is heard and what to write separated by a
+    /// tab.
+    static func replacements(from stored: String) -> [Replacement] {
+        stored.components(separatedBy: .newlines).compactMap { line in
+            let parts = line.components(separatedBy: "\t")
+            guard parts.count == 2 else { return nil }
+            let heard = parts[0].trimmingCharacters(in: .whitespaces)
+            let written = parts[1].trimmingCharacters(in: .whitespaces)
+            return heard.isEmpty ? nil : Replacement(heard: heard, written: written)
+        }
+    }
+
+    static func storedReplacements(_ replacements: [Replacement]) -> String {
+        replacements.map { "\($0.heard)\t\($0.written)" }.joined(separator: "\n")
+    }
+
+    /// Writes each replacement in place of what was heard, as whole words,
+    /// whatever the case. The longest first, so "pull request" wins over
+    /// "pull".
+    static func applying(_ replacements: [Replacement], to text: String) -> String {
+        var result = text
+        for replacement in replacements.sorted(by: { $0.heard.count > $1.heard.count }) {
+            let pattern = "(?<![\\p{L}\\p{N}])" + NSRegularExpression.escapedPattern(for: replacement.heard)
+                + "(?![\\p{L}\\p{N}])"
+            guard let regex = try? NSRegularExpression(pattern: pattern, options: [.caseInsensitive]) else { continue }
+            result = regex.stringByReplacingMatches(
+                in: result, range: NSRange(result.startIndex..., in: result),
+                withTemplate: NSRegularExpression.escapedTemplate(for: replacement.written))
+        }
+        return result
+    }
+
     static func normalized(_ identifier: String) -> String {
         identifier.replacingOccurrences(of: "_", with: "-")
     }

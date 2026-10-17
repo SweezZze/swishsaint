@@ -9,6 +9,7 @@ enum ForkDictationTests {
         trigger(suite)
         language(suite)
         text(suite)
+        vocabulary(suite)
     }
 
     private static func gesture(_ suite: TestSuite) {
@@ -96,5 +97,25 @@ enum ForkDictationTests {
                      "every language names the automatic language")
         suite.expect(Set(strings.map(\.howTo)).count == AppLanguage.allCases.count,
                      "dictation is explained in every language")
+    }
+
+    private static func vocabulary(_ suite: TestSuite) {
+        suite.expect(ForkDictationSupport.vocabulary(from: " pull request \n\nClaude\nPull Request\n")
+                        == ["pull request", "Claude"],
+                     "the vocabulary keeps each word once, without blanks")
+        let stored = ForkDictationSupport.storedReplacements([.init(heard: "poule", written: "pull"),
+                                                              .init(heard: "poule rique ouest", written: "pull request")])
+        let replacements = ForkDictationSupport.replacements(from: stored)
+        suite.expect(replacements.count == 2 && replacements[0] == .init(heard: "poule", written: "pull"),
+                     "replacements come back as stored")
+        suite.expect(ForkDictationSupport.applying(replacements, to: "Ouvre la Poule rique ouest et la poule.")
+                        == "Ouvre la pull request et la pull.",
+                     "the longest replacement wins, whatever the case")
+        suite.expect(ForkDictationSupport.applying(replacements, to: "Les poulets et la poulette")
+                        == "Les poulets et la poulette",
+                     "only whole words are replaced")
+        suite.expect(ForkDictationSupport.applying([.init(heard: "c++", written: "C++ $1")], to: "en c++ !")
+                        == "en C++ $1 !",
+                     "what is heard and written is taken literally")
     }
 }

@@ -29,6 +29,14 @@ struct ForkDictationStrings {
     let problemSpeech: String
     let problemBuild: String
     let problemUnavailable: String
+    let vocabularyTitle: String
+    let vocabularyCaption: String
+    let vocabularyPlaceholder: String
+    let addButton: String
+    let replacementsTitle: String
+    let replacementsCaption: String
+    let heardPlaceholder: String
+    let writtenPlaceholder: String
 
     func languageAutomatic(_ name: String) -> String { String(format: languageAutomaticFormat, name) }
 
@@ -87,7 +95,15 @@ extension ForkDictationStrings {
         problemMicrophone: "Allow the microphone in Settings",
         problemSpeech: "Allow speech recognition in Settings",
         problemBuild: "This build has no speech recognition",
-        problemUnavailable: "Speech recognition unavailable"
+        problemUnavailable: "Speech recognition unavailable",
+        vocabularyTitle: "Vocabulary",
+        vocabularyCaption: "Words dictation should know: names, brands, English terms. They are favored when what you say sounds like them.",
+        vocabularyPlaceholder: "Add a word or phrase",
+        addButton: "Add",
+        replacementsTitle: "Replacements",
+        replacementsCaption: "When dictation hears the first, it writes the second. For words it keeps getting wrong.",
+        heardPlaceholder: "Heard",
+        writtenPlaceholder: "Written"
     )
 
     static let ptBR = ForkDictationStrings(
@@ -113,7 +129,15 @@ extension ForkDictationStrings {
         problemMicrophone: "Permita o microfone nos Ajustes",
         problemSpeech: "Permita o reconhecimento de fala",
         problemBuild: "Versão sem reconhecimento de fala",
-        problemUnavailable: "Reconhecimento de fala indisponível"
+        problemUnavailable: "Reconhecimento de fala indisponível",
+        vocabularyTitle: "Vocabulário",
+        vocabularyCaption: "Palavras que o ditado deve conhecer: nomes, marcas, termos em inglês. Elas são favorecidas quando o que você diz se parece com elas.",
+        vocabularyPlaceholder: "Adicionar palavra ou expressão",
+        addButton: "Adicionar",
+        replacementsTitle: "Substituições",
+        replacementsCaption: "Quando o ditado ouve a primeira, escreve a segunda. Para palavras que ele continua errando.",
+        heardPlaceholder: "Ouvido",
+        writtenPlaceholder: "Escrito"
     )
 
     static let tr = ForkDictationStrings(
@@ -139,7 +163,15 @@ extension ForkDictationStrings {
         problemMicrophone: "Ayarlar’da mikrofona izin verin",
         problemSpeech: "Konuşma tanımaya izin verin",
         problemBuild: "Bu derlemede konuşma tanıma yok",
-        problemUnavailable: "Konuşma tanıma kullanılamıyor"
+        problemUnavailable: "Konuşma tanıma kullanılamıyor",
+        vocabularyTitle: "Sözcük dağarcığı",
+        vocabularyCaption: "Diktenin bilmesi gereken sözcükler: adlar, markalar, İngilizce terimler. Söyledikleriniz onlara benzediğinde öne çıkarılır.",
+        vocabularyPlaceholder: "Sözcük veya ifade ekleyin",
+        addButton: "Ekle",
+        replacementsTitle: "Değiştirmeler",
+        replacementsCaption: "Dikte ilkini duyduğunda ikincisini yazar. Hâlâ yanlış yazdığı sözcükler için.",
+        heardPlaceholder: "Duyulan",
+        writtenPlaceholder: "Yazılan"
     )
 
     static let ru = ForkDictationStrings(
@@ -165,7 +197,15 @@ extension ForkDictationStrings {
         problemMicrophone: "Разрешите микрофон в настройках",
         problemSpeech: "Разрешите распознавание речи",
         problemBuild: "В этой сборке нет распознавания речи",
-        problemUnavailable: "Распознавание речи недоступно"
+        problemUnavailable: "Распознавание речи недоступно",
+        vocabularyTitle: "Словарь",
+        vocabularyCaption: "Слова, которые должна знать диктовка: имена, бренды, английские термины. Им отдаётся предпочтение, когда сказанное на них похоже.",
+        vocabularyPlaceholder: "Добавить слово или фразу",
+        addButton: "Добавить",
+        replacementsTitle: "Замены",
+        replacementsCaption: "Когда диктовка слышит первое, она пишет второе. Для слов, в которых она всё ещё ошибается.",
+        heardPlaceholder: "Слышится",
+        writtenPlaceholder: "Пишется"
     )
 
     static let es = ForkDictationStrings(
@@ -191,7 +231,15 @@ extension ForkDictationStrings {
         problemMicrophone: "Permite el micrófono en Ajustes",
         problemSpeech: "Permite el reconocimiento de voz",
         problemBuild: "Versión sin reconocimiento de voz",
-        problemUnavailable: "Reconocimiento de voz no disponible"
+        problemUnavailable: "Reconocimiento de voz no disponible",
+        vocabularyTitle: "Vocabulario",
+        vocabularyCaption: "Palabras que el dictado debe conocer: nombres, marcas, términos en inglés. Se priorizan cuando lo que dices se parece a ellas.",
+        vocabularyPlaceholder: "Añadir una palabra o frase",
+        addButton: "Añadir",
+        replacementsTitle: "Sustituciones",
+        replacementsCaption: "Cuando el dictado oye la primera, escribe la segunda. Para las palabras que sigue escribiendo mal.",
+        heardPlaceholder: "Oído",
+        writtenPlaceholder: "Escrito"
     )
 
     static let sk = ForkDictationStrings(
@@ -217,7 +265,15 @@ extension ForkDictationStrings {
         problemMicrophone: "Povoľte mikrofón v nastaveniach",
         problemSpeech: "Povoľte rozpoznávanie reči",
         problemBuild: "Verzia bez rozpoznávania reči",
-        problemUnavailable: "Rozpoznávanie reči nie je dostupné"
+        problemUnavailable: "Rozpoznávanie reči nie je dostupné",
+        vocabularyTitle: "Slovník",
+        vocabularyCaption: "Slová, ktoré má diktovanie poznať: mená, značky, anglické výrazy. Uprednostnia sa, keď to, čo poviete, znie podobne.",
+        vocabularyPlaceholder: "Pridať slovo alebo frázu",
+        addButton: "Pridať",
+        replacementsTitle: "Náhrady",
+        replacementsCaption: "Keď diktovanie počuje prvé, napíše druhé. Pre slová, ktoré stále píše zle.",
+        heardPlaceholder: "Počuté",
+        writtenPlaceholder: "Napísané"
     )
 
     static let de = ForkDictationStrings(
@@ -243,7 +299,15 @@ extension ForkDictationStrings {
         problemMicrophone: "Mikrofon in den Einstellungen erlauben",
         problemSpeech: "Spracherkennung erlauben",
         problemBuild: "Build ohne Spracherkennung",
-        problemUnavailable: "Spracherkennung nicht verfügbar"
+        problemUnavailable: "Spracherkennung nicht verfügbar",
+        vocabularyTitle: "Vokabular",
+        vocabularyCaption: "Wörter, die das Diktieren kennen soll: Namen, Marken, englische Begriffe. Sie werden bevorzugt, wenn das Gesagte ähnlich klingt.",
+        vocabularyPlaceholder: "Wort oder Ausdruck hinzufügen",
+        addButton: "Hinzufügen",
+        replacementsTitle: "Ersetzungen",
+        replacementsCaption: "Hört das Diktieren das Erste, schreibt es das Zweite. Für Wörter, die es immer noch falsch schreibt.",
+        heardPlaceholder: "Gehört",
+        writtenPlaceholder: "Geschrieben"
     )
 
     static let fr = ForkDictationStrings(
@@ -269,7 +333,15 @@ extension ForkDictationStrings {
         problemMicrophone: "Autorisez le micro dans les réglages",
         problemSpeech: "Autorisez la reconnaissance vocale",
         problemBuild: "Version sans reconnaissance vocale",
-        problemUnavailable: "Reconnaissance vocale indisponible"
+        problemUnavailable: "Reconnaissance vocale indisponible",
+        vocabularyTitle: "Vocabulaire",
+        vocabularyCaption: "Les mots que la dictée doit connaître : noms, marques, termes anglais. Ils sont privilégiés quand ce que vous dites leur ressemble.",
+        vocabularyPlaceholder: "Ajouter un mot ou une expression",
+        addButton: "Ajouter",
+        replacementsTitle: "Remplacements",
+        replacementsCaption: "Quand la dictée entend le premier, elle écrit le second. Pour les mots qu’elle se trompe encore à écrire.",
+        heardPlaceholder: "Entendu",
+        writtenPlaceholder: "Écrit"
     )
 
     static let it = ForkDictationStrings(
@@ -295,7 +367,15 @@ extension ForkDictationStrings {
         problemMicrophone: "Consenti il microfono nelle Impostazioni",
         problemSpeech: "Consenti il riconoscimento vocale",
         problemBuild: "Build senza riconoscimento vocale",
-        problemUnavailable: "Riconoscimento vocale non disponibile"
+        problemUnavailable: "Riconoscimento vocale non disponibile",
+        vocabularyTitle: "Vocabolario",
+        vocabularyCaption: "Parole che la dettatura deve conoscere: nomi, marchi, termini inglesi. Sono favorite quando ciò che dici somiglia a loro.",
+        vocabularyPlaceholder: "Aggiungi una parola o frase",
+        addButton: "Aggiungi",
+        replacementsTitle: "Sostituzioni",
+        replacementsCaption: "Quando la dettatura sente la prima, scrive la seconda. Per le parole che continua a sbagliare.",
+        heardPlaceholder: "Sentito",
+        writtenPlaceholder: "Scritto"
     )
 
     static let ja = ForkDictationStrings(
@@ -321,7 +401,15 @@ extension ForkDictationStrings {
         problemMicrophone: "設定でマイクを許可してください",
         problemSpeech: "音声認識を許可してください",
         problemBuild: "このビルドには音声認識がありません",
-        problemUnavailable: "音声認識を利用できません"
+        problemUnavailable: "音声認識を利用できません",
+        vocabularyTitle: "語彙",
+        vocabularyCaption: "音声入力に覚えさせたい語句：名前、ブランド、英語の用語。話した内容が似ているときに優先されます。",
+        vocabularyPlaceholder: "語句を追加",
+        addButton: "追加",
+        replacementsTitle: "置き換え",
+        replacementsCaption: "音声入力が左の語を聞き取ると、右の語を入力します。いつも間違える語に使います。",
+        heardPlaceholder: "聞き取り",
+        writtenPlaceholder: "入力"
     )
 
     static let ko = ForkDictationStrings(
@@ -347,7 +435,15 @@ extension ForkDictationStrings {
         problemMicrophone: "설정에서 마이크를 허용하세요",
         problemSpeech: "음성 인식을 허용하세요",
         problemBuild: "음성 인식이 없는 빌드",
-        problemUnavailable: "음성 인식을 사용할 수 없음"
+        problemUnavailable: "음성 인식을 사용할 수 없음",
+        vocabularyTitle: "어휘",
+        vocabularyCaption: "받아쓰기가 알아야 할 단어: 이름, 브랜드, 영어 용어. 말한 내용이 비슷하면 우선합니다.",
+        vocabularyPlaceholder: "단어 또는 구문 추가",
+        addButton: "추가",
+        replacementsTitle: "대치",
+        replacementsCaption: "받아쓰기가 앞의 말을 들으면 뒤의 말을 씁니다. 계속 잘못 쓰는 단어에 사용하세요.",
+        heardPlaceholder: "들은 말",
+        writtenPlaceholder: "쓸 말"
     )
 
     static let uk = ForkDictationStrings(
@@ -373,7 +469,15 @@ extension ForkDictationStrings {
         problemMicrophone: "Дозвольте мікрофон у параметрах",
         problemSpeech: "Дозвольте розпізнавання мовлення",
         problemBuild: "Збірка без розпізнавання мовлення",
-        problemUnavailable: "Розпізнавання мовлення недоступне"
+        problemUnavailable: "Розпізнавання мовлення недоступне",
+        vocabularyTitle: "Словник",
+        vocabularyCaption: "Слова, які має знати диктування: імена, бренди, англійські терміни. Їм надається перевага, коли сказане на них схоже.",
+        vocabularyPlaceholder: "Додати слово чи фразу",
+        addButton: "Додати",
+        replacementsTitle: "Заміни",
+        replacementsCaption: "Коли диктування чує перше, воно пише друге. Для слів, у яких воно досі помиляється.",
+        heardPlaceholder: "Чується",
+        writtenPlaceholder: "Пишеться"
     )
 
     static let zhHans = ForkDictationStrings(
@@ -399,7 +503,15 @@ extension ForkDictationStrings {
         problemMicrophone: "请在设置中允许麦克风",
         problemSpeech: "请允许语音识别",
         problemBuild: "此版本没有语音识别",
-        problemUnavailable: "语音识别不可用"
+        problemUnavailable: "语音识别不可用",
+        vocabularyTitle: "词汇",
+        vocabularyCaption: "听写需要认识的词语：人名、品牌、英文术语。当你说的话与它们相似时会优先使用。",
+        vocabularyPlaceholder: "添加词语或短语",
+        addButton: "添加",
+        replacementsTitle: "替换",
+        replacementsCaption: "听写听到前者时会写成后者。用于总是写错的词。",
+        heardPlaceholder: "听到",
+        writtenPlaceholder: "写成"
     )
 
     static let zhTW = ForkDictationStrings(
@@ -425,7 +537,15 @@ extension ForkDictationStrings {
         problemMicrophone: "請在設定中允許麥克風",
         problemSpeech: "請允許語音辨識",
         problemBuild: "此版本沒有語音辨識",
-        problemUnavailable: "無法使用語音辨識"
+        problemUnavailable: "無法使用語音辨識",
+        vocabularyTitle: "詞彙",
+        vocabularyCaption: "聽寫需要認識的詞語：人名、品牌、英文術語。當你說的話與它們相似時會優先使用。",
+        vocabularyPlaceholder: "加入詞語或片語",
+        addButton: "加入",
+        replacementsTitle: "取代",
+        replacementsCaption: "聽寫聽到前者時會寫成後者。用於總是寫錯的詞。",
+        heardPlaceholder: "聽到",
+        writtenPlaceholder: "寫成"
     )
 
     static let zhHK = ForkDictationStrings(
@@ -451,6 +571,14 @@ extension ForkDictationStrings {
         problemMicrophone: "請在設定中允許咪高峰",
         problemSpeech: "請允許語音辨識",
         problemBuild: "此版本沒有語音辨識",
-        problemUnavailable: "無法使用語音辨識"
+        problemUnavailable: "無法使用語音辨識",
+        vocabularyTitle: "詞彙",
+        vocabularyCaption: "聽寫需要認識的詞語：人名、品牌、英文術語。當你說的話與它們相似時會優先使用。",
+        vocabularyPlaceholder: "加入詞語或片語",
+        addButton: "加入",
+        replacementsTitle: "取代",
+        replacementsCaption: "聽寫聽到前者時會寫成後者。用於總是寫錯的詞。",
+        heardPlaceholder: "聽到",
+        writtenPlaceholder: "寫成"
     )
 }
