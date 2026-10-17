@@ -2285,6 +2285,12 @@ enum ForkTrackpadGestureTests {
                         && ForkDefaults.registered[ForkDefaultsKey.cancelEnabled] as? Bool == true
                         && ForkDefaults.backupKeys.contains(ForkDefaultsKey.cancelEnabled),
                      "the cancel can be switched off, starts on, and travels with the backup")
+        let placer = sourceCode("Sources/Vorssaint/Fork/Gestures/ForkTrackpadWindowPlacer.swift")
+        suite.expect(ForkDefaults.registered[ForkDefaultsKey.sizeCycleEnabled] as? Bool == true
+                        && ForkDefaults.backupKeys.contains(ForkDefaultsKey.sizeCycleEnabled)
+                        && placer.contains("cyclesThirds: ForkTrackpadTuning.sizeCycleEnabled)")
+                        && !placer.contains("cyclesThirds: true"),
+                     "the ½ ⅔ ⅓ cycle of a repeated side swipe follows its switch, starts on, and is backed up")
         suite.expect(Set(Tuning.allCases.map(\.key)).count == Tuning.allCases.count
                         && Tuning.allCases.allSatisfy {
                             ForkDefaults.registered[$0.key] as? Int == $0.defaultStep

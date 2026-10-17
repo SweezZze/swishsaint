@@ -30,6 +30,7 @@ struct ForkTrackpadSettingsSections: View {
     @AppStorage(ForkDefaultsKey.cancelDelayStep)
     private var cancelDelayStep = ForkTrackpadTuning.cancelDelay.defaultStep
     @AppStorage(ForkDefaultsKey.cancelEnabled) private var cancelEnabled = true
+    @AppStorage(ForkDefaultsKey.sizeCycleEnabled) private var sizeCycleEnabled = true
     @AppStorage(ForkDefaultsKey.gridModifierKeys)
     private var gridKeysRaw = ForkTrackpadModifierKeys.gridDefault.rawValue
     @AppStorage(ForkDefaultsKey.strongerModifierKeys)
@@ -141,6 +142,15 @@ struct ForkTrackpadSettingsSections: View {
                     .padding(.vertical, 2)
                     if group == .tap {
                         centerSizeControl
+                    }
+                    if group == .grid4 {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Toggle(text.sizeCycleTitle, isOn: $sizeCycleEnabled)
+                            Text(text.sizeCycleCaption)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
                     }
                 }
                 .padding(.top, 6)

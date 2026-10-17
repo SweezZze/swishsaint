@@ -214,14 +214,14 @@ final class ForkTrackpadWindowPlacer {
         beforePlacement[target.key] = target.frame
     }
 
-    /// Unlike the keyboard shortcut, a repeated trackpad gesture always
-    /// cycles the sides through the official thirds: the setting that gates
-    /// the shortcut is about sharing a key across displays, which a
-    /// deliberate two-finger repeat is never mistaken for.
+    /// A repeated trackpad gesture cycles the sides through the official
+    /// thirds by its own setting, not the keyboard shortcut's: that one is
+    /// about sharing a key across displays, which a deliberate two-finger
+    /// repeat is never mistaken for.
     private func effectiveAction(for action: WindowLayoutAction, target: Target) -> WindowLayoutAction {
         ForkWindowSizeCycle.effectiveAction(for: action, current: target.frame,
                                            previous: cycleMemory[target.key], tolerance: frameTolerance,
-                                           cyclesThirds: true)
+                                           cyclesThirds: ForkTrackpadTuning.sizeCycleEnabled)
     }
 
     private func recordCycle(_ action: WindowLayoutAction, target: Target) {
