@@ -4,17 +4,32 @@
 import SwiftUI
 
 /// The fork's page of the Settings (seams `settings`, `settings2`,
-/// `settings3`): one switch per fork feature, each feature's own settings,
-/// the fork's updates, and what this version is.
+/// `settings3`): the list of fork features, each with its switch, the
+/// fork's updates, and what this version is. Each feature's own settings
+/// open on a page of their own, the way System Settings opens a row, so
+/// the list stays short however many features join it.
 struct ForkExtrasSettings: View {
     @ObservedObject private var l10n = L10n.shared
-    @ObservedObject private var permissions = Permissions.shared
-    @AppStorage(ForkDefaultsKey.claudeUsageEnabled) private var claudeUsageEnabled = false
-    @AppStorage(ForkDefaultsKey.dictationEnabled) private var dictationEnabled = false
+    @State private var openFeature: ForkFeature?
 
     private var text: ForkExtrasStrings { ForkExtrasStrings.strings(l10n.language) }
 
     var body: some View {
+        Group {
+            if let feature = openFeature {
+                ForkFeaturePage(feature: feature, text: text) {
+                    withAnimation(.easeInOut(duration: 0.18)) { openFeature = nil }
+                }
+                .transition(.move(edge: .trailing).combined(with: .opacity))
+            } else {
+                overview
+                    .transition(.move(edge: .leading).combined(with: .opacity))
+            }
+        }
+        .animation(.easeInOut(duration: 0.18), value: openFeature)
+    }
+
+    private var overview: some View {
         Form {
             Section {
                 Text(text.intro)
@@ -25,39 +40,9 @@ struct ForkExtrasSettings: View {
 
             Section(text.featuresSection) {
                 ForEach(ForkFeature.allCases) { feature in
-                    ForkFeatureToggle(feature: feature, text: text)
-                }
-            }
-
-            if !permissions.accessibility {
-                Section(l10n.s.permissionRequired) {
-                    PermissionRow(kind: .accessibility)
-                }
-            }
-
-            if claudeUsageEnabled {
-                ForkClaudeUsageStatus(text: text)
-            }
-
-            if dictationEnabled {
-                ForkDictationSettingsSection(title: text.dictationTitle)
-            }
-
-            ForkTrackpadSettingsSections(text: FeatureStrings.forkTrackpadGestures(l10n.language),
-                                         layoutText: FeatureStrings.windowLayout(l10n.language))
-
-            Section {
-                HStack(alignment: .firstTextBaseline) {
-                    Text(text.sharedSettings)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
-                    Spacer()
-                    Button(FeatureStrings.windowLayout(l10n.language).title) {
-                        SettingsRouter.shared.request(FeatureSettingsDestination(.windowLayout))
+                    ForkFeatureRow(feature: feature, text: text) {
+                        withAnimation(.easeInOut(duration: 0.18)) { openFeature = feature }
                     }
-                    .buttonStyle(.link)
-                    .font(.caption)
                 }
             }
 
@@ -85,6 +70,141 @@ struct ForkExtrasSettings: View {
         return SettingsDirectoryItem(page: .extras, title: text.pageTitle, icon: "puzzlepiece.extension",
                                      keywords: ForkFeature.allCases.map { $0.title(text) }
                                         + [FeatureStrings.forkTrackpadGestures(language).enable])
+    }
+}
+
+/// A feature in the list: its switch, and a click anywhere else on the row
+/// opens its page.
+private struct ForkFeatureRow: View {
+    let feature: ForkFeature
+    let text: ForkExtrasStrings
+    let open: () -> Void
+    @AppStorage private var isOn: Bool
+
+    init(feature: ForkFeature, text: ForkExtrasStrings, open: @escaping () -> Void) {
+        self.feature = feature
+        self.text = text
+        self.open = open
+        _isOn = AppStorage(wrappedValue: false, feature.enabledKey)
+    }
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Button(action: open) {
+                HStack(spacing: 10) {
+                    ForkFeatureIcon(feature: feature)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(feature.title(text))
+                        Text(feature.summary(text))
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(2)
+                    }
+                    Spacer(minLength: 0)
+                }
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            Toggle("", isOn: $isOn)
+                .labelsHidden()
+                .toggleStyle(.switch)
+                .controlSize(.small)
+                .onChange(of: isOn) { _, _ in feature.sync() }
+            Button(action: open) {
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(.tertiary)
+                    .frame(width: 12, height: 20)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(feature.title(text))
+        }
+    }
+}
+
+/// The feature's symbol on a small tinted tile, like System Settings.
+private struct ForkFeatureIcon: View {
+    let feature: ForkFeature
+
+    var body: some View {
+        Image(systemName: feature.symbol)
+            .font(.system(size: 13, weight: .medium))
+            .foregroundStyle(.white)
+            .frame(width: 26, height: 26)
+            .background(RoundedRectangle(cornerRadius: 6, style: .continuous).fill(feature.tint.gradient))
+    }
+}
+
+/// One feature's own page: a way back to the list, then its settings.
+private struct ForkFeaturePage: View {
+    let feature: ForkFeature
+    let text: ForkExtrasStrings
+    let back: () -> Void
+
+    @ObservedObject private var l10n = L10n.shared
+    @ObservedObject private var permissions = Permissions.shared
+    @AppStorage(ForkDefaultsKey.claudeUsageEnabled) private var claudeUsageEnabled = false
+
+    var body: some View {
+        VStack(spacing: 0) {
+            HStack {
+                Button(action: back) {
+                    Label(text.pageTitle, systemImage: "chevron.left")
+                }
+                .buttonStyle(.borderless)
+                .keyboardShortcut(.cancelAction)
+                Spacer()
+            }
+            .padding(.horizontal, 20)
+            .padding(.top, 14)
+
+            Form {
+                if feature != .trackpadGestures {
+                    Section {
+                        ForkFeatureToggle(feature: feature, text: text)
+                    }
+                }
+
+                if feature.needsAccessibility && !permissions.accessibility {
+                    Section(l10n.s.permissionRequired) {
+                        PermissionRow(kind: .accessibility)
+                    }
+                }
+
+                content
+            }
+            .formStyle(.grouped)
+        }
+    }
+
+    @ViewBuilder
+    private var content: some View {
+        switch feature {
+        case .trackpadGestures:
+            ForkTrackpadSettingsSections(text: FeatureStrings.forkTrackpadGestures(l10n.language),
+                                         layoutText: FeatureStrings.windowLayout(l10n.language))
+            Section {
+                HStack(alignment: .firstTextBaseline) {
+                    Text(text.sharedSettings)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Spacer()
+                    Button(FeatureStrings.windowLayout(l10n.language).title) {
+                        SettingsRouter.shared.request(FeatureSettingsDestination(.windowLayout))
+                    }
+                    .buttonStyle(.link)
+                    .font(.caption)
+                }
+            }
+        case .claudeUsage:
+            if claudeUsageEnabled {
+                ForkClaudeUsageStatus(text: text)
+            }
+        case .dictation:
+            ForkDictationSettingsSection(title: text.dictationTitle)
+        }
     }
 }
 
