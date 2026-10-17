@@ -19,7 +19,7 @@ final class ForkDictationHUD {
     }
 
     final class Model: ObservableObject {
-        static let barCount = 9
+        static let barCount = 14
         @Published var phase: Phase = .listening
         @Published var levels = [Float](repeating: 0, count: Model.barCount)
     }
@@ -36,7 +36,7 @@ final class ForkDictationHUD {
         if case .listening = phase, model.phase != .listening && model.phase != .handsFree {
             model.levels = [Float](repeating: 0, count: Model.barCount)
         }
-        withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) { model.phase = phase }
+        withAnimation(.easeInOut(duration: 0.2)) { model.phase = phase }
         let panel = self.panel ?? makePanel()
         self.panel = panel
         place(panel)
@@ -100,59 +100,90 @@ final class ForkDictationHUD {
         }
         let size = panel.frame.size
         let area = screen.visibleFrame
-        panel.setFrameOrigin(NSPoint(x: area.midX - size.width / 2, y: area.minY + 20))
+        panel.setFrameOrigin(NSPoint(x: area.midX - size.width / 2, y: area.minY + 14))
     }
 }
 
+/// Sober on purpose: a small dark capsule, white marks only, the same in
+/// light and dark mode, so it reads like part of the system.
 private struct ForkDictationPill: View {
     @ObservedObject var model: ForkDictationHUD.Model
 
     var body: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: 10) {
             content
         }
-        .padding(.horizontal, 14)
-        .frame(height: 34)
-        .background(.regularMaterial, in: Capsule())
-        .overlay(Capsule().strokeBorder(.primary.opacity(0.12), lineWidth: 0.5))
-        .shadow(color: .black.opacity(0.25), radius: 6, y: 2)
+        .padding(.horizontal, 12)
+        .frame(height: 28)
+        .background(Capsule().fill(Color.black.opacity(0.82)))
+        .overlay(Capsule().strokeBorder(Color.white.opacity(0.10), lineWidth: 0.5))
+        .shadow(color: .black.opacity(0.18), radius: 8, y: 3)
+        .environment(\.colorScheme, .dark)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .animation(.spring(response: 0.3, dampingFraction: 0.8), value: model.phase)
+        .animation(.easeInOut(duration: 0.2), value: model.phase)
     }
 
     @ViewBuilder
     private var content: some View {
         switch model.phase {
         case .listening, .handsFree:
-            Image(systemName: model.phase == .handsFree ? "lock.fill" : "mic.fill")
-                .font(.system(size: 11, weight: .semibold))
-                .foregroundStyle(model.phase == .handsFree ? Color.accentColor : Color.red)
-                .frame(width: 14)
-            HStack(spacing: 3) {
-                ForEach(Array(model.levels.enumerated()), id: \.offset) { _, level in
-                    Capsule()
-                        .fill(.primary.opacity(0.85))
-                        .frame(width: 3, height: 4 + CGFloat(level) * 16)
-                }
+            ForkDictationWave(levels: model.levels)
+            if model.phase == .handsFree {
+                RoundedRectangle(cornerRadius: 1.5)
+                    .fill(Color.white.opacity(0.7))
+                    .frame(width: 7, height: 7)
+                    .transition(.opacity)
             }
-            .frame(height: 20)
-            .animation(.easeOut(duration: 0.08), value: model.levels)
         case .writing:
-            ProgressView()
-                .controlSize(.small)
-                .scaleEffect(0.8)
-                .frame(width: 14, height: 14)
-            Image(systemName: "text.cursor")
-                .font(.system(size: 12, weight: .medium))
-                .foregroundStyle(.secondary)
+            ForkDictationDots()
         case let .problem(message):
-            Image(systemName: "exclamationmark.triangle.fill")
-                .font(.system(size: 11))
-                .foregroundStyle(.orange)
             Text(message)
                 .font(.system(size: 11, weight: .medium))
+                .foregroundStyle(Color.white.opacity(0.85))
                 .lineLimit(1)
                 .minimumScaleFactor(0.8)
+        }
+    }
+}
+
+/// The voice as thin bars, tallest in the middle, eased so they glide
+/// rather than jump.
+private struct ForkDictationWave: View {
+    let levels: [Float]
+
+    var body: some View {
+        HStack(spacing: 2.5) {
+            ForEach(Array(levels.enumerated()), id: \.offset) { index, level in
+                Capsule()
+                    .fill(Color.white.opacity(0.9))
+                    .frame(width: 2, height: height(level, at: index))
+            }
+        }
+        .frame(height: 16)
+        .animation(.easeOut(duration: 0.12), value: levels)
+    }
+
+    private func height(_ level: Float, at index: Int) -> CGFloat {
+        let middle = Double(levels.count - 1) / 2
+        let weight = 1 - abs(Double(index) - middle) / (middle + 1) * 0.6
+        return 2 + CGFloat(Double(level) * weight) * 14
+    }
+}
+
+/// Three dots breathing in turn while the last words are written out.
+private struct ForkDictationDots: View {
+    var body: some View {
+        TimelineView(.animation) { context in
+            let time = context.date.timeIntervalSinceReferenceDate
+            HStack(spacing: 4) {
+                ForEach(0..<3, id: \.self) { index in
+                    Circle()
+                        .fill(Color.white)
+                        .frame(width: 4, height: 4)
+                        .opacity(0.35 + 0.55 * (0.5 + 0.5 * sin(time * 6 - Double(index) * 0.9)))
+                }
+            }
+            .frame(width: 44, height: 16)
         }
     }
 }
