@@ -26,9 +26,9 @@ struct ForkMeetingRecorderStart: Equatable {
     /// what the start's notice and the pill say. `nil` without a window.
     var appName: String? = nil
 
-    /// The meeting track hears the whole Mac (the setting, or no app's tap
-    /// could be made): what `meeting.json` must say.
-    var hearsWholeMac: Bool { sound == .stream }
+    /// What the meeting track hears at the start (`sound`, and for the
+    /// stream what the picture follows): what `meeting.json` must say.
+    var heard: ForkMeetingSystemAudio
 }
 
 /// A process tap, as the recorder uses it: the official
@@ -103,12 +103,15 @@ final class ForkMeetingRecorder: @unchecked Sendable {
     /// The microphone's silence is over: `microphoneSoundBack`.
     var onMicrophoneSound: ((ForkMeetingToken) -> Void)?
     /// The witness stayed silent while the Mac played: system audio
-    /// recording is not allowed, and the meeting track went to the whole
-    /// Mac's sound, `permissionLost(.systemAudio)`.
+    /// recording is not allowed, and the meeting track went to the stream's
+    /// sound, `permissionLost(.systemAudio)`.
     var onSystemAudioUnavailable: ((ForkMeetingToken) -> Void)?
     /// A tap heard sound: system audio recording is allowed (the page's
     /// warning may go). Also kept in `fork.meetings.systemAudioVerified`.
     var onSystemAudioAllowed: ((ForkMeetingToken) -> Void)?
+    /// The meeting track heard more than said so far (the whole Mac after
+    /// the app alone): its widest, for `meeting.json`. Never narrows.
+    var onSoundHeard: ((ForkMeetingToken, ForkMeetingSystemAudio) -> Void)?
 
     // MARK: State
 
@@ -122,6 +125,12 @@ final class ForkMeetingRecorder: @unchecked Sendable {
     /// A tap of the whole Mac but this app, only to learn whether system
     /// audio recording is allowed; never written. Gone once it settled it.
     private var witness: ForkMeetingAudioTap?
+    /// What tells whether the permission is there: the witness, or the
+    /// Mac's tap itself. Gone once it is known.
+    private var judge: ForkMeetingAudioTap?
+    private var sound: ForkMeetingSoundSource = .none
+    /// The widest the meeting track heard so far.
+    private var heard: ForkMeetingSystemAudio = .off
     private var microphone: ForkMeetingMicrophone?
     private var arbiter = ForkMeetingSoundArbiter(hasTap: false, hasWitness: false)
     private var window: CGWindowID?
@@ -241,8 +250,9 @@ final class ForkMeetingRecorder: @unchecked Sendable {
         }
         guard gate.isAuthorized else { return cancelled() }
 
-        // The meeting's sound: the app's tap, and a witness that tells a
-        // silent app from a missing permission.
+        // The meeting's sound: the app's tap with a witness that tells a
+        // silent app from a missing permission, or the Mac's tap, its own
+        // judge.
         let ownPID = ProcessInfo.processInfo.processIdentifier
         var tapAvailable = false
         if #available(macOS 14.4, *) { tapAvailable = true }
@@ -250,20 +260,26 @@ final class ForkMeetingRecorder: @unchecked Sendable {
                                                   tapAvailable: tapAvailable)
         var tap: ForkMeetingAudioTap?
         var witness: ForkMeetingAudioTap?
-        if case let .appTap(pid) = sound {
+        switch sound {
+        case let .appTap(pid):
             tap = await makeTap(pid)
-            if tap == nil {
-                // Refused by the audio system: the whole Mac, as
-                // `meeting.json` will say.
-                sound = .stream
-            } else {
-                witness = await makeTap(nil)
-            }
+            if tap != nil { witness = await makeTap(nil) }
+        case .macTap:
+            tap = await makeTap(nil)
+        case .stream, .none:
+            break
         }
+        // Refused by the audio system: the stream's sound, as `meeting.json`
+        // will say.
+        if tap == nil, sound != .none { sound = .stream }
+        let macTap = sound == .macTap
         lock.withLock {
             self.tap = tap
             self.witness = witness
-            arbiter = ForkMeetingSoundArbiter(hasTap: tap != nil, hasWitness: witness != nil)
+            self.sound = sound
+            judge = macTap ? tap : witness
+            arbiter = ForkMeetingSoundArbiter(hasTap: tap != nil, hasWitness: macTap || witness != nil,
+                                              tapFirst: !macTap)
         }
         tap?.onSample = { [weak self] sample in self?.tapSample(sample) }
         witness?.onSample = { [weak self] sample in self?.witnessSample(sample) }
@@ -317,11 +333,16 @@ final class ForkMeetingRecorder: @unchecked Sendable {
         guard gate.isAuthorized else { return cancelled() }
         lock.withLock { running = true }
         let codec = writer.codec == .hevc ? "hvc1" : "avc1"
+        let heardNow = lock.withLock { () -> ForkMeetingSystemAudio in
+            heard = currentHeard()
+            return heard
+        }
         let startedAt = Date(timeIntervalSinceNow: min(0, (zero.value ?? ForkMeetingWriter.hostSeconds())
                                                           - ForkMeetingWriter.hostSeconds()))
         return .success(ForkMeetingRecorderStart(target: Self.target(of: aim), window: window, sound: sound,
                                                  microphone: microphoneName, outputSize: outputSize, codec: codec,
-                                                 startedAt: startedAt, appName: Self.appName(of: window)))
+                                                 startedAt: startedAt, appName: Self.appName(of: window),
+                                                 heard: heardNow))
     }
 
     /// `stop` came during the start: it owns the teardown, and the start's
@@ -410,7 +431,30 @@ final class ForkMeetingRecorder: @unchecked Sendable {
             return aim.map(Self.target(of:)) != Self.target(of: used)
         }
         let target = Self.target(of: used)
-        if changed { send { $0.onTargetChanged?($0.token, target) } }
+        if changed {
+            send { $0.onTargetChanged?($0.token, target) }
+            noteHeard()
+        }
+    }
+
+    /// Under `lock`: what the meeting track hears now.
+    private func currentHeard() -> ForkMeetingSystemAudio {
+        guard sound != .none else { return .off }
+        let filmsWindow: Bool = { if case .window = aim { return true }; return false }()
+        return arbiter.writesTap ? sound.heard(filmsWindow: filmsWindow)
+            : ForkMeetingSoundSource.stream.heard(filmsWindow: filmsWindow)
+    }
+
+    /// Any thread: says it when the track heard more than before.
+    private func noteHeard() {
+        let widened = lock.withLock { () -> ForkMeetingSystemAudio? in
+            guard running else { return nil }
+            let next = heard.widened(by: currentHeard())
+            guard next != heard else { return nil }
+            heard = next
+            return next
+        }
+        if let widened { send { $0.onSoundHeard?($0.token, widened) } }
     }
 
     /// The pill's meters. Any thread.
@@ -542,14 +586,14 @@ final class ForkMeetingRecorder: @unchecked Sendable {
     /// track hears the whole Mac; while the witness listens, it is weighed
     /// against what the witness heard.
     private func streamSound(_ sample: CMSampleBuffer) {
-        let (writer, witness, needsWitness) = lock.withLock { (self.writer, self.witness, arbiter.needsWitness) }
+        let (writer, judge, needsWitness) = lock.withLock { (self.writer, self.judge, arbiter.needsWitness) }
         var missing = false
-        if needsWitness, let witness, RecorderAudioProbe.containsSound(sample) {
+        if needsWitness, let judge, RecorderAudioProbe.containsSound(sample) {
             // Only sound from after the witness's pipeline settled counts:
             // the official rule for an app's tap, hence `hearsOneApp`.
             let counts = RecorderSupport.streamSoundCountsAgainstTap(
                 at: CMSampleBufferGetPresentationTimeStamp(sample), hearsOneApp: true,
-                pipelineStart: witness.pipelineStart)
+                pipelineStart: judge.pipelineStart)
             let seconds = Double(CMSampleBufferGetNumSamples(sample)) / ForkMeetingWriter.sampleRate
             missing = lock.withLock { arbiter.streamBuffer(heard: true, counts: counts, seconds: seconds) }
         }
@@ -583,10 +627,13 @@ final class ForkMeetingRecorder: @unchecked Sendable {
 
     /// Any thread, once: the permission is known. Kept on this Mac, said to
     /// the service, and the witness goes. Missing, the meeting track now
-    /// hears the whole Mac, and the app's tap is let go.
+    /// takes the stream's sound (the filmed app's for a window, the whole
+    /// Mac's for a display), and the tap is let go.
     private func settled(allowed: Bool) {
         defaults.set(allowed, forKey: ForkDefaultsKey.meetingsSystemAudioVerified)
+        lock.withLock { judge = nil }
         dismissWitness()
+        noteHeard()
         if allowed {
             send { $0.onSystemAudioAllowed?($0.token) }
         } else {

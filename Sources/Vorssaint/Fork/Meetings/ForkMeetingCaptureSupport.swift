@@ -210,19 +210,25 @@ enum ForkMeetingCaptureSupport {
 enum ForkMeetingSoundSource: Equatable {
     /// A process tap on the meeting app (and its helpers).
     case appTap(pid: Int32)
-    /// The screen stream's own sound: every app but this one.
+    /// A process tap on every app but this one: the whole Mac, whatever the
+    /// picture follows.
+    case macTap
+    /// The screen stream's own sound. Measured: a window's stream carries
+    /// only that window's app (`f1h sckaudio window`: nothing of another app
+    /// playing), a display's every app but this one.
     case stream
     /// None: the meeting track stays, filled with silence, so every file has
     /// the same tracks in the same order.
     case none
 
-    /// `tapAvailable` is false before macOS 14.4. A window of this app, or
-    /// no window, has no app to hear: the whole Mac then.
+    /// `tapAvailable` is false before macOS 14.4: the stream then, which for
+    /// a filmed window is only that window's app. A window of this app, or
+    /// no window, has no app to hear: the stream too.
     static func choose(_ setting: ForkMeetingSystemAudio, appPID: Int32?, ownPID: Int32,
                        tapAvailable: Bool) -> ForkMeetingSoundSource {
         switch setting {
         case .off: return .none
-        case .all: return .stream
+        case .all: return tapAvailable ? .macTap : .stream
         case .app:
             guard tapAvailable, let appPID, appPID > 0, appPID != ownPID else { return .stream }
             return .appTap(pid: appPID)
@@ -232,6 +238,32 @@ enum ForkMeetingSoundSource: Equatable {
     /// Whether the screen stream captures sound: to write it, or to check
     /// that a tap hears what it should.
     var streamListens: Bool { self != .none }
+
+    /// What the meeting track hears from this source, the picture following
+    /// a window (`filmsWindow`) or a display.
+    func heard(filmsWindow: Bool) -> ForkMeetingSystemAudio {
+        switch self {
+        case .appTap: return .app
+        case .macTap: return .all
+        case .none: return .off
+        case .stream: return filmsWindow ? .app : .all
+        }
+    }
+}
+
+extension ForkMeetingSystemAudio {
+    /// What a track heard over time, said as its widest: a meeting that heard
+    /// the whole Mac for a moment is a meeting that heard the whole Mac.
+    func widened(by other: ForkMeetingSystemAudio) -> ForkMeetingSystemAudio {
+        func rank(_ value: ForkMeetingSystemAudio) -> Int {
+            switch value {
+            case .off: return 0
+            case .app: return 1
+            case .all: return 2
+            }
+        }
+        return rank(other) > rank(self) ? other : self
+    }
 }
 
 /// Decides, buffer by buffer, whether the meeting track takes the app's tap
@@ -254,6 +286,12 @@ enum ForkMeetingSoundSource: Equatable {
 /// A tap that loses its reader (a device change) keeps the track too: it
 /// comes back when the tap rebuilds, and the writer fills the hole with
 /// silence meanwhile.
+///
+/// **The whole Mac's tap** (`tapFirst` false) judges itself: the stream,
+/// which hears the whole Mac or the filmed app, writes the track until the
+/// tap heard something, then the tap takes it; deaf to 3 s the stream
+/// heard, it never does. Nothing private is at stake there, and no sound is
+/// lost while it is proved.
 struct ForkMeetingSoundArbiter: Equatable {
     /// Sound heard by the stream, and not by the witness, before the
     /// permission is judged missing.
@@ -273,11 +311,13 @@ struct ForkMeetingSoundArbiter: Equatable {
     private var hasWitness: Bool
     private var unheard: Double = 0
 
-    /// `hasTap`: the app's tap exists. `hasWitness`: a witness listens.
-    init(hasTap: Bool, hasWitness: Bool) {
+    /// `hasTap`: the tap exists. `hasWitness`: something judges it (a
+    /// witness, or the tap itself). `tapFirst`: the tap writes the track
+    /// before it is proved (the app's tap), or only after (the Mac's).
+    init(hasTap: Bool, hasWitness: Bool, tapFirst: Bool = true) {
         self.hasTap = hasTap
         self.hasWitness = hasTap && hasWitness
-        writesTap = hasTap
+        writesTap = hasTap && tapFirst
     }
 
     var writesStream: Bool { !writesTap }
@@ -322,6 +362,7 @@ struct ForkMeetingSoundArbiter: Equatable {
     private mutating func allow() -> Bool {
         guard permission == .unknown else { return false }
         permission = .allowed
+        writesTap = hasTap
         return true
     }
 }

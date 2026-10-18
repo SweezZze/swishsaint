@@ -309,6 +309,9 @@ struct ForkMeetingMachine {
         case microphoneSilent
         /// The microphone's silence is over: the next one is said again.
         case microphoneSoundBack
+        /// The meeting track heard more than `meeting.json` says (the whole
+        /// Mac after the app alone): its widest so far.
+        case soundHeard(ForkMeetingToken, ForkMeetingSystemAudio)
         /// ⧉: the picture switches between the window and the display.
         case toggleTarget
         /// The engine films something else now: ⧉ took, or the window went
@@ -510,9 +513,8 @@ struct ForkMeetingMachine {
                 return [.writeSidecar(session.folder, patch), .notice(.failure(.microphoneDenied)),
                         .announce(.failure(.microphoneDenied))]
             case .systemAudio:
-                // The meeting track now hears the whole Mac: the file says so.
-                return [.writeSidecar(session.folder, ForkMeetingSidecarPatch(systemAudio: .all)),
-                        .notice(.failure(.systemAudioUnavailable)), .announce(.failure(.systemAudioUnavailable))]
+                // What the track hears now is the engine's word (`soundHeard`).
+                return [.notice(.failure(.systemAudioUnavailable)), .announce(.failure(.systemAudioUnavailable))]
             }
 
         case .displayChanged:
@@ -556,6 +558,10 @@ struct ForkMeetingMachine {
             session.microphoneSilenceSaid = true
             replace(session)
             return [.notice(.microphoneSilent), .announce(.microphoneSilent)]
+
+        case let .soundHeard(token, heard):
+            guard let session = activeSession, session.token == token else { return [] }
+            return [.writeSidecar(session.folder, ForkMeetingSidecarPatch(systemAudio: heard))]
 
         case .microphoneSoundBack:
             guard var session = activeSession, session.microphoneSilenceSaid else { return [] }

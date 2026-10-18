@@ -327,7 +327,7 @@ extension ForkMeetingService {
             filmedDisplay = context.displayID ?? CGMainDisplayID()
             if case .appTap = start.sound { appTapSessions.insert(token) }
             send(.captureStarted(token, folder: folder, target: start.target, microphone: start.microphone,
-                                 systemAudio: start.hearsWholeMac ? .all : nil, startedAt: start.startedAt))
+                                 systemAudio: start.heard, startedAt: start.startedAt))
         case let .failure(failure):
             log.error("the capture did not start: \(String(describing: failure), privacy: .public)")
             send(.captureFailed(token, failure))
@@ -380,6 +380,10 @@ extension ForkMeetingService {
         recorder.onSystemAudioAllowed = { [weak self] token in
             guard let self, self.isCurrent(token) else { return }
             self.systemAudioProven()
+        }
+        recorder.onSoundHeard = { [weak self] token, heard in
+            guard let self, self.isCurrent(token) else { return }
+            self.send(.soundHeard(token, heard))
         }
         recorder.onSystemAudioUnavailable = { [weak self] token in
             guard let self, self.isCurrent(token) else { return }

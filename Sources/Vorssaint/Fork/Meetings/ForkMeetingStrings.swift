@@ -271,8 +271,11 @@ struct ForkMeetingStrings {
     // MARK: Fixes F1
 
     /// Under the system audio permission: what a recording does about it,
-    /// and that without it the whole Mac is heard.
-    let systemAudioWholeMac: String
+    /// and what is heard without it.
+    let systemAudioFallback: String
+    /// Under "Whole Mac", before macOS 14.4 (no tap): a window's screen
+    /// recording only carries its own app.
+    let soundAllBefore144: String
 }
 
 extension ForkMeetingStrings {
@@ -392,7 +395,7 @@ extension ForkMeetingStrings {
         failMicrophoneDenied: "Microphone not allowed",
         failMicrophoneDeniedRemedy: "The meeting is recorded without your voice. Allow the microphone in System Settings › Privacy & Security › Microphone.",
         failSystemAudio: "App sound unavailable",
-        failSystemAudioRemedy: "The meeting app’s sound could not be recorded on its own, so the whole Mac’s sound is recorded instead. Allow system audio in System Settings › Privacy & Security › Screen & System Audio Recording.",
+        failSystemAudioRemedy: "The meeting app’s sound could not be recorded directly, so the screen recording’s sound is used instead: only the filmed app’s when a window is filmed, the whole Mac’s when a display is. Allow system audio in System Settings › Privacy & Security › Screen & System Audio Recording.",
         failDiskAtStartFormat: "%d GB of free space needed",
         failDiskAtStartRemedy: "A meeting needs room before it starts, so it never fills the disk halfway through. Free up space, or choose a folder on another disk on the Meetings page.",
         failDiskFull: "Disk full: recording stopped",
@@ -454,7 +457,8 @@ extension ForkMeetingStrings {
         failMasterHidden: "Video kept, file hidden",
         failMasterHiddenRemedy: "The file could not be finished or shown. The recording is kept in the meeting’s folder under the hidden name “.recording.mp4”: in the Finder, Shift-Command-Period shows hidden files.",
         // MARK: Fixes F1
-        systemAudioWholeMac: "Each recording checks it in its first seconds: without it, the meeting app’s sound can’t be recorded on its own, so the whole Mac’s sound is recorded instead, and the recording says so."
+        systemAudioFallback: "Each recording checks it in its first seconds. Without it, the meeting app’s sound comes from the screen recording instead: the filmed app alone when a window is filmed, the whole Mac when a display is. The recording says so.",
+        soundAllBefore144: "Before macOS 14.4, a filmed window gives only its own app’s sound; the whole Mac is heard when a display is filmed."
     )
 }
 
@@ -575,7 +579,7 @@ extension ForkMeetingStrings {
         failMicrophoneDenied: "Microfone não permitido",
         failMicrophoneDeniedRemedy: "A reunião é gravada sem a sua voz. Permita o microfone em Ajustes do Sistema › Privacidade e Segurança › Microfone.",
         failSystemAudio: "Som dos apps indisponível",
-        failSystemAudioRemedy: "Não foi possível gravar só o som do app da reunião, então o som de todo o Mac está sendo gravado. Permita o áudio do sistema em Ajustes do Sistema › Privacidade e Segurança › Gravação de Tela e Áudio do Sistema.",
+        failSystemAudioRemedy: "Não foi possível gravar diretamente o som do app da reunião, então o som da gravação de tela é usado no lugar: só o do app filmado quando uma janela é filmada, o de todo o Mac quando é uma tela. Permita o áudio do sistema em Ajustes do Sistema › Privacidade e Segurança › Gravação de Tela e Áudio do Sistema.",
         failDiskAtStartFormat: "São necessários %d GB livres",
         failDiskAtStartRemedy: "Uma reunião precisa de espaço antes de começar, para nunca encher o disco no meio. Libere espaço ou escolha uma pasta em outro disco na página Reuniões.",
         failDiskFull: "Disco cheio: gravação parada",
@@ -637,7 +641,8 @@ extension ForkMeetingStrings {
         failMasterHidden: "Vídeo guardado, mas oculto",
         failMasterHiddenRemedy: "Não foi possível finalizar nem mostrar o arquivo. A gravação está guardada na pasta da reunião com o nome oculto “.recording.mp4”: no Finder, Shift-Command-Ponto mostra os arquivos ocultos.",
         // MARK: Fixes F1
-        systemAudioWholeMac: "Cada gravação verifica isso nos primeiros segundos: sem essa permissão, o som do app da reunião não pode ser gravado sozinho, então o som de todo o Mac é gravado no lugar, e a gravação avisa."
+        systemAudioFallback: "Cada gravação verifica isso nos primeiros segundos. Sem essa permissão, o som do app da reunião vem da gravação de tela: só o app filmado quando uma janela é filmada, todo o Mac quando é uma tela. A gravação avisa.",
+        soundAllBefore144: "Antes do macOS 14.4, uma janela filmada dá só o som do próprio app; todo o Mac é ouvido quando uma tela é filmada."
     )
 }
 
@@ -758,7 +763,7 @@ extension ForkMeetingStrings {
         failMicrophoneDenied: "Mikrofona izin yok",
         failMicrophoneDeniedRemedy: "Toplantı sesiniz olmadan kaydediliyor. Sistem Ayarları › Gizlilik ve Güvenlik › Mikrofon’dan mikrofona izin verin.",
         failSystemAudio: "Uygulama sesi kullanılamıyor",
-        failSystemAudioRemedy: "Toplantı uygulamasının sesi tek başına kaydedilemedi, bu yüzden tüm Mac’in sesi kaydediliyor. Sistem Ayarları › Gizlilik ve Güvenlik › Ekran ve Sistem Sesi Kaydı’ndan sistem sesine izin verin.",
+        failSystemAudioRemedy: "Toplantı uygulamasının sesi doğrudan kaydedilemedi, bu yüzden onun yerine ekran kaydının sesi kullanılıyor: bir pencere çekiliyorsa yalnızca çekilen uygulamanın, bir ekran çekiliyorsa tüm Mac’in sesi. Sistem Ayarları › Gizlilik ve Güvenlik › Ekran ve Sistem Sesi Kaydı’ndan sistem sesine izin verin.",
         failDiskAtStartFormat: "%d GB boş alan gerekli",
         failDiskAtStartRemedy: "Bir toplantı, diski yarıda doldurmamak için başlamadan önce yer ister. Yer açın ya da Toplantılar sayfasından başka bir diskte bir klasör seçin.",
         failDiskFull: "Disk dolu: kayıt durdu",
@@ -820,7 +825,8 @@ extension ForkMeetingStrings {
         failMasterHidden: "Video saklandı, dosya gizli",
         failMasterHiddenRemedy: "Dosya tamamlanamadı ve gösterilemedi. Kayıt, toplantı klasöründe “.recording.mp4” adlı gizli dosya olarak saklanıyor: Finder’da Shift-Command-Nokta gizli dosyaları gösterir.",
         // MARK: Fixes F1
-        systemAudioWholeMac: "Her kayıt bunu ilk saniyelerinde denetler: bu izin olmadan toplantı uygulamasının sesi tek başına kaydedilemez, bu yüzden onun yerine tüm Mac’in sesi kaydedilir ve kayıt bunu bildirir."
+        systemAudioFallback: "Her kayıt bunu ilk saniyelerinde denetler. Bu izin olmadan toplantı uygulamasının sesi ekran kaydından alınır: bir pencere çekiliyorsa yalnızca o uygulama, bir ekran çekiliyorsa tüm Mac. Kayıt bunu bildirir.",
+        soundAllBefore144: "macOS 14.4’ten önce, çekilen bir pencere yalnızca kendi uygulamasının sesini verir; tüm Mac ancak bir ekran çekildiğinde duyulur."
     )
 }
 
@@ -941,7 +947,7 @@ extension ForkMeetingStrings {
         failMicrophoneDenied: "Микрофон не разрешён",
         failMicrophoneDeniedRemedy: "Встреча записывается без вашего голоса. Разрешите микрофон в Системных настройках › Конфиденциальность и безопасность › Микрофон.",
         failSystemAudio: "Звук приложений недоступен",
-        failSystemAudioRemedy: "Не удалось записать отдельно звук приложения встречи, поэтому записывается звук всего Mac. Разрешите системное аудио в Системных настройках › Конфиденциальность и безопасность › Запись экрана и системного аудио.",
+        failSystemAudioRemedy: "Не удалось записать звук приложения встречи напрямую, поэтому используется звук записи экрана: только звук снимаемого приложения, если снимается окно, и звук всего Mac, если снимается экран. Разрешите системное аудио в Системных настройках › Конфиденциальность и безопасность › Запись экрана и системного аудио.",
         failDiskAtStartFormat: "Нужно %d ГБ свободного места",
         failDiskAtStartRemedy: "Встрече нужно место ещё до начала, чтобы диск никогда не заполнился посередине. Освободите место или выберите папку на другом диске на странице «Встречи».",
         failDiskFull: "Диск полон: остановлено",
@@ -1003,7 +1009,8 @@ extension ForkMeetingStrings {
         failMasterHidden: "Видео сохранено, файл скрыт",
         failMasterHiddenRemedy: "Файл не удалось ни завершить, ни показать. Запись сохранена в папке встречи под скрытым именем «.recording.mp4»: в Finder сочетание Shift-Command-точка показывает скрытые файлы.",
         // MARK: Fixes F1
-        systemAudioWholeMac: "Каждая запись проверяет его в первые секунды: без него звук приложения встречи нельзя записать отдельно, поэтому вместо него записывается звук всего Mac, и запись сообщает об этом."
+        systemAudioFallback: "Каждая запись проверяет его в первые секунды. Без него звук приложения встречи берётся из записи экрана: только снимаемое приложение, если снимается окно, и весь Mac, если снимается экран. Запись сообщает об этом.",
+        soundAllBefore144: "До macOS 14.4 снимаемое окно даёт только звук своего приложения; весь Mac слышен, когда снимается экран."
     )
 }
 
@@ -1124,7 +1131,7 @@ extension ForkMeetingStrings {
         failMicrophoneDenied: "Micrófono no permitido",
         failMicrophoneDeniedRemedy: "La reunión se graba sin tu voz. Permite el micrófono en Ajustes del Sistema › Privacidad y seguridad › Micrófono.",
         failSystemAudio: "Audio de apps no disponible",
-        failSystemAudioRemedy: "No se pudo grabar solo el sonido de la app de la reunión, así que se graba el sonido de todo el Mac. Permite el audio del sistema en Ajustes del Sistema › Privacidad y seguridad › Grabación de pantalla y audio del sistema.",
+        failSystemAudioRemedy: "No se pudo grabar directamente el sonido de la app de la reunión, así que se usa el sonido de la grabación de pantalla: solo el de la app filmada si se filma una ventana, el de todo el Mac si se filma una pantalla. Permite el audio del sistema en Ajustes del Sistema › Privacidad y seguridad › Grabación de pantalla y audio del sistema.",
         failDiskAtStartFormat: "Se necesitan %d GB libres",
         failDiskAtStartRemedy: "Una reunión necesita espacio antes de empezar, para no llenar nunca el disco a mitad. Libera espacio o elige una carpeta en otro disco en la página Reuniones.",
         failDiskFull: "Disco lleno: se detuvo",
@@ -1186,7 +1193,8 @@ extension ForkMeetingStrings {
         failMasterHidden: "Vídeo guardado pero oculto",
         failMasterHiddenRemedy: "No se pudo terminar ni mostrar el archivo. La grabación se guarda en la carpeta de la reunión con el nombre oculto «.recording.mp4»: en el Finder, Mayúsculas-Comando-Punto muestra los archivos ocultos.",
         // MARK: Fixes F1
-        systemAudioWholeMac: "Cada grabación lo comprueba en sus primeros segundos: sin él, el sonido de la app de la reunión no se puede grabar por separado, así que se graba el sonido de todo el Mac y la grabación lo avisa."
+        systemAudioFallback: "Cada grabación lo comprueba en sus primeros segundos. Sin él, el sonido de la app de la reunión viene de la grabación de pantalla: solo la app filmada si se filma una ventana, todo el Mac si se filma una pantalla. La grabación lo avisa.",
+        soundAllBefore144: "Antes de macOS 14.4, una ventana filmada solo da el sonido de su propia app; todo el Mac se oye cuando se filma una pantalla."
     )
 }
 
@@ -1307,7 +1315,7 @@ extension ForkMeetingStrings {
         failMicrophoneDenied: "Mikrofón nie je povolený",
         failMicrophoneDeniedRemedy: "Stretnutie sa nahráva bez vášho hlasu. Povoľte mikrofón v Systémových nastaveniach › Súkromie a bezpečnosť › Mikrofón.",
         failSystemAudio: "Zvuk aplikácií nedostupný",
-        failSystemAudioRemedy: "Zvuk aplikácie stretnutia sa nepodarilo nahrať samostatne, preto sa nahráva zvuk celého Macu. Povoľte systémové audio v Systémových nastaveniach › Súkromie a bezpečnosť › Nahrávanie obrazovky a systémového audia.",
+        failSystemAudioRemedy: "Zvuk aplikácie stretnutia sa nepodarilo nahrať priamo, preto sa namiesto neho použije zvuk nahrávania obrazovky: len zvuk natáčanej aplikácie, ak sa natáča okno, zvuk celého Macu, ak sa natáča obrazovka. Povoľte systémové audio v Systémových nastaveniach › Súkromie a bezpečnosť › Nahrávanie obrazovky a systémového audia.",
         failDiskAtStartFormat: "Treba %d GB voľného miesta",
         failDiskAtStartRemedy: "Stretnutie potrebuje miesto ešte pred začiatkom, aby nikdy nezaplnilo disk v polovici. Uvoľnite miesto alebo na stránke Stretnutia vyberte priečinok na inom disku.",
         failDiskFull: "Disk plný: zastavené",
@@ -1369,7 +1377,8 @@ extension ForkMeetingStrings {
         failMasterHidden: "Video uložené, súbor skrytý",
         failMasterHiddenRemedy: "Súbor sa nepodarilo dokončiť ani zobraziť. Nahrávka je uložená v priečinku stretnutia pod skrytým názvom „.recording.mp4“: vo Finderi zobrazí skryté súbory skratka Shift-Command-bodka.",
         // MARK: Fixes F1
-        systemAudioWholeMac: "Každé nahrávanie ho overí v prvých sekundách: bez neho sa zvuk aplikácie stretnutia nedá nahrať samostatne, preto sa namiesto neho nahráva zvuk celého Macu a nahrávanie na to upozorní."
+        systemAudioFallback: "Každé nahrávanie ho overí v prvých sekundách. Bez neho sa zvuk aplikácie stretnutia berie z nahrávania obrazovky: len natáčaná aplikácia, ak sa natáča okno, celý Mac, ak sa natáča obrazovka. Nahrávanie na to upozorní.",
+        soundAllBefore144: "Pred macOS 14.4 dáva natáčané okno len zvuk vlastnej aplikácie; celý Mac je počuť, keď sa natáča obrazovka."
     )
 }
 
@@ -1490,7 +1499,7 @@ extension ForkMeetingStrings {
         failMicrophoneDenied: "Mikrofon nicht erlaubt",
         failMicrophoneDeniedRemedy: "Die Besprechung wird ohne deine Stimme aufgenommen. Erlaube das Mikrofon unter Systemeinstellungen › Datenschutz & Sicherheit › Mikrofon.",
         failSystemAudio: "App-Ton nicht verfügbar",
-        failSystemAudioRemedy: "Der Ton der Besprechungs-App ließ sich nicht allein aufnehmen, daher wird der Ton des ganzen Mac aufgenommen. Erlaube Systemaudio unter Systemeinstellungen › Datenschutz & Sicherheit › Aufnahme von Bildschirm und Systemaudio.",
+        failSystemAudioRemedy: "Der Ton der Besprechungs-App ließ sich nicht direkt aufnehmen, daher wird stattdessen der Ton der Bildschirmaufnahme verwendet: nur der der gefilmten App, wenn ein Fenster gefilmt wird, der des ganzen Mac, wenn ein Bildschirm gefilmt wird. Erlaube Systemaudio unter Systemeinstellungen › Datenschutz & Sicherheit › Aufnahme von Bildschirm und Systemaudio.",
         failDiskAtStartFormat: "%d GB freier Speicher nötig",
         failDiskAtStartRemedy: "Eine Besprechung braucht vor dem Start Platz, damit sie den Speicher nie mittendrin füllt. Gib Speicher frei oder wähle auf der Seite „Besprechungen“ einen Ordner auf einem anderen Laufwerk.",
         failDiskFull: "Speicher voll: gestoppt",
@@ -1552,7 +1561,8 @@ extension ForkMeetingStrings {
         failMasterHidden: "Video gesichert, versteckt",
         failMasterHiddenRemedy: "Die Datei konnte weder fertiggestellt noch sichtbar gemacht werden. Die Aufnahme liegt im Ordner der Besprechung unter dem versteckten Namen „.recording.mp4“: Im Finder zeigt Umschalt-Befehl-Punkt versteckte Dateien.",
         // MARK: Fixes F1
-        systemAudioWholeMac: "Jede Aufnahme prüft sie in den ersten Sekunden: Ohne sie lässt sich der Ton der Besprechungs-App nicht allein aufnehmen, daher wird stattdessen der Ton des ganzen Mac aufgenommen, und die Aufnahme sagt es."
+        systemAudioFallback: "Jede Aufnahme prüft sie in den ersten Sekunden. Ohne sie kommt der Ton der Besprechungs-App aus der Bildschirmaufnahme: nur die gefilmte App, wenn ein Fenster gefilmt wird, der ganze Mac, wenn ein Bildschirm gefilmt wird. Die Aufnahme sagt es.",
+        soundAllBefore144: "Vor macOS 14.4 liefert ein gefilmtes Fenster nur den Ton seiner eigenen App; der ganze Mac ist zu hören, wenn ein Bildschirm gefilmt wird."
     )
 }
 
@@ -1673,7 +1683,7 @@ extension ForkMeetingStrings {
         failMicrophoneDenied: "Micro non autorisé",
         failMicrophoneDeniedRemedy: "La réunion est enregistrée sans votre voix. Autorisez le micro dans Réglages Système › Confidentialité et sécurité › Microphone.",
         failSystemAudio: "Son des apps indisponible",
-        failSystemAudioRemedy: "Le son de l’app de visio n’a pas pu être enregistré seul\u{00A0}: c’est le son de tout le Mac qui est enregistré. Autorisez l’audio du système dans Réglages Système › Confidentialité et sécurité › Enregistrement de l’écran et de l’audio du système.",
+        failSystemAudioRemedy: "Le son de l’app de visio n’a pas pu être enregistré directement\u{00A0}: c’est le son de l’enregistrement de l’écran qui est utilisé, celui de la seule app filmée quand une fenêtre est filmée, celui de tout le Mac quand c’est un écran. Autorisez l’audio du système dans Réglages Système › Confidentialité et sécurité › Enregistrement de l’écran et de l’audio du système.",
         failDiskAtStartFormat: "Il faut %d Go libres",
         failDiskAtStartRemedy: "Une réunion demande de la place avant de commencer, pour ne jamais remplir le disque en route. Libérez de l’espace, ou choisissez un dossier sur un autre disque sur la page Réunions.",
         failDiskFull: "Disque plein\u{00A0}: arrêt",
@@ -1735,7 +1745,8 @@ extension ForkMeetingStrings {
         failMasterHidden: "Vidéo gardée, fichier caché",
         failMasterHiddenRemedy: "Le fichier n’a pu être ni finalisé ni affiché. L’enregistrement est gardé dans le dossier de la réunion sous le nom caché «\u{00A0}.recording.mp4\u{00A0}»\u{00A0}: dans le Finder, Maj-Commande-Point affiche les fichiers cachés.",
         // MARK: Fixes F1
-        systemAudioWholeMac: "Chaque enregistrement la vérifie dans ses premières secondes\u{00A0}: sans elle, le son de l’app de visio ne peut pas être enregistré seul, c’est donc le son de tout le Mac qui est enregistré, et l’enregistrement le signale."
+        systemAudioFallback: "Chaque enregistrement la vérifie dans ses premières secondes. Sans elle, le son de l’app de visio vient de l’enregistrement de l’écran\u{00A0}: la seule app filmée quand une fenêtre est filmée, tout le Mac quand c’est un écran. L’enregistrement le signale.",
+        soundAllBefore144: "Avant macOS 14.4, une fenêtre filmée ne donne que le son de sa propre app\u{00A0}; tout le Mac s’entend quand c’est un écran qui est filmé."
     )
 }
 
@@ -1856,7 +1867,7 @@ extension ForkMeetingStrings {
         failMicrophoneDenied: "Microfono non consentito",
         failMicrophoneDeniedRemedy: "La riunione viene registrata senza la tua voce. Consenti il microfono in Impostazioni di Sistema › Privacy e sicurezza › Microfono.",
         failSystemAudio: "Audio app non disponibile",
-        failSystemAudioRemedy: "Non è stato possibile registrare solo l’audio dell’app della riunione, quindi viene registrato l’audio di tutto il Mac. Consenti l’audio di sistema in Impostazioni di Sistema › Privacy e sicurezza › Registrazione schermo e audio di sistema.",
+        failSystemAudioRemedy: "Non è stato possibile registrare direttamente l’audio dell’app della riunione, quindi viene usato l’audio della registrazione dello schermo: solo quello dell’app ripresa se si riprende una finestra, quello di tutto il Mac se si riprende uno schermo. Consenti l’audio di sistema in Impostazioni di Sistema › Privacy e sicurezza › Registrazione schermo e audio di sistema.",
         failDiskAtStartFormat: "Servono %d GB liberi",
         failDiskAtStartRemedy: "Una riunione richiede spazio prima di iniziare, così non riempie mai il disco a metà. Libera spazio o scegli una cartella su un altro disco nella pagina Riunioni.",
         failDiskFull: "Disco pieno: fermata",
@@ -1918,7 +1929,8 @@ extension ForkMeetingStrings {
         failMasterHidden: "Video tenuto, file nascosto",
         failMasterHiddenRemedy: "Non è stato possibile completare né mostrare il file. La registrazione è conservata nella cartella della riunione con il nome nascosto «.recording.mp4»: nel Finder, Maiuscole-Comando-Punto mostra i file nascosti.",
         // MARK: Fixes F1
-        systemAudioWholeMac: "Ogni registrazione lo verifica nei primi secondi: senza, l’audio dell’app della riunione non può essere registrato da solo, quindi viene registrato l’audio di tutto il Mac e la registrazione lo segnala."
+        systemAudioFallback: "Ogni registrazione lo verifica nei primi secondi. Senza, l’audio dell’app della riunione viene dalla registrazione dello schermo: solo l’app ripresa se si riprende una finestra, tutto il Mac se si riprende uno schermo. La registrazione lo segnala.",
+        soundAllBefore144: "Prima di macOS 14.4, una finestra ripresa dà solo l’audio della propria app; tutto il Mac si sente quando si riprende uno schermo."
     )
 }
 
@@ -2039,7 +2051,7 @@ extension ForkMeetingStrings {
         failMicrophoneDenied: "マイクが許可されていません",
         failMicrophoneDeniedRemedy: "ミーティングはあなたの声なしで録画されます。システム設定 › プライバシーとセキュリティ › マイクでマイクを許可してください。",
         failSystemAudio: "アプリの音声を利用できません",
-        failSystemAudioRemedy: "ミーティングアプリの音声だけを録音できなかったため、Mac 全体の音声を録音しています。システム設定 › プライバシーとセキュリティ › 画面とシステムオーディオ収録でシステムオーディオを許可してください。",
+        failSystemAudioRemedy: "ミーティングアプリの音声を直接録音できなかったため、代わりに画面収録の音声を使っています。ウインドウを撮影しているときは撮影中のアプリの音声だけ、ディスプレイを撮影しているときは Mac 全体の音声です。システム設定 › プライバシーとセキュリティ › 画面とシステムオーディオ収録でシステムオーディオを許可してください。",
         failDiskAtStartFormat: "%d GB の空き容量が必要です",
         failDiskAtStartRemedy: "途中でディスクがいっぱいにならないよう、ミーティングは開始前に空き容量を確認します。空き容量を増やすか、「ミーティング」ページで別のディスクのフォルダを選んでください。",
         failDiskFull: "ディスクがいっぱいで停止",
@@ -2101,7 +2113,8 @@ extension ForkMeetingStrings {
         failMasterHidden: "ビデオは保存、ファイルは非表示",
         failMasterHiddenRemedy: "ファイルを仕上げることも表示することもできませんでした。録画はミーティングのフォルダに「.recording.mp4」という非表示の名前で保存されています。Finderで Shift＋Command＋ピリオド を押すと非表示のファイルが表示されます。",
         // MARK: Fixes F1
-        systemAudioWholeMac: "録画のたびに最初の数秒でこの許可を確認します。許可がない場合はミーティングアプリの音声だけを録音できないため、代わりに Mac 全体の音声を録音し、そのことをお知らせします。"
+        systemAudioFallback: "録画のたびに最初の数秒でこの許可を確認します。許可がない場合、ミーティングアプリの音声は画面収録から取り込まれます。ウインドウを撮影しているときは撮影中のアプリだけ、ディスプレイを撮影しているときは Mac 全体です。そのことはお知らせします。",
+        soundAllBefore144: "macOS 14.4 より前では、撮影中のウインドウからはそのアプリの音声しか取り込めません。Mac 全体の音声はディスプレイを撮影しているときに入ります。"
     )
 }
 
@@ -2222,7 +2235,7 @@ extension ForkMeetingStrings {
         failMicrophoneDenied: "마이크가 허용되지 않음",
         failMicrophoneDeniedRemedy: "회의가 내 목소리 없이 녹화됩니다. 시스템 설정 › 개인정보 보호 및 보안 › 마이크에서 마이크를 허용하세요.",
         failSystemAudio: "앱 소리를 사용할 수 없음",
-        failSystemAudioRemedy: "회의 앱의 소리만 따로 녹음할 수 없어 Mac 전체의 소리를 녹음합니다. 시스템 설정 › 개인정보 보호 및 보안 › 화면 및 시스템 오디오 녹음에서 시스템 오디오를 허용하세요.",
+        failSystemAudioRemedy: "회의 앱의 소리를 직접 녹음할 수 없어 대신 화면 녹화의 소리를 사용합니다. 윈도우를 촬영할 때는 촬영 중인 앱의 소리만, 디스플레이를 촬영할 때는 Mac 전체의 소리입니다. 시스템 설정 › 개인정보 보호 및 보안 › 화면 및 시스템 오디오 녹음에서 시스템 오디오를 허용하세요.",
         failDiskAtStartFormat: "%dGB의 여유 공간 필요",
         failDiskAtStartRemedy: "회의 도중 디스크가 가득 차지 않도록 시작 전에 공간을 확인합니다. 공간을 확보하거나 ‘회의’ 페이지에서 다른 디스크의 폴더를 선택하세요.",
         failDiskFull: "디스크가 가득 차 중지됨",
@@ -2284,7 +2297,8 @@ extension ForkMeetingStrings {
         failMasterHidden: "비디오 보관됨, 파일 숨김",
         failMasterHiddenRemedy: "파일을 마무리하거나 표시할 수 없었습니다. 녹화는 회의 폴더에 숨겨진 이름 “.recording.mp4”로 보관되어 있습니다. Finder에서 Shift-Command-마침표를 누르면 숨겨진 파일이 보입니다.",
         // MARK: Fixes F1
-        systemAudioWholeMac: "녹화할 때마다 처음 몇 초 안에 이 권한을 확인합니다. 권한이 없으면 회의 앱의 소리만 따로 녹음할 수 없어 대신 Mac 전체의 소리를 녹음하고, 그 사실을 알려 드립니다."
+        systemAudioFallback: "녹화할 때마다 처음 몇 초 안에 이 권한을 확인합니다. 권한이 없으면 회의 앱의 소리는 화면 녹화에서 가져옵니다. 윈도우를 촬영할 때는 촬영 중인 앱만, 디스플레이를 촬영할 때는 Mac 전체입니다. 그 사실은 알려 드립니다.",
+        soundAllBefore144: "macOS 14.4 이전에는 촬영 중인 윈도우에서 그 앱의 소리만 들어옵니다. Mac 전체의 소리는 디스플레이를 촬영할 때 들어옵니다."
     )
 }
 
@@ -2405,7 +2419,7 @@ extension ForkMeetingStrings {
         failMicrophoneDenied: "Мікрофон не дозволено",
         failMicrophoneDeniedRemedy: "Зустріч записується без вашого голосу. Дозвольте мікрофон у Системних параметрах › Приватність і безпека › Мікрофон.",
         failSystemAudio: "Звук програм недоступний",
-        failSystemAudioRemedy: "Не вдалося записати окремо звук програми зустрічі, тому записується звук усього Mac. Дозвольте системний звук у Системних параметрах › Приватність і безпека › Записування системного звуку й екрана.",
+        failSystemAudioRemedy: "Не вдалося записати звук програми зустрічі напряму, тому використовується звук запису екрана: лише звук знятої програми, якщо знімається вікно, і звук усього Mac, якщо знімається екран. Дозвольте системний звук у Системних параметрах › Приватність і безпека › Записування системного звуку й екрана.",
         failDiskAtStartFormat: "Треба %d ГБ вільного місця",
         failDiskAtStartRemedy: "Зустрічі потрібне місце ще до початку, щоб диск ніколи не заповнився посередині. Звільніть місце або виберіть папку на іншому диску на сторінці «Зустрічі».",
         failDiskFull: "Диск повний: зупинено",
@@ -2467,7 +2481,8 @@ extension ForkMeetingStrings {
         failMasterHidden: "Відео є, файл прихований",
         failMasterHiddenRemedy: "Файл не вдалося ні завершити, ні показати. Запис збережено в папці зустрічі під прихованою назвою «.recording.mp4»: у Finder поєднання Shift-Command-крапка показує приховані файли.",
         // MARK: Fixes F1
-        systemAudioWholeMac: "Кожен запис перевіряє його в перші секунди: без нього звук програми зустрічі не можна записати окремо, тому натомість записується звук усього Mac, і запис повідомляє про це."
+        systemAudioFallback: "Кожен запис перевіряє його в перші секунди. Без нього звук програми зустрічі береться із запису екрана: лише знята програма, якщо знімається вікно, і весь Mac, якщо знімається екран. Запис повідомляє про це.",
+        soundAllBefore144: "До macOS 14.4 зняте вікно дає лише звук своєї програми; увесь Mac чути, коли знімається екран."
     )
 }
 
@@ -2588,7 +2603,7 @@ extension ForkMeetingStrings {
         failMicrophoneDenied: "未允许麦克风",
         failMicrophoneDeniedRemedy: "会议将在没有你声音的情况下录制。请在“系统设置”›“隐私与安全性”›“麦克风”中允许麦克风。",
         failSystemAudio: "无法获取 App 声音",
-        failSystemAudioRemedy: "无法单独录制会议 App 的声音，因此改为录制整台 Mac 的声音。请在“系统设置”›“隐私与安全性”›“屏幕与系统音频录制”中允许系统音频。",
+        failSystemAudioRemedy: "无法直接录制会议 App 的声音，因此改用屏幕录制的声音：录制窗口时只有该 App 的声音，录制显示器时则是整台 Mac 的声音。请在“系统设置”›“隐私与安全性”›“屏幕与系统音频录制”中允许系统音频。",
         failDiskAtStartFormat: "需要 %d GB 可用空间",
         failDiskAtStartRemedy: "会议开始前需要预留空间，以免中途占满磁盘。请释放空间，或在“会议”页面选择其他磁盘上的文件夹。",
         failDiskFull: "磁盘已满，录制已停止",
@@ -2650,7 +2665,8 @@ extension ForkMeetingStrings {
         failMasterHidden: "视频已保留，文件已隐藏",
         failMasterHiddenRemedy: "文件无法完成，也无法显示。录制内容以隐藏名称“.recording.mp4”保留在会议文件夹中：在“访达”中按 Shift-Command-句号可显示隐藏文件。",
         // MARK: Fixes F1
-        systemAudioWholeMac: "每次录制都会在最初几秒检查此权限：没有它，就无法单独录制会议 App 的声音，因此会改为录制整台 Mac 的声音，并告知你。"
+        systemAudioFallback: "每次录制都会在最初几秒检查此权限。没有它，会议 App 的声音会改从屏幕录制获取：录制窗口时只有该 App，录制显示器时则是整台 Mac，并会告知你。",
+        soundAllBefore144: "在 macOS 14.4 之前，录制窗口时只有该 App 自己的声音；录制显示器时才能听到整台 Mac。"
     )
 }
 
@@ -2771,7 +2787,7 @@ extension ForkMeetingStrings {
         failMicrophoneDenied: "未允許麥克風",
         failMicrophoneDeniedRemedy: "會議會在沒有你聲音的情況下錄製。請在「系統設定」›「隱私權與安全性」›「麥克風」中允許麥克風。",
         failSystemAudio: "無法取得 App 聲音",
-        failSystemAudioRemedy: "無法單獨錄製會議 App 的聲音，因此改為錄製整台 Mac 的聲音。請在「系統設定」›「隱私權與安全性」›「螢幕與系統音訊錄製」中允許系統音訊。",
+        failSystemAudioRemedy: "無法直接錄製會議 App 的聲音，因此改用螢幕錄製的聲音：錄製視窗時只有該 App 的聲音，錄製顯示器時則是整台 Mac 的聲音。請在「系統設定」›「隱私權與安全性」›「螢幕與系統音訊錄製」中允許系統音訊。",
         failDiskAtStartFormat: "需要 %d GB 可用空間",
         failDiskAtStartRemedy: "會議開始前需要預留空間，以免中途塞滿磁碟。請釋放空間，或在「會議」頁面選擇其他磁碟上的資料夾。",
         failDiskFull: "磁碟已滿，錄製已停止",
@@ -2833,7 +2849,8 @@ extension ForkMeetingStrings {
         failMasterHidden: "影片已保留，檔案已隱藏",
         failMasterHiddenRemedy: "檔案無法完成，也無法顯示。錄製內容以隱藏名稱「.recording.mp4」保留在會議檔案夾中：在 Finder 中按 Shift-Command-句號可顯示隱藏檔案。",
         // MARK: Fixes F1
-        systemAudioWholeMac: "每次錄製都會在最初幾秒檢查此權限：沒有它，就無法單獨錄製會議 App 的聲音，因此會改為錄製整台 Mac 的聲音，並告知你。"
+        systemAudioFallback: "每次錄製都會在最初幾秒檢查此權限。沒有它，會議 App 的聲音會改從螢幕錄製取得：錄製視窗時只有該 App，錄製顯示器時則是整台 Mac，並會告知你。",
+        soundAllBefore144: "在 macOS 14.4 之前，錄製視窗時只有該 App 自己的聲音；錄製顯示器時才能聽到整台 Mac。"
     )
 }
 
@@ -2954,7 +2971,7 @@ extension ForkMeetingStrings {
         failMicrophoneDenied: "未允許咪高風",
         failMicrophoneDeniedRemedy: "會議會在沒有你聲音的情況下錄製。請在「系統設定」›「私隱與保安」›「咪高風」中允許咪高風。",
         failSystemAudio: "無法取得 App 聲音",
-        failSystemAudioRemedy: "無法單獨錄製會議 App 的聲音，因此改為錄製整部 Mac 的聲音。請在「系統設定」›「私隱與保安」›「螢幕與系統音訊錄製」中允許系統音訊。",
+        failSystemAudioRemedy: "無法直接錄製會議 App 的聲音，因此改用螢幕錄製的聲音：錄製視窗時只有該 App 的聲音，錄製顯示器時則是整部 Mac 的聲音。請在「系統設定」›「私隱與保安」›「螢幕與系統音訊錄製」中允許系統音訊。",
         failDiskAtStartFormat: "需要 %d GB 可用空間",
         failDiskAtStartRemedy: "會議開始前需要預留空間，以免中途塞滿磁碟。請釋放空間，或在「會議」頁面選擇其他磁碟上的資料夾。",
         failDiskFull: "磁碟已滿，錄製已停止",
@@ -3016,6 +3033,7 @@ extension ForkMeetingStrings {
         failMasterHidden: "影片已保留，檔案已隱藏",
         failMasterHiddenRemedy: "檔案無法完成，亦無法顯示。錄影以隱藏名稱「.recording.mp4」保留在會議檔案夾中：在 Finder 中按 Shift-Command-句號可顯示隱藏檔案。",
         // MARK: Fixes F1
-        systemAudioWholeMac: "每次錄製都會在最初幾秒檢查此權限：沒有它，就無法單獨錄製會議 App 的聲音，因此會改為錄製整部 Mac 的聲音，並通知你。"
+        systemAudioFallback: "每次錄製都會在最初幾秒檢查此權限。沒有它，會議 App 的聲音會改從螢幕錄製取得：錄製視窗時只有該 App，錄製顯示器時則是整部 Mac，並會通知你。",
+        soundAllBefore144: "在 macOS 14.4 之前，錄製視窗時只有該 App 自己的聲音；錄製顯示器時才能聽到整部 Mac。"
     )
 }

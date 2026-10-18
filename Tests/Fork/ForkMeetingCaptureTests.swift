@@ -121,10 +121,24 @@ enum ForkMeetingCaptureTests {
         suite.expect(ForkMeetingSoundSource.choose(.app, appPID: 200, ownPID: own, tapAvailable: false) == .stream
                         && ForkMeetingSoundSource.choose(.app, appPID: nil, ownPID: own, tapAvailable: true) == .stream
                         && ForkMeetingSoundSource.choose(.app, appPID: own, ownPID: own, tapAvailable: true) == .stream,
-                     "before macOS 14.4, without a window, or for a window of ours: the whole Mac")
-        suite.expect(ForkMeetingSoundSource.choose(.all, appPID: 200, ownPID: own, tapAvailable: true) == .stream
+                     "before macOS 14.4, without a window, or for a window of ours: the screen stream's sound")
+        suite.expect(ForkMeetingSoundSource.choose(.all, appPID: 200, ownPID: own, tapAvailable: true) == .macTap
+                        && ForkMeetingSoundSource.choose(.all, appPID: nil, ownPID: own, tapAvailable: true) == .macTap,
+                     "the whole Mac from a tap of every app but this one, a window filmed or a display")
+        suite.expect(ForkMeetingSoundSource.choose(.all, appPID: 200, ownPID: own, tapAvailable: false) == .stream
                         && ForkMeetingSoundSource.choose(.off, appPID: 200, ownPID: own, tapAvailable: true) == .none,
-                     "all the Mac from the stream, or none")
+                     "before macOS 14.4 the whole Mac comes from the stream; off, from nothing")
+        suite.expect(ForkMeetingSoundSource.stream.heard(filmsWindow: true) == .app
+                        && ForkMeetingSoundSource.stream.heard(filmsWindow: false) == .all,
+                     "the stream's sound is the filmed window's app alone, or every app for a display (measured)")
+        suite.expect(ForkMeetingSoundSource.macTap.heard(filmsWindow: true) == .all
+                        && ForkMeetingSoundSource.appTap(pid: 1).heard(filmsWindow: false) == .app
+                        && ForkMeetingSoundSource.none.heard(filmsWindow: true) == .off,
+                     "a tap hears what it was made for, whatever the picture follows")
+        suite.expect(ForkMeetingSystemAudio.app.widened(by: .all) == .all && ForkMeetingSystemAudio.all.widened(by: .app) == .all
+                        && ForkMeetingSystemAudio.off.widened(by: .app) == .app,
+                     "meeting.json keeps the widest the track heard: a moment of the whole Mac is the whole Mac")
+        suite.expect(ForkMeetingSoundSource.macTap.streamListens, "the stream listens beside the Mac's tap, to judge it")
         suite.expect(!ForkMeetingSoundSource.none.streamListens && ForkMeetingSoundSource.appTap(pid: 1).streamListens,
                      "the stream listens whenever there is sound, to check the tap; never when it is off")
 
@@ -217,6 +231,18 @@ enum ForkMeetingCaptureTests {
         _ = once.streamBuffer(heard: true, counts: true, seconds: 3)
         suite.expect(!once.tapBuffer(heard: true) && !once.witnessBuffer(heard: true) && once.writesStream,
                      "a verdict is final for the recording")
+
+        // The whole Mac's tap judges itself, after the stream.
+        var mac = ForkMeetingSoundArbiter(hasTap: true, hasWitness: true, tapFirst: false)
+        suite.expect(mac.writesStream && mac.needsWitness,
+                     "the Mac's tap, not yet proved: the stream writes, so nothing is lost meanwhile")
+        suite.expect(mac.tapBuffer(heard: true) && mac.writesTap && !mac.needsWitness,
+                     "it heard something: proved, it takes the track")
+        var deafMac = ForkMeetingSoundArbiter(hasTap: true, hasWitness: true, tapFirst: false)
+        suite.expect(!deafMac.streamBuffer(heard: true, counts: true, seconds: 2.9)
+                        && deafMac.streamBuffer(heard: true, counts: true, seconds: 0.2)
+                        && deafMac.writesStream && !deafMac.tapBuffer(heard: true),
+                     "deaf to 3 s the stream heard: the stream keeps the track for good")
 
         let none = ForkMeetingSoundArbiter(hasTap: false, hasWitness: true)
         suite.expect(none.writesStream && !none.needsWitness, "the whole Mac's sound, by choice or without a tap: the stream")

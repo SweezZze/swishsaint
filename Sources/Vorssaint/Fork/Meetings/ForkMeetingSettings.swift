@@ -280,7 +280,7 @@ struct ForkMeetingSystemAudioRow: View {
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
-            Text(text.systemAudioWholeMac)
+            Text(text.systemAudioFallback)
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
@@ -435,7 +435,10 @@ private struct ForkMeetingCaptureSection: View {
     private var soundCaption: String? {
         switch ForkMeetingSystemAudio(stored: sound) {
         case .app: return text.soundAppCaption
-        case .all: return text.soundAllCaption
+        case .all:
+            // No tap before macOS 14.4: a filmed window gives its app alone.
+            if #available(macOS 14.4, *) { return text.soundAllCaption }
+            return text.soundAllCaption + "\n" + text.soundAllBefore144
         case .off: return nil
         }
     }

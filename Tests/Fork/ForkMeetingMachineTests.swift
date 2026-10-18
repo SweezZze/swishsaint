@@ -431,9 +431,11 @@ enum ForkMeetingMachineTests {
                         && gone.contains(.notice(.failure(.microphoneDenied))) && microphone.activeSession != nil,
                      "the microphone taken back: the meeting goes on without it, and meeting.json says so")
         let audio = microphone.handle(.permissionLost(.systemAudio), now: at(6))
-        suite.expect(audio == [.writeSidecar(folder, Patch(systemAudio: .all)), .notice(.failure(.systemAudioUnavailable)),
-                               .announce(.failure(.systemAudioUnavailable))],
-                     "the app's sound unavailable: said, the meeting goes on with the Mac's sound, and meeting.json says so")
+        suite.expect(audio == [.notice(.failure(.systemAudioUnavailable)), .announce(.failure(.systemAudioUnavailable))],
+                     "the app's sound unavailable: said, the meeting goes on with the screen recording's sound")
+        suite.expect(microphone.handle(.soundHeard(token1, .all), now: at(7)) == [.writeSidecar(folder, Patch(systemAudio: .all))]
+                        && microphone.handle(.soundHeard(ForkMeetingToken(value: 7), .all), now: at(8)).isEmpty,
+                     "what the track heard, as the engine says it, goes to meeting.json; another session's word does not")
 
         var window = recording()
         suite.expect(window.handle(.displayChanged, now: at(5)).isEmpty,
@@ -581,7 +583,7 @@ enum ForkMeetingMachineTests {
             .writerFinished(token1, .finished(recordedSeconds: 1)), .writerFinished(token1, .failed(.writerFailed)),
             .willSleep, .didWake, .locked, .unlocked, .diskLow(freeBytes: 1_000_000_000), .diskLow(freeBytes: 1),
             .diskCritical, .permissionLost(.screenRecording), .permissionLost(.microphone), .permissionLost(.systemAudio),
-            .displayChanged, .microphoneChanged(name: "X", gap: 1), .microphoneSilent, .microphoneSoundBack, .appWillTerminate, .featureDisabled,
+            .displayChanged, .microphoneChanged(name: "X", gap: 1), .microphoneSilent, .microphoneSoundBack, .soundHeard(token1, .all), .appWillTerminate, .featureDisabled,
             .toggleTarget, .targetSwitched(token1, .display), .sourceGone(token1),
         ]
         var throughStopping = true
