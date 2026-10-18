@@ -153,10 +153,14 @@ final class ForkMeetingPresenter {
         let filmed = ForkMeetingServiceSupport.filmed(target: context.target, appName: context.appName,
                                                       noWindowToFilm: context.noWindowToFilm, strings: text)
         let announcement = context.announcement
+        // No app to hear: said on the card, never left for the person to find
+        // out from a silent track.
+        let noApp = context.trackSound == .noApp
         let make = { [weak self] (dismiss: @escaping () -> Void) -> ForkMeetingCard in
             var card = self?.card(for: notice, detail: filmed, text: text, dismiss: dismiss)
                 ?? ForkMeetingCard(symbol: ForkMeetingIsland.symbol(for: notice), tint: .accentColor,
                                    title: notice.title(text))
+            if noApp { card.lines.append(text.soundNoAppDetail) }
             if let announcement {
                 card.lines.append(text.consentRemind)
                 card.actions.append(ForkMeetingCard.Action(title: text.copyAnnouncement, prominent: notice == .started) {
@@ -167,7 +171,7 @@ final class ForkMeetingPresenter {
             }
             return card
         }
-        guard announcement != nil || hasButton(notice) else {
+        guard announcement != nil || hasButton(notice) || noApp else {
             lastShown = (notice, show(notice, detail: filmed))
             return
         }

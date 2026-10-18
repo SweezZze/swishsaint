@@ -434,7 +434,8 @@ private struct ForkMeetingCaptureSection: View {
 
     private var soundCaption: String? {
         switch ForkMeetingSystemAudio(stored: sound) {
-        case .app: return text.soundAppCaption
+        // With no app to hear, nothing stands in for it: said here.
+        case .app: return text.soundAppCaption + "\n" + text.soundAppNoAppCaption
         case .all:
             // No tap before macOS 14.4: a filmed window gives its app alone.
             if #available(macOS 14.4, *) { return text.soundAllCaption }

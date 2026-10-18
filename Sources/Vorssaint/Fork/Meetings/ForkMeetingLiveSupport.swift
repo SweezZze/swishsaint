@@ -43,6 +43,12 @@ struct ForkMeetingLiveContext: Equatable {
     /// The announcement the start's card copies while the consent reminder
     /// is on; `nil` when it is off.
     var announcement: String?
+
+    // MARK: Fixes G1
+
+    /// What the meeting track holds: the pill crosses its meter out and
+    /// says why when it is silent.
+    var trackSound: ForkMeetingTrackSound = .heard
 }
 
 /// What the pill shows, decided from the machine's state and the live

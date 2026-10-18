@@ -199,6 +199,10 @@ extension ForkMeetingService {
             // gauge, whatever the next start does.
             let shown = ForkMeetingServiceSupport.pill(state, finalizing: !finalizing.isEmpty)
             presenter.apply(.showPill(shown), context: context)
+        case let .announce(announcement) where runsStart && context.trackSound == .noApp:
+            // One sentence after the other, not two that cut each other off.
+            let text = ForkMeetingStrings.current
+            presenter.say(ForkMeetingLiveText.sentences(announcement.text(text), text.soundNoAppDetail))
         case .announce, .notify:
             presenter.apply(effect, context: context)
         }
@@ -325,6 +329,7 @@ extension ForkMeetingService {
             // A window was asked for, none could be filmed: said at the start.
             context.noWindowToFilm = config.settings.target == .window && start.target == .display
             filmedDisplay = context.displayID ?? CGMainDisplayID()
+            context.trackSound = start.trackSound
             if case .appTap = start.sound { appTapSessions.insert(token) }
             send(.captureStarted(token, folder: folder, target: start.target, microphone: start.microphone,
                                  systemAudio: start.heard, startedAt: start.startedAt))
@@ -384,6 +389,11 @@ extension ForkMeetingService {
         recorder.onSoundHeard = { [weak self] token, heard in
             guard let self, self.isCurrent(token) else { return }
             self.send(.soundHeard(token, heard))
+        }
+        recorder.onTrackSound = { [weak self] token, sound in
+            guard let self, self.isCurrent(token), self.context.trackSound != sound else { return }
+            self.context.trackSound = sound
+            self.presenter.update(self.context)
         }
         recorder.onSystemAudioUnavailable = { [weak self] token in
             guard let self, self.isCurrent(token) else { return }

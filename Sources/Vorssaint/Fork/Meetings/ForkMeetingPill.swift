@@ -529,7 +529,20 @@ struct ForkMeetingPillView: View {
 
     private var accessibilityValue: String {
         guard model.look?.showsControls == true else { return "" }
-        return (model.context.title ?? model.text.untitledMeeting) + ", " + filmed
+        let value = (model.context.title ?? model.text.untitledMeeting) + ", " + filmed
+        return soundNote.map { value + ", " + $0 } ?? value
+    }
+
+    /// Why the meeting's meter is crossed out, when it is.
+    private var soundNote: String? {
+        ForkMeetingPillView.soundNote(model.context.trackSound, text: model.text)
+    }
+
+    static func soundNote(_ sound: ForkMeetingTrackSound, text: ForkMeetingStrings) -> String? {
+        switch sound {
+        case .heard: return nil
+        case .noApp: return text.soundNoApp
+        }
     }
 
     private var toggleLabel: String {
@@ -554,6 +567,11 @@ struct ForkMeetingPillView: View {
                         Text(filmed)
                             .font(.system(size: 10))
                             .foregroundStyle(Color.white.opacity(0.6))
+                        if let soundNote {
+                            Text(soundNote)
+                                .font(.system(size: 10))
+                                .foregroundStyle(Color.orange)
+                        }
                     }
                     .lineLimit(1)
                     .truncationMode(.tail)
@@ -681,15 +699,19 @@ private struct ForkMeetingPillMeters: View {
                     .help(text.pillMicrophoneLevel)
                     .accessibilityLabel(text.pillMicrophoneLevel)
             }
-            ForkMeetingMiniMeter(level: ticker.levels.meeting, animated: animated)
-                .help(text.pillMeetingLevel)
-                .accessibilityLabel(text.pillMeetingLevel)
+            if let note = ForkMeetingPillView.soundNote(context.trackSound, text: text) {
+                crossed(symbol: "speaker.slash.fill", color: .orange, label: note)
+            } else {
+                ForkMeetingMiniMeter(level: ticker.levels.meeting, animated: animated)
+                    .help(text.pillMeetingLevel)
+                    .accessibilityLabel(text.pillMeetingLevel)
+            }
         }
         .allowsHitTesting(false)
     }
 
-    private func crossed(color: Color, label: String) -> some View {
-        Image(systemName: "mic.slash.fill")
+    private func crossed(symbol: String = "mic.slash.fill", color: Color, label: String) -> some View {
+        Image(systemName: symbol)
             .font(.system(size: 10, weight: .semibold))
             .foregroundStyle(color)
             .frame(width: 12, height: 16)

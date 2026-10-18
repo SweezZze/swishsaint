@@ -276,6 +276,14 @@ struct ForkMeetingStrings {
     /// Under "Whole Mac", before macOS 14.4 (no tap): a window's screen
     /// recording only carries its own app.
     let soundAllBefore144: String
+
+    // MARK: Fixes G1
+
+    /// The app's sound asked for, with no app to hear: the pill's line (28
+    /// characters at most), the start's card, and the page.
+    let soundNoApp: String
+    let soundNoAppDetail: String
+    let soundAppNoAppCaption: String
 }
 
 extension ForkMeetingStrings {
@@ -458,7 +466,11 @@ extension ForkMeetingStrings {
         failMasterHiddenRemedy: "The file could not be finished or shown. The recording is kept in the meeting’s folder under the hidden name “.recording.mp4”: in the Finder, Shift-Command-Period shows hidden files.",
         // MARK: Fixes F1
         systemAudioFallback: "Each recording checks it in its first seconds. Without it, the meeting app’s sound comes from the screen recording instead: the filmed app alone when a window is filmed, the whole Mac when a display is. The recording says so.",
-        soundAllBefore144: "Before macOS 14.4, a filmed window gives only its own app’s sound; the whole Mac is heard when a display is filmed."
+        soundAllBefore144: "Before macOS 14.4, a filmed window gives only its own app’s sound; the whole Mac is heard when a display is filmed.",
+        // MARK: Fixes G1
+        soundNoApp: "App sound: no app",
+        soundNoAppDetail: "No app to listen to: the participants’ sound is not recorded.",
+        soundAppNoAppCaption: "With no other app’s window in front, or before macOS 14.4 when a screen is filmed, there is no app to listen to: the participants’ sound is not recorded. Choose “Whole Mac” for those cases."
     )
 }
 
@@ -642,7 +654,11 @@ extension ForkMeetingStrings {
         failMasterHiddenRemedy: "Não foi possível finalizar nem mostrar o arquivo. A gravação está guardada na pasta da reunião com o nome oculto “.recording.mp4”: no Finder, Shift-Command-Ponto mostra os arquivos ocultos.",
         // MARK: Fixes F1
         systemAudioFallback: "Cada gravação verifica isso nos primeiros segundos. Sem essa permissão, o som do app da reunião vem da gravação de tela: só o app filmado quando uma janela é filmada, todo o Mac quando é uma tela. A gravação avisa.",
-        soundAllBefore144: "Antes do macOS 14.4, uma janela filmada dá só o som do próprio app; todo o Mac é ouvido quando uma tela é filmada."
+        soundAllBefore144: "Antes do macOS 14.4, uma janela filmada dá só o som do próprio app; todo o Mac é ouvido quando uma tela é filmada.",
+        // MARK: Fixes G1
+        soundNoApp: "Som do app: nenhum app",
+        soundNoAppDetail: "Nenhum app para ouvir: o som dos participantes não é gravado.",
+        soundAppNoAppCaption: "Sem uma janela de outro app em primeiro plano, ou antes do macOS 14.4 quando uma tela é filmada, não há app para ouvir: o som dos participantes não é gravado. Nesses casos, escolha “Todo o Mac”."
     )
 }
 
@@ -826,7 +842,11 @@ extension ForkMeetingStrings {
         failMasterHiddenRemedy: "Dosya tamamlanamadı ve gösterilemedi. Kayıt, toplantı klasöründe “.recording.mp4” adlı gizli dosya olarak saklanıyor: Finder’da Shift-Command-Nokta gizli dosyaları gösterir.",
         // MARK: Fixes F1
         systemAudioFallback: "Her kayıt bunu ilk saniyelerinde denetler. Bu izin olmadan toplantı uygulamasının sesi ekran kaydından alınır: bir pencere çekiliyorsa yalnızca o uygulama, bir ekran çekiliyorsa tüm Mac. Kayıt bunu bildirir.",
-        soundAllBefore144: "macOS 14.4’ten önce, çekilen bir pencere yalnızca kendi uygulamasının sesini verir; tüm Mac ancak bir ekran çekildiğinde duyulur."
+        soundAllBefore144: "macOS 14.4’ten önce, çekilen bir pencere yalnızca kendi uygulamasının sesini verir; tüm Mac ancak bir ekran çekildiğinde duyulur.",
+        // MARK: Fixes G1
+        soundNoApp: "Uygulama sesi: uygulama yok",
+        soundNoAppDetail: "Dinlenecek uygulama yok: katılımcıların sesi kaydedilmiyor.",
+        soundAppNoAppCaption: "Önde başka bir uygulamanın penceresi yoksa ya da macOS 14.4’ten önce bir ekran çekiliyorsa dinlenecek uygulama yoktur: katılımcıların sesi kaydedilmez. Bu durumlarda “Tüm Mac” seçeneğini seçin."
     )
 }
 
@@ -1010,7 +1030,11 @@ extension ForkMeetingStrings {
         failMasterHiddenRemedy: "Файл не удалось ни завершить, ни показать. Запись сохранена в папке встречи под скрытым именем «.recording.mp4»: в Finder сочетание Shift-Command-точка показывает скрытые файлы.",
         // MARK: Fixes F1
         systemAudioFallback: "Каждая запись проверяет его в первые секунды. Без него звук приложения встречи берётся из записи экрана: только снимаемое приложение, если снимается окно, и весь Mac, если снимается экран. Запись сообщает об этом.",
-        soundAllBefore144: "До macOS 14.4 снимаемое окно даёт только звук своего приложения; весь Mac слышен, когда снимается экран."
+        soundAllBefore144: "До macOS 14.4 снимаемое окно даёт только звук своего приложения; весь Mac слышен, когда снимается экран.",
+        // MARK: Fixes G1
+        soundNoApp: "Звук: нет приложения",
+        soundNoAppDetail: "Нет приложения, которое можно слушать: звук участников не записывается.",
+        soundAppNoAppCaption: "Если на переднем плане нет окна другого приложения или до macOS 14.4 снимается экран, слушать нечего: звук участников не записывается. В таких случаях выберите «Весь Mac»."
     )
 }
 
@@ -1194,7 +1218,11 @@ extension ForkMeetingStrings {
         failMasterHiddenRemedy: "No se pudo terminar ni mostrar el archivo. La grabación se guarda en la carpeta de la reunión con el nombre oculto «.recording.mp4»: en el Finder, Mayúsculas-Comando-Punto muestra los archivos ocultos.",
         // MARK: Fixes F1
         systemAudioFallback: "Cada grabación lo comprueba en sus primeros segundos. Sin él, el sonido de la app de la reunión viene de la grabación de pantalla: solo la app filmada si se filma una ventana, todo el Mac si se filma una pantalla. La grabación lo avisa.",
-        soundAllBefore144: "Antes de macOS 14.4, una ventana filmada solo da el sonido de su propia app; todo el Mac se oye cuando se filma una pantalla."
+        soundAllBefore144: "Antes de macOS 14.4, una ventana filmada solo da el sonido de su propia app; todo el Mac se oye cuando se filma una pantalla.",
+        // MARK: Fixes G1
+        soundNoApp: "Sonido de la app: ninguna",
+        soundNoAppDetail: "No hay ninguna app que escuchar: el sonido de los participantes no se graba.",
+        soundAppNoAppCaption: "Sin una ventana de otra app en primer plano, o antes de macOS 14.4 cuando se filma una pantalla, no hay ninguna app que escuchar: el sonido de los participantes no se graba. En esos casos, elige “Todo el Mac”."
     )
 }
 
@@ -1378,7 +1406,11 @@ extension ForkMeetingStrings {
         failMasterHiddenRemedy: "Súbor sa nepodarilo dokončiť ani zobraziť. Nahrávka je uložená v priečinku stretnutia pod skrytým názvom „.recording.mp4“: vo Finderi zobrazí skryté súbory skratka Shift-Command-bodka.",
         // MARK: Fixes F1
         systemAudioFallback: "Každé nahrávanie ho overí v prvých sekundách. Bez neho sa zvuk aplikácie stretnutia berie z nahrávania obrazovky: len natáčaná aplikácia, ak sa natáča okno, celý Mac, ak sa natáča obrazovka. Nahrávanie na to upozorní.",
-        soundAllBefore144: "Pred macOS 14.4 dáva natáčané okno len zvuk vlastnej aplikácie; celý Mac je počuť, keď sa natáča obrazovka."
+        soundAllBefore144: "Pred macOS 14.4 dáva natáčané okno len zvuk vlastnej aplikácie; celý Mac je počuť, keď sa natáča obrazovka.",
+        // MARK: Fixes G1
+        soundNoApp: "Zvuk aplikácie: žiadna",
+        soundNoAppDetail: "Nie je aplikácia, ktorú by bolo možné počúvať: zvuk účastníkov sa nenahráva.",
+        soundAppNoAppCaption: "Ak v popredí nie je okno inej aplikácie alebo sa pred macOS 14.4 natáča obrazovka, nie je čo počúvať: zvuk účastníkov sa nenahráva. V takých prípadoch zvoľte „Celý Mac“."
     )
 }
 
@@ -1562,7 +1594,11 @@ extension ForkMeetingStrings {
         failMasterHiddenRemedy: "Die Datei konnte weder fertiggestellt noch sichtbar gemacht werden. Die Aufnahme liegt im Ordner der Besprechung unter dem versteckten Namen „.recording.mp4“: Im Finder zeigt Umschalt-Befehl-Punkt versteckte Dateien.",
         // MARK: Fixes F1
         systemAudioFallback: "Jede Aufnahme prüft sie in den ersten Sekunden. Ohne sie kommt der Ton der Besprechungs-App aus der Bildschirmaufnahme: nur die gefilmte App, wenn ein Fenster gefilmt wird, der ganze Mac, wenn ein Bildschirm gefilmt wird. Die Aufnahme sagt es.",
-        soundAllBefore144: "Vor macOS 14.4 liefert ein gefilmtes Fenster nur den Ton seiner eigenen App; der ganze Mac ist zu hören, wenn ein Bildschirm gefilmt wird."
+        soundAllBefore144: "Vor macOS 14.4 liefert ein gefilmtes Fenster nur den Ton seiner eigenen App; der ganze Mac ist zu hören, wenn ein Bildschirm gefilmt wird.",
+        // MARK: Fixes G1
+        soundNoApp: "App-Ton: keine App",
+        soundNoAppDetail: "Keine App zum Mithören: Der Ton der Teilnehmenden wird nicht aufgenommen.",
+        soundAppNoAppCaption: "Ohne Fenster einer anderen App im Vordergrund, oder vor macOS 14.4, wenn ein Bildschirm gefilmt wird, gibt es keine App zum Mithören: Der Ton der Teilnehmenden wird nicht aufgenommen. Wähle in diesen Fällen „Ganzer Mac“."
     )
 }
 
@@ -1746,7 +1782,11 @@ extension ForkMeetingStrings {
         failMasterHiddenRemedy: "Le fichier n’a pu être ni finalisé ni affiché. L’enregistrement est gardé dans le dossier de la réunion sous le nom caché «\u{00A0}.recording.mp4\u{00A0}»\u{00A0}: dans le Finder, Maj-Commande-Point affiche les fichiers cachés.",
         // MARK: Fixes F1
         systemAudioFallback: "Chaque enregistrement la vérifie dans ses premières secondes. Sans elle, le son de l’app de visio vient de l’enregistrement de l’écran\u{00A0}: la seule app filmée quand une fenêtre est filmée, tout le Mac quand c’est un écran. L’enregistrement le signale.",
-        soundAllBefore144: "Avant macOS 14.4, une fenêtre filmée ne donne que le son de sa propre app\u{00A0}; tout le Mac s’entend quand c’est un écran qui est filmé."
+        soundAllBefore144: "Avant macOS 14.4, une fenêtre filmée ne donne que le son de sa propre app\u{00A0}; tout le Mac s’entend quand c’est un écran qui est filmé.",
+        // MARK: Fixes G1
+        soundNoApp: "Son de l’app\u{00A0}: aucune app",
+        soundNoAppDetail: "Aucune app à écouter\u{00A0}: le son des participants n’est pas enregistré.",
+        soundAppNoAppCaption: "Sans fenêtre d’une autre app au premier plan, ou avant macOS 14.4 quand un écran est filmé, il n’y a aucune app à écouter\u{00A0}: le son des participants n’est pas enregistré. Choisissez «\u{00A0}Tout le Mac\u{00A0}» pour ces cas."
     )
 }
 
@@ -1930,7 +1970,11 @@ extension ForkMeetingStrings {
         failMasterHiddenRemedy: "Non è stato possibile completare né mostrare il file. La registrazione è conservata nella cartella della riunione con il nome nascosto «.recording.mp4»: nel Finder, Maiuscole-Comando-Punto mostra i file nascosti.",
         // MARK: Fixes F1
         systemAudioFallback: "Ogni registrazione lo verifica nei primi secondi. Senza, l’audio dell’app della riunione viene dalla registrazione dello schermo: solo l’app ripresa se si riprende una finestra, tutto il Mac se si riprende uno schermo. La registrazione lo segnala.",
-        soundAllBefore144: "Prima di macOS 14.4, una finestra ripresa dà solo l’audio della propria app; tutto il Mac si sente quando si riprende uno schermo."
+        soundAllBefore144: "Prima di macOS 14.4, una finestra ripresa dà solo l’audio della propria app; tutto il Mac si sente quando si riprende uno schermo.",
+        // MARK: Fixes G1
+        soundNoApp: "Audio dell’app: nessuna app",
+        soundNoAppDetail: "Nessuna app da ascoltare: l’audio dei partecipanti non viene registrato.",
+        soundAppNoAppCaption: "Senza la finestra di un’altra app in primo piano, o prima di macOS 14.4 quando si riprende uno schermo, non c’è nessuna app da ascoltare: l’audio dei partecipanti non viene registrato. In questi casi scegli “Tutto il Mac”."
     )
 }
 
@@ -2114,7 +2158,11 @@ extension ForkMeetingStrings {
         failMasterHiddenRemedy: "ファイルを仕上げることも表示することもできませんでした。録画はミーティングのフォルダに「.recording.mp4」という非表示の名前で保存されています。Finderで Shift＋Command＋ピリオド を押すと非表示のファイルが表示されます。",
         // MARK: Fixes F1
         systemAudioFallback: "録画のたびに最初の数秒でこの許可を確認します。許可がない場合、ミーティングアプリの音声は画面収録から取り込まれます。ウインドウを撮影しているときは撮影中のアプリだけ、ディスプレイを撮影しているときは Mac 全体です。そのことはお知らせします。",
-        soundAllBefore144: "macOS 14.4 より前では、撮影中のウインドウからはそのアプリの音声しか取り込めません。Mac 全体の音声はディスプレイを撮影しているときに入ります。"
+        soundAllBefore144: "macOS 14.4 より前では、撮影中のウインドウからはそのアプリの音声しか取り込めません。Mac 全体の音声はディスプレイを撮影しているときに入ります。",
+        // MARK: Fixes G1
+        soundNoApp: "アプリの音声：対象アプリなし",
+        soundNoAppDetail: "聞き取るアプリがありません。参加者の音声は録音されません。",
+        soundAppNoAppCaption: "手前にほかのアプリのウインドウがないとき、または macOS 14.4 より前でディスプレイを撮影しているときは、聞き取るアプリがなく、参加者の音声は録音されません。その場合は「Mac 全体」を選んでください。"
     )
 }
 
@@ -2298,7 +2346,11 @@ extension ForkMeetingStrings {
         failMasterHiddenRemedy: "파일을 마무리하거나 표시할 수 없었습니다. 녹화는 회의 폴더에 숨겨진 이름 “.recording.mp4”로 보관되어 있습니다. Finder에서 Shift-Command-마침표를 누르면 숨겨진 파일이 보입니다.",
         // MARK: Fixes F1
         systemAudioFallback: "녹화할 때마다 처음 몇 초 안에 이 권한을 확인합니다. 권한이 없으면 회의 앱의 소리는 화면 녹화에서 가져옵니다. 윈도우를 촬영할 때는 촬영 중인 앱만, 디스플레이를 촬영할 때는 Mac 전체입니다. 그 사실은 알려 드립니다.",
-        soundAllBefore144: "macOS 14.4 이전에는 촬영 중인 윈도우에서 그 앱의 소리만 들어옵니다. Mac 전체의 소리는 디스플레이를 촬영할 때 들어옵니다."
+        soundAllBefore144: "macOS 14.4 이전에는 촬영 중인 윈도우에서 그 앱의 소리만 들어옵니다. Mac 전체의 소리는 디스플레이를 촬영할 때 들어옵니다.",
+        // MARK: Fixes G1
+        soundNoApp: "앱 소리: 앱 없음",
+        soundNoAppDetail: "들을 앱이 없습니다. 참가자의 소리는 녹음되지 않습니다.",
+        soundAppNoAppCaption: "앞에 다른 앱의 윈도우가 없거나 macOS 14.4 이전에 디스플레이를 촬영할 때는 들을 앱이 없어 참가자의 소리가 녹음되지 않습니다. 이런 경우에는 “Mac 전체”를 선택하세요."
     )
 }
 
@@ -2482,7 +2534,11 @@ extension ForkMeetingStrings {
         failMasterHiddenRemedy: "Файл не вдалося ні завершити, ні показати. Запис збережено в папці зустрічі під прихованою назвою «.recording.mp4»: у Finder поєднання Shift-Command-крапка показує приховані файли.",
         // MARK: Fixes F1
         systemAudioFallback: "Кожен запис перевіряє його в перші секунди. Без нього звук програми зустрічі береться із запису екрана: лише знята програма, якщо знімається вікно, і весь Mac, якщо знімається екран. Запис повідомляє про це.",
-        soundAllBefore144: "До macOS 14.4 зняте вікно дає лише звук своєї програми; увесь Mac чути, коли знімається екран."
+        soundAllBefore144: "До macOS 14.4 зняте вікно дає лише звук своєї програми; увесь Mac чути, коли знімається екран.",
+        // MARK: Fixes G1
+        soundNoApp: "Звук: немає програми",
+        soundNoAppDetail: "Немає програми, яку можна слухати: звук учасників не записується.",
+        soundAppNoAppCaption: "Якщо на передньому плані немає вікна іншої програми або до macOS 14.4 знімається екран, слухати нічого: звук учасників не записується. У таких випадках виберіть «Увесь Mac»."
     )
 }
 
@@ -2666,7 +2722,11 @@ extension ForkMeetingStrings {
         failMasterHiddenRemedy: "文件无法完成，也无法显示。录制内容以隐藏名称“.recording.mp4”保留在会议文件夹中：在“访达”中按 Shift-Command-句号可显示隐藏文件。",
         // MARK: Fixes F1
         systemAudioFallback: "每次录制都会在最初几秒检查此权限。没有它，会议 App 的声音会改从屏幕录制获取：录制窗口时只有该 App，录制显示器时则是整台 Mac，并会告知你。",
-        soundAllBefore144: "在 macOS 14.4 之前，录制窗口时只有该 App 自己的声音；录制显示器时才能听到整台 Mac。"
+        soundAllBefore144: "在 macOS 14.4 之前，录制窗口时只有该 App 自己的声音；录制显示器时才能听到整台 Mac。",
+        // MARK: Fixes G1
+        soundNoApp: "App 声音：没有 App",
+        soundNoAppDetail: "没有可收听的 App：参会者的声音不会被录下。",
+        soundAppNoAppCaption: "前面没有其他 App 的窗口时，或在 macOS 14.4 之前录制显示器时，没有可收听的 App，参会者的声音不会被录下。这些情况请选择“整台 Mac”。"
     )
 }
 
@@ -2850,7 +2910,11 @@ extension ForkMeetingStrings {
         failMasterHiddenRemedy: "檔案無法完成，也無法顯示。錄製內容以隱藏名稱「.recording.mp4」保留在會議檔案夾中：在 Finder 中按 Shift-Command-句號可顯示隱藏檔案。",
         // MARK: Fixes F1
         systemAudioFallback: "每次錄製都會在最初幾秒檢查此權限。沒有它，會議 App 的聲音會改從螢幕錄製取得：錄製視窗時只有該 App，錄製顯示器時則是整台 Mac，並會告知你。",
-        soundAllBefore144: "在 macOS 14.4 之前，錄製視窗時只有該 App 自己的聲音；錄製顯示器時才能聽到整台 Mac。"
+        soundAllBefore144: "在 macOS 14.4 之前，錄製視窗時只有該 App 自己的聲音；錄製顯示器時才能聽到整台 Mac。",
+        // MARK: Fixes G1
+        soundNoApp: "App 聲音：沒有 App",
+        soundNoAppDetail: "沒有可收聽的 App：與會者的聲音不會被錄下。",
+        soundAppNoAppCaption: "前面沒有其他 App 的視窗時，或在 macOS 14.4 之前錄製顯示器時，沒有可收聽的 App，與會者的聲音不會被錄下。這些情況請選擇「整台 Mac」。"
     )
 }
 
@@ -3034,6 +3098,10 @@ extension ForkMeetingStrings {
         failMasterHiddenRemedy: "檔案無法完成，亦無法顯示。錄影以隱藏名稱「.recording.mp4」保留在會議檔案夾中：在 Finder 中按 Shift-Command-句號可顯示隱藏檔案。",
         // MARK: Fixes F1
         systemAudioFallback: "每次錄製都會在最初幾秒檢查此權限。沒有它，會議 App 的聲音會改從螢幕錄製取得：錄製視窗時只有該 App，錄製顯示器時則是整部 Mac，並會通知你。",
-        soundAllBefore144: "在 macOS 14.4 之前，錄製視窗時只有該 App 自己的聲音；錄製顯示器時才能聽到整部 Mac。"
+        soundAllBefore144: "在 macOS 14.4 之前，錄製視窗時只有該 App 自己的聲音；錄製顯示器時才能聽到整部 Mac。",
+        // MARK: Fixes G1
+        soundNoApp: "App 聲音：沒有 App",
+        soundNoAppDetail: "沒有可收聽的 App：參與者的聲音不會被錄下。",
+        soundAppNoAppCaption: "前面沒有其他 App 的視窗時，或在 macOS 14.4 之前錄製顯示器時，沒有可收聽的 App，參與者的聲音不會被錄下。這些情況請選擇「整部 Mac」。"
     )
 }
