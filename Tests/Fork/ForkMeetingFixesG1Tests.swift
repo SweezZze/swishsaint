@@ -19,6 +19,7 @@ enum ForkMeetingFixesG1Tests {
         quickLock(suite)
         heardAtStop(suite)
         pillVoice(suite)
+        ownWindowsLeftOut(suite)
     }
 
     typealias Machine = ForkMeetingMachine
@@ -356,5 +357,19 @@ enum ForkMeetingFixesG1Tests {
         suite.expect(ForkMeetingLiveText.sentences(fr.untitledMeeting, fr.filmedDisplay)
                         == fr.untitledMeeting + ". " + fr.filmedDisplay,
                      "in French, a full stop and a space")
+    }
+
+    /// A display filmed while this app is not listed keeps looking for its
+    /// windows, however long it takes.
+    private static func ownWindowsLeftOut(_ suite: TestSuite) {
+        let delays = (0..<100).map { ForkMeetingCaptureSupport.exclusionRetryDelay(tries: $0) }
+        suite.expect(delays.prefix(5) == [1, 2, 3, 4, 5] && delays.allSatisfy { $0 > 0 && $0 <= 10 }
+                        && delays.last == ForkMeetingCaptureSupport.exclusionRetryCap,
+                     "it looks again after 1, 2, 3… s, then every 10 s, never giving up after five tries")
+        let stream = ForkMeetingFinalizeTests.source("Sources/Vorssaint/Fork/Meetings/ForkMeetingCaptureStream.swift")
+        let refresh = stream.components(separatedBy: "private func refreshOwnExclusion(").dropFirst().first?
+            .components(separatedBy: "\n    }\n").first ?? ""
+        suite.expect(!refresh.contains("guard tries < ") && refresh.contains("resolved.ownWindows != leftOut"),
+                     "no bound on the tries, and a window of ours that appeared meanwhile is left out at the next look")
     }
 }

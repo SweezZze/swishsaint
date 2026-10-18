@@ -137,6 +137,9 @@ final class ForkMeetingCaptureStream: @unchecked Sendable {
         /// the windows known then are left out, and the filter is made again
         /// once it is listed.
         var excludesOwnApp = true
+        /// The windows of this app a display's filter leaves out one by one,
+        /// when the app was not listed.
+        var ownWindows: Set<CGWindowID> = []
 
         static func make(_ aim: Aim, in content: SCShareableContent, excluding: Set<CGWindowID> = []) -> Resolved? {
             let mainID = CGMainDisplayID()
@@ -176,9 +179,14 @@ final class ForkMeetingCaptureStream: @unchecked Sendable {
                 } else {
                     filter = SCContentFilter(display: display, excludingApplications: own, exceptingWindows: [])
                 }
+                let ownWindows = own.isEmpty
+                    ? Set(content.windows.filter {
+                        $0.owningApplication?.processID == ownPID || excluding.contains($0.windowID)
+                    }.map(\.windowID))
+                    : []
                 return Resolved(filter: filter, windowAspect: nil, displayPixels: pixels(of: display), isWindow: false,
                                 filmed: .display(display.displayID), ownerPID: window?.owningApplication?.processID,
-                                excludesOwnApp: !own.isEmpty)
+                                excludesOwnApp: !own.isEmpty, ownWindows: ownWindows)
             }
         }
     }
@@ -221,7 +229,9 @@ final class ForkMeetingCaptureStream: @unchecked Sendable {
                 // go of a stream that was not running yet, so this one is
                 // stopped here, never left running unowned.
                 guard lock.withLock({ stopping || self.stream !== stream }) else {
-                    if !resolved.isWindow, !resolved.excludesOwnApp { refreshOwnExclusion(of: stream, tries: 0) }
+                    if !resolved.isWindow, !resolved.excludesOwnApp {
+                        refreshOwnExclusion(of: stream, tries: 0, leftOut: resolved.ownWindows)
+                    }
                     return completion(nil)
                 }
                 stream.stopCapture { _ in withExtendedLifetime(receiver) {} }
@@ -263,7 +273,9 @@ final class ForkMeetingCaptureStream: @unchecked Sendable {
                     return configuration
                 }
                 guard let configuration else { return completion(nil) }
-                if !resolved.isWindow, !resolved.excludesOwnApp { refreshOwnExclusion(of: stream, tries: 0) }
+                if !resolved.isWindow, !resolved.excludesOwnApp {
+                    refreshOwnExclusion(of: stream, tries: 0, leftOut: resolved.ownWindows)
+                }
                 stream.updateConfiguration(configuration) { error in completion(error == nil ? used : nil) }
             }
         }
@@ -304,17 +316,25 @@ final class ForkMeetingCaptureStream: @unchecked Sendable {
 
     /// A display filter made while this app was not listed: made again once
     /// it is (the pill shows up right after the start), so the windows it
-    /// opens later stay out too. Tried for about ten seconds.
-    private func refreshOwnExclusion(of stream: SCStream, tries: Int) {
-        guard tries < 5 else { return }
-        queue.asyncAfter(deadline: .now() + 1 + Double(tries)) { [self] in
+    /// opens later stay out too. Until then, each look leaves out the
+    /// windows of ours listed by then (`leftOut`, those already left out).
+    /// It never gives up while the stream films that display
+    /// (`ForkMeetingCaptureSupport.exclusionRetryDelay`); a new stream starts
+    /// its own.
+    private func refreshOwnExclusion(of stream: SCStream, tries: Int, leftOut: Set<CGWindowID>) {
+        queue.asyncAfter(deadline: .now() + ForkMeetingCaptureSupport.exclusionRetryDelay(tries: tries)) { [self] in
             guard let aim = lock.withLock({ !stopping && self.stream === stream ? self.aim : nil }),
                   case .displayOf = aim else { return }
             Self.resolve(aim, excluding: excludedWindows) { [self] result in
-                guard case let .success(resolved) = result, !resolved.isWindow else { return }
-                guard resolved.excludesOwnApp else { return refreshOwnExclusion(of: stream, tries: tries + 1) }
                 guard lock.withLock({ !stopping && self.stream === stream && self.aim == aim }) else { return }
-                stream.updateContentFilter(resolved.filter) { _ in }
+                guard case let .success(resolved) = result, !resolved.isWindow else {
+                    return refreshOwnExclusion(of: stream, tries: tries + 1, leftOut: leftOut)
+                }
+                if resolved.excludesOwnApp || resolved.ownWindows != leftOut {
+                    stream.updateContentFilter(resolved.filter) { _ in }
+                }
+                guard !resolved.excludesOwnApp else { return }
+                refreshOwnExclusion(of: stream, tries: tries + 1, leftOut: resolved.ownWindows)
             }
         }
     }

@@ -429,6 +429,18 @@ enum ForkMeetingFilmed: Equatable {
     }
 }
 
+extension ForkMeetingCaptureSupport {
+    /// A display filmed while this app was not listed leaves out only the
+    /// windows of ours it knew: it looks again after each of these delays,
+    /// growing to `exclusionRetryCap`, for as long as it films that display,
+    /// never giving up (a window of ours may come at any time).
+    static let exclusionRetryCap: TimeInterval = 10
+
+    static func exclusionRetryDelay(tries: Int) -> TimeInterval {
+        min(exclusionRetryCap, 1 + Double(max(0, tries)))
+    }
+}
+
 /// What the meeting track holds, as the start's notice and the pill say it.
 enum ForkMeetingTrackSound: Equatable {
     /// What was asked for (nothing, when the sound is off).
