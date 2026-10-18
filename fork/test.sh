@@ -41,6 +41,8 @@ FORK_SOURCES=(
     Sources/Vorssaint/Fork/Meetings/ForkMeetingFailure.swift
     Sources/Vorssaint/Fork/Meetings/ForkMeetingFolder.swift
     Sources/Vorssaint/Fork/Meetings/ForkMeetingQuality.swift
+    Sources/Vorssaint/Fork/Meetings/ForkMeetingRecoveryPlan.swift
+    Sources/Vorssaint/Fork/Meetings/ForkMeetingSidecar.swift
     Sources/Vorssaint/Fork/Meetings/ForkMeetingStrings.swift
     Sources/Vorssaint/Fork/Update/ForkUpdateStrings.swift
     Sources/Vorssaint/Fork/Update/ForkUpdateSupport.swift
