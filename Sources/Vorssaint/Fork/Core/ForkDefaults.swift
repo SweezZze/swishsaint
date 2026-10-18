@@ -39,6 +39,20 @@ enum ForkDefaultsKey {
     /// heard and written separated by a tab).
     static let dictationVocabulary = "fork.dictation.vocabulary"
     static let dictationReplacements = "fork.dictation.replacements"
+    /// The shortcuts (`ForkDictationShortcuts` JSON). Empty: the one key of
+    /// `dictationTrigger`, as stored before shortcuts could be several.
+    static let dictationShortcuts = "fork.dictation.shortcuts"
+    /// `ForkDictationEngineSetting`: auto, parakeet or apple.
+    static let dictationEngine = "fork.dictation.engine"
+    /// "builtin", "system" or a capture device's unique ID.
+    static let dictationMicrophone = "fork.dictation.microphone"
+    static let dictationAddsToHistory = "fork.dictation.addsToHistory"
+    /// `ForkDictationFeedbackSetting`: auto, island or bubble.
+    static let dictationFeedback = "fork.dictation.feedback"
+    /// Hands-free ends after a minute without a voice.
+    static let dictationStopsOnSilence = "fork.dictation.stopsOnSilence"
+    /// Minutes before an unused Parakeet model leaves memory.
+    static let dictationUnloadMinutes = "fork.dictation.unloadMinutes"
     /// The build the person answered "Later" for. Machine state: kept out
     /// of the settings backup.
     static let updatePostponedBuild = "fork.update.postponedBuild"
@@ -69,6 +83,13 @@ enum ForkDefaults {
         ForkDefaultsKey.dictationSounds: true,
         ForkDefaultsKey.dictationVocabulary: "",
         ForkDefaultsKey.dictationReplacements: "",
+        ForkDefaultsKey.dictationShortcuts: "",
+        ForkDefaultsKey.dictationEngine: "auto",
+        ForkDefaultsKey.dictationMicrophone: "builtin",
+        ForkDefaultsKey.dictationAddsToHistory: true,
+        ForkDefaultsKey.dictationFeedback: "auto",
+        ForkDefaultsKey.dictationStopsOnSilence: true,
+        ForkDefaultsKey.dictationUnloadMinutes: 5,
     ]
 
     /// Where each setting lived in the test builds made before the fork

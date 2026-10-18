@@ -1,55 +1,127 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 Sweeze
+// Copyright (C) 2026 Martial
 
+import AppKit
+import AVFoundation
 import Speech
 import SwiftUI
 
-/// Dictation's settings on the Extras page, shown while it is on.
+/// Dictation's settings on the Extras page: the shortcuts, the engine and its
+/// model, the microphone, what happens after, the vocabulary, the
+/// permissions. The last failure, when there is one, sits on top with its fix.
 struct ForkDictationSettingsSection: View {
     let title: String
 
     @ObservedObject private var l10n = L10n.shared
     @ObservedObject private var service = ForkDictationService.shared
-    @AppStorage(ForkDefaultsKey.dictationTrigger)
-    private var triggerRaw = ForkDictationTrigger.fallback.rawValue
-    @AppStorage(ForkDefaultsKey.dictationLocale) private var chosenLocale = ""
-    @AppStorage(ForkDefaultsKey.dictationSounds) private var sounds = true
     @State private var trial = ""
 
     private var text: ForkDictationStrings { ForkDictationStrings.strings(l10n.language) }
 
-    /// The languages the recognizer knows, by name in the app's language.
-    private var languages: [(id: String, name: String)] {
-        let display = Locale(identifier: l10n.language.rawValue)
-        return SFSpeechRecognizer.supportedLocales()
-            .map { ForkDictationSupport.normalized($0.identifier) }
-            .map { ($0, display.localizedString(forIdentifier: $0) ?? $0) }
-            .sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
-    }
-
-    private var automaticName: String {
-        let automatic = ForkDictationSupport.localeIdentifier(
-            chosen: "", supported: SFSpeechRecognizer.supportedLocales().map(\.identifier),
-            preferred: Locale.preferredLanguages)
-        let display = Locale(identifier: l10n.language.rawValue)
-        return automatic.flatMap { display.localizedString(forIdentifier: $0) } ?? "?"
-    }
-
     var body: some View {
+        if let failure = service.lastFailure {
+            ForkDictationFailureBanner(failure: failure, text: text)
+        }
+
         Section(title) {
             Text(text.howTo)
                 .font(.callout)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
+            LabeledContent(text.tryTitle) {
+                TextField("", text: $trial, prompt: Text(text.tryPlaceholder), axis: .vertical)
+                    .lineLimit(2...4)
+                    .textFieldStyle(.roundedBorder)
+            }
+        }
 
-            Picker(text.triggerTitle, selection: $triggerRaw) {
-                ForEach(ForkDictationTrigger.allCases) { trigger in
-                    Text("\(trigger.symbol)  \(text.triggerName(trigger))").tag(trigger.rawValue)
+        ForkDictationShortcutsSection(text: text)
+        ForkDictationRecognitionSection(text: text)
+        ForkDictationMicrophoneSection(text: text)
+        ForkDictationAfterSection(text: text)
+        ForkDictationVocabularySection(text: text)
+        ForkDictationPermissionsSection(text: text)
+        ForkDictationAdvancedSection(text: text)
+    }
+}
+
+// MARK: - Failure
+
+/// The last thing that went wrong, said in full, with the button that fixes
+/// it when there is one.
+private struct ForkDictationFailureBanner: View {
+    let failure: ForkDictationFailure
+    let text: ForkDictationStrings
+
+    var body: some View {
+        Section {
+            HStack(alignment: .top, spacing: 10) {
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .foregroundStyle(.orange)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(failure.summary(text))
+                        .fontWeight(.semibold)
+                    Text(failure.remedy(text))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                Spacer(minLength: 0)
+                if let action = failure.action, let label = label(for: action) {
+                    Button(label) { ForkDictationService.shared.perform(action) }
+                        .controlSize(.small)
                 }
             }
-            .onChange(of: triggerRaw) { _, _ in ForkDictationService.sync() }
+        }
+    }
 
-            if triggerRaw == ForkDictationTrigger.fn.rawValue {
+    private func label(for action: ForkDictationFailureAction) -> String? {
+        switch action {
+        case .openAccessibility, .openMicrophonePrivacy, .openSpeechPrivacy: return text.actionOpenSettings
+        case .unmuteMicrophone: return text.actionUnmute
+        case .downloadModel: return text.actionDownload
+        case .redownloadModel: return text.actionRedownload
+        // Already on the page.
+        case .openSettingsPage: return nil
+        }
+    }
+}
+
+// MARK: - Shortcuts
+
+/// Up to six shortcuts, each with its key, gesture, action and language.
+/// Every change is saved at once and the key tap reads the new table.
+private struct ForkDictationShortcutsSection: View {
+    let text: ForkDictationStrings
+
+    @ObservedObject private var superKey = SuperKeyService.shared
+    @State private var shortcuts: [ForkDictationShortcut] = ForkDictationShortcuts.load()
+    /// Shortcuts switched to a combination that has not been typed yet.
+    @State private var pendingCombination: Set<UUID> = []
+
+    private var problems: [UUID: ForkDictationShortcutProblem] { ForkDictationShortcuts.problems(shortcuts) }
+
+    var body: some View {
+        Section(text.shortcutsTitle) {
+            Text(text.shortcutsCaption)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+
+            ForEach(shortcuts) { shortcut in
+                ForkDictationShortcutRow(
+                    shortcut: binding(for: shortcut.id),
+                    text: text,
+                    problem: problems[shortcut.id],
+                    conflictsWithSuperKey: conflictsWithSuperKey(shortcut),
+                    isPendingCombination: pendingCombination.contains(shortcut.id),
+                    canRemove: shortcuts.count > 1,
+                    chooseCombination: { pendingCombination.insert(shortcut.id) },
+                    remove: { remove(shortcut.id) })
+            }
+
+            if usesFn {
                 HStack(alignment: .firstTextBaseline) {
                     Text(text.fnCaption)
                         .font(.caption)
@@ -66,82 +138,518 @@ struct ForkDictationSettingsSection: View {
                 }
             }
 
+            Button {
+                add()
+            } label: {
+                Label(text.shortcutAdd, systemImage: "plus")
+            }
+            .disabled(shortcuts.count >= ForkDictationShortcut.maximumCount)
+        }
+        .onAppear { shortcuts = ForkDictationShortcuts.load() }
+    }
+
+    private var usesFn: Bool {
+        shortcuts.contains { $0.key == .modifier(.fn) }
+    }
+
+    private func binding(for id: UUID) -> Binding<ForkDictationShortcut> {
+        Binding(
+            get: { shortcuts.first { $0.id == id } ?? .default },
+            set: { updated in
+                guard let index = shortcuts.firstIndex(where: { $0.id == id }) else { return }
+                if case .combo = updated.key { pendingCombination.remove(id) }
+                if case .modifier = updated.key { pendingCombination.remove(id) }
+                shortcuts[index] = updated
+                save()
+            })
+    }
+
+    /// The Super Key remaps its source key in hardware: it stops being a
+    /// modifier, so dictation never sees it pressed.
+    private func conflictsWithSuperKey(_ shortcut: ForkDictationShortcut) -> Bool {
+        guard superKey.isRunning, case let .modifier(trigger) = shortcut.key else { return false }
+        return SuperKeySource(rawValue: trigger.rawValue) == superKey.source
+    }
+
+    private func add() {
+        guard shortcuts.count < ForkDictationShortcut.maximumCount else { return }
+        let used = Set(shortcuts.map(\.key))
+        let free = ForkDictationTrigger.allCases.first { !used.contains(.modifier($0)) } ?? .rightOption
+        shortcuts.append(ForkDictationShortcut(key: .modifier(free)))
+        save()
+    }
+
+    private func remove(_ id: UUID) {
+        guard shortcuts.count > 1 else { return }
+        shortcuts.removeAll { $0.id == id }
+        pendingCombination.remove(id)
+        save()
+    }
+
+    private func save() {
+        ForkDictationShortcuts.save(shortcuts)
+        ForkDictationService.sync()
+    }
+}
+
+private struct ForkDictationShortcutRow: View {
+    @Binding var shortcut: ForkDictationShortcut
+    let text: ForkDictationStrings
+    let problem: ForkDictationShortcutProblem?
+    let conflictsWithSuperKey: Bool
+    let isPendingCombination: Bool
+    let canRemove: Bool
+    let chooseCombination: () -> Void
+    let remove: () -> Void
+
+    @ObservedObject private var l10n = L10n.shared
+
+    /// A combination to show in the recorder before one is typed: the
+    /// recorder needs one, and `emptyTitle` hides it.
+    private static let placeholder = GlobalShortcut(keyCode: 49, modifiers: [.control, .option])
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 8) {
+                Text(text.shortcutKeyTitle)
+                Spacer()
+                keyMenu
+                if let combination {
+                    ShortcutRecorderButton(
+                        shortcut: combination,
+                        isEnabled: true,
+                        waitingTitle: text.shortcutRecordPrompt,
+                        emptyTitle: isPendingCombination ? text.shortcutRecordPrompt : nil,
+                        invalidAction: {},
+                        captureAction: { captured in
+                            shortcut.key = .combo(keyCode: captured.keyCode, modifiers: captured.modifiers.rawValue)
+                        })
+                    .frame(width: 140)
+                }
+                Button(action: remove) {
+                    Image(systemName: "minus.circle.fill")
+                        .foregroundStyle(.secondary)
+                }
+                .buttonStyle(.plain)
+                .disabled(!canRemove)
+                .help(text.shortcutRemove)
+                .accessibilityLabel(text.shortcutRemove)
+            }
+
+            if shortcut.action != .pasteLast {
+                Picker(text.shortcutModeTitle, selection: $shortcut.mode) {
+                    Text(text.shortcutModeHybrid).tag(ForkDictationShortcut.Mode.hybrid)
+                    Text(text.shortcutModeHold).tag(ForkDictationShortcut.Mode.hold)
+                    Text(text.shortcutModeToggle).tag(ForkDictationShortcut.Mode.toggle)
+                }
+                caption(modeCaption)
+            }
+
+            Picker(text.shortcutActionTitle, selection: $shortcut.action) {
+                Text(text.shortcutActionPaste).tag(ForkDictationShortcut.Action.paste)
+                Text(text.shortcutActionCopy).tag(ForkDictationShortcut.Action.copy)
+                Text(text.shortcutActionPasteLast).tag(ForkDictationShortcut.Action.pasteLast)
+            }
+
+            if shortcut.action != .pasteLast {
+                Picker(text.languageTitle, selection: language) {
+                    Text(text.shortcutLanguageDefault).tag("")
+                    Divider()
+                    ForEach(ForkDictationLanguages.names(in: l10n.language), id: \.id) { language in
+                        Text(language.name).tag(language.id)
+                    }
+                }
+            }
+
+            if let warning {
+                Label(warning, systemImage: "exclamationmark.triangle.fill")
+                    .font(.caption)
+                    .foregroundStyle(.orange)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .padding(.vertical, 2)
+    }
+
+    private var keyMenu: some View {
+        Menu {
+            ForEach(ForkDictationTrigger.allCases) { trigger in
+                Button("\(trigger.symbol)  \(text.triggerName(trigger))") {
+                    shortcut.key = .modifier(trigger)
+                }
+            }
+            Divider()
+            Button(text.shortcutCombination, action: chooseCombination)
+        } label: {
+            Text(keyTitle)
+        }
+        .fixedSize()
+    }
+
+    private var keyTitle: String {
+        if isPendingCombination { return text.shortcutCombination }
+        switch shortcut.key {
+        case let .modifier(trigger): return "\(trigger.symbol)  \(text.triggerName(trigger))"
+        case .combo: return text.shortcutCombination
+        }
+    }
+
+    private var combination: GlobalShortcut? {
+        if isPendingCombination { return Self.placeholder }
+        guard case let .combo(keyCode, modifiers) = shortcut.key else { return nil }
+        return GlobalShortcut(keyCode: keyCode, modifiers: GlobalShortcutModifiers(rawValue: modifiers))
+    }
+
+    private var language: Binding<String> {
+        Binding(get: { shortcut.language ?? "" },
+                set: { shortcut.language = $0.isEmpty ? nil : $0 })
+    }
+
+    private var modeCaption: String {
+        switch shortcut.mode {
+        case .hybrid: return text.shortcutModeHybridCaption
+        case .hold: return text.shortcutModeHoldCaption
+        case .toggle: return text.shortcutModeToggleCaption
+        }
+    }
+
+    private var warning: String? {
+        switch problem {
+        case .duplicate: return text.shortcutProblemDuplicate
+        case .needsModifier: return text.shortcutProblemNeedsModifier
+        case .reservedKey: return text.shortcutProblemReserved
+        case nil: return conflictsWithSuperKey ? text.shortcutConflictSuperKey : nil
+        }
+    }
+
+    private func caption(_ string: String) -> some View {
+        Text(string)
+            .font(.caption)
+            .foregroundStyle(.secondary)
+            .fixedSize(horizontal: false, vertical: true)
+    }
+}
+
+/// The languages Apple recognizes, named in the app's language. Built once
+/// per app language: the list is long and sorting it on every redraw made
+/// the page lag.
+private enum ForkDictationLanguages {
+    private static var cache: (language: AppLanguage, names: [(id: String, name: String)])?
+
+    static func names(in language: AppLanguage) -> [(id: String, name: String)] {
+        if let cache, cache.language == language { return cache.names }
+        let display = Locale(identifier: language.rawValue)
+        let names = ForkAppleSpeechEngine.supportedLanguages
+            .map { ($0, display.localizedString(forIdentifier: $0) ?? $0) }
+            .sorted { $0.1.localizedStandardCompare($1.1) == .orderedAscending }
+            .map { (id: $0.0, name: $0.1) }
+        cache = (language, names)
+        return names
+    }
+
+    static func name(of identifier: String, in language: AppLanguage) -> String {
+        Locale(identifier: language.rawValue).localizedString(forIdentifier: identifier) ?? identifier
+    }
+}
+
+// MARK: - Recognition
+
+/// The engine, Parakeet's model and the language.
+private struct ForkDictationRecognitionSection: View {
+    let text: ForkDictationStrings
+
+    @ObservedObject private var l10n = L10n.shared
+    @ObservedObject private var store = ForkParakeetModelStore.shared
+    @AppStorage(ForkDefaultsKey.dictationEngine) private var engineRaw = ForkDictationEngineSetting.fallback.rawValue
+    @AppStorage(ForkDefaultsKey.dictationLocale) private var chosenLocale = ""
+
+    private var setting: ForkDictationEngineSetting {
+        ForkDictationEngineSetting(rawValue: engineRaw) ?? .fallback
+    }
+
+    /// Re-read on every redraw: the store's state drives it.
+    private var engineInUse: Result<ForkDictationEngineKind, ForkDictationFailure> {
+        _ = store.state
+        return ForkDictationEngines.shared.kind(for: setting, language: chosenLocale)
+    }
+
+    var body: some View {
+        Section(text.recognitionTitle) {
+            Picker(text.engineTitle, selection: $engineRaw) {
+                Text(text.engineAuto).tag(ForkDictationEngineSetting.auto.rawValue)
+                Text(text.engineParakeet).tag(ForkDictationEngineSetting.parakeet.rawValue)
+                Text(text.engineApple).tag(ForkDictationEngineSetting.apple.rawValue)
+            }
+            .onChange(of: engineRaw) { _, _ in ForkDictationService.sync() }
+            if setting == .auto {
+                caption(text.engineAutoCaption)
+            }
+            inUse
+
+            if setting != .apple {
+                ForkParakeetCard(text: text, store: store)
+            }
+
             Picker(text.languageTitle, selection: $chosenLocale) {
-                Text(text.languageAutomatic(automaticName)).tag("")
+                Text(automaticTitle).tag("")
                 Divider()
-                ForEach(languages, id: \.id) { language in
+                ForEach(ForkDictationLanguages.names(in: l10n.language), id: \.id) { language in
                     Text(language.name).tag(language.id)
                 }
             }
-            if let localeID = ForkDictationService.localeID {
-                let onDevice = ForkDictationRecorder.runsOnDevice(localeID: localeID)
-                Label(onDevice ? text.onDevice : text.onServer,
-                      systemImage: onDevice ? "lock.laptopcomputer" : "network")
+        }
+    }
+
+    @ViewBuilder
+    private var inUse: some View {
+        switch engineInUse {
+        case .success(.parakeet):
+            badge(text.engineInUse(text.parakeetTitle), detail: text.onDevice, symbol: "lock.laptopcomputer")
+        case .success(.apple):
+            let onDevice = ForkAppleSpeechEngine.supportsOnDevice(language: chosenLocale)
+            badge(text.engineInUse(text.engineApple), detail: onDevice ? text.onDevice : text.onServer,
+                  symbol: onDevice ? "lock.laptopcomputer" : "network")
+        case let .failure(failure):
+            Label(failure.summary(text), systemImage: "exclamationmark.triangle.fill")
+                .font(.caption)
+                .foregroundStyle(.orange)
+        }
+    }
+
+    /// Parakeet finds the language by itself: the automatic choice says so
+    /// rather than naming one.
+    private var automaticTitle: String {
+        if case .success(.parakeet) = engineInUse { return text.languageParakeetAuto }
+        let automatic = ForkAppleSpeechEngine.resolvedLanguage("")
+            .map { ForkDictationLanguages.name(of: $0, in: l10n.language) } ?? "?"
+        return text.languageAutomatic(automatic)
+    }
+
+    private func badge(_ title: String, detail: String, symbol: String) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Label(title, systemImage: symbol)
+                .font(.callout)
+            Text(detail)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    private func caption(_ string: String) -> some View {
+        Text(string)
+            .font(.caption)
+            .foregroundStyle(.secondary)
+            .fixedSize(horizontal: false, vertical: true)
+    }
+}
+
+/// Parakeet's model: download it (never without a click), follow it, delete it.
+private struct ForkParakeetCard: View {
+    let text: ForkDictationStrings
+    @ObservedObject var store: ForkParakeetModelStore
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 8) {
+                Image(systemName: "cpu")
+                    .foregroundStyle(.purple)
+                Text(text.parakeetTitle)
+                    .fontWeight(.medium)
+                Spacer()
+                stateControl
+            }
+            caption(text.parakeetCaption)
+            stateDetail
+            caption(text.parakeetLanguagesCaption)
+        }
+        .padding(.vertical, 2)
+    }
+
+    @ViewBuilder
+    private var stateControl: some View {
+        switch store.state {
+        case .notInstalled:
+            Button(text.parakeetDownload(Self.size(store.totalBytes - store.resumableBytes))) { store.install() }
+                .controlSize(.small)
+        case .downloading:
+            Button(text.parakeetCancel) { store.cancel() }
+                .controlSize(.small)
+        case .verifying:
+            ProgressView()
+                .controlSize(.small)
+        case let .installed(size):
+            HStack(spacing: 8) {
+                Label(text.parakeetInstalled(Self.size(size)), systemImage: "checkmark.circle.fill")
                     .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
+                    .foregroundStyle(.green)
+                Button(text.parakeetDelete, role: .destructive) { store.delete() }
+                    .controlSize(.small)
+            }
+        case .failed:
+            Button(text.parakeetRetry) { store.install() }
+                .controlSize(.small)
+        }
+    }
+
+    @ViewBuilder
+    private var stateDetail: some View {
+        switch store.state {
+        case .notInstalled:
+            if store.canCloneFromFluidAudioCache {
+                caption(text.parakeetCloneCaption)
+            }
+        case let .downloading(progress, _, _):
+            VStack(alignment: .leading, spacing: 4) {
+                ProgressView(value: progress)
+                caption(text.parakeetDownloading(progress.formatted(.percent.precision(.fractionLength(0)))))
+            }
+        case .verifying:
+            caption(text.parakeetVerifying)
+        case .installed:
+            EmptyView()
+        case let .failed(error):
+            Label(message(for: error), systemImage: "exclamationmark.triangle.fill")
+                .font(.caption)
+                .foregroundStyle(.orange)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    private func message(for error: ForkParakeetStoreError) -> String {
+        switch error {
+        case .network, .cancelled: return text.storeNetworkError
+        case let .diskFull(needed): return text.storeDiskFull(Self.size(needed))
+        case .checksum, .io: return text.storeChecksumError
+        }
+    }
+
+    private static func size(_ bytes: Int64) -> String {
+        ByteCountFormatter.string(fromByteCount: max(0, bytes), countStyle: .file)
+    }
+
+    private func caption(_ string: String) -> some View {
+        Text(string)
+            .font(.caption)
+            .foregroundStyle(.secondary)
+            .fixedSize(horizontal: false, vertical: true)
+    }
+}
+
+// MARK: - Microphone
+
+private struct ForkDictationMicrophoneSection: View {
+    let text: ForkDictationStrings
+
+    @AppStorage(ForkDefaultsKey.dictationMicrophone)
+    private var microphone = ForkDictationAudioDevices.builtInChoice
+    @State private var devices: [ForkDictationAudioDevice] = []
+
+    var body: some View {
+        Section(text.microphoneTitle) {
+            Picker(text.microphoneTitle, selection: $microphone) {
+                Text(text.microphoneBuiltIn).tag(ForkDictationAudioDevices.builtInChoice)
+                Text(text.microphoneSystem).tag(ForkDictationAudioDevices.systemChoice)
+                Divider()
+                ForEach(devices.filter { !$0.isBuiltIn }) { device in
+                    Text(device.name).tag(device.id)
+                }
+                if isMissing {
+                    Text(text.microphoneMissing(microphone)).tag(microphone)
+                }
+            }
+            Text(text.microphoneCaption)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .onAppear(perform: reload)
+        .onReceive(NotificationCenter.default.publisher(for: AVCaptureDevice.wasConnectedNotification)) { _ in reload() }
+        .onReceive(NotificationCenter.default.publisher(for: AVCaptureDevice.wasDisconnectedNotification)) { _ in reload() }
+    }
+
+    /// A microphone chosen earlier and unplugged since: still shown, so the
+    /// choice is not silently lost.
+    private var isMissing: Bool {
+        microphone != ForkDictationAudioDevices.builtInChoice
+            && microphone != ForkDictationAudioDevices.systemChoice
+            && !devices.contains { $0.id == microphone && !$0.isBuiltIn }
+    }
+
+    private func reload() {
+        devices = ForkDictationAudioDevices.inputs()
+    }
+}
+
+// MARK: - After dictation
+
+private struct ForkDictationAfterSection: View {
+    let text: ForkDictationStrings
+
+    @AppStorage(ForkDefaultsKey.dictationAddsToHistory) private var addsToHistory = true
+    @AppStorage(ForkDefaultsKey.dictationSounds) private var sounds = true
+    @AppStorage(ForkDefaultsKey.dictationFeedback) private var feedback = ForkDictationFeedbackSetting.auto.rawValue
+    @AppStorage(ForkDefaultsKey.dictationStopsOnSilence) private var stopsOnSilence = true
+    @AppStorage(DefaultsKey.clipboardHistoryEnabled) private var clipboardHistoryEnabled = false
+
+    private var historyIsOn: Bool {
+        clipboardHistoryEnabled && AppFeature.clipboardHistory.isAvailable
+    }
+
+    var body: some View {
+        Section(text.afterTitle) {
+            VStack(alignment: .leading, spacing: 4) {
+                Toggle(text.addsToHistoryTitle, isOn: $addsToHistory)
+                    .disabled(!historyIsOn)
+                if historyIsOn {
+                    caption(text.addsToHistoryCaption)
+                } else {
+                    HStack(alignment: .firstTextBaseline) {
+                        caption(text.historyOffCaption)
+                        Spacer()
+                        Button(text.actionOpenSettings) {
+                            SettingsRouter.shared.request(AppFeature.clipboardHistory.settingsDestination)
+                        }
+                        .buttonStyle(.link)
+                        .font(.caption)
+                    }
+                }
             }
 
             Toggle(text.soundsTitle, isOn: $sounds)
 
-            PermissionRow(kind: .microphone)
-            speechPermission
+            Picker(text.feedbackTitle, selection: $feedback) {
+                Text(text.feedbackAuto).tag(ForkDictationFeedbackSetting.auto.rawValue)
+                Text(text.feedbackIsland).tag(ForkDictationFeedbackSetting.island.rawValue)
+                Text(text.feedbackBubble).tag(ForkDictationFeedbackSetting.bubble.rawValue)
+            }
 
-            LabeledContent(text.tryTitle) {
-                TextField("", text: $trial, prompt: Text(text.tryPlaceholder), axis: .vertical)
-                    .lineLimit(2...4)
-                    .textFieldStyle(.roundedBorder)
+            VStack(alignment: .leading, spacing: 4) {
+                Toggle(text.stopsOnSilenceTitle, isOn: $stopsOnSilence)
+                caption(text.stopsOnSilenceCaption)
             }
         }
-        .onAppear { service.refreshAuthorization() }
-
-        ForkDictationVocabularySection(text: text)
     }
 
-    @ViewBuilder
-    private var speechPermission: some View {
-        let granted = service.speechAuthorization == .authorized
-        VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 8) {
-                Image(systemName: granted ? "checkmark.circle.fill" : "exclamationmark.circle.fill")
-                    .foregroundStyle(granted ? .green : .orange)
-                Text(text.speechPermissionName)
-                Spacer()
-                Text(granted ? l10n.s.permissionGranted : l10n.s.permissionMissing)
-                    .font(.caption)
-                    .foregroundStyle(granted ? .green : .orange)
-            }
-            if !granted {
-                if ForkDictationService.canAskForSpeechRecognition {
-                    HStack(spacing: 8) {
-                        if service.speechAuthorization == .notDetermined {
-                            Button(l10n.s.permissionRequest) { service.requestSpeechRecognition() }
-                        }
-                        Button(l10n.s.permissionOpenSettings) {
-                            if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_SpeechRecognition") {
-                                NSWorkspace.shared.open(url)
-                            }
-                        }
-                    }
-                    .controlSize(.small)
-                } else {
-                    Text(text.buildCaption)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-            }
-        }
+    private func caption(_ string: String) -> some View {
+        Text(string)
+            .font(.caption)
+            .foregroundStyle(.secondary)
+            .fixedSize(horizontal: false, vertical: true)
     }
 }
 
+// MARK: - Vocabulary
+
 /// The person's words and replacements, like a dictation app's dictionary:
-/// words favored by the recognizer, and fixes for what it keeps mishearing.
+/// words favored by Apple's recognizer, and fixes for what either engine
+/// keeps mishearing.
 private struct ForkDictationVocabularySection: View {
     let text: ForkDictationStrings
 
     @AppStorage(ForkDefaultsKey.dictationVocabulary) private var vocabularyStorage = ""
     @AppStorage(ForkDefaultsKey.dictationReplacements) private var replacementsStorage = ""
+    @AppStorage(ForkDefaultsKey.dictationEngine) private var engineRaw = ForkDictationEngineSetting.fallback.rawValue
     @State private var newWord = ""
     @State private var newHeard = ""
     @State private var newWritten = ""
@@ -151,9 +659,22 @@ private struct ForkDictationVocabularySection: View {
         ForkDictationSupport.replacements(from: replacementsStorage)
     }
 
+    private var wordIsDuplicate: Bool {
+        let word = newWord.trimmingCharacters(in: .whitespaces).lowercased()
+        return !word.isEmpty && words.contains { $0.lowercased() == word }
+    }
+
+    private var heardIsDuplicate: Bool {
+        let heard = newHeard.trimmingCharacters(in: .whitespaces).lowercased()
+        return !heard.isEmpty && replacements.contains { $0.heard.lowercased() == heard }
+    }
+
     var body: some View {
         Section(text.vocabularyTitle) {
             caption(text.vocabularyCaption)
+            if engineRaw != ForkDictationEngineSetting.apple.rawValue {
+                caption(text.vocabularyAppleOnlyCaption)
+            }
             ForEach(words, id: \.self) { word in
                 HStack {
                     Text(word)
@@ -166,8 +687,11 @@ private struct ForkDictationVocabularySection: View {
                     .textFieldStyle(.roundedBorder)
                     .onSubmit(addWord)
                 Button(text.addButton, action: addWord)
-                    .disabled(newWord.trimmingCharacters(in: .whitespaces).isEmpty
+                    .disabled(newWord.trimmingCharacters(in: .whitespaces).isEmpty || wordIsDuplicate
                               || words.count >= ForkDictationSupport.vocabularyLimit)
+            }
+            if wordIsDuplicate {
+                caption(text.duplicateCaption)
             }
         }
 
@@ -197,6 +721,10 @@ private struct ForkDictationVocabularySection: View {
                 Button(text.addButton, action: addReplacement)
                     .disabled(newHeard.trimmingCharacters(in: .whitespaces).isEmpty)
             }
+            // Adding it again replaces what it was written as.
+            if heardIsDuplicate {
+                caption(text.duplicateCaption)
+            }
         }
     }
 
@@ -217,7 +745,7 @@ private struct ForkDictationVocabularySection: View {
 
     private func addWord() {
         let word = newWord.trimmingCharacters(in: .whitespaces)
-        guard !word.isEmpty else { return }
+        guard !word.isEmpty, !wordIsDuplicate else { return }
         vocabularyStorage = ForkDictationSupport.storedVocabulary(words + [word])
         newWord = ""
     }
@@ -239,5 +767,110 @@ private struct ForkDictationVocabularySection: View {
 
     private func remove(_ replacement: ForkDictationSupport.Replacement) {
         replacementsStorage = ForkDictationSupport.storedReplacements(replacements.filter { $0 != replacement })
+    }
+}
+
+// MARK: - Permissions
+
+private struct ForkDictationPermissionsSection: View {
+    let text: ForkDictationStrings
+
+    @ObservedObject private var l10n = L10n.shared
+    @ObservedObject private var permissions = Permissions.shared
+    @ObservedObject private var secureInput = SecureInputMonitor.shared
+    @AppStorage(ForkDefaultsKey.dictationEngine) private var engineRaw = ForkDictationEngineSetting.fallback.rawValue
+    @State private var speechAuthorization = ForkAppleSpeechEngine.authorization
+    @State private var secureInputDemand = UUID()
+
+    /// Apple serves dictation unless Parakeet was chosen alone.
+    private var appleMayServe: Bool { engineRaw != ForkDictationEngineSetting.parakeet.rawValue }
+
+    var body: some View {
+        Section(text.permissionsTitle) {
+            PermissionRow(kind: .microphone)
+            // When it is missing, the page asks for it at the top already.
+            if permissions.accessibility {
+                PermissionRow(kind: .accessibility)
+            }
+            if appleMayServe {
+                speechPermission
+            }
+            if secureInput.holder != .off {
+                Text(text.secureInputTitle)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                SecureInputRow()
+            }
+        }
+        .onAppear {
+            speechAuthorization = ForkAppleSpeechEngine.authorization
+            SecureInputMonitor.shared.setObservingSurface(secureInputDemand, visible: true)
+        }
+        .onDisappear { SecureInputMonitor.shared.setObservingSurface(secureInputDemand, visible: false) }
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
+            speechAuthorization = ForkAppleSpeechEngine.authorization
+        }
+    }
+
+    @ViewBuilder
+    private var speechPermission: some View {
+        let granted = speechAuthorization == .authorized
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 8) {
+                Image(systemName: granted ? "checkmark.circle.fill" : "exclamationmark.circle.fill")
+                    .foregroundStyle(granted ? .green : .orange)
+                Text(text.speechPermissionName)
+                Spacer()
+                Text(granted ? l10n.s.permissionGranted : l10n.s.permissionMissing)
+                    .font(.caption)
+                    .foregroundStyle(granted ? .green : .orange)
+            }
+            if !granted {
+                if ForkAppleSpeechEngine.canAskForSpeechRecognition {
+                    HStack(spacing: 8) {
+                        if speechAuthorization == .notDetermined {
+                            Button(l10n.s.permissionRequest) {
+                                ForkAppleSpeechEngine.requestAuthorization { speechAuthorization = $0 }
+                            }
+                        }
+                        Button(l10n.s.permissionOpenSettings) {
+                            if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_SpeechRecognition") {
+                                NSWorkspace.shared.open(url)
+                            }
+                        }
+                    }
+                    .controlSize(.small)
+                } else {
+                    Text(text.buildCaption)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+        }
+    }
+}
+
+// MARK: - Advanced
+
+private struct ForkDictationAdvancedSection: View {
+    let text: ForkDictationStrings
+
+    @AppStorage(ForkDefaultsKey.dictationUnloadMinutes) private var unloadMinutes = 5
+    @State private var isExpanded = false
+
+    var body: some View {
+        Section {
+            DisclosureGroup(text.advancedTitle, isExpanded: $isExpanded) {
+                Stepper(value: $unloadMinutes, in: 1...30) {
+                    Text(text.unloadMinutes(unloadMinutes))
+                }
+                Text(text.parakeetAttribution)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
     }
 }

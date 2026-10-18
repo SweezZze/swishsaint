@@ -70,10 +70,22 @@ if [ -n "$REPO" ]; then
     plutil -replace ForkUpdateRepository -string "$REPO" "$PLIST"
 fi
 
-# Dictée vocale (Fork/Dictation) : sans ce texte, macOS ferme l'app dès qu'elle demande la
-# reconnaissance vocale. L'Info.plist officiel n'est jamais modifié : on l'ajoute ici.
-plutil -replace NSSpeechRecognitionUsageDescription -string \
-    "Vorssaint turns your voice into text only while you hold the dictation key you chose, then types it where your cursor is." "$PLIST"
+# Dictée vocale (Fork/Dictation) : sans texte de reconnaissance vocale, macOS ferme l'app dès
+# qu'elle la demande, et le texte officiel du micro ne parle que d'enregistrement d'écran.
+# L'Info.plist et les InfoPlist.strings officiels ne sont jamais modifiés : on les réécrit ici.
+while IFS=$'\t' read -r lproj key text; do
+    case "$lproj" in ''|'#'*) continue ;; esac
+    if [ "$lproj" = base ]; then
+        plutil -replace "$key" -string "$text" "$PLIST"
+        continue
+    fi
+    strings="$RES/$lproj.lproj/InfoPlist.strings"
+    [ -f "$strings" ] || continue
+    escaped="$(printf '%s' "$text" | sed 's/\\/\\\\/g; s/"/\\"/g')"
+    KEY="$key" LINE="\"$key\" = \"$escaped\";" perl -CSD -0pi -e '
+        my $line = $ENV{LINE}; utf8::decode($line);
+        s/^"\Q$ENV{KEY}\E" = .*?";\n/$line\n/m or $_ .= "$line\n";' "$strings"
+done < fork/usage-descriptions.tsv
 
 # Textes des demandes d'autorisation : « Vorssaint utilise… » → « <Nom> utilise… ».
 # (Le copyright « © Vorssaint » reste : la GPL impose de conserver les mentions d'auteur.)

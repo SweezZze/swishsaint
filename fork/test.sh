@@ -16,8 +16,18 @@ FORK_SOURCES=(
     Sources/Vorssaint/Fork/Core/ForkBackup.swift
     Sources/Vorssaint/Fork/Core/ForkDefaults.swift
     Sources/Vorssaint/Fork/Core/ForkExtrasStrings.swift
+    Sources/Vorssaint/Fork/Dictation/ForkDictationEngineChoice.swift
+    Sources/Vorssaint/Fork/Dictation/ForkDictationFailure.swift
+    Sources/Vorssaint/Fork/Dictation/ForkDictationMachine.swift
+    Sources/Vorssaint/Fork/Dictation/ForkDictationPresentation.swift
+    Sources/Vorssaint/Fork/Dictation/ForkDictationReplacements.swift
+    Sources/Vorssaint/Fork/Dictation/ForkDictationShortcut.swift
     Sources/Vorssaint/Fork/Dictation/ForkDictationStrings.swift
     Sources/Vorssaint/Fork/Dictation/ForkDictationSupport.swift
+    Sources/Vorssaint/Fork/Dictation/ForkDictationWaveform.swift
+    Sources/Vorssaint/Fork/Dictation/Parakeet/ForkParakeetDecoding.swift
+    Sources/Vorssaint/Fork/Dictation/Parakeet/ForkParakeetManifest.swift
+    Sources/Vorssaint/Fork/Dictation/Parakeet/ForkParakeetVocabulary.swift
     Sources/Vorssaint/Fork/Gestures/ForkLayoutComplement.swift
     Sources/Vorssaint/Fork/Gestures/ForkLinkedResizeSupport.swift
     Sources/Vorssaint/Fork/Gestures/ForkTrackpadDiagnosticsSupport.swift
