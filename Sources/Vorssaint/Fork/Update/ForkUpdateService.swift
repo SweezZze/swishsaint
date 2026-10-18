@@ -42,6 +42,9 @@ final class ForkUpdateService: ObservableObject {
         case downloading
         case installing
         case failed(String)
+        /// A build to install once the meeting recording or finishing is
+        /// saved (installing quits the app): no failure, said as a wait.
+        case waitingForMeeting
     }
 
     @Published private(set) var state: State = .idle
@@ -211,7 +214,7 @@ final class ForkUpdateService: ObservableObject {
     private func waitForMeeting(_ candidate: ForkUpdateSupport.Candidate, install: Bool) {
         let installs = install || afterMeeting?.install == true
         afterMeeting = (candidate, installs)
-        state = installs ? .failed(ForkUpdateStrings.current.afterMeeting) : .available(candidate)
+        state = installs ? .waitingForMeeting : .available(candidate)
         if meetingObserver == nil {
             meetingObserver = NotificationCenter.default.addObserver(
                 forName: ForkMeetingActivity.didBecomeIdle, object: nil, queue: .main
