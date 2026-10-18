@@ -232,7 +232,8 @@ extension ForkMeetingService {
         if case .starting = machine.phase { starting = true } else { starting = preparingStart }
         if isStarting != starting { isStarting = starting }
         ForkMeetingActivity.setRecording(machine.isBusy || preparingStart)
-        if ForkMeetingServiceSupport.hidesFinishedPill(machineIdle: machine.phase == .idle,
+        // An offer holds no session: the finished gauge goes under it too.
+        if ForkMeetingServiceSupport.hidesFinishedPill(machineIdle: !machine.isBusy,
                                                        finalizingCount: finalizing.count, pill: presenter.pillState) {
             presenter.apply(.showPill(.hidden))
         }
