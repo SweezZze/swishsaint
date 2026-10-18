@@ -6,8 +6,18 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Summary
+More reliable mouse scrolling, display controls and battery updates, with fixes for Dynamic Island navigation, Dock Preview, screen capture, mixer tooltips and calculator precision.
+
 ### Fixed
 - Dynamic Island's Now Playing page shows the Explore button again when Explore is not a floating button, and can grow a little to fit it while a song plays. The System page shows it too where it had no top row, such as on displays without a notch.
+- Smooth scrolling keeps its remaining motion in the original window or scroll area when the pointer moves. New wheel input elsewhere starts there immediately. Thanks to @bebricoOOOOOOf.
+- Dock Preview avoids waiting on a frozen neighboring app when hovering the uncovered Dock. Thanks to @root-daemon.
+- Mirrored displays remain listed with their own brightness controls, including the built-in screen. Thanks to @emreertunc.
+- Battery status updates promptly when connecting or disconnecting power, including when background monitoring uses a longer interval. Thanks to @juanra.
+- Screen capture's dimmed overlay keeps covering the display when switching between screenshot, recording and color picker. Thanks to @RKeyProg.
+- Volume mixer controls show their own tooltips, with the reorder hint kept on each app's icon and name. Thanks to @Chubi01.
+- Command Bar keeps meaningful digits in large calculator results and reused expressions while still hiding small rounding noise. Thanks to @Likheet.
 
 ### Contributors
 Feedback: Brain.
