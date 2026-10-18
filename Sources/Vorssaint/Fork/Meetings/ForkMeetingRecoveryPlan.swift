@@ -46,6 +46,10 @@ enum ForkMeetingRecoveryPlan {
         var final: Media?
         /// A draft of the final pass is in the folder.
         var hasDrafts = false
+        /// The "final" video is the master itself under the meeting's name
+        /// (a hard link): a final pass that failed, shown in the Finder. It
+        /// is no final file, and the master's last try is still to come.
+        var finalIsMaster = false
     }
 
     enum Action: Equatable {
@@ -79,8 +83,9 @@ enum ForkMeetingRecoveryPlan {
               let state = meeting.state else { return .leave }
 
         let masterSeconds = facts.master?.duration
+        let final = facts.finalIsMaster ? nil : facts.final
         let finalIsWhole: Bool = {
-            guard let finalSeconds = facts.final?.duration, finalSeconds > 0 else { return false }
+            guard let finalSeconds = final?.duration, finalSeconds > 0 else { return false }
             guard let master = facts.master else { return true }
             guard let masterSeconds = master.duration else { return true }
             return finalSeconds >= masterSeconds * completeShare

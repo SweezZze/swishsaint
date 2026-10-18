@@ -289,6 +289,9 @@ struct ForkMeetingStrings {
     /// at most), and VoiceOver.
     let noticeSoundLost: String
     let voiceSoundLost: String
+    /// A final pass failed and no video of the recording was found.
+    let failMasterMissing: String
+    let failMasterMissingRemedy: String
 }
 
 extension ForkMeetingStrings {
@@ -477,7 +480,9 @@ extension ForkMeetingStrings {
         soundNoAppDetail: "No app to listen to: the participants’ sound is not recorded.",
         soundAppNoAppCaption: "With no other app’s window in front, or before macOS 14.4 when a screen is filmed, there is no app to listen to: the participants’ sound is not recorded. Choose “Whole Mac” for those cases.",
         noticeSoundLost: "Meeting sound lost",
-        voiceSoundLost: "The meeting’s sound was lost: the rest is recorded without it. Your microphone is still recorded."
+        voiceSoundLost: "The meeting’s sound was lost: the rest is recorded without it. Your microphone is still recorded.",
+        failMasterMissing: "No video to keep",
+        failMasterMissingRemedy: "The file could not be finished, and no video of the recording was found in the meeting’s folder: nothing of it can be played."
     )
 }
 
@@ -667,7 +672,9 @@ extension ForkMeetingStrings {
         soundNoAppDetail: "Nenhum app para ouvir: o som dos participantes não é gravado.",
         soundAppNoAppCaption: "Sem uma janela de outro app em primeiro plano, ou antes do macOS 14.4 quando uma tela é filmada, não há app para ouvir: o som dos participantes não é gravado. Nesses casos, escolha “Todo o Mac”.",
         noticeSoundLost: "Som da reunião perdido",
-        voiceSoundLost: "O som da reunião foi perdido: o restante é gravado sem ele. Seu microfone continua sendo gravado."
+        voiceSoundLost: "O som da reunião foi perdido: o restante é gravado sem ele. Seu microfone continua sendo gravado.",
+        failMasterMissing: "Nenhum vídeo para guardar",
+        failMasterMissingRemedy: "Não foi possível finalizar o arquivo, e nenhum vídeo da gravação foi encontrado na pasta da reunião: nada dela pode ser reproduzido."
     )
 }
 
@@ -857,7 +864,9 @@ extension ForkMeetingStrings {
         soundNoAppDetail: "Dinlenecek uygulama yok: katılımcıların sesi kaydedilmiyor.",
         soundAppNoAppCaption: "Önde başka bir uygulamanın penceresi yoksa ya da macOS 14.4’ten önce bir ekran çekiliyorsa dinlenecek uygulama yoktur: katılımcıların sesi kaydedilmez. Bu durumlarda “Tüm Mac” seçeneğini seçin.",
         noticeSoundLost: "Toplantı sesi kayboldu",
-        voiceSoundLost: "Toplantının sesi kayboldu: kaydın geri kalanı onsuz alınıyor. Mikrofonunuz kaydedilmeye devam ediyor."
+        voiceSoundLost: "Toplantının sesi kayboldu: kaydın geri kalanı onsuz alınıyor. Mikrofonunuz kaydedilmeye devam ediyor.",
+        failMasterMissing: "Saklanacak video yok",
+        failMasterMissingRemedy: "Dosya tamamlanamadı ve toplantı klasöründe kaydın hiçbir videosu bulunamadı: oynatılabilecek bir şey yok."
     )
 }
 
@@ -1047,7 +1056,9 @@ extension ForkMeetingStrings {
         soundNoAppDetail: "Нет приложения, которое можно слушать: звук участников не записывается.",
         soundAppNoAppCaption: "Если на переднем плане нет окна другого приложения или до macOS 14.4 снимается экран, слушать нечего: звук участников не записывается. В таких случаях выберите «Весь Mac».",
         noticeSoundLost: "Звук встречи потерян",
-        voiceSoundLost: "Звук встречи потерян: дальше запись идёт без него. Ваш микрофон по-прежнему записывается."
+        voiceSoundLost: "Звук встречи потерян: дальше запись идёт без него. Ваш микрофон по-прежнему записывается.",
+        failMasterMissing: "Нет видео для сохранения",
+        failMasterMissingRemedy: "Файл не удалось завершить, а видео записи в папке встречи не найдено: воспроизвести нечего."
     )
 }
 
@@ -1237,7 +1248,9 @@ extension ForkMeetingStrings {
         soundNoAppDetail: "No hay ninguna app que escuchar: el sonido de los participantes no se graba.",
         soundAppNoAppCaption: "Sin una ventana de otra app en primer plano, o antes de macOS 14.4 cuando se filma una pantalla, no hay ninguna app que escuchar: el sonido de los participantes no se graba. En esos casos, elige “Todo el Mac”.",
         noticeSoundLost: "Sonido de la reunión perdido",
-        voiceSoundLost: "Se perdió el sonido de la reunión: el resto se graba sin él. Tu micrófono se sigue grabando."
+        voiceSoundLost: "Se perdió el sonido de la reunión: el resto se graba sin él. Tu micrófono se sigue grabando.",
+        failMasterMissing: "Ningún vídeo que guardar",
+        failMasterMissingRemedy: "No se pudo terminar el archivo y no se encontró ningún vídeo de la grabación en la carpeta de la reunión: no hay nada que reproducir."
     )
 }
 
@@ -1427,7 +1440,9 @@ extension ForkMeetingStrings {
         soundNoAppDetail: "Nie je aplikácia, ktorú by bolo možné počúvať: zvuk účastníkov sa nenahráva.",
         soundAppNoAppCaption: "Ak v popredí nie je okno inej aplikácie alebo sa pred macOS 14.4 natáča obrazovka, nie je čo počúvať: zvuk účastníkov sa nenahráva. V takých prípadoch zvoľte „Celý Mac“.",
         noticeSoundLost: "Zvuk stretnutia sa stratil",
-        voiceSoundLost: "Zvuk stretnutia sa stratil: zvyšok sa nahráva bez neho. Váš mikrofón sa naďalej nahráva."
+        voiceSoundLost: "Zvuk stretnutia sa stratil: zvyšok sa nahráva bez neho. Váš mikrofón sa naďalej nahráva.",
+        failMasterMissing: "Žiadne video na uloženie",
+        failMasterMissingRemedy: "Súbor sa nepodarilo dokončiť a v priečinku stretnutia sa nenašlo žiadne video záznamu: nič sa nedá prehrať."
     )
 }
 
@@ -1617,7 +1632,9 @@ extension ForkMeetingStrings {
         soundNoAppDetail: "Keine App zum Mithören: Der Ton der Teilnehmenden wird nicht aufgenommen.",
         soundAppNoAppCaption: "Ohne Fenster einer anderen App im Vordergrund, oder vor macOS 14.4, wenn ein Bildschirm gefilmt wird, gibt es keine App zum Mithören: Der Ton der Teilnehmenden wird nicht aufgenommen. Wähle in diesen Fällen „Ganzer Mac“.",
         noticeSoundLost: "Ton der Besprechung verloren",
-        voiceSoundLost: "Der Ton der Besprechung ist verloren: Der Rest wird ohne ihn aufgenommen. Dein Mikrofon wird weiter aufgenommen."
+        voiceSoundLost: "Der Ton der Besprechung ist verloren: Der Rest wird ohne ihn aufgenommen. Dein Mikrofon wird weiter aufgenommen.",
+        failMasterMissing: "Kein Video zu sichern",
+        failMasterMissingRemedy: "Die Datei konnte nicht fertiggestellt werden, und im Ordner der Besprechung wurde kein Video der Aufnahme gefunden: Nichts davon lässt sich abspielen."
     )
 }
 
@@ -1807,7 +1824,9 @@ extension ForkMeetingStrings {
         soundNoAppDetail: "Aucune app à écouter\u{00A0}: le son des participants n’est pas enregistré.",
         soundAppNoAppCaption: "Sans fenêtre d’une autre app au premier plan, ou avant macOS 14.4 quand un écran est filmé, il n’y a aucune app à écouter\u{00A0}: le son des participants n’est pas enregistré. Choisissez «\u{00A0}Tout le Mac\u{00A0}» pour ces cas.",
         noticeSoundLost: "Son de la réunion perdu",
-        voiceSoundLost: "Le son de la réunion est perdu\u{00A0}: la suite est enregistrée sans lui. Votre micro reste enregistré."
+        voiceSoundLost: "Le son de la réunion est perdu\u{00A0}: la suite est enregistrée sans lui. Votre micro reste enregistré.",
+        failMasterMissing: "Aucune vidéo à garder",
+        failMasterMissingRemedy: "Le fichier n’a pas pu être finalisé et aucune vidéo de l’enregistrement n’a été trouvée dans le dossier de la réunion\u{00A0}: rien n’en est lisible."
     )
 }
 
@@ -1997,7 +2016,9 @@ extension ForkMeetingStrings {
         soundNoAppDetail: "Nessuna app da ascoltare: l’audio dei partecipanti non viene registrato.",
         soundAppNoAppCaption: "Senza la finestra di un’altra app in primo piano, o prima di macOS 14.4 quando si riprende uno schermo, non c’è nessuna app da ascoltare: l’audio dei partecipanti non viene registrato. In questi casi scegli “Tutto il Mac”.",
         noticeSoundLost: "Audio della riunione perso",
-        voiceSoundLost: "L’audio della riunione è andato perso: il resto viene registrato senza. Il tuo microfono continua a essere registrato."
+        voiceSoundLost: "L’audio della riunione è andato perso: il resto viene registrato senza. Il tuo microfono continua a essere registrato.",
+        failMasterMissing: "Nessun video da salvare",
+        failMasterMissingRemedy: "Non è stato possibile completare il file e nella cartella della riunione non è stato trovato alcun video della registrazione: non c’è nulla da riprodurre."
     )
 }
 
@@ -2187,7 +2208,9 @@ extension ForkMeetingStrings {
         soundNoAppDetail: "聞き取るアプリがありません。参加者の音声は録音されません。",
         soundAppNoAppCaption: "手前にほかのアプリのウインドウがないとき、または macOS 14.4 より前でディスプレイを撮影しているときは、聞き取るアプリがなく、参加者の音声は録音されません。その場合は「Mac 全体」を選んでください。",
         noticeSoundLost: "ミーティングの音声が途切れました",
-        voiceSoundLost: "ミーティングの音声が途切れました。この後は音声なしで録画されます。マイクは引き続き録音されます。"
+        voiceSoundLost: "ミーティングの音声が途切れました。この後は音声なしで録画されます。マイクは引き続き録音されます。",
+        failMasterMissing: "保存できるビデオがありません",
+        failMasterMissingRemedy: "ファイルを仕上げられず、ミーティングのフォルダに録画のビデオも見つかりませんでした。再生できるものはありません。"
     )
 }
 
@@ -2377,7 +2400,9 @@ extension ForkMeetingStrings {
         soundNoAppDetail: "들을 앱이 없습니다. 참가자의 소리는 녹음되지 않습니다.",
         soundAppNoAppCaption: "앞에 다른 앱의 윈도우가 없거나 macOS 14.4 이전에 디스플레이를 촬영할 때는 들을 앱이 없어 참가자의 소리가 녹음되지 않습니다. 이런 경우에는 “Mac 전체”를 선택하세요.",
         noticeSoundLost: "회의 소리가 끊김",
-        voiceSoundLost: "회의 소리가 끊겼습니다. 이후는 회의 소리 없이 녹화됩니다. 마이크는 계속 녹음됩니다."
+        voiceSoundLost: "회의 소리가 끊겼습니다. 이후는 회의 소리 없이 녹화됩니다. 마이크는 계속 녹음됩니다.",
+        failMasterMissing: "보관할 비디오 없음",
+        failMasterMissingRemedy: "파일을 마무리하지 못했고, 회의 폴더에서 녹화 비디오를 찾지 못했습니다. 재생할 수 있는 것이 없습니다."
     )
 }
 
@@ -2567,7 +2592,9 @@ extension ForkMeetingStrings {
         soundNoAppDetail: "Немає програми, яку можна слухати: звук учасників не записується.",
         soundAppNoAppCaption: "Якщо на передньому плані немає вікна іншої програми або до macOS 14.4 знімається екран, слухати нічого: звук учасників не записується. У таких випадках виберіть «Увесь Mac».",
         noticeSoundLost: "Звук зустрічі втрачено",
-        voiceSoundLost: "Звук зустрічі втрачено: далі запис іде без нього. Ваш мікрофон і далі записується."
+        voiceSoundLost: "Звук зустрічі втрачено: далі запис іде без нього. Ваш мікрофон і далі записується.",
+        failMasterMissing: "Немає відео для збереження",
+        failMasterMissingRemedy: "Файл не вдалося завершити, а відео запису в папці зустрічі не знайдено: відтворити нічого."
     )
 }
 
@@ -2757,7 +2784,9 @@ extension ForkMeetingStrings {
         soundNoAppDetail: "没有可收听的 App：参会者的声音不会被录下。",
         soundAppNoAppCaption: "前面没有其他 App 的窗口时，或在 macOS 14.4 之前录制显示器时，没有可收听的 App，参会者的声音不会被录下。这些情况请选择“整台 Mac”。",
         noticeSoundLost: "会议声音已中断",
-        voiceSoundLost: "会议声音已中断：之后的录制不含会议声音，你的麦克风仍在录制。"
+        voiceSoundLost: "会议声音已中断：之后的录制不含会议声音，你的麦克风仍在录制。",
+        failMasterMissing: "没有可保留的视频",
+        failMasterMissingRemedy: "无法完成文件，会议文件夹中也找不到录制的视频：没有可以播放的内容。"
     )
 }
 
@@ -2947,7 +2976,9 @@ extension ForkMeetingStrings {
         soundNoAppDetail: "沒有可收聽的 App：與會者的聲音不會被錄下。",
         soundAppNoAppCaption: "前面沒有其他 App 的視窗時，或在 macOS 14.4 之前錄製顯示器時，沒有可收聽的 App，與會者的聲音不會被錄下。這些情況請選擇「整台 Mac」。",
         noticeSoundLost: "會議聲音已中斷",
-        voiceSoundLost: "會議聲音已中斷：之後的錄製不含會議聲音，你的麥克風仍在錄製。"
+        voiceSoundLost: "會議聲音已中斷：之後的錄製不含會議聲音，你的麥克風仍在錄製。",
+        failMasterMissing: "沒有可保留的影片",
+        failMasterMissingRemedy: "無法完成檔案，會議資料夾中也找不到錄製的影片：沒有可以播放的內容。"
     )
 }
 
@@ -3137,6 +3168,8 @@ extension ForkMeetingStrings {
         soundNoAppDetail: "沒有可收聽的 App：參與者的聲音不會被錄下。",
         soundAppNoAppCaption: "前面沒有其他 App 的視窗時，或在 macOS 14.4 之前錄製顯示器時，沒有可收聽的 App，參與者的聲音不會被錄下。這些情況請選擇「整部 Mac」。",
         noticeSoundLost: "會議聲音已中斷",
-        voiceSoundLost: "會議聲音已中斷：之後的錄製不含會議聲音，你的咪高風仍在錄製。"
+        voiceSoundLost: "會議聲音已中斷：之後的錄製不含會議聲音，你的咪高風仍在錄製。",
+        failMasterMissing: "沒有可保留的影片",
+        failMasterMissingRemedy: "無法完成檔案，會議資料夾中也找不到錄製的影片：沒有可以播放的內容。"
     )
 }

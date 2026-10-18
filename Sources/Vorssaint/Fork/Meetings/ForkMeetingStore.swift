@@ -413,6 +413,7 @@ final class ForkMeetingStore: @unchecked Sendable {
         }
         if let video {
             facts.final = ForkMeetingRecoveryPlan.Media(duration: await ForkMeetingFinalizer.playableSeconds(at: video))
+            facts.finalIsMaster = contents.hasMaster && Self.isSameFile(video, master)
         }
         let action = ForkMeetingRecoveryPlan.plan(facts)
         let patch = ForkMeetingRecoveryPlan.patch(for: action, facts: facts)
@@ -457,45 +458,73 @@ final class ForkMeetingStore: @unchecked Sendable {
     enum Revealed: Equatable {
         /// Under the meeting's name, where a final file would be.
         case visible(URL)
-        /// Still under its hidden name: it could not be renamed.
+        /// Still under its hidden name: it does not play, or could not be
+        /// given the name.
         case hidden(URL)
-        /// No master to show, or another copy of the app holds the folder.
+        /// No master at all.
         case none
+        /// Another copy of the app holds the folder.
+        case elsewhere
     }
 
-    /// Gives the master of a meeting whose final pass failed the meeting's
-    /// name, so the Finder shows it: its tracks stay separate, as when the
-    /// pass is skipped for room, and `meeting.json` says `complete`, its
-    /// pass `failed`. Never over a final file already there, never in a
-    /// folder another copy of the app holds. Any thread; `completion` on
-    /// the callback queue.
-    func revealMaster(in folder: URL, completion: @escaping (Revealed) -> Void) {
+    /// Shows the master of a meeting whose final pass failed under the
+    /// meeting's name, when it plays (`readable`): a second name for the
+    /// same file (a hard link), so its tracks stay separate, as when the
+    /// pass is skipped for room, and the master stays where the next launch
+    /// looks for it. `meeting.json` keeps `finalizing` and its pass `failed`:
+    /// the next launch makes the pass's last try, and a file there it is
+    /// the master's own (`ForkMeetingRecoveryPlan.Facts.finalIsMaster`). On
+    /// a volume without hard links the master takes the name instead and
+    /// the meeting is `complete`, as before. Never over a final file already
+    /// there, never in a folder another copy of the app holds. Any thread;
+    /// `completion` on the callback queue.
+    func revealMaster(in folder: URL, readable: Bool, completion: @escaping (Revealed) -> Void) {
         queue.async { [self] in
-            let revealed = reveal(folder)
+            let revealed = reveal(folder, readable: readable)
             callbackQueue.async { completion(revealed) }
         }
     }
 
     /// Store queue.
-    private func reveal(_ folder: URL) -> Revealed {
+    private func reveal(_ folder: URL, readable: Bool) -> Revealed {
         let manager = FileManager.default
         let master = folder.appendingPathComponent(ForkMeetingFolder.masterName)
         guard manager.fileExists(atPath: master.path) else { return .none }
         let path = folder.standardizedFileURL.path
         let held = lock.withLock { claims[path] != nil }
-        guard claim(folder) else { return .none }
+        guard claim(folder) else { return .elsewhere }
         defer { if !held { release(folder) } }
+        // A master that does not play is never shown as the meeting.
+        guard readable else { return .hidden(master) }
         let final = folder.appendingPathComponent("\(folder.lastPathComponent).\(ForkMeetingFolder.videoExtension)")
-        guard !manager.fileExists(atPath: final.path) else { return .hidden(master) }
-        do {
-            try Self.replace(final, with: master)
-        } catch {
-            Self.log.error("master left hidden in \(folder.lastPathComponent, privacy: .private): \(error.localizedDescription, privacy: .private)")
-            return .hidden(master)
+        if manager.fileExists(atPath: final.path) {
+            // Shown already (its pass's last try failed too), or a real
+            // final file, never written over.
+            return Self.isSameFile(final, master) ? .visible(final) : .hidden(master)
         }
-        _ = apply(ForkMeetingSidecarPatch(state: .complete), in: folder)
+        do {
+            try manager.linkItem(at: master, to: final)
+        } catch {
+            do {
+                try Self.replace(final, with: master)
+            } catch {
+                Self.log.error("master left hidden in \(folder.lastPathComponent, privacy: .private): \(error.localizedDescription, privacy: .private)")
+                return .hidden(master)
+            }
+            _ = apply(ForkMeetingSidecarPatch(state: .complete), in: folder)
+        }
         addToRecentCaptures(final)
         return .visible(final)
+    }
+
+    /// Two names of one file (a hard link): same volume, same file number.
+    static func isSameFile(_ one: URL, _ other: URL) -> Bool {
+        let manager = FileManager.default
+        guard let a = try? manager.attributesOfItem(atPath: one.path),
+              let b = try? manager.attributesOfItem(atPath: other.path),
+              let fileA = a[.systemFileNumber] as? NSNumber, let fileB = b[.systemFileNumber] as? NSNumber,
+              let volumeA = a[.systemNumber] as? NSNumber, let volumeB = b[.systemNumber] as? NSNumber else { return false }
+        return fileA == fileB && volumeA == volumeB
     }
 
     // MARK: - Recent captures

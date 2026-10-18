@@ -11,6 +11,7 @@ enum ForkMeetingFixesG1Tests {
         tapLost(suite)
         switching(suite)
         verdicts(suite)
+        failedPassShown(suite)
     }
 
     typealias Machine = ForkMeetingMachine
@@ -188,5 +189,40 @@ enum ForkMeetingFixesG1Tests {
                         && Support.systemAudioPermission(verified: true, failing: true) == .missing
                         && Support.systemAudioPermission(verified: nil, failing: true) == .missing,
                      "the page shows what the last recording found: allowed in green, missing in orange, else unknown")
+    }
+
+    /// A final pass that failed on a master that plays: shown in the Finder
+    /// under the meeting's name (the same file), and tried once more at the
+    /// next launch all the same.
+    private static func failedPassShown(_ suite: TestSuite) {
+        typealias Plan = ForkMeetingRecoveryPlan
+        func facts(_ state: ForkMeetingSidecar.State, linked: Bool) -> Plan.Facts {
+            var meeting = ForkMeetingSidecar()
+            meeting.schema = 1
+            meeting.state = state
+            meeting.finalPass = .failed
+            meeting.stopReason = .user
+            meeting.recordedSeconds = 600
+            return Plan.Facts(sidecar: .success(meeting), master: Plan.Media(duration: 600),
+                              final: Plan.Media(duration: 600), finalIsMaster: linked)
+        }
+        let shown = facts(.finalizing, linked: true)
+        suite.expect(Plan.plan(shown) == .finalize(stopReason: .user, recovered: false, discardDrafts: false)
+                        && Plan.patch(for: Plan.plan(shown), facts: shown)?.state == .interrupted,
+                     "the next launch makes the pass's last try on the master shown, marked interrupted beforehand")
+        suite.expect(Plan.plan(facts(.interrupted, linked: true)) == .leave,
+                     "its last try failed too: the master stays, shown, never tried again")
+        suite.expect(Plan.plan(facts(.finalizing, linked: false)) == .complete(removeMaster: true, discardDrafts: false),
+                     "a real final file as long as the master is whole: the master goes, as before")
+
+        let english = ForkMeetingStrings.strings(.enUS)
+        suite.expect(ForkMeetingFailure.all.contains(.masterMissing) && !ForkMeetingFailure.masterMissing.isLasting
+                        && ForkMeetingFailure.masterMissing.action == .openMeetingsFolder
+                        && !ForkMeetingFailure.masterMissing.remedy(english).contains("readable"),
+                     "no master at all has its own words, which never say the video is readable")
+        let strings = AppLanguage.allCases.map(ForkMeetingStrings.strings)
+        suite.expect(strings.allSatisfy { $0.failMasterMissing.count <= 28 && $0.failMasterMissing != $0.failFinalPass
+                                            && $0.failMasterMissingRemedy != $0.failFinalPassRemedy },
+                     "in every language, in 28 characters for the island")
     }
 }

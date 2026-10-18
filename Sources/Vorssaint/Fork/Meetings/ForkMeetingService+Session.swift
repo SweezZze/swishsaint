@@ -267,6 +267,8 @@ extension ForkMeetingService {
     /// engine: from the first frame on, a crash leaves a meeting to recover.
     private func startCapture(_ config: ForkMeetingCaptureConfig, token: ForkMeetingToken) {
         let recorder = ForkMeetingRecorder(token: token, defaults: defaults)
+        // "Show in Finder" of an older meeting's failed pass is not this one's.
+        lastFailedVideo = nil
         listen(to: recorder)
         recorders[token] = recorder
         context = ForkMeetingLiveContext(title: config.title, target: config.settings.target,

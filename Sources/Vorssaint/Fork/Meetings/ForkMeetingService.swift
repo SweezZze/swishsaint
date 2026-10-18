@@ -368,7 +368,7 @@ final class ForkMeetingService: ObservableObject {
             // it (`systemAudioProven`), or the person dismisses it.
             stillTrue = true
         case .diskFullAtStart, .diskFull, .streamStopped, .officialRecorderBusy, .captureFailed,
-             .writerFailed, .finalPassFailed, .masterHidden:
+             .writerFailed, .finalPassFailed, .masterHidden, .masterMissing:
             stillTrue = false
         }
         if !stillTrue { lastFailure = nil }
@@ -377,7 +377,8 @@ final class ForkMeetingService: ObservableObject {
     /// Kept for the page: a failure that lasts, or a final pass that failed.
     /// One that passes with its meeting is only said, in the island.
     func remember(_ failure: ForkMeetingFailure) {
-        guard failure.isLasting || failure == .finalPassFailed || failure == .masterHidden else { return }
+        guard failure.isLasting || failure == .finalPassFailed || failure == .masterHidden
+                || failure == .masterMissing else { return }
         lastFailure = failure
     }
 
