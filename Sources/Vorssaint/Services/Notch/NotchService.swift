@@ -786,8 +786,21 @@ final class NotchService: ObservableObject {
     /// Settings previews the island while it is off too, when the floating
     /// buttons are not read for it, so a preview reads them as it draws.
     func previewGeometry(for module: NotchModule) -> NotchGeometry {
-        geometry.page(module, controls: NotchSupport.controls(),
-                      sectionsButton: !NotchQuickAccessConfiguration.current().actions.contains(.explore))
+        var result = geometry.page(module, controls: NotchSupport.controls(),
+                                   sectionsButton: !NotchQuickAccessConfiguration.current().actions.contains(.explore))
+        if result.pageTop == .wrapsCamera { result.pageTrailingControls = playerToggleCount }
+        return result
+    }
+
+    /// The lyrics and queue toggles the player hands its row while a song
+    /// plays, read as the page reads them.
+    private var playerToggleCount: Int {
+        guard NotchMusicService.shared.playback != nil else { return 0 }
+        let defaults = UserDefaults.standard
+        var count = 0
+        if defaults.bool(forKey: DefaultsKey.notchLyricsEnabled), AppFeature.notchLyrics.isAvailable { count += 1 }
+        if defaults.bool(forKey: DefaultsKey.notchQueueEnabled), AppFeature.notchQueue.isAvailable { count += 1 }
+        return count
     }
 
     /// The tallest island a preview can show: a page that fills the budget
@@ -834,6 +847,7 @@ final class NotchService: ObservableObject {
         result.requiresFullWidthHeader = selected == .captures && captureActions != nil
             && !showingSections && !showingAppPanel && selectedMetric == nil
         result.pageTop = expandedPageTop
+        if result.pageTop == .wrapsCamera { result.pageTrailingControls = playerToggleCount }
         // Each page takes the width it needs, up to the chosen one; the
         // gallery, details and the empty island keep the chosen width, and
         // lead their row with their own way back instead of the sections.
