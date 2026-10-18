@@ -60,7 +60,7 @@ enum ForkMeetingSidecarTests {
           "id": "6F1C2A3B-4D5E-4F60-8172-93A4B5C6D7E8",
           "state": "complete",
           "origin": "offered",
-          "title": "Point hebdo Opah",
+          "title": "Point hebdo Acme",
           "titleSource": "user",
           "provider": "meet", "meetCode": "abc-defg-hij", "app": "com.google.Chrome",
           "startedAt": "2026-10-18T08:02:11Z", "endedAt": "2026-10-18T08:54:20Z",
@@ -79,7 +79,7 @@ enum ForkMeetingSidecarTests {
             return
         }
         suite.expect(meeting.id == id && meeting.state == .complete && meeting.origin == .offered
-                        && meeting.title == "Point hebdo Opah" && meeting.titleSource == .user && meeting.provider == "meet"
+                        && meeting.title == "Point hebdo Acme" && meeting.titleSource == .user && meeting.provider == "meet"
                         && meeting.meetCode == "abc-defg-hij" && meeting.app == "com.google.Chrome"
                         && meeting.startedAt == start && meeting.endedAt == Date(timeIntervalSince1970: 1_792_313_660)
                         && meeting.recordedSeconds == 2829,
@@ -117,7 +117,7 @@ enum ForkMeetingSidecarTests {
 
     private static func unknownContent(_ suite: TestSuite) {
         let json = """
-        {"schema": 1, "state": "archived", "title": "Démo", "castral": {"job": "t-42", "stage": "ready"},
+        {"schema": 1, "state": "archived", "title": "Démo", "x-other": {"job": "t-42", "stage": "ready"},
          "pauses": [{"at": 3, "reason": "phone"}], "rating": 4}
         """
         guard let meeting = decoded(json) else {
@@ -127,7 +127,7 @@ enum ForkMeetingSidecarTests {
         suite.expect(meeting.title == "Démo" && meeting.state == nil && meeting.pauses == nil,
                      "a value this version does not know reads as absent, the rest normally")
         suite.expect(meeting.preserved["state"] == .string("archived") && meeting.preserved["rating"] == .number(4)
-                        && meeting.preserved["castral"] == .object(["job": .string("t-42"), "stage": .string("ready")]),
+                        && meeting.preserved["x-other"] == .object(["job": .string("t-42"), "stage": .string("ready")]),
                      "unknown keys and unreadable values are kept")
         let again = decoded(text(meeting))
         suite.expect(again?.preserved == meeting.preserved && again?.title == "Démo",
