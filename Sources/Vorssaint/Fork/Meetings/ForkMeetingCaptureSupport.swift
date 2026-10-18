@@ -296,9 +296,11 @@ extension ForkMeetingSystemAudio {
 ///   stream (the whole Mac) for the rest of the recording, said once;
 /// - no witness could be made: nothing can be judged, the tap keeps the track.
 ///
-/// A tap that loses its reader (a device change) keeps the track too: it
-/// comes back when the tap rebuilds, and the writer fills the hole with
-/// silence meanwhile.
+/// A tap that loses its reader (a device change it could not follow) hears
+/// nothing more for the rest of the recording: the Mac's gives the track to
+/// the stream, the whole Mac too; the app's gives it to the stream only
+/// while that carries the app alone (a window filmed), and leaves it silent
+/// on a display, said once (`tapReaderLost`). The writer fills the silence.
 ///
 /// **The whole Mac's tap** (`tapFirst` false) judges itself: the stream,
 /// which hears the whole Mac or the filmed app, writes the track until the
@@ -321,6 +323,9 @@ struct ForkMeetingSoundArbiter: Equatable {
     private(set) var writesTap: Bool
     private(set) var permission: Permission = .unknown
     private let hasTap: Bool
+    private let tapFirst: Bool
+    /// The tap lost its reader: it will not hear again this recording.
+    private(set) var readerLost = false
     private var hasWitness: Bool
     private var unheard: Double = 0
     /// The stream stands for the app's sound: it may write the track only
@@ -334,9 +339,25 @@ struct ForkMeetingSoundArbiter: Equatable {
     /// `appOnly`: the app's sound was asked for and the stream stands for it.
     init(hasTap: Bool, hasWitness: Bool, tapFirst: Bool = true, appOnly: Bool = false) {
         self.hasTap = hasTap
+        self.tapFirst = tapFirst
         self.hasWitness = hasTap && hasWitness
         writesTap = hasTap && tapFirst
         streamHearsAppOnly = appOnly
+    }
+
+    /// The tap lost its reader. Nothing is judged any more; the stream
+    /// takes the track, and for the app's tap only while it carries that
+    /// app alone. A tap already let go for a missing permission changes
+    /// nothing. True once, when it was the one writing the track.
+    mutating func tapReaderLost() -> Bool {
+        guard hasTap, !readerLost else { return false }
+        readerLost = true
+        hasWitness = false
+        unheard = 0
+        guard writesTap else { return false }
+        writesTap = false
+        if tapFirst { streamHearsAppOnly = true }
+        return true
     }
 
     var writesStream: Bool { !writesTap }
@@ -402,13 +423,16 @@ enum ForkMeetingTrackSound: Equatable {
     /// in front, a display filmed before macOS 14.4): silence, never the
     /// whole Mac in its place.
     case noApp
+    /// The app's tap lost its reader and nothing else hears that app alone:
+    /// silence from then on, said once.
+    case lost
 
     static func of(setting: ForkMeetingSystemAudio, sound: ForkMeetingSoundSource,
                    arbiter: ForkMeetingSoundArbiter, filmsWindow: Bool) -> ForkMeetingTrackSound {
         guard setting == .app else { return .heard }
         if sound == .none { return .noApp }
         if arbiter.writesTap || arbiter.streamWrites(filmsWindow: filmsWindow) { return .heard }
-        return .noApp
+        return arbiter.readerLost ? .lost : .noApp
     }
 }
 

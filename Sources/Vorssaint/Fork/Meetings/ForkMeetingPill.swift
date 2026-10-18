@@ -542,6 +542,7 @@ struct ForkMeetingPillView: View {
         switch sound {
         case .heard: return nil
         case .noApp: return text.soundNoApp
+        case .lost: return text.noticeSoundLost
         }
     }
 

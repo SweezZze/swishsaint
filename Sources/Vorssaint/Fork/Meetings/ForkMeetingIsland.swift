@@ -56,6 +56,7 @@ enum ForkMeetingIsland {
         case .displayChanged: return "display"
         case .sourceGone: return "rectangle.on.rectangle.slash"
         case .failure: return "exclamationmark.triangle.fill"
+        case .soundLost: return "speaker.slash"
         }
     }
 

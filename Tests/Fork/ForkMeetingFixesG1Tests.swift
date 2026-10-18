@@ -8,6 +8,42 @@ import Foundation
 enum ForkMeetingFixesG1Tests {
     static func run(_ suite: TestSuite) {
         noAppToHear(suite)
+        tapLost(suite)
+    }
+
+    typealias Machine = ForkMeetingMachine
+
+    private static let t0 = Date(timeIntervalSinceReferenceDate: 800_000_000)
+    private static let folder = URL(fileURLWithPath: "/tmp/Meetings/2026-10-18 10h02 — Meeting", isDirectory: true)
+    private static let token1 = ForkMeetingToken(value: 1)
+    private static let ready = ForkMeetingStartFacts(freeBytes: 50_000_000_000, screenRecordingAllowed: true,
+                                                     microphoneAllowed: true, officialRecorderBusy: false)
+
+    private static func at(_ seconds: TimeInterval) -> Date { t0.addingTimeInterval(seconds) }
+
+    /// A machine starting (token 1) since `t0`.
+    private static func starting(target: ForkMeetingCaptureTarget = .window,
+                                 sound: ForkMeetingSystemAudio = .app) -> Machine {
+        var machine = Machine()
+        let settings = ForkMeetingCaptureSettings(target: target, systemAudio: sound, microphone: "meeting",
+                                                  quality: .standard)
+        machine.handle(.manualStart(ForkMeetingStartRequest(settings: settings, facts: ready)), now: t0)
+        return machine
+    }
+
+    /// A machine recording since `t0`, with session token 1.
+    private static func recording(target: ForkMeetingCaptureTarget = .window,
+                                  sound: ForkMeetingSystemAudio = .app) -> Machine {
+        var machine = starting(target: target, sound: sound)
+        machine.handle(.captureStarted(token1, folder: folder), now: t0)
+        return machine
+    }
+
+    private static func patches(_ effects: [Machine.Effect]) -> [ForkMeetingSidecarPatch] {
+        effects.compactMap {
+            if case let .writeSidecar(_, patch) = $0 { return patch }
+            return nil
+        }
     }
 
     /// The app's sound asked for and no app to hear: silence, said, never
@@ -58,5 +94,46 @@ enum ForkMeetingFixesG1Tests {
         suite.expect(strings.allSatisfy { $0.soundNoApp.count <= 28 && !$0.soundNoAppDetail.isEmpty
                                             && $0.soundAppNoAppCaption.contains($0.soundAll) },
                      "the pill's line fits in 28 characters, and the page names the choice to make, in every language")
+    }
+
+    /// A tap that lost its reader for good: the stream takes over only
+    /// where it hears what was asked for; otherwise silence, said once.
+    private static func tapLost(_ suite: TestSuite) {
+        var app = ForkMeetingSoundArbiter(hasTap: true, hasWitness: true)
+        suite.expect(app.tapReaderLost() && !app.writesTap && !app.needsWitness && !app.tapReaderLost(),
+                     "the app's tap without a reader leaves the track once, and nothing is judged any more")
+        suite.expect(app.streamWrites(filmsWindow: true) && !app.streamWrites(filmsWindow: false),
+                     "a window's stream, the app alone, takes the track; a display's whole Mac never does")
+        suite.expect(ForkMeetingTrackSound.of(setting: .app, sound: .appTap(pid: 200), arbiter: app, filmsWindow: false) == .lost
+                        && ForkMeetingTrackSound.of(setting: .app, sound: .appTap(pid: 200), arbiter: app,
+                                                    filmsWindow: true) == .heard,
+                     "on a display the meeting's sound is lost, said; on a window it goes on from the stream")
+
+        var mac = ForkMeetingSoundArbiter(hasTap: true, hasWitness: true, tapFirst: false)
+        _ = mac.tapBuffer(heard: true)
+        suite.expect(mac.writesTap && mac.tapReaderLost() && mac.streamWrites(filmsWindow: false)
+                        && ForkMeetingTrackSound.of(setting: .all, sound: .macTap, arbiter: mac, filmsWindow: false) == .heard,
+                     "the whole Mac's tap without a reader: the stream, the whole Mac too, takes the track")
+        var unproved = ForkMeetingSoundArbiter(hasTap: true, hasWitness: true, tapFirst: false)
+        suite.expect(!unproved.tapReaderLost() && unproved.streamWrites(filmsWindow: false) && !unproved.needsWitness,
+                     "the Mac's tap lost before it was proved: the stream kept writing all along")
+        var denied = ForkMeetingSoundArbiter(hasTap: true, hasWitness: true)
+        _ = denied.streamBuffer(heard: true, counts: true, seconds: 3)
+        suite.expect(!denied.tapReaderLost() && denied.streamWrites(filmsWindow: false),
+                     "a tap already let go for a missing permission changes nothing (the stream, as said then)")
+
+        var machine = recording(target: .display)
+        let effects = machine.handle(.soundLost(token1), now: at(42))
+        suite.expect(patches(effects).first?.gap == ForkMeetingSidecar.Gap(at: 42, seconds: 0, kind: .soundLost)
+                        && effects.contains(.notice(.soundLost)) && effects.contains(.announce(.soundLost)),
+                     "the loss is said in the island and to VoiceOver, and noted in meeting.json where it began")
+        suite.expect(machine.handle(.soundLost(ForkMeetingToken(value: 7)), now: at(43)).isEmpty,
+                     "a late word from another session says nothing")
+        suite.expect(ForkMeetingSidecar.GapKind.soundLost.rawValue == "soundLost",
+                     "meeting.json names the gap soundLost")
+        let strings = AppLanguage.allCases.map(ForkMeetingStrings.strings)
+        suite.expect(strings.allSatisfy { ForkMeetingNotice.soundLost.title($0).count <= 28
+                                            && ForkMeetingAnnouncement.soundLost.text($0) != ForkMeetingAnnouncement.sourceGone.text($0) },
+                     "the notice fits in 28 characters and VoiceOver has its own sentence, in every language")
     }
 }

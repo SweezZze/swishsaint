@@ -378,7 +378,7 @@ final class ForkMeetingPresenter {
             tint = Color(nsColor: .systemRed)
         case .saved, .recovered:
             tint = .green
-        case .microphoneSilent, .diskLow, .sourceGone:
+        case .microphoneSilent, .diskLow, .sourceGone, .soundLost:
             tint = .orange
         case let .failure(failure):
             tint = .orange

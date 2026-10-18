@@ -295,6 +295,7 @@ final class ForkMeetingRecorder: @unchecked Sendable {
                                               tapFirst: !macTap, appOnly: appOnly)
         }
         tap?.onSample = { [weak self] sample in self?.tapSample(sample) }
+        tap?.onReaderLost = { [weak self] in self?.tapGone() }
         witness?.onSample = { [weak self] sample in self?.witnessSample(sample) }
         witness?.onReaderLost = { [weak self] in self?.witnessGone() }
 
@@ -321,10 +322,9 @@ final class ForkMeetingRecorder: @unchecked Sendable {
         guard gate.isAuthorized else { return cancelled() }
 
         // The taps start before the microphone: the Mac's sound comes up
-        // first, as in the official recorder. An app's tap without a reader
-        // keeps the track all the same: it may come back with the next
-        // device change, and the writer fills its silence.
-        if let tap { _ = await tap.start(synchronizingTo: CMClockGetHostTimeClock()) }
+        // first, as in the official recorder. A tap without a reader is
+        // one that lost it (`tapGone`).
+        if let tap, await tap.start(synchronizingTo: CMClockGetHostTimeClock()) == false { tapGone() }
         if let witness, await witness.start(synchronizingTo: CMClockGetHostTimeClock()) == false {
             witnessGone()
         }
@@ -656,6 +656,22 @@ final class ForkMeetingRecorder: @unchecked Sendable {
     private func witnessSample(_ sample: CMSampleBuffer) {
         let heard = RecorderAudioProbe.containsSound(sample)
         if lock.withLock({ arbiter.witnessBuffer(heard: heard) }) { settled(allowed: true) }
+    }
+
+    /// The tap's own queue: it lost its reader for good (a device change it
+    /// could not follow). The stream takes the track if it may (the whole
+    /// Mac asked for, or a window filmed); otherwise silence, said once.
+    private func tapGone() {
+        let (changed, witness) = lock.withLock { () -> (Bool, ForkMeetingAudioTap?) in
+            let changed = arbiter.tapReaderLost()
+            judge = nil
+            defer { self.witness = nil }
+            return (changed, self.witness)
+        }
+        if let witness { Task { await witness.stop() } }
+        guard changed else { return }
+        noteHeard()
+        noteTrackSound()
     }
 
     /// The witness has no reader: nothing can be judged any more.

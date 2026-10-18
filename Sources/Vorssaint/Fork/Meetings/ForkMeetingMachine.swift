@@ -104,6 +104,8 @@ enum ForkMeetingNotice: Equatable {
     /// sound goes on.
     case sourceGone
     case failure(ForkMeetingFailure)
+    /// The meeting app's sound was lost for the rest of the recording.
+    case soundLost
 
     /// 28 characters at most.
     func title(_ s: ForkMeetingStrings) -> String {
@@ -118,6 +120,7 @@ enum ForkMeetingNotice: Equatable {
         case .displayChanged: return s.noticeDisplayChanged
         case .sourceGone: return s.noticeSourceGone
         case let .failure(failure): return failure.summary(s)
+        case .soundLost: return s.noticeSoundLost
         }
     }
 
@@ -127,7 +130,8 @@ enum ForkMeetingNotice: Equatable {
         switch self {
         case let .microphone(name): return name
         case let .diskLow(minutes): return s.diskMinutes(minutes)
-        case .started, .resumed, .saved, .recovered, .microphoneSilent, .displayChanged, .sourceGone, .failure:
+        case .started, .resumed, .saved, .recovered, .microphoneSilent, .displayChanged, .sourceGone, .failure,
+             .soundLost:
             return nil
         }
     }
@@ -148,6 +152,7 @@ enum ForkMeetingAnnouncement: Equatable {
     /// The start, said with the microphone left out because it is not
     /// allowed: one sentence, not two that would cut each other off.
     case startedWithoutMicrophone
+    case soundLost
 
     func text(_ s: ForkMeetingStrings) -> String {
         switch self {
@@ -162,6 +167,7 @@ enum ForkMeetingAnnouncement: Equatable {
         case .sourceGone: return s.voiceSourceGone
         case let .failure(failure): return ForkMeetingLiveText.sentences(failure.summary(s), failure.remedy(s))
         case .startedWithoutMicrophone: return s.voiceStartedWithoutMicrophone
+        case .soundLost: return s.voiceSoundLost
         }
     }
 }
@@ -321,6 +327,9 @@ struct ForkMeetingMachine {
         case sourceGone(ForkMeetingToken)
         case appWillTerminate
         case featureDisabled
+        /// The meeting app's sound was lost for the rest of the recording
+        /// (its tap lost its reader on a display): said, and noted as a gap.
+        case soundLost(ForkMeetingToken)
     }
 
     enum Effect: Equatable {
@@ -596,6 +605,12 @@ struct ForkMeetingMachine {
             if case let .starting(pending) = phase { return cancel(pending) }
             guard let session = activeSession else { return [] }
             return stop(session, reason: .featureDisabled, now: now)
+
+        case let .soundLost(token):
+            guard let session = activeSession, session.token == token else { return [] }
+            let gap = ForkMeetingSidecar.Gap(at: session.recorded(at: now), seconds: 0, kind: .soundLost)
+            return [.writeSidecar(session.folder, ForkMeetingSidecarPatch(gap: gap)), .notice(.soundLost),
+                    .announce(.soundLost)]
         }
     }
 

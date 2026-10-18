@@ -333,6 +333,8 @@ extension ForkMeetingService {
             if case .appTap = start.sound { appTapSessions.insert(token) }
             send(.captureStarted(token, folder: folder, target: start.target, microphone: start.microphone,
                                  systemAudio: start.heard, startedAt: start.startedAt))
+            // Lost while the capture came up: said once it records.
+            if start.trackSound == .lost { send(.soundLost(token)) }
         case let .failure(failure):
             log.error("the capture did not start: \(String(describing: failure), privacy: .public)")
             send(.captureFailed(token, failure))
@@ -394,6 +396,7 @@ extension ForkMeetingService {
             guard let self, self.isCurrent(token), self.context.trackSound != sound else { return }
             self.context.trackSound = sound
             self.presenter.update(self.context)
+            if sound == .lost { self.send(.soundLost(token)) }
         }
         recorder.onSystemAudioUnavailable = { [weak self] token in
             guard let self, self.isCurrent(token) else { return }
