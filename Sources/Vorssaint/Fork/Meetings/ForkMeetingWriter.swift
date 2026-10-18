@@ -5,15 +5,6 @@ import AVFoundation
 import CoreMedia
 import VideoToolbox
 
-/// The sound levels of what the writer just wrote, 0…1 peaks, for the
-/// pill's two meters.
-struct ForkMeetingLevels: Equatable {
-    var meeting: Float
-    var microphone: Float
-
-    static let silent = ForkMeetingLevels(meeting: 0, microphone: 0)
-}
-
 /// Writes a meeting's master: a fragmented MP4 with the picture and two mono
 /// sound tracks, the meeting and the microphone, always in that order.
 ///
@@ -279,7 +270,7 @@ final class ForkMeetingWriter: @unchecked Sendable {
                 let peak = peaks[track.rawValue]
                 return now - peak.at < 0.3 ? min(1, peak.value) : 0
             }
-            return ForkMeetingLevels(meeting: level(.meeting), microphone: level(.microphone))
+            return ForkMeetingLevels(microphone: level(.microphone), meeting: level(.meeting))
         }
     }
 

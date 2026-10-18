@@ -9,6 +9,8 @@ import Foundation
 struct ForkMeetingLevels: Equatable {
     var microphone: Float = 0
     var meeting: Float = 0
+
+    static let silent = ForkMeetingLevels()
 }
 
 /// What the live surfaces know of the recording beyond the machine's pill
