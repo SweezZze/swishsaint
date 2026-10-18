@@ -16,6 +16,7 @@ enum ForkMeetingFixesG1Tests {
         recoveryLeavesLiveMeetings(suite)
         bidiNames(suite)
         sourceGonePill(suite)
+        quickLock(suite)
     }
 
     typealias Machine = ForkMeetingMachine
@@ -301,5 +302,29 @@ enum ForkMeetingFixesG1Tests {
         suite.expect(minimized?.status == .pictureFrozen, "a window minimized is still said as such")
         suite.expect(AppLanguage.allCases.map(ForkMeetingStrings.strings).allSatisfy { $0.noticeSourceGone.count <= 28 },
                      "the pill's words fit in 28 characters in every language")
+    }
+
+    /// The stream stopped by a lock (-3821) is reported 2 s late; locked
+    /// and unlocked within those 2 s, the meeting goes on all the same.
+    private static func quickLock(_ suite: TestSuite) {
+        var machine = recording()
+        machine.handle(.locked, now: at(10))
+        machine.handle(.unlocked, now: at(11))
+        let effects = machine.handle(.captureFailed(token1, .streamStopped), now: at(12))
+        suite.expect(effects == [.restartStream] && machine.activeSession != nil,
+                     "a stop reported after a lock of a second: a new stream, the meeting goes on")
+        var paused = recording()
+        paused.handle(.pause, now: at(5))
+        paused.handle(.locked, now: at(10))
+        paused.handle(.unlocked, now: at(11))
+        suite.expect(paused.handle(.captureFailed(token1, .streamStopped), now: at(12)).isEmpty
+                        && paused.handle(.resume, now: at(20)).contains(.restartStream),
+                     "paused by the person meanwhile: the new stream comes with the resume")
+        var late = recording()
+        late.handle(.locked, now: at(10))
+        late.handle(.unlocked, now: at(11))
+        let stopped = late.handle(.captureFailed(token1, .streamStopped), now: at(14))
+        suite.expect(stopped.contains(.stopCapture(token1)) && stopped.contains(.notice(.failure(.streamStopped))),
+                     "a stop that comes later than the grace after the unlock is a real one: the meeting stops, said")
     }
 }

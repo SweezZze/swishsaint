@@ -364,6 +364,9 @@ struct ForkMeetingMachine {
     private var locked = false
     /// The app is quitting: nothing starts any more, nothing is finalized.
     private var terminating = false
+    /// When the screen was last unlocked: a stream stopped by the lock is
+    /// reported `externalStopGrace` late, possibly after the unlock.
+    private var unlockedAt: Date?
 
     var isBusy: Bool { phase != .idle }
 
@@ -418,6 +421,18 @@ struct ForkMeetingMachine {
                 session.streamNeedsRestart = true
                 replace(session)
                 return []
+            }
+            // Locked and unlocked again while the stop's report waited: the
+            // unlock came and went without a stream to restart, so it is
+            // restarted now (or at the resume, when paused).
+            if failure == .streamStopped, let unlockedAt,
+               now.timeIntervalSince(unlockedAt) < ForkMeetingCaptureSupport.externalStopGrace {
+                guard case .recording = phase else {
+                    session.streamNeedsRestart = true
+                    replace(session)
+                    return []
+                }
+                return [.restartStream]
             }
             return stopForFailure(session, failure == .screenRecordingDenied ? .screenRecordingRevoked : failure, now: now)
 
@@ -478,6 +493,7 @@ struct ForkMeetingMachine {
 
         case .unlocked:
             locked = false
+            unlockedAt = now
             guard var session = activeSession else { return [] }
             var effects: [Effect] = []
             if case .recording = phase, session.streamNeedsRestart {
