@@ -34,6 +34,7 @@ enum ForkMeetingDetectionTests {
         secondMeeting(suite)
         offerEnds(suite)
         invariants(suite)
+        pipeline(suite)
         texts(suite)
     }
 
@@ -53,14 +54,19 @@ enum ForkMeetingDetectionTests {
                              bornAt: at(bornAt))
     }
 
+    /// The offer of `candidate`, set aside from the moment it shows.
     private static func offer(_ candidate: ForkMeetingCandidate, at seconds: TimeInterval = 0,
                               blocked: ForkMeetingFailure? = nil) -> ForkMeetingOffer {
-        ForkMeetingOffer(candidate: candidate, collapsesAt: at(seconds + 20), blocked: blocked)
+        var offered = candidate
+        offered.silenced = true
+        return ForkMeetingOffer(candidate: offered, collapsesAt: at(seconds + 20), blocked: blocked)
     }
 
     private static func config(_ origin: ForkMeetingOrigin, _ meeting: ForkMeetingCandidate?) -> ForkMeetingCaptureConfig {
-        ForkMeetingCaptureConfig(origin: origin, title: meeting?.name, settings: settings, recordsMicrophone: true,
-                                 microphoneDenied: false, meeting: meeting)
+        var recorded = meeting
+        recorded?.silenced = true
+        return ForkMeetingCaptureConfig(origin: origin, title: meeting?.name, settings: settings, recordsMicrophone: true,
+                                        microphoneDenied: false, meeting: recorded)
     }
 
     private static func offered(_ meeting: ForkMeetingCandidate = candidate()) -> Machine {
@@ -118,8 +124,9 @@ enum ForkMeetingDetectionTests {
                      "a meeting is offered, set aside at once so it is never offered twice, and said to VoiceOver")
         suite.expect(!machine.isBusy && machine.activeSession == nil,
                      "an offer holds nothing: updates may install, nothing records")
-        suite.expect(machine.handle(.candidates([meeting], request()), now: at(3)).isEmpty,
-                     "the same meeting read again changes nothing")
+        suite.expect(machine.handle(.candidates([candidate(silenced: true)], request()), now: at(3)).isEmpty
+                        && machine.handle(.candidates([meeting], request()), now: at(4)).isEmpty,
+                     "the same meeting read again, set aside or not yet, changes nothing")
 
         var aside = Machine()
         suite.expect(aside.handle(.candidates([candidate(silenced: true)], request()), now: t0).isEmpty
@@ -468,6 +475,85 @@ enum ForkMeetingDetectionTests {
         }
         suite.expect(finalizeCount == 1, "with a countdown too, a session is handed to the finalizer once and only once")
         suite.expect(!manualStopped, "no detection event, in any order, ever stops a recording started by hand")
+    }
+
+    /// The resolver and the machine together, as the service will wire
+    /// them: the set-asides go back to the resolver, the ends to the machine.
+    private struct Pipeline {
+        var resolver = ForkMeetingResolver(ownPID: 999)
+        var machine = Machine()
+        var effects: [Machine.Effect] = []
+
+        mutating func read(_ seconds: TimeInterval, windows: [ForkMeetingWindowSignal]? = nil,
+                           microphones: [ForkMeetingMicSignal]? = nil) {
+            let now = t0.addingTimeInterval(seconds)
+            let resolution = resolver.resolve(ForkMeetingReading(at: now, windows: windows, microphones: microphones))
+            for identity in resolution.ended { apply(machine.handle(.endProbable(identity, countdown: 15), now: now), now) }
+            apply(machine.handle(.candidates(resolution.candidates, request()), now: now), now)
+            apply(machine.handle(.tick, now: now), now)
+        }
+
+        mutating func send(_ event: Machine.Event, _ seconds: TimeInterval) {
+            let now = t0.addingTimeInterval(seconds)
+            apply(machine.handle(event, now: now), now)
+        }
+
+        private mutating func apply(_ new: [Machine.Effect], _ now: Date) {
+            for case let .silence(identity) in new { resolver.silence(identity, at: now) }
+            effects += new
+        }
+
+        mutating func take() -> [Machine.Effect] {
+            defer { effects = [] }
+            return effects
+        }
+    }
+
+    private static func pipeline(_ suite: TestSuite) {
+        let tab = ForkMeetingWindowSignal(bundle: "com.google.Chrome", pid: 100, title: "Meet – Point hebdo – abc-defg-hij",
+                                          onScreen: true, windowID: 1)
+        let other = ForkMeetingWindowSignal(bundle: "com.google.Chrome", pid: 100, title: "Gmail", onScreen: true, windowID: 1)
+        let left = ForkMeetingWindowSignal(bundle: "com.google.Chrome", pid: 100, title: "Vous avez quitté la réunion",
+                                           onScreen: true, windowID: 1)
+        let microphone = ForkMeetingMicSignal(appBundle: "com.google.Chrome", appPID: 100, pid: 101)
+        func shows(_ effects: [Machine.Effect]) -> Bool { effects.contains { $0.isShowOffer } }
+
+        var p = Pipeline()
+        p.read(-5, microphones: [microphone])
+        p.read(0, windows: [tab])
+        let first = p.take()
+        suite.expect(shows(first) && first.contains(.announce(.offered("Point hebdo"))),
+                     "Google Meet in Chrome, its microphone open: offered at the first reading")
+        p.read(3, windows: [tab])
+        p.read(20, windows: [tab])
+        suite.expect(p.take() == [.collapseOffer], "read again it changes nothing, and folds after 20 s")
+        p.send(.dismiss(.thisTime), 25)
+        p.read(28, windows: [other])
+        p.read(31, windows: [tab])
+        p.read(34, windows: [tab])
+        suite.expect(!shows(p.take()), "Not now, then away to another tab and back: nothing is offered again")
+        p.read(40, windows: [left])
+        p.read(43, microphones: [])
+        p.read(100, windows: [tab], microphones: [microphone])
+        p.read(103, windows: [tab])
+        suite.expect(!shows(p.take()), "left, then rejoined within 10 minutes: still nothing")
+        p.read(110, windows: [left], microphones: [])
+        p.read(705, microphones: [microphone])
+        p.read(711, windows: [left])
+        p.read(712, windows: [tab])
+        suite.expect(shows(p.take()), "10 minutes after its end, the same meeting is offered again")
+
+        p.send(.accept(request()), 713)
+        p.send(.captureStarted(token1, folder: folder), 714)
+        p.read(800, windows: [other])
+        suite.expect(!p.take().contains(.hideEndingSoon) && p.machine.activeSession != nil,
+                     "recording: another tab in front changes nothing, the microphone keeps the meeting alive")
+        p.read(900, windows: [left])
+        suite.expect(p.take().contains(.showEndingSoon(until: at(915))), "the end page starts the countdown at once")
+        p.read(915)
+        let stopped = p.take()
+        suite.expect(stopped.contains(.stopCapture(token1)) && patches(stopped) == [Patch(stopReason: .meetingEnded)],
+                     "and 15 s later the recording stops")
     }
 
     private static func isDetectionEvent(_ event: Machine.Event) -> Bool {

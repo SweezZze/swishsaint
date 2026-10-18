@@ -710,11 +710,13 @@ struct ForkMeetingMachine {
         if candidate.policy == .always, blocked == nil {
             return [.silence(candidate.identity)] + start(origin: .always, request: request, meeting: candidate)
         }
-        let offer = ForkMeetingOffer(candidate: candidate, collapsesAt: now.addingTimeInterval(Self.offerCollapse),
-                                     blocked: blocked)
-        phase = .offering(offer)
         // Set aside as soon as it is offered: coming back to its tab, or
         // leaving and rejoining within 10 minutes, offers nothing new.
+        var offered = candidate
+        offered.silenced = true
+        let offer = ForkMeetingOffer(candidate: offered, collapsesAt: now.addingTimeInterval(Self.offerCollapse),
+                                     blocked: blocked)
+        phase = .offering(offer)
         return [.silence(candidate.identity), .showOffer(offer), .announce(.offered(candidate.name))]
     }
 
@@ -732,6 +734,8 @@ struct ForkMeetingMachine {
             }
             var updated = offer
             updated.candidate = current
+            // The set-aside it asked for, read back or not yet.
+            updated.candidate.silenced = true
             updated.blocked = Self.refusal(request)
             guard updated != offer else { return [] }
             phase = .offering(updated)
@@ -857,6 +861,9 @@ struct ForkMeetingMachine {
             return [.notice(.failure(refusal)), .announce(.failure(refusal))]
         }
         let wantsMicrophone = request.settings.microphone != ForkMeetingCaptureSettings.microphoneOff
+        // A meeting recorded is set aside: once stopped, it is not offered again.
+        var meeting = meeting
+        meeting?.silenced = true
         let config = ForkMeetingCaptureConfig(origin: origin, title: request.title ?? meeting?.name,
                                               settings: request.settings,
                                               recordsMicrophone: wantsMicrophone && request.facts.microphoneAllowed,
