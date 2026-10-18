@@ -237,6 +237,36 @@ struct ForkMeetingStrings {
     let trackMix: String
     let trackMeeting: String
     let trackMicrophone: String
+
+    // MARK: Fixes F2
+
+    /// The page while a start is under way, before the first frame.
+    let stateStarting: String
+    /// The picture, as a recording started by hand takes it until meetings
+    /// are detected: the window in front, or its display.
+    let pictureFrontWindow: String
+    let pictureFrontDisplay: String
+    let pictureFrontWindowCaption: String
+    let consentIntroFrontWindow: String
+    /// What is filmed, under the start's notice and in the pill: %@ is the
+    /// filmed window's app.
+    let filmedWindowFormat: String
+    let filmedWindowUnnamed: String
+    let filmedDisplay: String
+    /// A window was asked for, none could be filmed.
+    let filmedNoWindow: String
+    /// ⧉ while the display is filmed.
+    let pillFilmTheWindow: String
+    /// On the start's card while the consent reminder is on.
+    let consentRemind: String
+    let voiceStartedWithoutMicrophone: String
+    let voicePictureFrozen: String
+    let voiceFilmedDisplayChanged: String
+    /// A final pass failed and the master could not be made visible.
+    let failMasterHidden: String
+    let failMasterHiddenRemedy: String
+
+    func filmedWindow(_ app: String) -> String { String(format: filmedWindowFormat, app) }
 }
 
 extension ForkMeetingStrings {
@@ -399,7 +429,24 @@ extension ForkMeetingStrings {
         voiceSourceGone: "The filmed app quit. The recording goes on with the sound; the picture stays on its last frame.",
         trackMix: "Mix",
         trackMeeting: "Meeting",
-        trackMicrophone: "Microphone"
+        trackMicrophone: "Microphone",
+        // MARK: Fixes F2,
+        stateStarting: "Starting…",
+        pictureFrontWindow: "Window in front",
+        pictureFrontDisplay: "Its whole display",
+        pictureFrontWindowCaption: "The frontmost window of another app when the recording starts; with no window, the whole display.",
+        consentIntroFrontWindow: "Meetings records the window in front (or its display), its app’s sound and your microphone. Everything stays on this Mac.",
+        filmedWindowFormat: "%@ window",
+        filmedWindowUnnamed: "Window in front",
+        filmedDisplay: "Whole screen",
+        filmedNoWindow: "No window: whole screen",
+        pillFilmTheWindow: "Film the window",
+        consentRemind: "Remember to tell the participants.",
+        voiceStartedWithoutMicrophone: "Meeting recording started, without your microphone: it is not allowed. Allow it in System Settings › Privacy & Security › Microphone.",
+        voicePictureFrozen: "The picture is frozen: the filmed window is minimized or hidden. The sound goes on.",
+        voiceFilmedDisplayChanged: "The filmed display changed. The recording now films the display the window is on, or the main display.",
+        failMasterHidden: "Video kept, file hidden",
+        failMasterHiddenRemedy: "The file could not be finished or shown. The recording is kept in the meeting’s folder under the hidden name “.recording.mp4”: in the Finder, Shift-Command-Period shows hidden files."
     )
 }
 
@@ -563,7 +610,24 @@ extension ForkMeetingStrings {
         voiceSourceGone: "O app filmado foi fechado. A gravação continua com o som; a imagem fica parada no último quadro.",
         trackMix: "Mixagem",
         trackMeeting: "Reunião",
-        trackMicrophone: "Microfone"
+        trackMicrophone: "Microfone",
+        // MARK: Fixes F2,
+        stateStarting: "Iniciando…",
+        pictureFrontWindow: "Janela da frente",
+        pictureFrontDisplay: "A tela inteira dela",
+        pictureFrontWindowCaption: "A janela de outro app que está mais à frente quando a gravação começa; sem janela, a tela inteira.",
+        consentIntroFrontWindow: "Reuniões grava a janela da frente (ou a tela dela), o som do app dela e o seu microfone. Tudo fica neste Mac.",
+        filmedWindowFormat: "Janela do %@",
+        filmedWindowUnnamed: "Janela da frente",
+        filmedDisplay: "Tela inteira",
+        filmedNoWindow: "Sem janela: tela inteira",
+        pillFilmTheWindow: "Filmar a janela",
+        consentRemind: "Lembre-se de avisar os participantes.",
+        voiceStartedWithoutMicrophone: "Gravação da reunião iniciada sem o seu microfone: ele não está permitido. Permita-o em Ajustes do Sistema › Privacidade e Segurança › Microfone.",
+        voicePictureFrozen: "A imagem está congelada: a janela filmada está minimizada ou oculta. O som continua.",
+        voiceFilmedDisplayChanged: "A tela filmada mudou. A gravação agora filma a tela onde está a janela, ou a tela principal.",
+        failMasterHidden: "Vídeo guardado, mas oculto",
+        failMasterHiddenRemedy: "Não foi possível finalizar nem mostrar o arquivo. A gravação está guardada na pasta da reunião com o nome oculto “.recording.mp4”: no Finder, Shift-Command-Ponto mostra os arquivos ocultos."
     )
 }
 
@@ -727,7 +791,24 @@ extension ForkMeetingStrings {
         voiceSourceGone: "Kaydedilen uygulama kapandı. Kayıt sesle devam ediyor; görüntü son karede kalıyor.",
         trackMix: "Karışım",
         trackMeeting: "Toplantı",
-        trackMicrophone: "Mikrofon"
+        trackMicrophone: "Mikrofon",
+        // MARK: Fixes F2,
+        stateStarting: "Başlatılıyor…",
+        pictureFrontWindow: "Öndeki pencere",
+        pictureFrontDisplay: "Bulunduğu ekranın tamamı",
+        pictureFrontWindowCaption: "Kayıt başladığında başka bir uygulamanın en öndeki penceresi; pencere yoksa ekranın tamamı.",
+        consentIntroFrontWindow: "Toplantılar, öndeki pencereyi (veya ekranını), uygulamasının sesini ve mikrofonunuzu kaydeder. Her şey bu Mac’te kalır.",
+        filmedWindowFormat: "%@ penceresi",
+        filmedWindowUnnamed: "Öndeki pencere",
+        filmedDisplay: "Tüm ekran",
+        filmedNoWindow: "Pencere yok: tüm ekran",
+        pillFilmTheWindow: "Pencereyi çek",
+        consentRemind: "Katılımcıları bilgilendirmeyi unutmayın.",
+        voiceStartedWithoutMicrophone: "Toplantı kaydı mikrofonunuz olmadan başladı: mikrofona izin verilmemiş. Sistem Ayarları › Gizlilik ve Güvenlik › Mikrofon’dan izin verin.",
+        voicePictureFrozen: "Görüntü dondu: çekilen pencere küçültülmüş veya gizlenmiş. Ses devam ediyor.",
+        voiceFilmedDisplayChanged: "Çekilen ekran değişti. Kayıt artık pencerenin bulunduğu ekranı ya da ana ekranı çekiyor.",
+        failMasterHidden: "Video saklandı, dosya gizli",
+        failMasterHiddenRemedy: "Dosya tamamlanamadı ve gösterilemedi. Kayıt, toplantı klasöründe “.recording.mp4” adlı gizli dosya olarak saklanıyor: Finder’da Shift-Command-Nokta gizli dosyaları gösterir."
     )
 }
 
@@ -891,7 +972,24 @@ extension ForkMeetingStrings {
         voiceSourceGone: "Снимаемое приложение закрылось. Запись продолжается со звуком, изображение остановилось на последнем кадре.",
         trackMix: "Микс",
         trackMeeting: "Встреча",
-        trackMicrophone: "Микрофон"
+        trackMicrophone: "Микрофон",
+        // MARK: Fixes F2,
+        stateStarting: "Запуск…",
+        pictureFrontWindow: "Переднее окно",
+        pictureFrontDisplay: "Весь его экран",
+        pictureFrontWindowCaption: "Самое переднее окно другого приложения в момент начала записи; если окна нет — весь экран.",
+        consentIntroFrontWindow: "Встречи записывают переднее окно (или его экран), звук его приложения и ваш микрофон. Всё остаётся на этом Mac.",
+        filmedWindowFormat: "Окно %@",
+        filmedWindowUnnamed: "Переднее окно",
+        filmedDisplay: "Весь экран",
+        filmedNoWindow: "Окна нет: весь экран",
+        pillFilmTheWindow: "Снимать окно",
+        consentRemind: "Не забудьте предупредить участников.",
+        voiceStartedWithoutMicrophone: "Запись встречи начата без вашего микрофона: он не разрешён. Разрешите его в Системных настройках › Конфиденциальность и безопасность › Микрофон.",
+        voicePictureFrozen: "Изображение застыло: снимаемое окно свёрнуто или скрыто. Звук продолжает записываться.",
+        voiceFilmedDisplayChanged: "Снимаемый экран сменился. Теперь записывается экран, на котором находится окно, или основной экран.",
+        failMasterHidden: "Видео сохранено, файл скрыт",
+        failMasterHiddenRemedy: "Файл не удалось ни завершить, ни показать. Запись сохранена в папке встречи под скрытым именем «.recording.mp4»: в Finder сочетание Shift-Command-точка показывает скрытые файлы."
     )
 }
 
@@ -1055,7 +1153,24 @@ extension ForkMeetingStrings {
         voiceSourceGone: "La app grabada se cerró. La grabación sigue con el sonido; la imagen se queda en su último fotograma.",
         trackMix: "Mezcla",
         trackMeeting: "Reunión",
-        trackMicrophone: "Micrófono"
+        trackMicrophone: "Micrófono",
+        // MARK: Fixes F2,
+        stateStarting: "Iniciando…",
+        pictureFrontWindow: "Ventana de delante",
+        pictureFrontDisplay: "Toda su pantalla",
+        pictureFrontWindowCaption: "La ventana de otra app que está más adelante al empezar la grabación; sin ventana, toda la pantalla.",
+        consentIntroFrontWindow: "Reuniones graba la ventana de delante (o su pantalla), el sonido de su app y tu micrófono. Todo se queda en este Mac.",
+        filmedWindowFormat: "Ventana de %@",
+        filmedWindowUnnamed: "Ventana de delante",
+        filmedDisplay: "Pantalla completa",
+        filmedNoWindow: "Sin ventana: pantalla entera",
+        pillFilmTheWindow: "Grabar la ventana",
+        consentRemind: "Recuerda avisar a los participantes.",
+        voiceStartedWithoutMicrophone: "Grabación de la reunión iniciada sin tu micrófono: no está permitido. Permítelo en Ajustes del Sistema › Privacidad y seguridad › Micrófono.",
+        voicePictureFrozen: "La imagen está congelada: la ventana grabada está minimizada u oculta. El sonido sigue.",
+        voiceFilmedDisplayChanged: "La pantalla grabada cambió. La grabación filma ahora la pantalla donde está la ventana, o la pantalla principal.",
+        failMasterHidden: "Vídeo guardado pero oculto",
+        failMasterHiddenRemedy: "No se pudo terminar ni mostrar el archivo. La grabación se guarda en la carpeta de la reunión con el nombre oculto «.recording.mp4»: en el Finder, Mayúsculas-Comando-Punto muestra los archivos ocultos."
     )
 }
 
@@ -1219,7 +1334,24 @@ extension ForkMeetingStrings {
         voiceSourceGone: "Nahrávaná aplikácia skončila. Nahrávanie pokračuje so zvukom, obraz zostáva na poslednom zábere.",
         trackMix: "Zmes",
         trackMeeting: "Stretnutie",
-        trackMicrophone: "Mikrofón"
+        trackMicrophone: "Mikrofón",
+        // MARK: Fixes F2,
+        stateStarting: "Spúšťa sa…",
+        pictureFrontWindow: "Okno vpredu",
+        pictureFrontDisplay: "Celá jeho obrazovka",
+        pictureFrontWindowCaption: "Okno inej aplikácie, ktoré je pri štarte nahrávania úplne vpredu; bez okna celá obrazovka.",
+        consentIntroFrontWindow: "Stretnutia nahrávajú okno vpredu (alebo jeho obrazovku), zvuk jeho aplikácie a váš mikrofón. Všetko zostáva na tomto Macu.",
+        filmedWindowFormat: "Okno aplikácie %@",
+        filmedWindowUnnamed: "Okno vpredu",
+        filmedDisplay: "Celá obrazovka",
+        filmedNoWindow: "Bez okna: celá obrazovka",
+        pillFilmTheWindow: "Nahrávať okno",
+        consentRemind: "Nezabudnite upozorniť účastníkov.",
+        voiceStartedWithoutMicrophone: "Nahrávanie stretnutia sa spustilo bez vášho mikrofónu: nie je povolený. Povoľte ho v Nastaveniach systému › Súkromie a bezpečnosť › Mikrofón.",
+        voicePictureFrozen: "Obraz zamrzol: nahrávané okno je minimalizované alebo skryté. Zvuk pokračuje.",
+        voiceFilmedDisplayChanged: "Nahrávaná obrazovka sa zmenila. Nahrávanie teraz sníma obrazovku s oknom alebo hlavnú obrazovku.",
+        failMasterHidden: "Video uložené, súbor skrytý",
+        failMasterHiddenRemedy: "Súbor sa nepodarilo dokončiť ani zobraziť. Nahrávka je uložená v priečinku stretnutia pod skrytým názvom „.recording.mp4“: vo Finderi zobrazí skryté súbory skratka Shift-Command-bodka."
     )
 }
 
@@ -1383,7 +1515,24 @@ extension ForkMeetingStrings {
         voiceSourceGone: "Die gefilmte App wurde beendet. Die Aufnahme läuft mit dem Ton weiter, das Bild bleibt beim letzten Frame stehen.",
         trackMix: "Mischung",
         trackMeeting: "Besprechung",
-        trackMicrophone: "Mikrofon"
+        trackMicrophone: "Mikrofon",
+        // MARK: Fixes F2,
+        stateStarting: "Wird gestartet …",
+        pictureFrontWindow: "Vorderstes Fenster",
+        pictureFrontDisplay: "Sein ganzer Bildschirm",
+        pictureFrontWindowCaption: "Das vorderste Fenster einer anderen App beim Start der Aufnahme; ohne Fenster der ganze Bildschirm.",
+        consentIntroFrontWindow: "Besprechungen nimmt das vorderste Fenster (oder seinen Bildschirm), den Ton seiner App und dein Mikrofon auf. Alles bleibt auf diesem Mac.",
+        filmedWindowFormat: "Fenster von %@",
+        filmedWindowUnnamed: "Vorderstes Fenster",
+        filmedDisplay: "Ganzer Bildschirm",
+        filmedNoWindow: "Kein Fenster: Bildschirm",
+        pillFilmTheWindow: "Fenster filmen",
+        consentRemind: "Denk daran, die Teilnehmenden zu informieren.",
+        voiceStartedWithoutMicrophone: "Aufnahme der Besprechung ohne dein Mikrofon gestartet: Es ist nicht erlaubt. Erlaube es unter Systemeinstellungen › Datenschutz & Sicherheit › Mikrofon.",
+        voicePictureFrozen: "Das Bild steht still: Das gefilmte Fenster ist minimiert oder ausgeblendet. Der Ton läuft weiter.",
+        voiceFilmedDisplayChanged: "Der gefilmte Bildschirm hat gewechselt. Die Aufnahme filmt jetzt den Bildschirm mit dem Fenster oder den Hauptbildschirm.",
+        failMasterHidden: "Video gesichert, versteckt",
+        failMasterHiddenRemedy: "Die Datei konnte weder fertiggestellt noch sichtbar gemacht werden. Die Aufnahme liegt im Ordner der Besprechung unter dem versteckten Namen „.recording.mp4“: Im Finder zeigt Umschalt-Befehl-Punkt versteckte Dateien."
     )
 }
 
@@ -1547,7 +1696,24 @@ extension ForkMeetingStrings {
         voiceSourceGone: "L’app filmée a quitté. L’enregistrement continue avec le son ; l’image reste figée sur la dernière vue.",
         trackMix: "Mixage",
         trackMeeting: "Réunion",
-        trackMicrophone: "Micro"
+        trackMicrophone: "Micro",
+        // MARK: Fixes F2,
+        stateStarting: "Démarrage…",
+        pictureFrontWindow: "Fenêtre au premier plan",
+        pictureFrontDisplay: "Tout son écran",
+        pictureFrontWindowCaption: "La fenêtre d’une autre app la plus en avant au moment du départ ; sans fenêtre, l’écran entier.",
+        consentIntroFrontWindow: "Réunions enregistre la fenêtre au premier plan (ou son écran), le son de son app et votre micro. Tout reste sur ce Mac.",
+        filmedWindowFormat: "Fenêtre de %@",
+        filmedWindowUnnamed: "Fenêtre au premier plan",
+        filmedDisplay: "Écran entier",
+        filmedNoWindow: "Sans fenêtre : écran entier",
+        pillFilmTheWindow: "Filmer la fenêtre",
+        consentRemind: "Pensez à prévenir les participants.",
+        voiceStartedWithoutMicrophone: "Enregistrement de la réunion démarré sans votre micro : il n’est pas autorisé. Autorisez-le dans Réglages Système › Confidentialité et sécurité › Micro.",
+        voicePictureFrozen: "L’image est figée : la fenêtre filmée est réduite ou masquée. Le son continue.",
+        voiceFilmedDisplayChanged: "L’écran filmé a changé. L’enregistrement filme maintenant l’écran où se trouve la fenêtre, ou l’écran principal.",
+        failMasterHidden: "Vidéo gardée, fichier caché",
+        failMasterHiddenRemedy: "Le fichier n’a pu être ni finalisé ni affiché. L’enregistrement est gardé dans le dossier de la réunion sous le nom caché « .recording.mp4 » : dans le Finder, Maj-Commande-Point affiche les fichiers cachés."
     )
 }
 
@@ -1711,7 +1877,24 @@ extension ForkMeetingStrings {
         voiceSourceGone: "L’app ripresa è stata chiusa. La registrazione continua con l’audio; l’immagine resta sull’ultimo fotogramma.",
         trackMix: "Missaggio",
         trackMeeting: "Riunione",
-        trackMicrophone: "Microfono"
+        trackMicrophone: "Microfono",
+        // MARK: Fixes F2,
+        stateStarting: "Avvio…",
+        pictureFrontWindow: "Finestra in primo piano",
+        pictureFrontDisplay: "Tutto il suo schermo",
+        pictureFrontWindowCaption: "La finestra di un’altra app più in primo piano all’avvio della registrazione; senza finestra, tutto lo schermo.",
+        consentIntroFrontWindow: "Riunioni registra la finestra in primo piano (o il suo schermo), l’audio della sua app e il tuo microfono. Tutto resta su questo Mac.",
+        filmedWindowFormat: "Finestra di %@",
+        filmedWindowUnnamed: "Finestra in primo piano",
+        filmedDisplay: "Schermo intero",
+        filmedNoWindow: "Schermo intero (no finestra)",
+        pillFilmTheWindow: "Registra la finestra",
+        consentRemind: "Ricordati di avvisare i partecipanti.",
+        voiceStartedWithoutMicrophone: "Registrazione della riunione avviata senza il tuo microfono: non è consentito. Consentilo in Impostazioni di Sistema › Privacy e sicurezza › Microfono.",
+        voicePictureFrozen: "L’immagine è ferma: la finestra registrata è ridotta o nascosta. L’audio continua.",
+        voiceFilmedDisplayChanged: "Lo schermo registrato è cambiato. La registrazione ora riprende lo schermo in cui si trova la finestra, o lo schermo principale.",
+        failMasterHidden: "Video tenuto, file nascosto",
+        failMasterHiddenRemedy: "Non è stato possibile completare né mostrare il file. La registrazione è conservata nella cartella della riunione con il nome nascosto «.recording.mp4»: nel Finder, Maiuscole-Comando-Punto mostra i file nascosti."
     )
 }
 
@@ -1875,7 +2058,24 @@ extension ForkMeetingStrings {
         voiceSourceGone: "撮影中のアプリが終了しました。録画は音声のまま続き、映像は最後のフレームで止まります。",
         trackMix: "ミックス",
         trackMeeting: "ミーティング",
-        trackMicrophone: "マイク"
+        trackMicrophone: "マイク",
+        // MARK: Fixes F2,
+        stateStarting: "開始しています…",
+        pictureFrontWindow: "最前面のウインドウ",
+        pictureFrontDisplay: "そのディスプレイ全体",
+        pictureFrontWindowCaption: "録画開始時に最前面にある、ほかのアプリのウインドウ。ウインドウがなければディスプレイ全体。",
+        consentIntroFrontWindow: "「ミーティング」は、最前面のウインドウ（またはそのディスプレイ）、そのアプリの音声、あなたのマイクを録画します。すべてこのMac上に保存されます。",
+        filmedWindowFormat: "%@のウインドウ",
+        filmedWindowUnnamed: "最前面のウインドウ",
+        filmedDisplay: "画面全体",
+        filmedNoWindow: "ウインドウなし：画面全体",
+        pillFilmTheWindow: "ウインドウを録画",
+        consentRemind: "参加者への告知をお忘れなく。",
+        voiceStartedWithoutMicrophone: "あなたのマイクなしでミーティングの録画を開始しました。マイクが許可されていません。システム設定 › プライバシーとセキュリティ › マイクで許可してください。",
+        voicePictureFrozen: "映像が静止しています。録画中のウインドウが最小化されているか、隠れています。音声は続いています。",
+        voiceFilmedDisplayChanged: "録画中のディスプレイが変わりました。ウインドウがあるディスプレイ、またはメインディスプレイを録画しています。",
+        failMasterHidden: "ビデオは保存、ファイルは非表示",
+        failMasterHiddenRemedy: "ファイルを仕上げることも表示することもできませんでした。録画はミーティングのフォルダに「.recording.mp4」という非表示の名前で保存されています。Finderで Shift＋Command＋ピリオド を押すと非表示のファイルが表示されます。"
     )
 }
 
@@ -2039,7 +2239,24 @@ extension ForkMeetingStrings {
         voiceSourceGone: "녹화 중인 앱이 종료되었습니다. 녹화는 소리와 함께 계속되며, 화면은 마지막 프레임에 멈춥니다.",
         trackMix: "믹스",
         trackMeeting: "회의",
-        trackMicrophone: "마이크"
+        trackMicrophone: "마이크",
+        // MARK: Fixes F2,
+        stateStarting: "시작하는 중…",
+        pictureFrontWindow: "맨 앞 창",
+        pictureFrontDisplay: "그 창의 전체 디스플레이",
+        pictureFrontWindowCaption: "녹화를 시작할 때 맨 앞에 있는 다른 앱의 창. 창이 없으면 전체 디스플레이.",
+        consentIntroFrontWindow: "회의 기능은 맨 앞 창(또는 그 디스플레이), 그 앱의 소리, 내 마이크를 녹화합니다. 모든 것이 이 Mac에 남습니다.",
+        filmedWindowFormat: "%@ 창",
+        filmedWindowUnnamed: "맨 앞 창",
+        filmedDisplay: "전체 화면",
+        filmedNoWindow: "창 없음: 전체 화면",
+        pillFilmTheWindow: "창 녹화",
+        consentRemind: "참가자에게 알리는 것을 잊지 마세요.",
+        voiceStartedWithoutMicrophone: "내 마이크 없이 회의 녹화를 시작했습니다. 마이크가 허용되지 않았습니다. 시스템 설정 › 개인정보 보호 및 보안 › 마이크에서 허용하세요.",
+        voicePictureFrozen: "화면이 멈췄습니다. 녹화 중인 창이 최소화되었거나 가려져 있습니다. 소리는 계속 녹음됩니다.",
+        voiceFilmedDisplayChanged: "녹화 중인 디스플레이가 바뀌었습니다. 이제 창이 있는 디스플레이나 주 디스플레이를 녹화합니다.",
+        failMasterHidden: "비디오 보관됨, 파일 숨김",
+        failMasterHiddenRemedy: "파일을 마무리하거나 표시할 수 없었습니다. 녹화는 회의 폴더에 숨겨진 이름 “.recording.mp4”로 보관되어 있습니다. Finder에서 Shift-Command-마침표를 누르면 숨겨진 파일이 보입니다."
     )
 }
 
@@ -2203,7 +2420,24 @@ extension ForkMeetingStrings {
         voiceSourceGone: "Знімана програма закрилася. Запис триває зі звуком, зображення зупинилося на останньому кадрі.",
         trackMix: "Мікс",
         trackMeeting: "Зустріч",
-        trackMicrophone: "Мікрофон"
+        trackMicrophone: "Мікрофон",
+        // MARK: Fixes F2,
+        stateStarting: "Запуск…",
+        pictureFrontWindow: "Переднє вікно",
+        pictureFrontDisplay: "Увесь його екран",
+        pictureFrontWindowCaption: "Найближче вікно іншої програми в момент початку запису; якщо вікна немає — увесь екран.",
+        consentIntroFrontWindow: "Зустрічі записують переднє вікно (або його екран), звук його програми і ваш мікрофон. Усе лишається на цьому Mac.",
+        filmedWindowFormat: "Вікно %@",
+        filmedWindowUnnamed: "Переднє вікно",
+        filmedDisplay: "Увесь екран",
+        filmedNoWindow: "Вікна немає: увесь екран",
+        pillFilmTheWindow: "Знімати вікно",
+        consentRemind: "Не забудьте попередити учасників.",
+        voiceStartedWithoutMicrophone: "Запис зустрічі розпочато без вашого мікрофона: його не дозволено. Дозвольте його в Системних параметрах › Приватність і безпека › Мікрофон.",
+        voicePictureFrozen: "Зображення завмерло: вікно, що знімається, згорнуте або приховане. Звук записується далі.",
+        voiceFilmedDisplayChanged: "Екран, що знімається, змінився. Тепер записується екран, на якому розташоване вікно, або основний екран.",
+        failMasterHidden: "Відео є, файл прихований",
+        failMasterHiddenRemedy: "Файл не вдалося ні завершити, ні показати. Запис збережено в папці зустрічі під прихованою назвою «.recording.mp4»: у Finder поєднання Shift-Command-крапка показує приховані файли."
     )
 }
 
@@ -2367,7 +2601,24 @@ extension ForkMeetingStrings {
         voiceSourceGone: "被录制的应用已退出。录制会继续录下声音，画面停在最后一帧。",
         trackMix: "混音",
         trackMeeting: "会议",
-        trackMicrophone: "麦克风"
+        trackMicrophone: "麦克风",
+        // MARK: Fixes F2,
+        stateStarting: "正在开始…",
+        pictureFrontWindow: "最前面的窗口",
+        pictureFrontDisplay: "它所在的整个显示器",
+        pictureFrontWindowCaption: "录制开始时最前面的其他 App 窗口；没有窗口时录制整个显示器。",
+        consentIntroFrontWindow: "“会议”会录制最前面的窗口（或其所在显示器）、该 App 的声音和你的麦克风。所有内容都保留在这台 Mac 上。",
+        filmedWindowFormat: "%@ 窗口",
+        filmedWindowUnnamed: "最前面的窗口",
+        filmedDisplay: "整个屏幕",
+        filmedNoWindow: "没有窗口：整个屏幕",
+        pillFilmTheWindow: "录制窗口",
+        consentRemind: "记得告知参会者。",
+        voiceStartedWithoutMicrophone: "已开始录制会议，但没有你的麦克风：麦克风未获允许。请在“系统设置”›“隐私与安全性”›“麦克风”中允许。",
+        voicePictureFrozen: "画面已静止：被录制的窗口已最小化或隐藏。声音仍在录制。",
+        voiceFilmedDisplayChanged: "被录制的显示器已更换。现在录制窗口所在的显示器或主显示器。",
+        failMasterHidden: "视频已保留，文件已隐藏",
+        failMasterHiddenRemedy: "文件无法完成，也无法显示。录制内容以隐藏名称“.recording.mp4”保留在会议文件夹中：在“访达”中按 Shift-Command-句号可显示隐藏文件。"
     )
 }
 
@@ -2531,7 +2782,24 @@ extension ForkMeetingStrings {
         voiceSourceGone: "被錄製的 App 已結束。錄製會繼續錄下聲音，畫面停在最後一格。",
         trackMix: "混音",
         trackMeeting: "會議",
-        trackMicrophone: "麥克風"
+        trackMicrophone: "麥克風",
+        // MARK: Fixes F2,
+        stateStarting: "正在開始…",
+        pictureFrontWindow: "最前面的視窗",
+        pictureFrontDisplay: "它所在的整個顯示器",
+        pictureFrontWindowCaption: "錄製開始時最前面的其他 App 視窗；沒有視窗時錄製整個顯示器。",
+        consentIntroFrontWindow: "「會議」會錄製最前面的視窗（或其所在顯示器）、該 App 的聲音和你的麥克風。所有內容都留在這台 Mac 上。",
+        filmedWindowFormat: "%@ 視窗",
+        filmedWindowUnnamed: "最前面的視窗",
+        filmedDisplay: "整個螢幕",
+        filmedNoWindow: "沒有視窗：整個螢幕",
+        pillFilmTheWindow: "錄製視窗",
+        consentRemind: "記得告知與會者。",
+        voiceStartedWithoutMicrophone: "已開始錄製會議，但沒有你的麥克風：麥克風未獲允許。請在「系統設定」›「隱私權與安全性」›「麥克風」中允許。",
+        voicePictureFrozen: "畫面已靜止：錄製中的視窗已縮到最小或隱藏。聲音仍在錄製。",
+        voiceFilmedDisplayChanged: "錄製中的顯示器已變更。現在錄製視窗所在的顯示器或主顯示器。",
+        failMasterHidden: "影片已保留，檔案已隱藏",
+        failMasterHiddenRemedy: "檔案無法完成，也無法顯示。錄製內容以隱藏名稱「.recording.mp4」保留在會議檔案夾中：在 Finder 中按 Shift-Command-句號可顯示隱藏檔案。"
     )
 }
 
@@ -2695,6 +2963,23 @@ extension ForkMeetingStrings {
         voiceSourceGone: "被錄製的 App 已結束。錄製會繼續錄下聲音，畫面停在最後一格。",
         trackMix: "混音",
         trackMeeting: "會議",
-        trackMicrophone: "麥克風"
+        trackMicrophone: "麥克風",
+        // MARK: Fixes F2,
+        stateStarting: "正在開始…",
+        pictureFrontWindow: "最前面的視窗",
+        pictureFrontDisplay: "它所在的整個顯示器",
+        pictureFrontWindowCaption: "開始錄製時在最前面的其他 App 視窗；沒有視窗時錄製整個顯示器。",
+        consentIntroFrontWindow: "「會議」會錄製最前面的視窗（或其所在顯示器）、該 App 的聲音和你的咪高風。所有內容都留在這部 Mac 上。",
+        filmedWindowFormat: "%@ 視窗",
+        filmedWindowUnnamed: "最前面的視窗",
+        filmedDisplay: "整個螢幕",
+        filmedNoWindow: "沒有視窗：整個螢幕",
+        pillFilmTheWindow: "錄製視窗",
+        consentRemind: "記得通知參與者。",
+        voiceStartedWithoutMicrophone: "已開始錄製會議，但沒有你的咪高風：咪高風未獲允許。請在「系統設定」›「隱私權與安全性」›「麥克風」中允許。",
+        voicePictureFrozen: "畫面已靜止：錄製中的視窗已縮到最小或隱藏。聲音仍在錄製。",
+        voiceFilmedDisplayChanged: "錄製中的顯示器已變更。現在錄製視窗所在的顯示器或主顯示器。",
+        failMasterHidden: "影片已保留，檔案已隱藏",
+        failMasterHiddenRemedy: "檔案無法完成，亦無法顯示。錄影以隱藏名稱「.recording.mp4」保留在會議檔案夾中：在 Finder 中按 Shift-Command-句號可顯示隱藏檔案。"
     )
 }
