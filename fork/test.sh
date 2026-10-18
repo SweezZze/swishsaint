@@ -38,13 +38,16 @@ FORK_SOURCES=(
     Sources/Vorssaint/Fork/Gestures/ForkTrackpadGestureSupport.swift
     Sources/Vorssaint/Fork/Gestures/ForkTrackpadModifierKeys.swift
     Sources/Vorssaint/Fork/Gestures/ForkTrackpadTuning.swift
+    Sources/Vorssaint/Fork/Meetings/ForkMeetingActivity.swift
     Sources/Vorssaint/Fork/Meetings/ForkMeetingFailure.swift
+    Sources/Vorssaint/Fork/Meetings/ForkMeetingFinalPass.swift
     Sources/Vorssaint/Fork/Meetings/ForkMeetingFolder.swift
     Sources/Vorssaint/Fork/Meetings/ForkMeetingMachine.swift
     Sources/Vorssaint/Fork/Meetings/ForkMeetingQuality.swift
     Sources/Vorssaint/Fork/Meetings/ForkMeetingRecoveryPlan.swift
     Sources/Vorssaint/Fork/Meetings/ForkMeetingSidecar.swift
     Sources/Vorssaint/Fork/Meetings/ForkMeetingStrings.swift
+    Sources/Vorssaint/Fork/Meetings/ForkMeetingSystemSupport.swift
     Sources/Vorssaint/Fork/Update/ForkUpdateStrings.swift
     Sources/Vorssaint/Fork/Update/ForkUpdateSupport.swift
 )
