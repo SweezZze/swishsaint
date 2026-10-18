@@ -282,9 +282,11 @@ struct ForkMeetingMachine {
         /// The stream runs and the writer took the first samples, in `folder`.
         /// `target` is what the picture really follows, `microphone` the
         /// name of the one recording, `systemAudio` what the meeting track
-        /// hears, when the engine knows them.
+        /// hears, when the engine knows them. `startedAt` is the file's zero,
+        /// which came before this answer: every time noted counts from it.
         case captureStarted(ForkMeetingToken, folder: URL, target: ForkMeetingCaptureTarget? = nil,
-                            microphone: String? = nil, systemAudio: ForkMeetingSystemAudio? = nil)
+                            microphone: String? = nil, systemAudio: ForkMeetingSystemAudio? = nil,
+                            startedAt: Date? = nil)
         case captureFailed(ForkMeetingToken, ForkMeetingFailure)
         /// Exactly once after `stopCapture`: the file is closed, or not.
         case writerFinished(ForkMeetingToken, ForkMeetingWriterResult)
@@ -363,11 +365,12 @@ struct ForkMeetingMachine {
             guard phase == .idle, !terminating else { return [] }
             return start(origin: .manual, request: request)
 
-        case let .captureStarted(token, folder, target, microphone, systemAudio):
+        case let .captureStarted(token, folder, target, microphone, systemAudio, startedAt):
             guard case let .starting(pending) = phase, pending.token == token else { return [] }
             let setting = pending.config.settings.target
-            var session = Session(token: token, config: pending.config, folder: folder, startedAt: now,
-                                  target: target ?? setting, runningSince: now)
+            let zero = min(startedAt ?? now, now)
+            var session = Session(token: token, config: pending.config, folder: folder, startedAt: zero,
+                                  target: target ?? setting, runningSince: zero)
             if locked { session.lockedAt = 0 }
             phase = .recording(session)
             let notice: ForkMeetingNotice = pending.config.microphoneDenied ? .failure(.microphoneDenied) : .started

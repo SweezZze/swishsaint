@@ -109,6 +109,23 @@ enum ForkMeetingMachineTests {
         suite.expect(muted.handle(.captureStarted(token1, folder: folder), now: t0).contains(.notice(.failure(.microphoneDenied))),
                      "and the start says the microphone is missing")
 
+        var zeroed = Machine()
+        zeroed.handle(request(), now: t0)
+        suite.expect(zeroed.handle(.captureStarted(token1, folder: folder, startedAt: at(0.75)), now: at(2)).first
+                        == .showPill(.recording(.init(recordedBefore: 0, runningSince: at(0.75)), diskMinutesLeft: nil))
+                        && zeroed.activeSession?.startedAt == at(0.75),
+                     "the clock counts from the file's zero, which came before the answer")
+        var resumed = Machine()
+        resumed.handle(request(), now: t0)
+        resumed.handle(.captureStarted(token1, folder: folder, startedAt: at(0.75)), now: at(2))
+        resumed.handle(.pause, now: at(10.75))
+        suite.expect(patches(resumed.handle(.resume, now: at(20.75))) == [Patch(pause: .init(at: 10, seconds: 10, reason: .user))],
+                     "the pause is noted at its place in the file: 10 s in, not 8.75")
+        var future = Machine()
+        future.handle(request(), now: t0)
+        future.handle(.captureStarted(token1, folder: folder, startedAt: at(5)), now: at(2))
+        suite.expect(future.activeSession?.startedAt == at(2), "a zero said to be in the future is taken as now")
+
         var wholeMac = Machine()
         wholeMac.handle(request(), now: t0)
         suite.expect(wholeMac.handle(.captureStarted(token1, folder: folder, systemAudio: .all), now: at(1)).first

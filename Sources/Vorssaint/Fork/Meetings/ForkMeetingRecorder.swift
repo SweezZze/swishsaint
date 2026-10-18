@@ -19,6 +19,9 @@ struct ForkMeetingRecorderStart: Equatable {
     var outputSize: ForkMeetingPixelSize
     /// "hvc1" or "avc1".
     var codec: String
+    /// The file's zero: the instant the writer's session began, before the
+    /// stream came up. Every time `meeting.json` keeps counts from here.
+    var startedAt: Date
 
     /// The meeting track hears the whole Mac (the setting, or no app's tap
     /// could be made): what `meeting.json` must say.
@@ -257,8 +260,12 @@ final class ForkMeetingRecorder: @unchecked Sendable {
         let stream = ForkMeetingCaptureStream(outputSize: outputSize, capturesAudio: sound.streamListens,
                                               callbacks: streamCallbacks())
         lock.withLock { self.stream = stream }
+        let zero = ZeroBox()
         let failure = await withCheckedContinuation { (continuation: CheckedContinuation<ForkMeetingCaptureSupport.StreamStop?, Never>) in
-            stream.start(target, aim: aim, willStart: { time in writer.beginSession(atHostTime: time) }) {
+            stream.start(target, aim: aim, willStart: { time in
+                zero.set(time)
+                writer.beginSession(atHostTime: time)
+            }) {
                 continuation.resume(returning: $0)
             }
         }
@@ -296,8 +303,11 @@ final class ForkMeetingRecorder: @unchecked Sendable {
         guard gate.isAuthorized else { return cancelled() }
         lock.withLock { running = true }
         let codec = writer.codec == .hevc ? "hvc1" : "avc1"
+        let startedAt = Date(timeIntervalSinceNow: min(0, (zero.value ?? ForkMeetingWriter.hostSeconds())
+                                                          - ForkMeetingWriter.hostSeconds()))
         return .success(ForkMeetingRecorderStart(target: Self.target(of: aim), window: window, sound: sound,
-                                                 microphone: microphoneName, outputSize: outputSize, codec: codec))
+                                                 microphone: microphoneName, outputSize: outputSize, codec: codec,
+                                                 startedAt: startedAt))
     }
 
     /// `stop` came during the start: it owns the teardown, and the start's
@@ -680,6 +690,15 @@ final class ForkMeetingRecorder: @unchecked Sendable {
             let box = ValueBox(value)
             if Thread.isMainThread { body(box.value) } else { DispatchQueue.main.async { body(box.value) } }
         }
+    }
+
+    /// The writer's zero, in host seconds, set from the stream's queue.
+    private final class ZeroBox: @unchecked Sendable {
+        private let lock = NSLock()
+        private var time: Double?
+
+        func set(_ value: Double) { lock.withLock { time = value } }
+        var value: Double? { lock.withLock { time } }
     }
 
     private final class ResultBox: @unchecked Sendable {

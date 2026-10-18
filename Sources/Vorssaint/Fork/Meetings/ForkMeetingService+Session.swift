@@ -255,7 +255,7 @@ extension ForkMeetingService {
             filmedWindow = start.window
             context.displayID = Self.displayID(of: start.window)
             send(.captureStarted(token, folder: folder, target: start.target, microphone: start.microphone,
-                                 systemAudio: start.hearsWholeMac ? .all : nil))
+                                 systemAudio: start.hearsWholeMac ? .all : nil, startedAt: start.startedAt))
         case let .failure(failure):
             log.error("the capture did not start: \(String(describing: failure), privacy: .public)")
             send(.captureFailed(token, failure))
