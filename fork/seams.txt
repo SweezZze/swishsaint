@@ -9,7 +9,8 @@ bootstrap      Sources/Vorssaint/App/AppDelegate.swift                        # 
 update         Sources/Vorssaint/Services/Update/UpdateService.swift          # coupe l'updater officiel, branche celui du fork
 backup         Sources/Vorssaint/Services/SettingsBackup.swift                # les réglages du fork partent dans la sauvegarde et en reviennent
 feedback       Sources/Vorssaint/Services/Feedback/FeedbackService.swift      # n'envoie pas nos rapports de bug au dev officiel
-settings       Sources/Vorssaint/UI/Settings/FeatureVisibilitySupport.swift   # page « Extras » : déclare la page
-settings2      Sources/Vorssaint/UI/Settings/SettingsView.swift               # page « Extras » : affiche son contenu
+settings       Sources/Vorssaint/UI/Settings/FeatureVisibilitySupport.swift   # pages du fork : déclare « Extras » et les pages des features (.fork(id))
+settings2      Sources/Vorssaint/UI/Settings/SettingsView.swift               # pages du fork : affiche « Extras » et chaque page de feature
 settings3      Sources/Vorssaint/UI/Settings/SettingsDirectory.swift          # page « Extras » : sa ligne dans la barre latérale et la recherche
+settings4      Sources/Vorssaint/UI/Settings/SettingsDirectory.swift          # pages des features du fork : leur ligne dans la barre latérale et la recherche
 window-layout  Sources/Vorssaint/Services/WindowLayout/WindowLayoutService.swift  # gestes du trackpad : suivent chaque synchro et chaque arrêt de Disposition des fenêtres

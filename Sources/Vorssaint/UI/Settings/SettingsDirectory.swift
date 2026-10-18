@@ -246,6 +246,7 @@ enum SettingsDirectory {
                                           FeatureStrings.mouseClickDebounce(language).windowLabel,
                                           "debounce"]),
                                        ]),
+                ForkSettingsPages.item(.trackpadGestures, language: language), // FORK(settings4)
                 SettingsDirectoryItem(page: .switcher, title: s.tabSwitcher, icon: "rectangle.on.rectangle",
                                        featureKeywords: [
                                         (.switcher, [s.switcherEnable, s.switcherInstantSelection,
@@ -433,6 +434,7 @@ enum SettingsDirectory {
                                                  FeatureStrings.radialMenu(language).kindMedia,
                                                  FeatureStrings.radialMenu(language).kindSubmenu,
                                                  FeatureStrings.radialMenu(language).mouseTriggerRequirement]),
+                ForkSettingsPages.item(.dictation, language: language), // FORK(settings4)
             ]),
             (categories.app, [
                 SettingsDirectoryItem(page: .shortcuts, title: s.shortcutsPageTitle, icon: "command",
