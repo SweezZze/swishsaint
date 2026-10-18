@@ -275,27 +275,67 @@ enum ForkMeetingMachineTests {
                      "and its resume starts a new stream, the old one died with the sleep")
 
         var locked = recording()
-        let lock = locked.handle(.locked, now: at(50))
-        suite.expect(lock.first == .pauseCapture(.lock) && isPaused(locked, .lock),
-                     "a locked screen pauses the recording: nothing worth filming, nothing that should be")
-        let unlock = locked.handle(.unlocked, now: at(70))
-        suite.expect(unlock.first == .resumeCapture && unlock.contains(.notice(.resumed))
-                        && patches(unlock) == [Patch(pause: .init(at: 50, seconds: 20, reason: .lock))],
-                     "unlocking resumes it, on the same stream")
+        suite.expect(locked.handle(.locked, now: at(50)).isEmpty && isRecording(locked),
+                     "a locked screen pauses nothing: the sound goes on, the picture freezes")
+        suite.expect(locked.handle(.locked, now: at(55)).isEmpty, "a second lock report changes nothing")
+        suite.expect(locked.handle(.unlocked, now: at(70))
+                        == [.writeSidecar(folder, Patch(gap: .init(at: 50, seconds: 20, kind: .screenLocked)))]
+                        && isRecording(locked),
+                     "the unlock notes the lock in meeting.json as a gap, from the lock to the unlock")
+        suite.expect(locked.handle(.unlocked, now: at(80)).isEmpty, "an unlock without a lock notes nothing")
 
         var lidClosed = recording()
         lidClosed.handle(.locked, now: at(10))
         lidClosed.handle(.willSleep, now: at(11))
-        suite.expect(lidClosed.handle(.didWake, now: at(100)).isEmpty
-                        && isPaused(lidClosed, .lock),
-                     "waking on the lock screen waits for the unlock")
-        lidClosed.handle(.captureFailed(token1, .streamStopped), now: at(101))
-        suite.expect(lidClosed.isBusy && lidClosed.activeSession != nil,
-                     "a stream that dies during the lock is expected, not a failure")
-        let back = lidClosed.handle(.unlocked, now: at(130))
-        suite.expect(back.prefix(2) == [.restartStream, .resumeCapture]
-                        && patches(back) == [Patch(pause: .init(at: 10, seconds: 120, reason: .lock))],
-                     "the unlock resumes on a new stream; the pause is one, from the lock to the unlock")
+        let wakeLocked = lidClosed.handle(.didWake, now: at(100))
+        suite.expect(wakeLocked.prefix(2) == [.restartStream, .resumeCapture] && wakeLocked.contains(.notice(.resumed))
+                        && patches(wakeLocked) == [Patch(pause: .init(at: 11, seconds: 89, reason: .sleep))]
+                        && isRecording(lidClosed),
+                     "waking on the lock screen resumes at once on a new stream; the picture stays frozen until the unlock")
+        suite.expect(lidClosed.handle(.unlocked, now: at(130))
+                        == [.writeSidecar(folder, Patch(gap: .init(at: 10, seconds: 31, kind: .screenLocked)))],
+                     "the lock's gap counts recorded seconds only: the sleep inside it is a pause, not counted twice")
+
+        var dead = recording()
+        dead.handle(.locked, now: at(10))
+        suite.expect(dead.handle(.captureFailed(token1, .streamStopped), now: at(20)).isEmpty && isRecording(dead),
+                     "a stream that dies during the lock is expected, not a failure: the sound goes on")
+        suite.expect(dead.handle(.unlocked, now: at(40))
+                        == [.restartStream, .writeSidecar(folder, Patch(gap: .init(at: 10, seconds: 30, kind: .screenLocked)))],
+                     "the unlock starts a new stream for the picture")
+        suite.expect(stoppedFile(dead.handle(.captureFailed(token1, .streamStopped), now: at(50))),
+                     "unlocked again, a stream that dies is a real stop")
+
+        var stoppedLocked = recording()
+        stoppedLocked.handle(.locked, now: at(10))
+        suite.expect(patches(stoppedLocked.handle(.stop, now: at(25)))
+                        == [Patch(stopReason: .user, gap: .init(at: 10, seconds: 15, kind: .screenLocked))],
+                     "a meeting stopped during the lock closes its gap at the stop")
+        var quitLocked = recording()
+        quitLocked.handle(.locked, now: at(10))
+        suite.expect(quitLocked.handle(.appWillTerminate, now: at(30)).first
+                        == .writeSidecar(folder, Patch(state: .interrupted, stopReason: .quit,
+                                                       gap: .init(at: 10, seconds: 20, kind: .screenLocked))),
+                     "quitting during the lock closes its gap too")
+
+        var pausedThrough = recording()
+        pausedThrough.handle(.pause, now: at(10))
+        pausedThrough.handle(.locked, now: at(20))
+        suite.expect(pausedThrough.handle(.unlocked, now: at(30)).isEmpty && isPaused(pausedThrough, .user),
+                     "a lock inside a pause records no gap, and never resumes the pause")
+        pausedThrough.handle(.locked, now: at(40))
+        pausedThrough.handle(.resume, now: at(45))
+        suite.expect(pausedThrough.handle(.unlocked, now: at(55))
+                        == [.writeSidecar(folder, Patch(gap: .init(at: 10, seconds: 10, kind: .screenLocked)))],
+                     "a lock that outlasts the pause counts only the seconds recorded behind it")
+
+        var startedLocked = Machine()
+        startedLocked.handle(.locked, now: t0)
+        startedLocked.handle(request(), now: t0)
+        startedLocked.handle(.captureStarted(token1, folder: folder), now: at(1))
+        suite.expect(startedLocked.handle(.unlocked, now: at(6))
+                        == [.writeSidecar(folder, Patch(gap: .init(at: 0, seconds: 5, kind: .screenLocked)))],
+                     "a meeting started on a locked screen notes the lock from its first second")
 
         var startingAsleep = Machine()
         startingAsleep.handle(request(), now: t0)

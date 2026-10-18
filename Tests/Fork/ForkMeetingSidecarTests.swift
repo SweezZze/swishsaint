@@ -139,6 +139,12 @@ enum ForkMeetingSidecarTests {
         suite.expect(rewritten?.state == .complete && rewritten?.preserved["state"] == nil
                         && rewritten?.preserved["pauses"] != nil && rewritten?.pauses == nil,
                      "a value set by this version replaces the unreadable one; an unreadable list is never cut down to a partial one")
+        let lockPause = decoded("{\"pauses\": [{\"at\": 3, \"seconds\": 2, \"reason\": \"lock\"}]}")
+        suite.expect(lockPause?.pauses == nil && lockPause?.preserved["pauses"] != nil,
+                     "a pause reason this version does not know (a lock is no longer a pause) is kept as written")
+        let lockGap = decoded("{\"gaps\": [{\"at\": 50, \"seconds\": 20, \"kind\": \"screenLocked\"}]}")
+        suite.expect(lockGap?.gaps == [.init(at: 50, seconds: 20, kind: .screenLocked)],
+                     "a locked screen is written as a gap of kind screenLocked")
         let newer = decoded("{\"schema\": 2, \"title\": \"Futur\"}")
         suite.expect(newer?.title == "Futur" && newer?.isRewritable == false,
                      "a sidecar from a later version reads, and is not rewritten")
@@ -186,7 +192,7 @@ enum ForkMeetingSidecarTests {
                         && after.capture?.microphone == "MacBook Pro" && after.capture?.quality == .standard
                         && after.id == first.id && after.startedAt == first.startedAt,
                      "a patch changes what it sets, appends pauses and gaps, and keeps everything else")
-        let twice = ForkMeetingSidecarPatch(pause: .init(at: 900, seconds: 5, reason: .lock)).applied(to: after)
+        let twice = ForkMeetingSidecarPatch(pause: .init(at: 900, seconds: 5, reason: .sleep)).applied(to: after)
         suite.expect(twice.pauses?.map(\.at) == [600, 900], "pauses add up in order")
         suite.expect(ForkMeetingSidecarPatch().applied(to: after) == after, "an empty patch changes nothing")
         suite.expect(ForkMeetingSidecar.rewriting(.success(first), with: patch) == after,

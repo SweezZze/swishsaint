@@ -35,11 +35,12 @@ enum ForkMeetingStopReason: String, Codable, CaseIterable {
     case captureStopped
 }
 
+/// Why a recording paused. A locked screen is not one: it pauses nothing,
+/// and is noted as a gap. A value this version does not know is kept as it
+/// was written (`preserved`).
 enum ForkMeetingPauseReason: String, Codable, CaseIterable {
     case user
     case sleep
-    /// The screen locked: nothing worth filming, and nothing that should be.
-    case lock
 }
 
 /// What the picture follows: the meeting's window, or the display it is on.
@@ -153,6 +154,8 @@ struct ForkMeetingSidecar: Equatable {
         case microphoneSwitch
         /// The capture restarted (after a sleep, a lost stream).
         case streamRestart
+        /// The screen was locked: the sound went on, the picture froze.
+        case screenLocked
     }
 
     /// `at` and every time below are seconds of recording, pauses excluded;

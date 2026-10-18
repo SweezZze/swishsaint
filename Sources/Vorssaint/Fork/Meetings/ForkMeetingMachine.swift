@@ -164,8 +164,8 @@ enum ForkMeetingAnnouncement: Equatable {
 /// current phase returns nothing and changes nothing.
 ///
 /// ```
-///  idle ──manualStart──► starting ──captureStarted──► recording ◄──resume / wake / unlock──┐
-///   ▲  (refused: idle)      │ failed, stop             │      └──pause / willSleep / locked──► paused
+///  idle ──manualStart──► starting ──captureStarted──► recording ◄──────resume / wake────────┐
+///   ▲  (refused: idle)      │ failed, stop             │      └───────pause / willSleep──────► paused
 ///   │                       ▼                          │ stop, disk, permission, quit,          │
 ///   ├──────────────────── idle                         ▼ feature off, capture failed            │
 ///   └──writerFinished + beginFinalize (once)──── stopping ◄─────────────────────────────────────┘
@@ -179,7 +179,9 @@ enum ForkMeetingAnnouncement: Equatable {
 /// - quitting while recording writes `interrupted` first, then stops;
 /// - turning the feature off stops the meeting and keeps its file;
 /// - a meeting started by hand is never ended by the detection
-///   (`Session.endsWithMeeting`), and resumes after a sleep.
+///   (`Session.endsWithMeeting`), and resumes after a sleep;
+/// - a locked screen pauses nothing: the sound goes on, the picture
+///   freezes, and the lock is noted in `meeting.json` as a gap.
 struct ForkMeetingMachine {
     /// A start asked, the capture not running yet.
     struct Pending: Equatable {
@@ -206,6 +208,8 @@ struct ForkMeetingMachine {
         var streamNeedsRestart = false
         var diskMinutesLeft: Int?
         var microphoneSilenceSaid = false
+        /// Seconds recorded when the screen locked, while it stays locked.
+        var lockedAt: TimeInterval?
         var stoppedAt: Date?
 
         var origin: ForkMeetingOrigin { config.origin }
@@ -236,6 +240,16 @@ struct ForkMeetingMachine {
             pauseReason = nil
             runningSince = now
             return pause
+        }
+
+        /// Ends the screen lock in progress, as a gap of `meeting.json`: from
+        /// the lock to now, in seconds of recording. None when nothing was
+        /// recorded meanwhile (a pause covered it).
+        mutating func endLock(at now: Date) -> ForkMeetingSidecar.Gap? {
+            guard let start = lockedAt else { return nil }
+            lockedAt = nil
+            let seconds = recorded(at: now) - start
+            return seconds > 0 ? ForkMeetingSidecar.Gap(at: start, seconds: seconds, kind: .screenLocked) : nil
         }
     }
 
@@ -301,8 +315,7 @@ struct ForkMeetingMachine {
 
     private(set) var phase: Phase = .idle
     private var lastToken = 0
-    /// System facts that outlive a phase: a wake may find the screen locked.
-    private var asleep = false
+    /// A fact that outlives a phase: a meeting may start on a locked screen.
     private var locked = false
     /// The app is quitting: nothing starts any more, nothing is finalized.
     private var terminating = false
@@ -326,7 +339,8 @@ struct ForkMeetingMachine {
 
         case let .captureStarted(token, folder):
             guard case let .starting(pending) = phase, pending.token == token else { return [] }
-            let session = Session(token: token, config: pending.config, folder: folder, startedAt: now, runningSince: now)
+            var session = Session(token: token, config: pending.config, folder: folder, startedAt: now, runningSince: now)
+            if locked { session.lockedAt = 0 }
             phase = .recording(session)
             let notice: ForkMeetingNotice = pending.config.microphoneDenied ? .failure(.microphoneDenied) : .started
             return [.showPill(pill(session, paused: nil)), .notice(notice), .announce(.started)]
@@ -338,10 +352,14 @@ struct ForkMeetingMachine {
             }
             guard var session = activeSession, session.token == token else { return [] }
             // A stream that dies during a sleep or a lock is expected: a new
-            // one starts with the recording.
-            if case let .paused(_, reason) = phase, reason != .user, failure == .streamStopped {
+            // one starts at the wake or the unlock.
+            let asleep: Bool = {
+                if case .paused(_, .sleep) = phase { return true }
+                return false
+            }()
+            if failure == .streamStopped, asleep || session.lockedAt != nil {
                 session.streamNeedsRestart = true
-                phase = .paused(session, reason)
+                replace(session)
                 return []
             }
             return stopForFailure(session, failure == .screenRecordingDenied ? .screenRecordingRevoked : failure, now: now)
@@ -366,7 +384,6 @@ struct ForkMeetingMachine {
             return stop(session, reason: .user, now: now)
 
         case .willSleep:
-            asleep = true
             switch phase {
             case let .starting(pending):
                 return cancel(pending)
@@ -379,34 +396,42 @@ struct ForkMeetingMachine {
                 // A pause chosen by the person stays theirs: the wake will
                 // not end it.
                 session.streamNeedsRestart = true
-                phase = .paused(session, reason == .user ? .user : .sleep)
+                phase = .paused(session, reason)
                 return [.pauseCapture(.sleep)]
             case .idle, .stopping:
                 return []
             }
 
         case .didWake:
-            asleep = false
             guard case let .paused(session, .sleep) = phase else { return [] }
-            if locked {
-                phase = .paused(session, .lock)
-                return []
-            }
-            // Started by hand: it resumes. An offered meeting that ended
-            // during the sleep will stop here instead, with the detection.
+            // Started by hand: it resumes, on a new stream, even on the lock
+            // screen (the picture stays frozen until the unlock). An offered
+            // meeting that ended during the sleep will stop here instead,
+            // with the detection.
             return resume(session, now: now, automatic: true)
 
         case .locked:
             locked = true
-            guard case var .recording(session) = phase else { return [] }
-            session.beginPause(at: now, reason: .lock)
-            phase = .paused(session, .lock)
-            return [.pauseCapture(.lock), .showPill(pill(session, paused: .lock)), .announce(.paused)]
+            // Nothing pauses: the sound goes on, the picture freezes. The
+            // lock becomes a gap once its length is known.
+            guard var session = activeSession, session.lockedAt == nil else { return [] }
+            session.lockedAt = session.recorded(at: now)
+            replace(session)
+            return []
 
         case .unlocked:
             locked = false
-            guard case let .paused(session, .lock) = phase, !asleep else { return [] }
-            return resume(session, now: now, automatic: true)
+            guard var session = activeSession else { return [] }
+            var effects: [Effect] = []
+            if case .recording = phase, session.streamNeedsRestart {
+                session.streamNeedsRestart = false
+                effects.append(.restartStream)
+            }
+            if let gap = session.endLock(at: now) {
+                effects.append(.writeSidecar(session.folder, ForkMeetingSidecarPatch(gap: gap)))
+            }
+            replace(session)
+            return effects
 
         case let .diskLow(freeBytes):
             guard var session = activeSession else { return [] }
@@ -475,6 +500,7 @@ struct ForkMeetingMachine {
                 guard var session = activeSession else { return [] }
                 var patch = ForkMeetingSidecarPatch(state: .interrupted, stopReason: .quit)
                 patch.pause = session.endPause(at: now)
+                patch.gap = session.endLock(at: now)
                 session.recordedBefore = session.recorded(at: now)
                 session.runningSince = nil
                 session.stoppedAt = now
@@ -545,6 +571,7 @@ struct ForkMeetingMachine {
         var session = session
         var patch = ForkMeetingSidecarPatch(stopReason: reason)
         patch.pause = session.endPause(at: now)
+        patch.gap = session.endLock(at: now)
         session.recordedBefore = session.recorded(at: now)
         session.runningSince = nil
         session.stoppedAt = now
