@@ -21,6 +21,7 @@ struct ForkTests {
             ("fork-parakeet", { ForkParakeetTests.run(suite) }),
             ("fork-parakeet-store", { ForkParakeetStoreTests.run(suite) }),
             ("fork-meetings-quality", { ForkMeetingQualityTests.run(suite) }),
+            ("fork-meetings-folder", { ForkMeetingFolderTests.run(suite) }),
         ]
         var selected = Set<String>()
         var listOnly = false
