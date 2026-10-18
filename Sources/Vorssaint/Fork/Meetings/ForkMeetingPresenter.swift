@@ -143,7 +143,7 @@ final class ForkMeetingPresenter {
         let notice: ForkMeetingNotice = recovered ? .recovered : .saved
         let text = self.text
         announce(notice.title(text) + ". " + detail)
-        if !NSApp.isActive { Notifier.post(title: notice.title(text), body: detail) }
+        if !NSApp.isActive && Self.canNotify { Notifier.post(title: notice.title(text), body: detail) }
         removeCard()
         func card(dismiss: @escaping () -> Void) -> ForkMeetingCard {
             ForkMeetingCard(symbol: ForkMeetingIsland.symbol(for: notice), tint: .green, title: notice.title(text),
@@ -314,12 +314,17 @@ final class ForkMeetingPresenter {
     /// A system notification, plain and without an action, only when the
     /// app is behind: in front, the island or the bubble already said it.
     private func notify(_ notice: ForkMeetingNotice, detail: String?) {
-        guard !NSApp.isActive else { return }
+        guard !NSApp.isActive, Self.canNotify else { return }
         let text = self.text
         var body = detail ?? notice.detail(text) ?? ""
         if case let .failure(failure) = notice { body = failure.remedy(text) }
         Notifier.post(title: notice.title(text), body: body)
     }
+
+    /// The notification centre ends a process it cannot tie to a bundle (a
+    /// bare build of the sources, as `Permissions` notes); the app always is
+    /// one.
+    private static var canNotify: Bool { Bundle.main.bundleIdentifier != nil }
 
     /// High priority, so it is not lost behind what VoiceOver is reading;
     /// the same sentence twice in a row is said once.

@@ -3,31 +3,88 @@
 
 import AppKit
 import Combine
+import os
 
 /// Meetings: records a call's window, its sound and the microphone, one
 /// folder per meeting.
 ///
-/// What is here registers the feature: its switch, the first-use sheet, the
-/// shortcut, and the buttons of the failures. The recording itself (capture,
-/// writer, pill, finishing) is the session's work: `ForkMeetingMachine`
-/// decides, and this service will run the effects it returns, the way
-/// `ForkDictationService` runs dictation's.
+/// The service decides nothing itself: `ForkMeetingMachine` decides, and the
+/// service runs the effects it returns, the way `ForkDictationService` runs
+/// dictation's:
+/// - the capture, one `ForkMeetingRecorder` per session made with the
+///   session's token, and every answer of the engine (`+Session`);
+/// - the final pass through `ForkMeetingFinalizer`, which outlives the
+///   session, the saved notice, and the recovery at launch (`+Finalize`);
+/// - the Mac's sleep, lock, displays, disk and quit (`+System`);
+/// - here, the feature's switch, its first-use sheet, its shortcut, and the
+///   failures the Meetings page shows.
+///
+/// Every asynchronous answer (the folder made, the capture started, the file
+/// closed, an engine's event) carries its session's token; the machine drops
+/// one that does not match, and so does the service before acting on it.
 ///
 /// Main thread only.
 final class ForkMeetingService: ObservableObject {
     static let shared = ForkMeetingService()
 
-    /// A lasting failure (`ForkMeetingFailure.isLasting`), for the settings
-    /// page's banner. Cleared as soon as its cause is gone.
-    @Published private(set) var lastFailure: ForkMeetingFailure?
+    /// A lasting failure (`ForkMeetingFailure.isLasting`), or a final pass
+    /// that failed, for the settings page's banner. Cleared as soon as its
+    /// cause is gone. Written by the service only (its files share the
+    /// setters of these).
+    @Published var lastFailure: ForkMeetingFailure?
     /// A meeting is being recorded, paused or not.
-    @Published private(set) var isRecording = false
-    @Published private(set) var isPaused = false
+    @Published var isRecording = false
+    @Published var isPaused = false
     /// Recording, or still finishing a recording's file: neither the app's
     /// update nor a second start may come in between.
-    @Published private(set) var isBusy = false
+    @Published var isBusy = false
     /// macOS refused the shortcut: another app holds the combination.
     @Published private(set) var shortcutRefused = false
+    /// The last meeting saved, or recovered at launch.
+    @Published var lastSaved: ForkMeetingSaved?
+
+    // Shared with the service's other files (+Session, +Finalize, +System),
+    // hence not private. Nothing outside the service touches them.
+    let log = Logger(subsystem: "fork.meetings", category: "service")
+    let defaults: UserDefaults
+    let store: ForkMeetingStore
+    let finalizer: ForkMeetingFinalizer
+    let presenter: ForkMeetingPresenter
+    /// The free space of a folder's volume, read off the main thread.
+    let freeBytes: (URL) -> Int64?
+    /// The official screen recorder runs: a meeting does not start on top.
+    let officialRecorderBusy: () -> Bool
+    /// How long after the launch the meetings left unfinished are looked at:
+    /// once the launch is done, as dictation warms Parakeet up.
+    let recoveryDelay: TimeInterval
+    lazy var systemEvents = ForkMeetingSystemEvents(freeBytes: freeBytes) { [weak self] event in
+        self?.systemEvent(event)
+    }
+
+    var machine = ForkMeetingMachine()
+    var queue: [ForkMeetingMachine.Event] = []
+    var isDraining = false
+    /// The engine of every session whose file is not closed yet, by token: a
+    /// stop may still be closing one while the machine moved on.
+    var recorders: [ForkMeetingToken: ForkMeetingRecorder] = [:]
+    /// Each session's folder, once made.
+    var folders: [ForkMeetingToken: URL] = [:]
+    /// What the pill knows beyond the machine's state.
+    var context = ForkMeetingLiveContext()
+    /// The free space is being read for a start.
+    var preparingStart = false
+    var presenterReady = false
+    /// The session whose disk the system events watch.
+    var watchedToken: ForkMeetingToken?
+    /// The folders a session handed to the finalizer, until their outcome.
+    var finalizing: [URL] = []
+    var recoveryAsked = false
+    /// The app is quitting: every write waits, every stop is bounded.
+    var terminating = false
+    var quitDeadline = Date.distantFuture
+    /// The last notice the machine or the finalizer gave, for the recipe
+    /// harness and the logs.
+    var lastNotice: ForkMeetingNotice?
 
     private lazy var hotKey = ForkMeetingHotKey { [weak self] in self?.shortcutPressed() }
     private var observers: [AnyCancellable] = []
@@ -43,7 +100,28 @@ final class ForkMeetingService: ObservableObject {
     /// The Meetings page is recording a combination right now.
     private var recordsShortcutInPage = false
 
-    private init() {}
+    /// The app's service uses the app's settings and singletons; a recipe
+    /// harness gives its own, so that nothing of the installed app is
+    /// touched.
+    init(defaults: UserDefaults = .standard,
+         store: ForkMeetingStore = .shared,
+         finalizer: ForkMeetingFinalizer = .shared,
+         presenter: ForkMeetingPresenter = .shared,
+         freeBytes: @escaping (URL) -> Int64? = ForkMeetingStore.freeBytes(at:),
+         officialRecorderBusy: @escaping () -> Bool = { ScreenRecorderService.shared.hasActiveCapture },
+         recoveryDelay: TimeInterval = 5) {
+        self.defaults = defaults
+        self.store = store
+        self.finalizer = finalizer
+        self.presenter = presenter
+        self.freeBytes = freeBytes
+        self.officialRecorderBusy = officialRecorderBusy
+        self.recoveryDelay = recoveryDelay
+        finalizer.$progress
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] progress in self?.finalizerProgressed(progress) }
+            .store(in: &observers)
+    }
 
     // MARK: - Lifecycle
 
@@ -51,7 +129,7 @@ final class ForkMeetingService: ObservableObject {
         UserDefaults.standard.bool(forKey: ForkDefaultsKey.meetingsEnabled)
     }
 
-    var isWanted: Bool { Self.isWanted }
+    var isWanted: Bool { defaults.bool(forKey: ForkDefaultsKey.meetingsEnabled) }
 
     /// The first-use sheet was confirmed on this Mac. Machine state: a
     /// backup restored on another Mac asks again.
@@ -59,12 +137,25 @@ final class ForkMeetingService: ObservableObject {
         UserDefaults.standard.bool(forKey: ForkDefaultsKey.meetingsConsentAcknowledged)
     }
 
+    var consentAcknowledged: Bool { defaults.bool(forKey: ForkDefaultsKey.meetingsConsentAcknowledged) }
+
     /// At launch: syncs now, then whenever a permission or the app's
-    /// activation changes.
+    /// activation changes. The meetings the last run left unfinished are
+    /// recovered a little later, once the launch is done.
     static func startFollowingPermissions() {
-        shared.followPermissions()
-        shared.sync()
-        if NSApp.isActive { shared.watchShortcutCapture(true) }
+        shared.startFollowingPermissions()
+    }
+
+    /// Once; a second call only syncs.
+    func startFollowingPermissions() {
+        followPermissions()
+        sync()
+        if NSApp.isActive { watchShortcutCapture(true) }
+        guard !recoveryAsked else { return }
+        recoveryAsked = true
+        DispatchQueue.main.asyncAfter(deadline: .now() + recoveryDelay) { [weak self] in
+            self?.recoverAtLaunch()
+        }
     }
 
     static func sync() {
@@ -73,10 +164,11 @@ final class ForkMeetingService: ObservableObject {
 
     /// Every switch of the feature lands here, from its page or from Extras.
     /// Turned on without the first-use sheet confirmed on this Mac, the sheet
-    /// comes first; cancelled, the feature turns back off.
+    /// comes first; cancelled, the feature turns back off. Turned off while
+    /// recording, the recording stops and its file is kept (§3.2 n° 48).
     func sync() {
         let wanted = isWanted
-        if wanted, wasWanted == false, !Self.consentAcknowledged {
+        if wanted, wasWanted == false, !consentAcknowledged {
             presentConsent()
         } else if !wanted {
             // Turned off elsewhere while the sheet was open: it has nothing
@@ -87,8 +179,18 @@ final class ForkMeetingService: ObservableObject {
         wasWanted = wanted
         revalidateFailure()
         syncHotKey()
-        // Filled by the session work: turned off while recording, the
-        // recording stops and its file is kept (§3.2 n° 48).
+        if wanted {
+            prepareSurfaces()
+        } else if machine.isBusy {
+            send(.featureDisabled)
+        }
+        syncSystemEvents()
+        // Off and idle: nothing shows, nothing is held. A meeting still
+        // finishing keeps its pill until its saved notice.
+        if !wanted, !isBusy, presenterReady {
+            presenter.reset()
+            presenterReady = false
+        }
     }
 
     private func followPermissions() {
@@ -97,11 +199,20 @@ final class ForkMeetingService: ObservableObject {
         let permissions = Permissions.shared
         permissions.$screenRecording.removeDuplicates().dropFirst()
             .receive(on: DispatchQueue.main)
-            .sink { [weak self] _ in self?.revalidateFailure() }
+            .sink { [weak self] granted in
+                self?.revalidateFailure()
+                if !granted { self?.send(.permissionLost(.screenRecording)) }
+            }
             .store(in: &observers)
         permissions.$microphone.removeDuplicates().dropFirst()
             .receive(on: DispatchQueue.main)
-            .sink { [weak self] _ in self?.revalidateFailure() }
+            .sink { [weak self] state in
+                guard let self else { return }
+                self.revalidateFailure()
+                if state == .denied, self.machine.activeSession?.config.recordsMicrophone == true {
+                    self.send(.permissionLost(.microphone))
+                }
+            }
             .store(in: &observers)
         let center = NotificationCenter.default
         center.publisher(for: NSApplication.didBecomeActiveNotification)
@@ -115,34 +226,17 @@ final class ForkMeetingService: ObservableObject {
             .store(in: &observers)
     }
 
-    // MARK: - Recording
-
-    /// From the page's button and the shortcut. Never before the first-use
-    /// sheet: it is asked for instead.
-    func startManually() {
-        guard isWanted, !isBusy else { return }
-        guard Self.consentAcknowledged else {
-            presentConsent()
-            return
-        }
-        // Filled by the session work.
-    }
-
-    func stop() {
-        // Filled by the session work.
-    }
-
-    func togglePause() {
-        // Filled by the session work.
-    }
-
-    /// The shortcut: starts a recording, or stops the one running.
-    func toggleRecording() {
-        if isRecording {
-            stop()
-        } else {
-            startManually()
-        }
+    /// The pill, the island and the bubble get their buttons once the feature
+    /// is on.
+    func prepareSurfaces() {
+        guard !presenterReady else { return }
+        presenterReady = true
+        presenter.configure(levels: { [weak self] in self?.activeRecorder?.levels ?? .silent },
+                            onPause: { [weak self] in self?.send(.pause) },
+                            onResume: { [weak self] in self?.send(.resume) },
+                            onStop: { [weak self] in self?.stop() },
+                            onToggleTarget: { [weak self] in self?.toggleTarget() },
+                            onFailureAction: { [weak self] action in self?.perform(action) })
     }
 
     // MARK: - First use
@@ -163,7 +257,6 @@ final class ForkMeetingService: ObservableObject {
 
     private func consentAnswered(_ confirmed: Bool) {
         consentSheet = nil
-        let defaults = UserDefaults.standard
         if confirmed {
             defaults.set(true, forKey: ForkDefaultsKey.meetingsConsentAcknowledged)
         } else {
@@ -184,7 +277,7 @@ final class ForkMeetingService: ObservableObject {
     /// shortcut field is listening.
     func syncHotKey() {
         let wanted = isWanted && !shortcutStepsAside && !recordsShortcutInPage
-        let shortcut = wanted ? ForkMeetingShortcut.load().flatMap { shortcut in
+        let shortcut = wanted ? ForkMeetingShortcut.load(defaults).flatMap { shortcut in
             ForkMeetingShortcut.problem(of: shortcut) == nil ? shortcut : nil
         } : nil
         hotKey.sync(shortcut)
@@ -222,7 +315,7 @@ final class ForkMeetingService: ObservableObject {
 
     /// A lasting failure clears itself once its cause is gone; one that
     /// belongs to a single meeting does not stay on the page.
-    private func revalidateFailure() {
+    func revalidateFailure() {
         guard let failure = lastFailure else { return }
         let stillTrue: Bool
         switch failure {
@@ -231,7 +324,7 @@ final class ForkMeetingService: ObservableObject {
         case .microphoneDenied:
             stillTrue = Permissions.shared.microphone != .granted
         case .folderUnavailable:
-            stillTrue = !Self.folderIsWritable
+            stillTrue = !folderIsWritable
         case .localBuild:
             stillTrue = !Self.hasForkPermissionTexts
         case .systemAudioUnavailable:
@@ -243,6 +336,13 @@ final class ForkMeetingService: ObservableObject {
             stillTrue = false
         }
         if !stillTrue { lastFailure = nil }
+    }
+
+    /// Kept for the page: a failure that lasts, or a final pass that failed.
+    /// One that passes with its meeting is only said, in the island.
+    func remember(_ failure: ForkMeetingFailure) {
+        guard failure.isLasting || failure == .finalPassFailed else { return }
+        lastFailure = failure
     }
 
     func clearFailure() {
@@ -290,12 +390,13 @@ final class ForkMeetingService: ObservableObject {
                                       movies: movies, strings: .current)
     }
 
-    static var folderIsWritable: Bool {
-        let path = root.url.path
+    var folderIsWritable: Bool {
+        let root = store.root()
+        let path = root.path
         var isDirectory: ObjCBool = false
         guard FileManager.default.fileExists(atPath: path, isDirectory: &isDirectory) else {
             // Not made yet: its parent decides.
-            return FileManager.default.isWritableFile(atPath: root.url.deletingLastPathComponent().path)
+            return FileManager.default.isWritableFile(atPath: root.deletingLastPathComponent().path)
         }
         return isDirectory.boolValue && FileManager.default.isWritableFile(atPath: path)
     }
@@ -304,17 +405,15 @@ final class ForkMeetingService: ObservableObject {
     /// was recorded yet. Its path is saved then, like at a first recording:
     /// the folder the person has seen must not move with the language.
     func openFolder() {
-        let root = Self.root
+        let root = store.root()
         do {
-            try FileManager.default.createDirectory(at: root.url, withIntermediateDirectories: true)
+            try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
         } catch {
             lastFailure = .folderUnavailable
             return
         }
-        if root.needsStoring {
-            UserDefaults.standard.set(root.url.path, forKey: ForkDefaultsKey.meetingsFolder)
-        }
-        NSWorkspace.shared.open(root.url)
+        _ = store.root(storing: true)
+        NSWorkspace.shared.open(root)
     }
 
     // MARK: - Build
