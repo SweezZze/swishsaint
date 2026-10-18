@@ -24,6 +24,17 @@ enum ForkMeetingDetectionSupport {
         }
     }
 
+    /// The page's choices for this meeting: "the meeting app's sound" means
+    /// the whole Mac for a provider whose calls no app's sound carries
+    /// (`defaultSound == .all`, FaceTime). Anything else as chosen.
+    static func settings(_ settings: ForkMeetingCaptureSettings,
+                         for meeting: ForkMeetingCandidate?) -> ForkMeetingCaptureSettings {
+        guard settings.systemAudio == .app, meeting?.defaultSound == .all else { return settings }
+        var adjusted = settings
+        adjusted.systemAudio = .all
+        return adjusted
+    }
+
     /// Where the name a recording starts with came from: the meeting's
     /// window title, its calendar event, or its provider and code ("Google
     /// Meet · abc-defg-hij"); a name given otherwise is the person's.

@@ -273,7 +273,11 @@ extension ForkMeetingService {
 
     /// The folder first, with its `meeting.json` saying `recording`, then the
     /// engine: from the first frame on, a crash leaves a meeting to recover.
-    private func startCapture(_ config: ForkMeetingCaptureConfig, token: ForkMeetingToken) {
+    private func startCapture(_ asked: ForkMeetingCaptureConfig, token: ForkMeetingToken) {
+        // A provider whose calls no app's sound carries (FaceTime's run in a
+        // system process) records the whole Mac for "the meeting app's sound".
+        var config = asked
+        config.settings = ForkMeetingDetectionSupport.settings(asked.settings, for: asked.meeting)
         let recorder = ForkMeetingRecorder(token: token, defaults: defaults)
         // "Show in Finder" of an older meeting's failed pass is not this one's.
         lastFailedVideo = nil

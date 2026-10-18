@@ -245,7 +245,7 @@ extension ForkMeetingService {
     func offerCapture(for offer: ForkMeetingOffer) -> String {
         let text = ForkMeetingStrings.current
         let candidate = offer.candidate
-        let settings = captureSettings()
+        let settings = ForkMeetingDetectionSupport.settings(captureSettings(), for: candidate)
         let appName = NSRunningApplication(processIdentifier: candidate.pid)?.localizedName
             ?? NSRunningApplication.runningApplications(withBundleIdentifier: candidate.appBundle).first?.localizedName
             ?? candidate.providerName
@@ -324,21 +324,12 @@ extension ForkMeetingService {
     func runDetection(_ effect: ForkMeetingMachine.Effect) {
         onDetectionEffect?(effect)
         switch effect {
-        case let .showOffer(offer):
+        case .showOffer, .collapseOffer, .hideOffer, .showUndo, .hideUndo, .showEndingSoon, .hideEndingSoon:
+            // The presenter draws them (`ForkMeetingPresenter+Offer`), its
+            // buttons configured with the others: "Settings" in the offer's
+            // menu goes through `onFailureAction(.openMeetingsPage)`.
             prepareSurfaces()
-            presenter.showOffer(offer)
-        case .collapseOffer:
-            presenter.collapseOffer()
-        case .hideOffer:
-            presenter.hideOffer()
-        case let .showUndo(until):
-            presenter.showUndo(until: until)
-        case .hideUndo:
-            presenter.hideUndo()
-        case let .showEndingSoon(until):
-            presenter.showEndingSoon(until: until)
-        case .hideEndingSoon:
-            presenter.hideEndingSoon()
+            presenter.apply(effect, context: context)
         case let .silence(identity):
             detection.resolver.silence(identity, at: Date())
         case let .setPolicy(policy, provider):

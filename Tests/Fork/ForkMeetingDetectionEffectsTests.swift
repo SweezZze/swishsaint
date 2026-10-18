@@ -26,6 +26,8 @@ enum ForkMeetingDetectionEffectsTests {
         calendarLinks(suite)
         pageTexts(suite)
         sidecar(suite)
+        sound(suite)
+        codeLeavesTheTitle(suite)
     }
 
     private static func at(_ seconds: TimeInterval) -> Date { t0.addingTimeInterval(seconds) }
@@ -194,5 +196,46 @@ enum ForkMeetingDetectionEffectsTests {
                                                 titleSource: nil, capture: ForkMeetingSidecar.Capture())
         suite.expect(manual.provider == nil && manual.meetCode == nil && manual.app == nil,
                      "a recording by hand with no meeting names none")
+    }
+
+    private static func sound(_ suite: TestSuite) {
+        var faceTime = candidate()
+        faceTime.defaultSound = .all
+        var chosen = settings
+        suite.expect(Support.settings(chosen, for: faceTime).systemAudio == .all
+                        && Support.settings(chosen, for: candidate()).systemAudio == .app
+                        && Support.settings(chosen, for: nil).systemAudio == .app,
+                     "the meeting app's sound is the whole Mac for a provider whose calls no app carries, only for it")
+        chosen.systemAudio = .off
+        suite.expect(Support.settings(chosen, for: faceTime).systemAudio == .off,
+                     "a sound turned off stays off")
+        chosen.systemAudio = .all
+        suite.expect(Support.settings(chosen, for: faceTime) == chosen, "the whole Mac chosen stays the whole Mac")
+    }
+
+    /// Seen in the recipe: the same tab showing its title without the code
+    /// a moment made a second meeting, offered again.
+    private static func codeLeavesTheTitle(_ suite: TestSuite) {
+        var resolver = ForkMeetingResolver(ownPID: 999)
+        func tab(_ title: String, window: UInt32 = 1) -> ForkMeetingWindowSignal {
+            ForkMeetingWindowSignal(bundle: "com.google.Chrome", pid: 100, title: title, onScreen: true, windowID: window)
+        }
+        let microphone = ForkMeetingMicSignal(appBundle: "com.google.Chrome", appPID: 100, pid: 101)
+        _ = resolver.resolve(ForkMeetingReading(at: at(-5), microphones: [microphone]))
+        _ = resolver.resolve(ForkMeetingReading(at: at(0), windows: [tab("Meet – Point hebdo – abc-defg-hij")]))
+        _ = resolver.resolve(ForkMeetingReading(at: at(3), windows: [tab("Gmail")]))
+        let renamed = resolver.resolve(ForkMeetingReading(at: at(6), windows: [tab("Meet – Point hebdo")]))
+        let again = resolver.resolve(ForkMeetingReading(at: at(9), windows: [tab("Meet – Point hebdo")]))
+        suite.expect(renamed.candidates.map(\.identity.value) == ["meet:abc-defg-hij"]
+                        && again.candidates.map(\.identity.value) == ["meet:abc-defg-hij"]
+                        && again.candidates.first?.meetCode == "abc-defg-hij",
+                     "the meeting's window showing its title without the code is still that meeting")
+        let other = resolver.resolve(ForkMeetingReading(at: at(12), windows: [tab("Meet – Point hebdo – abc-defg-hij"),
+                                                                              tab("Meet – Revue", window: 2)]))
+        _ = other
+        let later = resolver.resolve(ForkMeetingReading(at: at(15), windows: [tab("Meet – Point hebdo – abc-defg-hij"),
+                                                                              tab("Meet – Revue", window: 2)]))
+        suite.expect(Set(later.candidates.map(\.identity.value)) == ["meet:abc-defg-hij", "meet:100:Meet – Revue"],
+                     "another window without a code stays another meeting")
     }
 }
