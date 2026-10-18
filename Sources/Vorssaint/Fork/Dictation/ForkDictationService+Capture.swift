@@ -142,6 +142,7 @@ extension ForkDictationService {
             return
         }
         let session = token
+        keptCapture = (capture.samples, capture.duration)
         engine.finish(samples: capture.samples) { [weak self] result in
             self?.ifCurrent(session) { self?.transcribed(result) }
         }
@@ -150,19 +151,27 @@ extension ForkDictationService {
     private func transcribed(_ result: Result<String, ForkDictationFailure>) {
         switch result {
         case let .success(raw):
-            let rules = ForkDictationSupport.replacements(
-                from: UserDefaults.standard.string(forKey: ForkDefaultsKey.dictationReplacements) ?? "")
-            let text = ForkDictationReplacements.apply(rules, to: raw)
-                .trimmingCharacters(in: .whitespacesAndNewlines)
+            let text = Self.corrected(raw)
+            if text.isEmpty {
+                keptCapture = nil
+            } else {
+                keptRawText = raw
+            }
             send(text.isEmpty ? .transcribedNothing : .transcribed(text))
         case let .failure(failure):
+            // Kept with its audio: the history can try again, with the
+            // other engine if need be.
+            let recordID = keepInHistory(text: "", outcome: .failed, failure: failure)
             send(.failed(failure))
+            if let recordID { presenter.attach(recordID: recordID) }
         }
     }
 
     /// Stops the microphone and drops any result still on its way: the
     /// token changes, so late answers find no session.
     func discardCapture() {
+        keptCapture = nil
+        keptRawText = nil
         invalidateSession()
         microphone.cancel()
         engine?.cancel()

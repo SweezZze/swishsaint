@@ -53,6 +53,9 @@ enum ForkDefaultsKey {
     static let dictationStopsOnSilence = "fork.dictation.stopsOnSilence"
     /// Minutes before an unused Parakeet model leaves memory.
     static let dictationUnloadMinutes = "fork.dictation.unloadMinutes"
+    /// Dictations are kept with their audio (a week) in the dictation
+    /// history. The history itself is machine state, outside the backup.
+    static let dictationKeepsHistory = "fork.dictation.keepsHistory"
     /// The build the person answered "Later" for. Machine state: kept out
     /// of the settings backup.
     static let updatePostponedBuild = "fork.update.postponedBuild"
@@ -93,6 +96,7 @@ enum ForkDefaults {
         ForkDefaultsKey.dictationFeedback: "auto",
         ForkDefaultsKey.dictationStopsOnSilence: true,
         ForkDefaultsKey.dictationUnloadMinutes: 5,
+        ForkDefaultsKey.dictationKeepsHistory: true,
     ]
 
     /// Where each setting lived in the test builds made before the fork

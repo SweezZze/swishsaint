@@ -13,9 +13,41 @@ extension ForkDictationService {
         paster.deliver(text, action: action, target: target, addsToHistory: addsToHistory) { [weak self] outcome in
             self?.ifCurrent(session) {
                 self?.lastFailure = nil
+                let recordID = self?.keepInHistory(text: text, outcome: ForkDictationRecord.Outcome(outcome),
+                                                   failure: nil)
                 self?.send(.delivered(outcome))
+                if let recordID { self?.presenter.attach(recordID: recordID) }
             }
         }
+    }
+
+    /// Writes the session's record to the dictation history, with its
+    /// audio, once: the kept capture is handed over and forgotten.
+    /// Returns the record's id when the history kept it, so the bubble can
+    /// open it.
+    @discardableResult
+    func keepInHistory(text: String, outcome: ForkDictationRecord.Outcome,
+                       failure: ForkDictationFailure?) -> UUID? {
+        guard let capture = keptCapture else { return nil }
+        keptCapture = nil
+        let raw = keptRawText ?? ""
+        keptRawText = nil
+        let archive = ForkDictationArchive.shared
+        guard archive.isEnabled else { return nil }
+        let record = ForkDictationRecord(
+            duration: capture.duration,
+            engine: engine?.kind.storedName ?? ForkDictationEngineKind.apple.storedName,
+            language: language.isEmpty ? nil : language,
+            rawText: raw,
+            text: text,
+            outcome: outcome,
+            failure: failure.map { String(describing: $0) },
+            targetBundleID: target?.bundleIdentifier,
+            targetName: target?.localizedName,
+            hasAudio: true,
+            clipboardEntryID: outcome == .failed ? nil : paster.lastHistoryEntryID)
+        archive.add(record, samples: capture.samples)
+        return archive.records.first?.id == record.id ? record.id : nil
     }
 
     /// Writes the last dictation again, where the person is now. Outside any
@@ -38,6 +70,11 @@ extension ForkDictationService {
             case .superseded: break
             }
         }
+    }
+
+    /// The dictation history panel, opened or closed by its shortcut.
+    func toggleHistory() {
+        ForkDictationHistoryPanel.shared.toggle()
     }
 
     private var addsToHistory: Bool {
@@ -94,5 +131,16 @@ final class ForkDictationVoiceClock: @unchecked Sendable {
     /// Seconds since a voice was last heard.
     var silence: TimeInterval {
         ProcessInfo.processInfo.systemUptime - lock.withLock { last }
+    }
+}
+
+extension ForkDictationRecord.Outcome {
+    init(_ outcome: ForkDictationDeliveryOutcome) {
+        switch outcome {
+        case .pasted: self = .pasted
+        case .copied: self = .copied
+        case .keptInClipboard, .superseded: self = .keptInClipboard
+        case .inHistoryOnly: self = .inHistoryOnly
+        }
     }
 }

@@ -27,7 +27,8 @@ enum ForkDefaultsTests {
                                            ForkDefaultsKey.dictationShortcuts, ForkDefaultsKey.dictationEngine,
                                            ForkDefaultsKey.dictationMicrophone, ForkDefaultsKey.dictationAddsToHistory,
                                            ForkDefaultsKey.dictationFeedback, ForkDefaultsKey.dictationStopsOnSilence,
-                                           ForkDefaultsKey.dictationUnloadMinutes]
+                                           ForkDefaultsKey.dictationUnloadMinutes,
+                                           ForkDefaultsKey.dictationKeepsHistory]
         suite.expect(Set(ForkDefaults.legacyKeys.values) == Set(ForkDefaults.registered.keys).subtracting(addedSinceFork)
                         && ForkDefaults.legacyKeys.count == ForkDefaults.registered.count - addedSinceFork.count,
                      "every setting of the pre-fork test builds has its new name, and only those")
