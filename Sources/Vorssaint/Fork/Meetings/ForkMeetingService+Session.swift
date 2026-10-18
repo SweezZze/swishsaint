@@ -254,6 +254,7 @@ extension ForkMeetingService {
             context.target = start.target
             context.canSwitchTarget = start.window != nil
             context.recordsMicrophone = start.microphone != nil
+            filmedWindow = start.window
             context.displayID = Self.displayID(of: start.window)
             send(.captureStarted(token, folder: folder, target: start.target, microphone: start.microphone))
         case let .failure(failure):

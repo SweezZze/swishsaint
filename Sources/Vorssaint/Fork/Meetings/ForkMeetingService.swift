@@ -71,6 +71,8 @@ final class ForkMeetingService: ObservableObject {
     var folders: [ForkMeetingToken: URL] = [:]
     /// What the pill knows beyond the machine's state.
     var context = ForkMeetingLiveContext()
+    /// The window the session films, or whose display it films.
+    var filmedWindow: CGWindowID?
     /// The free space is being read for a start.
     var preparingStart = false
     var presenterReady = false

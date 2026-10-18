@@ -25,7 +25,13 @@ extension ForkMeetingService {
         case .didWake: send(.didWake)
         case .locked: send(.locked)
         case .unlocked: send(.unlocked)
-        case .displaysChanged: send(.displayChanged)
+        case .displaysChanged:
+            // The pill and the bubble follow the meeting's display.
+            if machine.activeSession != nil, let display = Self.displayID(of: filmedWindow), context.displayID != display {
+                context.displayID = display
+                presenter.update(context)
+            }
+            send(.displayChanged)
         case let .diskLow(freeBytes): send(.diskLow(freeBytes: freeBytes))
         case .diskCritical: send(.diskCritical)
         case .willTerminate: terminate()
@@ -53,6 +59,7 @@ extension ForkMeetingService {
             stopped(token, result: result, recorded: isStopping(token))
         }
         let unclosed = recorders.count
-        log.notice("quit: \(String(format: "%.2f", Date().timeIntervalSince(began)), privacy: .public) s, \(unclosed) file(s) left to the next launch")
+        let waited = Int((Date().timeIntervalSince(began) * 1000).rounded())
+        log.notice("quit: \(waited) ms, \(unclosed) file(s) left to the next launch")
     }
 }
