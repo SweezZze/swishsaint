@@ -36,11 +36,14 @@ final class ForkMeetingPresenter {
     /// A failure, or the start's reminder, holds its card this long.
     private static let cardHold: TimeInterval = 12
 
-    private let pill = ForkMeetingPill()
+    let pill = ForkMeetingPill()
     private let bubble = ForkMeetingBubble()
+    /// The offer, its reminder, "Cancel (5 s)" and the countdown
+    /// (`+Offer`).
+    let offerUI = ForkMeetingOfferUI()
     private(set) var pillState: ForkMeetingPillState = .hidden
     private(set) var context = ForkMeetingLiveContext()
-    private var failureAction: ((ForkMeetingFailureAction) -> Void)?
+    private(set) var failureAction: ((ForkMeetingFailureAction) -> Void)?
     private var cardID: UUID?
     private var cardWork: DispatchWorkItem?
     /// The pointer rests on the island's card: its time stands still.
@@ -53,12 +56,12 @@ final class ForkMeetingPresenter {
 
     private init() {}
 
-    private var text: ForkMeetingStrings { ForkMeetingStrings.current }
+    var text: ForkMeetingStrings { ForkMeetingStrings.current }
 
     /// The windows a capture filter that names windows leaves out. Ours
     /// leaves out the whole app instead, which covers them and any window
     /// made after the start; the pill's exists from `configure` on.
-    var windowNumbers: [Int] { [pill.windowNumber, bubble.windowNumber].compactMap { $0 } }
+    var windowNumbers: [Int] { ([pill.windowNumber, bubble.windowNumber] + offerUI.windowNumbers).compactMap { $0 } }
     var pillWindow: NSWindow? { pill.window }
 
     /// `levels` is read on the main thread fifteen times a second while
@@ -79,7 +82,10 @@ final class ForkMeetingPresenter {
             return
         }
         pill.configure(levels: levels, actions: ForkMeetingPill.Actions(pause: onPause, resume: onResume, stop: onStop,
-                                                                       toggleTarget: onToggleTarget))
+                                                                       toggleTarget: onToggleTarget,
+                                                                       continueRecording: {
+                                                                           ForkMeetingService.shared.continueRecording()
+                                                                       }))
         pill.prepare()
         failureAction = onFailureAction
     }
@@ -105,9 +111,20 @@ final class ForkMeetingPresenter {
         case .startCapture, .pauseCapture, .resumeCapture, .restartStream, .switchTarget, .stopCapture,
              .writeSidecar, .beginFinalize, .silence, .setPolicy, .discard:
             break
-        case .showOffer, .collapseOffer, .hideOffer, .showUndo, .hideUndo, .showEndingSoon, .hideEndingSoon:
-            // The offer and the countdown come with the detection's interface.
-            break
+        case let .showOffer(offer):
+            showOffer(offer)
+        case .collapseOffer:
+            collapseOffer()
+        case .hideOffer:
+            hideOffer()
+        case let .showUndo(until):
+            showUndo(until: until)
+        case .hideUndo:
+            hideUndo()
+        case let .showEndingSoon(until):
+            showEndingSoon(until: until)
+        case .hideEndingSoon:
+            hideEndingSoon()
         }
     }
 
@@ -239,6 +256,7 @@ final class ForkMeetingPresenter {
         pill.hide()
         bubble.hide()
         removeCard()
+        hideOfferSurfaces()
         lastAnnouncement = nil
     }
 
@@ -262,7 +280,7 @@ final class ForkMeetingPresenter {
         var bubble = false
     }
 
-    private var screen: NSScreen? {
+    var screen: NSScreen? {
         guard let id = context.displayID else { return nil }
         return NSScreen.screens.first { $0.displayID == id }
     }
@@ -313,6 +331,9 @@ final class ForkMeetingPresenter {
     /// `make` builds the card for either place, with how it is dismissed.
     private func present(_ make: (@escaping () -> Void) -> ForkMeetingCard, height: CGFloat,
                          hold: TimeInterval) -> Shown {
+        // The island holds one card: an offer, "Cancel" or the countdown
+        // there moves first.
+        islandWillBeTaken()
         removeCard()
         let id = UUID()
         let inBubble = make { [weak self] in self?.bubble.hide() }
@@ -356,6 +377,8 @@ final class ForkMeetingPresenter {
         guard !ForkMeetingSystemEvents.screenIsLockedNow(), CGDisplayIsAsleep(CGMainDisplayID()) == 0 else {
             return false
         }
+        // Under an offer's bubble, never over it.
+        bubble.topInset = offerUI.bubble.visibleFrame.map { $0.height + 8 } ?? 0
         return bubble.show(card, on: screen, hold: hold)
     }
 
@@ -395,7 +418,7 @@ final class ForkMeetingPresenter {
                                lines: lines, actions: actions)
     }
 
-    private static func title(for action: ForkMeetingFailureAction, text: ForkMeetingStrings) -> String {
+    static func title(for action: ForkMeetingFailureAction, text: ForkMeetingStrings) -> String {
         switch action {
         case .openScreenRecordingPrivacy, .openMicrophonePrivacy: return text.actionOpenSettings
         case .openStorageSettings: return text.actionOpenStorage
@@ -420,7 +443,9 @@ final class ForkMeetingPresenter {
         ForkMeetingIsland.remove(id: id)
     }
 
-    private func forgetCard() {
+    /// Forgets the island's card without taking it away: one about to be
+    /// replaced in place.
+    func forgetCard() {
         cardWork?.cancel()
         cardWork = nil
         cardID = nil
@@ -448,7 +473,7 @@ final class ForkMeetingPresenter {
     private static var canNotify: Bool { Bundle.main.bundleIdentifier != nil }
 
     /// The announcement, in the pasteboard for the meeting's chat.
-    private func copy(_ announcement: String) {
+    func copy(_ announcement: String) {
         let pasteboard = NSPasteboard.general
         pasteboard.clearContents()
         pasteboard.setString(announcement, forType: .string)

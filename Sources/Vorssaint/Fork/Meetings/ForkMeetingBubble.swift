@@ -8,13 +8,25 @@ import SwiftUI
 /// or in the bubble: the same card in both, which takes the island's look
 /// there (`panelCard` reads `notchPresentation`).
 ///
-/// A notice is a mark, a title and a line; an offer to record (next part of
-/// the feature) is the same card with its subtitles and its buttons.
+/// A notice is a mark, a title and a line; an offer to record is the same
+/// card with the app's icon, its subtitles, its buttons and its ⋯ menu.
 struct ForkMeetingCard {
+    /// A number of seconds going down, redrawn each second: "Cancel (4 s)".
+    struct Countdown {
+        let until: Date
+        let words: (Date) -> String
+    }
+
     struct Action {
         let title: String
         /// The button the card is about, drawn filled.
         var prominent = false
+        /// A dot before the title, in red: "● Record".
+        var recordDot = false
+        var enabled = true
+        /// Its title counts down instead (`title` stays its VoiceOver name
+        /// until the first tick).
+        var countdown: Countdown?
         let perform: () -> Void
     }
 
@@ -24,6 +36,29 @@ struct ForkMeetingCard {
     /// Under the title, each on its own lines, in secondary text.
     var lines: [String] = []
     var actions: [Action] = []
+
+    // MARK: Offer UI
+
+    /// The app's own icon, in place of the symbol.
+    var icon: NSImage?
+    /// A line under the title that counts down ("Stopping in 12 s").
+    var countdownLine: Countdown?
+    /// In orange, after the lines: why the offer cannot record now.
+    var warning: String?
+    /// After the lines, with ⓘ: the consent reminder.
+    var info: String?
+    /// The offer cannot record now: its words fade, its Record button is off.
+    var dimmed = false
+    /// "⋯": in the island it sits in the top row beside the camera
+    /// (`ForkMeetingIsland.present(actions:)`), in the bubble before the
+    /// buttons.
+    var menu: [NotchMenuItem] = []
+    var menuTitle = ""
+    /// The buttons go under the words in the island too: an offer has too
+    /// many words to share its row with them.
+    var stacked = false
+    /// The bubble's ×; an offer has "Not Now" instead.
+    var closable = true
 }
 
 struct ForkMeetingCardView: View {
@@ -38,7 +73,17 @@ struct ForkMeetingCardView: View {
     /// right, where a click is expected.
     var body: some View {
         Group {
-            if inIsland {
+            if inIsland, card.stacked {
+                VStack(alignment: .trailing, spacing: 8) {
+                    HStack(alignment: .top, spacing: 10) {
+                        mark
+                        words(lineLimit: nil)
+                        Spacer(minLength: 0)
+                    }
+                    HStack(spacing: 8) { buttons }
+                }
+                .panelCard()
+            } else if inIsland {
                 HStack(alignment: .center, spacing: 10) {
                     mark
                     // Never cut: the island's card is as tall as its words
@@ -54,36 +99,83 @@ struct ForkMeetingCardView: View {
                         mark
                         words(lineLimit: 6)
                         Spacer(minLength: 4)
-                        closeButton
+                        if card.closable { closeButton }
                     }
-                    if !card.actions.isEmpty {
-                        HStack(spacing: 8) { buttons }
+                    if !card.actions.isEmpty || !card.menu.isEmpty {
+                        HStack(spacing: 8) {
+                            if !card.menu.isEmpty {
+                                ForkMeetingCardMenu(card: card)
+                                Spacer(minLength: 0)
+                            }
+                            buttons
+                        }
                     }
                 }
             }
         }
     }
 
+    @ViewBuilder
     private var mark: some View {
-        Image(systemName: card.symbol)
-            .font(.system(size: 17, weight: .semibold))
-            .foregroundStyle(card.tint)
-            .frame(width: 22, height: 20)
-            .accessibilityHidden(true)
+        if let icon = card.icon {
+            Image(nsImage: icon)
+                .resizable()
+                .interpolation(.high)
+                .frame(width: 30, height: 30)
+                .saturation(card.dimmed ? 0 : 1)
+                .opacity(card.dimmed ? 0.55 : 1)
+                .accessibilityHidden(true)
+        } else {
+            Image(systemName: card.symbol)
+                .font(.system(size: 17, weight: .semibold))
+                .foregroundStyle(card.tint)
+                .frame(width: 22, height: 20)
+                .accessibilityHidden(true)
+        }
     }
 
+    /// The title and its lines; a greyed offer fades them, never its
+    /// reason, which stays readable in orange under them.
     private func words(lineLimit: Int?) -> some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Text(card.title)
-                .font(.system(size: 13, weight: .semibold))
-                .lineLimit(2)
-                .fixedSize(horizontal: false, vertical: true)
-            ForEach(Array(card.lines.enumerated()), id: \.offset) { _, line in
-                Text(line)
+        VStack(alignment: .leading, spacing: 3) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(card.title)
+                    .font(.system(size: 13, weight: .semibold))
+                    .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
+                if let countdown = card.countdownLine {
+                    ForkMeetingCountdownText(countdown: countdown)
+                        .font(.system(size: 11, weight: .medium).monospacedDigit())
+                        .foregroundStyle(.orange)
+                }
+                ForEach(Array(card.lines.enumerated()), id: \.offset) { _, line in
+                    Text(line)
+                        .font(.system(size: 11))
+                        .foregroundStyle(.secondary)
+                        .lineLimit(lineLimit)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                if let info = card.info {
+                    Label {
+                        Text(info).fixedSize(horizontal: false, vertical: true)
+                    } icon: {
+                        Image(systemName: "info.circle")
+                    }
+                    .labelStyle(ForkMeetingCardLineLabelStyle())
                     .font(.system(size: 11))
                     .foregroundStyle(.secondary)
-                    .lineLimit(lineLimit)
-                    .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            .opacity(card.dimmed ? 0.55 : 1)
+            if let warning = card.warning {
+                Label {
+                    Text(warning).fixedSize(horizontal: false, vertical: true)
+                } icon: {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                }
+                .labelStyle(ForkMeetingCardLineLabelStyle())
+                .font(.system(size: 11, weight: .medium))
+                .foregroundStyle(.orange)
             }
         }
         .accessibilityElement(children: .combine)
@@ -114,13 +206,27 @@ struct ForkMeetingCardView: View {
     @ViewBuilder
     private func actionButton(_ action: ForkMeetingCard.Action) -> some View {
         let button = Button(action: action.perform) {
-            Text(action.title)
-                .font(.system(size: 12, weight: .semibold))
-                .lineLimit(1)
-                .fixedSize()
-                .padding(.horizontal, inIsland ? 10 : 0)
-                .frame(minHeight: inIsland ? 28 : 0)
+            HStack(spacing: 5) {
+                if action.recordDot {
+                    Circle()
+                        .fill(Color(nsColor: .systemRed))
+                        .frame(width: 7, height: 7)
+                        .opacity(action.enabled ? 1 : 0.5)
+                }
+                if let countdown = action.countdown {
+                    ForkMeetingCountdownText(countdown: countdown)
+                        .monospacedDigit()
+                } else {
+                    Text(action.title)
+                }
+            }
+            .font(.system(size: 12, weight: .semibold))
+            .lineLimit(1)
+            .fixedSize()
+            .padding(.horizontal, inIsland ? 10 : 0)
+            .frame(minHeight: inIsland ? 28 : 0)
         }
+        .disabled(!action.enabled)
         .accessibilityLabel(action.title)
         if inIsland {
             button
@@ -131,6 +237,48 @@ struct ForkMeetingCardView: View {
         } else {
             button.buttonStyle(.bordered).controlSize(.small)
         }
+    }
+}
+
+/// A countdown's words, redrawn when its seconds change, not between: the
+/// timeline ticks a whole number of seconds before its end.
+struct ForkMeetingCountdownText: View {
+    let countdown: ForkMeetingCard.Countdown
+
+    var body: some View {
+        TimelineView(.periodic(from: ForkMeetingOfferTiming.tickStart(until: countdown.until, now: Date()), by: 1)) {
+            context in
+            Text(countdown.words(context.date))
+        }
+    }
+}
+
+/// A line with its small mark at its first line's height, the text wrapping
+/// under itself, not under the mark.
+private struct ForkMeetingCardLineLabelStyle: LabelStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 4) {
+            configuration.icon.font(.system(size: 10, weight: .semibold))
+            configuration.title
+        }
+    }
+}
+
+/// The offer's ⋯: a native menu, which opens without taking the keyboard
+/// from the call.
+struct ForkMeetingCardMenu: View {
+    let card: ForkMeetingCard
+    @Environment(\.notchPresentation) private var inIsland
+
+    var body: some View {
+        NotchMenuButton(title: card.menuTitle, items: card.menu, cornerRadius: 9) {
+            Image(systemName: "ellipsis")
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(inIsland ? AnyShapeStyle(Color.white.opacity(0.7)) : AnyShapeStyle(.secondary))
+                .frame(width: 28, height: 28)
+                .contentShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
+        }
+        .help(card.menuTitle)
     }
 }
 
@@ -165,6 +313,19 @@ final class ForkMeetingBubble {
     private var generation = 0
 
     var windowNumber: Int? { panel.map(\.windowNumber).flatMap { $0 > 0 ? $0 : nil } }
+
+    /// Room kept above the card, under the menu bar: the notices' bubble
+    /// moves down under an offer's, so neither covers the other.
+    var topInset: CGFloat = 0
+    /// Told each time the pointer enters or leaves the card: the offer
+    /// holds its fold meanwhile.
+    var onHover: ((Bool) -> Void)?
+
+    /// The card's frame while it shows, else `nil`.
+    var visibleFrame: CGRect? {
+        guard let panel, panel.isVisible, model.card != nil else { return nil }
+        return panel.frame
+    }
 
     private var reducesMotion: Bool { NSWorkspace.shared.accessibilityDisplayShouldReduceMotion }
 
@@ -243,6 +404,7 @@ final class ForkMeetingBubble {
     private func hoverChanged(_ inside: Bool) {
         guard pointerInside != inside else { return }
         pointerInside = inside
+        onHover?(inside)
         if inside {
             holdWork?.cancel()
             holdWork = nil
@@ -294,7 +456,8 @@ final class ForkMeetingBubble {
         }
         size.height = max(48, size.height.rounded(.up))
         let area = screen.visibleFrame
-        let frame = CGRect(x: (area.maxX - size.width - 12).rounded(), y: (area.maxY - size.height - 8).rounded(),
+        let frame = CGRect(x: (area.maxX - size.width - 12).rounded(),
+                           y: (area.maxY - size.height - 8 - topInset).rounded(),
                            width: size.width, height: size.height)
         panel.setFrame(frame, display: true)
         panel.invalidateShadow()
