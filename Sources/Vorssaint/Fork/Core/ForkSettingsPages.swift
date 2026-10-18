@@ -42,6 +42,7 @@ extension ForkFeature {
         switch self {
         case .trackpadGestures: return "gestures"
         case .dictation: return "dictation"
+        case .meetings: return "meetings"
         }
     }
 
@@ -63,6 +64,10 @@ extension ForkFeature {
             let dictation = ForkDictationStrings.strings(language)
             return [text.dictationSummary, dictation.languageTitle, dictation.vocabularyTitle,
                     dictation.replacementsTitle, dictation.soundsTitle]
+        case .meetings:
+            let meetings = ForkMeetingStrings.strings(language)
+            return [text.meetingsSummary, meetings.searchKeywords, meetings.shortcutTitle, meetings.captureTitle,
+                    meetings.libraryTitle]
         }
     }
 }
@@ -92,10 +97,24 @@ struct ForkFeatureSettingsPage: View {
                 }
             }
 
+            if missesScreenRecording || missesMicrophone {
+                Section(l10n.s.permissionRequired) {
+                    if missesScreenRecording {
+                        PermissionRow(kind: .screenRecording)
+                    }
+                    if missesMicrophone {
+                        PermissionRow(kind: .microphone)
+                    }
+                }
+            }
+
             content
         }
         .formStyle(.grouped)
     }
+
+    private var missesScreenRecording: Bool { feature.needsScreenRecording && !permissions.screenRecording }
+    private var missesMicrophone: Bool { feature.needsMicrophone && permissions.microphone != .granted }
 
     @ViewBuilder
     private var content: some View {
@@ -119,6 +138,8 @@ struct ForkFeatureSettingsPage: View {
             }
         case .dictation:
             ForkDictationSettingsSection(title: text.dictationTitle)
+        case .meetings:
+            ForkMeetingSettings()
         }
     }
 }

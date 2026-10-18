@@ -76,7 +76,7 @@ enum ForkDefaultsKey {
     /// the person's language.
     static let meetingsAnnouncement = "fork.meetings.announcement"
     /// The shortcut that starts and stops a recording, stored like the
-    /// dictation's; empty: none.
+    /// official shortcuts (`GlobalShortcut.storageValue`); empty: none.
     static let meetingsShortcut = "fork.meetings.shortcut"
     /// The meetings folder's path; empty: a folder in Movies, named in the
     /// person's language and saved here at the first recording. Machine
