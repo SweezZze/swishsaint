@@ -32,7 +32,7 @@ extension ForkMeetingService {
                 presenter.update(context)
             }
             send(.displayChanged)
-        case let .diskLow(freeBytes): send(.diskLow(freeBytes: freeBytes))
+        case let .diskLow(freeBytes), let .diskEnough(freeBytes): send(.diskLow(freeBytes: freeBytes))
         case .diskCritical: send(.diskCritical)
         case .willTerminate: terminate()
         }

@@ -294,7 +294,8 @@ struct ForkMeetingMachine {
         case didWake
         case locked
         case unlocked
-        /// A reading of the free space under the warning floor.
+        /// A reading of the free space under the warning floor, or back above
+        /// it after one was (the pill's minutes then go).
         case diskLow(freeBytes: Int64)
         case diskCritical
         case permissionLost(ForkMeetingPermission)

@@ -48,17 +48,37 @@ enum ForkMeetingDiskSignal: Equatable {
     case low(freeBytes: Int64)
     /// Under the stop floor: the recording stops while it still can.
     case critical
+    /// Back above the warning floor after a warning (room was made): the
+    /// pill's minutes go.
+    case enough(freeBytes: Int64)
 
-    /// `nil` when there is nothing to say: enough room, or **a reading that
-    /// failed**. A failed reading is not a full disk (bran stopped meetings
-    /// on a zero it made up, `CaptureSession.swift:445`), nor an empty one.
-    static func reading(freeBytes: Int64?, quality: ForkMeetingQuality) -> ForkMeetingDiskSignal? {
+    /// `nil` when there is nothing to say: enough room and nothing was
+    /// `warned`, or **a reading that failed**. A failed reading is not a full
+    /// disk (bran stopped meetings on a zero it made up,
+    /// `CaptureSession.swift:445`), nor an empty one.
+    static func reading(freeBytes: Int64?, quality: ForkMeetingQuality, warned: Bool = false) -> ForkMeetingDiskSignal? {
         guard let freeBytes else { return nil }
         switch ForkMeetingDisk.level(freeBytes: freeBytes, quality: quality) {
-        case .enough: return nil
+        case .enough: return warned ? .enough(freeBytes: freeBytes) : nil
         case .low: return .low(freeBytes: freeBytes)
         case .critical: return .critical
         }
+    }
+}
+
+/// The readings of one recording's disk watch: a warning is followed by an
+/// "enough" once room was made, so the pill's minutes do not stay for good.
+struct ForkMeetingDiskWatch: Equatable {
+    private(set) var warned = false
+
+    mutating func reading(freeBytes: Int64?, quality: ForkMeetingQuality) -> ForkMeetingDiskSignal? {
+        let signal = ForkMeetingDiskSignal.reading(freeBytes: freeBytes, quality: quality, warned: warned)
+        switch signal {
+        case .low?: warned = true
+        case .enough?: warned = false
+        case .critical?, nil: break
+        }
+        return signal
     }
 }
 

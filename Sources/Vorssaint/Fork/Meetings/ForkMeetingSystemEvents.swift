@@ -37,6 +37,8 @@ final class ForkMeetingSystemEvents {
         case unlocked
         case displaysChanged
         case diskLow(freeBytes: Int64)
+        /// Enough room again after `diskLow`.
+        case diskEnough(freeBytes: Int64)
         case diskCritical
         /// Synchronous: the app ends right after the handler returns.
         case willTerminate
@@ -60,6 +62,8 @@ final class ForkMeetingSystemEvents {
     /// Names the disk watch allowed to speak: a reading taken before
     /// `endRecording` is dropped when it lands.
     private var diskGeneration = 0
+    /// This recording's readings. Disk queue only.
+    private var diskWatch = ForkMeetingDiskWatch()
     private var activity: NSObjectProtocol?
 
     /// - Parameters:
@@ -186,14 +190,16 @@ final class ForkMeetingSystemEvents {
         let timer = DispatchSource.makeTimerSource(queue: diskQueue)
         let interval = ForkMeetingDisk.checkInterval
         timer.schedule(deadline: .now() + interval, repeating: interval, leeway: .seconds(1))
+        diskQueue.async { [weak self] in self?.diskWatch = ForkMeetingDiskWatch() }
         timer.setEventHandler { [weak self] in
-            guard let signal = ForkMeetingDiskSignal.reading(freeBytes: freeBytes(folder), quality: quality) else {
+            guard let self, let signal = self.diskWatch.reading(freeBytes: freeBytes(folder), quality: quality) else {
                 return
             }
             DispatchQueue.main.async {
-                guard let self, self.diskGeneration == generation, self.diskTimer != nil else { return }
+                guard self.diskGeneration == generation, self.diskTimer != nil else { return }
                 switch signal {
                 case let .low(free): self.onEvent(.diskLow(freeBytes: free))
+                case let .enough(free): self.onEvent(.diskEnough(freeBytes: free))
                 case .critical: self.onEvent(.diskCritical)
                 }
             }

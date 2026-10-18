@@ -41,6 +41,14 @@ enum ForkMeetingStoreTests {
         suite.expect(ForkMeetingDiskSignal.reading(freeBytes: 400_000_000, quality: standard) == .critical
                         && ForkMeetingDiskSignal.reading(freeBytes: 0, quality: standard) == .critical,
                      "under the stop floor, the meeting stops while its file can still be closed")
+
+        var watch = ForkMeetingDiskWatch()
+        let readings: [Int64?] = [50_000_000_000, 1_500_000_000, 1_400_000_000, nil, 9_000_000_000, 9_000_000_000,
+                                  1_500_000_000]
+        let said = readings.map { watch.reading(freeBytes: $0, quality: standard) }
+        suite.expect(said == [nil, .low(freeBytes: 1_500_000_000), .low(freeBytes: 1_400_000_000), nil,
+                              .enough(freeBytes: 9_000_000_000), nil, .low(freeBytes: 1_500_000_000)],
+                     "room made after a warning is said once, so the pill's minutes go; a later warning is said again")
     }
 
     private static func activity(_ suite: TestSuite) {
