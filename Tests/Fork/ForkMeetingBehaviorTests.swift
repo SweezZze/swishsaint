@@ -404,7 +404,7 @@ enum ForkMeetingBehaviorTests {
         parts.day = day
         parts.hour = hour
         parts.minute = minute
-        return Calendar.current.date(from: parts) ?? t0
+        return Calendar(identifier: .gregorian).date(from: parts) ?? t0
     }
 
     private static func createsOnDisk(_ name: String) -> Bool {
@@ -432,33 +432,30 @@ enum ForkMeetingBehaviorTests {
                      "a title made only of forbidden characters, blanks or dashes gives the stamp alone")
         suite.expect(ForkMeetingFolder.renamedFolder(current: stamp, startedAt: started, title: "/::/") == nil,
                      "and never renames a folder to it")
-        let mixed = ForkMeetingFolder.name(startedAt: started, title: "\u{7}Point\u{0}hebdo/Opah:\u{1B}Q4")
-        suite.expect(mixed == "\(stamp) — Point hebdo Opah Q4" && !mixed.unicodeScalars.contains { $0.value < 0x20 },
+        let mixed = ForkMeetingFolder.name(startedAt: started, title: "\u{7}Point\u{0}hebdo/Acme:\u{1B}Q4")
+        suite.expect(mixed == "\(stamp) — Point hebdo Acme Q4" && !mixed.unicodeScalars.contains { $0.value < 0x20 },
                      "control characters inside a title become spaces, never part of a file name")
 
         let emoji = "Lancement 🚀 v2 🇫🇷 ❤️ 👍🏽"
         suite.expect(ForkMeetingFolder.name(startedAt: started, title: emoji) == "\(stamp) — \(emoji)",
                      "emoji, flags, variation selectors and skin tones stay as written")
-        // FAILS: an emoji joined by U+200D (a family, a rainbow flag) is
-        // dropped from the name: the zero-width joiner is a format character,
-        // inside CharacterSet.controlCharacters, and the whole character it
-        // belongs to becomes a space (ForkMeetingFolder.swift:145, inherited
-        // from bran's MeetingFolder.swift:286). "Équipe 👨‍👩‍👧‍👦" gives
-        // "… — Équipe"; a title of families alone gives the stamp alone.
-        // Uncomment once fixed.
-        // let joined = "Équipe 👨‍👩‍👧‍👦 🏳️‍🌈"
-        // suite.expect(ForkMeetingFolder.name(startedAt: started, title: joined) == "\(stamp) — \(joined)",
-        //              "emoji joined by a zero-width joiner stay whole")
+        // The zero-width joiner is a format character (Cf), not a control
+        // one (Cc): only the latter is refused.
+        let joined = "Équipe 👨‍👩‍👧‍👦 🏳️‍🌈"
+        suite.expect(ForkMeetingFolder.name(startedAt: started, title: joined) == "\(stamp) — \(joined)",
+                     "emoji joined by a zero-width joiner stay whole")
+        let formats = "co\u{00AD}op می\u{200C}خواهم"
+        suite.expect(ForkMeetingFolder.sanitized(formats) == formats,
+                     "a soft hyphen or a zero-width non-joiner stays where the person wrote it")
         let families = String(repeating: "👨‍👩‍👧‍👦", count: 70)
         let familyName = ForkMeetingFolder.name(startedAt: started, title: families)
         suite.expect(familyName.hasPrefix(stamp)
                         && ForkMeetingFolder.units(familyName) <= ForkMeetingFolder.componentLimit - ForkMeetingFolder.reservedUnits
                         && createsOnDisk(familyName),
                      "seventy emoji families give a name under the file system's limit, created with its media")
-        // FAILS: same cause, the families are dropped and the name is the stamp alone.
-        // let familyTitle = familyName.components(separatedBy: " — ").dropFirst().first ?? ""
-        // suite.expect(!familyTitle.isEmpty && familyTitle.allSatisfy { $0 == "👨‍👩‍👧‍👦" },
-        //              "seventy emoji families are cut between families, never inside one")
+        let familyTitle = familyName.components(separatedBy: " — ").dropFirst().first ?? ""
+        suite.expect(!familyTitle.isEmpty && familyTitle.allSatisfy { $0 == "👨‍👩‍👧‍👦" },
+                     "seventy emoji families are cut between families, never inside one")
 
         let japanese = String(String(repeating: "週次定例ミーティング・プロジェクトがぎぐげご", count: 20).prefix(300))
         let japaneseName = ForkMeetingFolder.name(startedAt: started, title: japanese)
@@ -522,7 +519,7 @@ enum ForkMeetingBehaviorTests {
         full = Patch(state: .finalizing, stopReason: .user, endedAt: at(600), recordedSeconds: 599,
                      pause: .init(at: 10, seconds: 5, reason: .user),
                      gap: .init(at: 20, seconds: 1, kind: .microphoneSwitch)).applied(to: full)
-        full.title = "Point hebdo « Opah »"
+        full.title = "Point hebdo « Acme »"
         let bytes = (try? full.encoded()) ?? Data()
         var decodedPrefixes: [Int] = []
         for length in 0..<bytes.count {
@@ -544,7 +541,7 @@ enum ForkMeetingBehaviorTests {
         {"schema": 1, "id": "6F1C2A3B-4D5E-4F60-8172-93A4B5C6D7E8", "state": "recording", "origin": "manual",
          "startedAt": "2026-10-18T08:02:11Z", "recordedSeconds": 0, "pauses": [], "gaps": [],
          "capture": {"target": "window", "systemAudio": "app", "microphone": "MacBook Pro", "quality": "standard"},
-         "castral": {"job": "t-42", "steps": [1, 2, {"done": true}]}, "futureFlag": false, "labels": ["a", "b"]}
+         "x-other": {"job": "t-42", "steps": [1, 2, {"done": true}]}, "futureFlag": false, "labels": ["a", "b"]}
         """
         guard case let .success(read) = ForkMeetingSidecar.decode(Data(json.utf8)) else {
             suite.expect(false, "a sidecar with a later version's keys reads")
@@ -559,7 +556,7 @@ enum ForkMeetingBehaviorTests {
             suite.expect(false, "a sidecar of this version takes a patch")
             return
         }
-        suite.expect(back.preserved["castral"] == read.preserved["castral"] && back.preserved["futureFlag"] == .bool(false)
+        suite.expect(back.preserved["x-other"] == read.preserved["x-other"] && back.preserved["futureFlag"] == .bool(false)
                         && back.preserved["labels"] == .array([.string("a"), .string("b")]) && back.preserved.count == 3,
                      "unknown top-level keys are written back as they were after a patch")
         suite.expect(back.state == .finalizing && back.pauses?.count == 1 && back.gaps?.count == 1
@@ -579,14 +576,8 @@ enum ForkMeetingBehaviorTests {
            let text = (try? rewritten.encoded()).map({ String(decoding: $0, as: UTF8.self) }) {
             kept = ["\"fps\"", "\"by\"", "\"device\"", "\"path\""].filter { text.contains($0) }
         }
-        // FAILS: the nested structs (`Capture`, `Pause`, `Gap`, `Export`) use
-        // synthesized Codable, which drops keys it does not know: a later
-        // schema-1 version's `capture.fps` or `exports[].path` is lost at the
-        // first patch of this one (ForkMeetingSidecar.swift:167-197). Only
-        // top-level keys go to `preserved`. Uncomment once fixed.
-        // suite.expect(kept.count == 4,
-        //              "unknown keys inside the capture, a pause, a gap or an export survive a rewrite: kept \(kept)")
-        _ = kept
+        suite.expect(kept.count == 4,
+                     "unknown keys inside the capture, a pause, a gap or an export survive a rewrite: kept \(kept)")
     }
 
     // MARK: - Recovery

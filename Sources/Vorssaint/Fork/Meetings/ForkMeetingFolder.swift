@@ -73,10 +73,14 @@ enum ForkMeetingFolder {
     /// the Finder offers on a column of names, is sorting by date. Neither
     /// `DateFormatter` nor `FormatStyle`, which follow the region and would
     /// change the name's shape from one Mac to the next; `h` rather than `:`,
-    /// which the Finder shows as `/`. The Mac's calendar and time zone: a
-    /// meeting held at 10:02 is called 10h02 by whoever held it.
+    /// which the Finder shows as `/`. Always the Gregorian calendar, in the
+    /// Mac's time zone: a Mac set to the Japanese calendar would otherwise
+    /// write year 8 of Reiwa and break the sort, while a meeting held at 10:02
+    /// is called 10h02 by whoever held it. Only `calendar`'s time zone is read.
     static func stamp(_ date: Date, calendar: Calendar = .current) -> String {
-        let parts = calendar.dateComponents([.year, .month, .day, .hour, .minute], from: date)
+        var gregorian = Calendar(identifier: .gregorian)
+        gregorian.timeZone = calendar.timeZone
+        let parts = gregorian.dateComponents([.year, .month, .day, .hour, .minute], from: date)
         return String(format: "%04d-%02d-%02d %02dh%02d", parts.year ?? 0, parts.month ?? 1, parts.day ?? 1,
                       parts.hour ?? 0, parts.minute ?? 0)
     }
@@ -105,17 +109,30 @@ enum ForkMeetingFolder {
         text.decomposedStringWithCanonicalMapping.utf16.count
     }
 
-    /// Brings a name under the limit by dropping whole characters from the
+    /// A whole path is at most 1024 bytes (`PATH_MAX`) of decomposed UTF-8,
+    /// and a meeting's media sit two names deep, `<root>/<name>/<name>.mp4`:
+    /// two names of 255 units can pass one by one and still make a path
+    /// macOS refuses (measured: twenty emoji families, 1182 bytes). Under
+    /// this, the root keeps more than 500 bytes. Only titles heavy with emoji
+    /// (a family weighs 25 bytes) or combining marks ever meet it.
+    static let byteLimit = 240
+
+    static func bytes(_ text: String) -> Int {
+        text.decomposedStringWithCanonicalMapping.utf8.count
+    }
+
+    /// Brings a name under both limits by dropping whole characters from the
     /// end: cutting inside a decomposed "é" would leave a stray accent, and
     /// inside an emoji family a lone figure. Falls back to `fallback` when
     /// nothing of the title survives.
     static func fitted(_ name: String, fallback: String) -> String {
         let budget = componentLimit - reservedUnits
-        guard units(name) > budget else { return name }
+        func tooLong(_ text: String) -> Bool { units(text) > budget || bytes(text) > byteLimit }
+        guard tooLong(name) else { return name }
         // A character weighs at least one unit: `budget` characters is a safe
         // first cut, leaving the loop a handful of turns.
         var cut = String(name.prefix(budget))
-        while !cut.isEmpty, units(cut) > budget { cut.removeLast() }
+        while !cut.isEmpty, tooLong(cut) { cut.removeLast() }
         let trimmed = cut.trimmingCharacters(in: trailingNoise)
         return trimmed.isEmpty ? fallback : trimmed
     }
@@ -133,16 +150,18 @@ enum ForkMeetingFolder {
     /// " — ".
     ///
     /// `/` (the path separator), `:` (shown as `/` by the Finder) and control
-    /// characters become a space, so "Opah/Castral" reads as two words;
-    /// leading dots go, they would hide the folder. Accents, apostrophes and
-    /// ampersands stay: "Closing L'Étoile & Fils" is the name the person
-    /// wrote.
+    /// characters (category Cc) become a space, so "Acme/Globex" reads as two
+    /// words; leading dots go, they would hide the folder. Accents,
+    /// apostrophes and ampersands stay: "Closing L'Étoile & Fils" is the name
+    /// the person wrote. So do format characters (Cf), which
+    /// `CharacterSet.controlCharacters` also holds: the zero-width joiner
+    /// inside an emoji family or a rainbow flag, the soft hyphen.
     static func sanitized(_ title: String) -> String? {
         var cleaned = ""
         var lastWasSpace = false
         for character in title {
             let forbidden = character == "/" || character == ":"
-                || character.unicodeScalars.contains { CharacterSet.controlCharacters.contains($0) }
+                || character.unicodeScalars.contains { $0.properties.generalCategory == .control }
             if forbidden || character.isWhitespace {
                 if !lastWasSpace, !cleaned.isEmpty { cleaned.append(" ") }
                 lastWasSpace = true
