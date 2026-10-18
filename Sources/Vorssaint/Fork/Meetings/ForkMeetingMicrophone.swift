@@ -55,7 +55,10 @@ final class ForkMeetingMicrophone: NSObject, AVCaptureAudioDataOutputSampleBuffe
     private var running = false
     private var pendingRebuild: DispatchWorkItem?
     private var watchdog: DispatchSourceTimer?
-    private var observers: [NSObjectProtocol] = []
+    /// The device list's notifications, for the whole recording.
+    private var followObservers: [NSObjectProtocol] = []
+    /// The current session's own, for as long as it lives.
+    private var sessionObservers: [NSObjectProtocol] = []
     private var listeners: [(AudioObjectPropertyAddress, AudioObjectPropertyListenerBlock)] = []
     /// When the last device stopped, for the gap of the next one.
     private var lostAt: Double?
@@ -166,8 +169,8 @@ final class ForkMeetingMicrophone: NSObject, AVCaptureAudioDataOutputSampleBuffe
     /// Session queue.
     private func close() {
         lock.withLock { acceptedSession = nil }
-        observers.forEach(NotificationCenter.default.removeObserver)
-        observers = []
+        sessionObservers.forEach(NotificationCenter.default.removeObserver)
+        sessionObservers = []
         guard let session else { return }
         self.session = nil
         session.stopRunning()
@@ -229,13 +232,13 @@ final class ForkMeetingMicrophone: NSObject, AVCaptureAudioDataOutputSampleBuffe
             }
         }
         let center = NotificationCenter.default
-        observers.append(center.addObserver(forName: AVCaptureDevice.wasDisconnectedNotification, object: nil,
-                                            queue: nil) { [weak self] note in
+        followObservers.append(center.addObserver(forName: AVCaptureDevice.wasDisconnectedNotification, object: nil,
+                                                  queue: nil) { [weak self] note in
             guard let device = note.object as? AVCaptureDevice else { return }
             self?.deviceDisconnected(device.uniqueID)
         })
-        observers.append(center.addObserver(forName: AVCaptureDevice.wasConnectedNotification, object: nil,
-                                            queue: nil) { [weak self] _ in
+        followObservers.append(center.addObserver(forName: AVCaptureDevice.wasConnectedNotification, object: nil,
+                                                  queue: nil) { [weak self] _ in
             self?.scheduleRebuild(force: false)
         })
     }
@@ -255,13 +258,15 @@ final class ForkMeetingMicrophone: NSObject, AVCaptureAudioDataOutputSampleBuffe
                                                    sessionQueue, block)
         }
         listeners = []
+        followObservers.forEach(NotificationCenter.default.removeObserver)
+        followObservers = []
     }
 
     /// Session queue. A session that fails or is interrupted is built again.
     private func observe(_ session: AVCaptureSession) {
         let center = NotificationCenter.default
         for name in [AVCaptureSession.runtimeErrorNotification, AVCaptureSession.wasInterruptedNotification] {
-            observers.append(center.addObserver(forName: name, object: session, queue: nil) { [weak self] _ in
+            sessionObservers.append(center.addObserver(forName: name, object: session, queue: nil) { [weak self] _ in
                 self?.scheduleRebuild(force: true)
             })
         }
