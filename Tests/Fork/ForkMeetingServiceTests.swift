@@ -127,7 +127,7 @@ enum ForkMeetingServiceTests {
     private static func filmed(_ suite: TestSuite) {
         let fr = ForkMeetingStrings.strings(.fr), en = ForkMeetingStrings.strings(.enUS)
         suite.expect(Support.filmed(target: .window, appName: "Google Chrome", noWindowToFilm: false, strings: fr)
-                        == "Fenêtre de Google Chrome"
+                        == "Fenêtre\u{00A0}: Google Chrome"
                         && Support.filmed(target: .window, appName: "Google Chrome", noWindowToFilm: false, strings: en)
                         == "Google Chrome window",
                      "the window filmed is named by its app")
