@@ -14,6 +14,11 @@ struct ForkTests {
             ("window-trackpad", { ForkTrackpadGestureTests.run(suite) }),
             ("fork-update", { ForkUpdateTests.run(suite) }),
             ("fork-dictation", { ForkDictationTests.run(suite) }),
+            ("fork-dictation-machine", { ForkDictationMachineTests.run(suite) }),
+            ("fork-dictation-replacements", { ForkDictationReplacementsTests.run(suite) }),
+            ("fork-dictation-shortcuts", { ForkDictationShortcutTests.run(suite) }),
+            ("fork-parakeet", { ForkParakeetTests.run(suite) }),
+            ("fork-parakeet-store", { ForkParakeetStoreTests.run(suite) }),
         ]
         var selected = Set<String>()
         var listOnly = false

@@ -1,17 +1,23 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 Sweeze
+// Copyright (C) 2026 Martial
 
 import CoreGraphics
 import Foundation
 
-/// The key held to dictate. Only keys that type nothing on their own: a
-/// letter or a shortcut would fire in the app in front at the same time.
-enum ForkDictationTrigger: String, CaseIterable, Identifiable {
+/// A key that dictates when held alone. Only keys that type nothing on
+/// their own: a letter would fire in the app in front at the same time.
+/// Combinations are `ForkDictationShortcut.Key.combo`.
+enum ForkDictationTrigger: String, CaseIterable, Identifiable, Codable {
     case rightCommand
     case rightOption
     case rightControl
     case rightShift
     case fn
+    case leftCommand
+    case leftOption
+    case leftControl
+    case leftShift
 
     static let fallback: ForkDictationTrigger = .rightCommand
 
@@ -21,6 +27,10 @@ enum ForkDictationTrigger: String, CaseIterable, Identifiable {
     var keyCode: Int64 {
         switch self {
         case .rightCommand: return 54
+        case .leftCommand: return 55
+        case .leftShift: return 56
+        case .leftOption: return 58
+        case .leftControl: return 59
         case .rightShift: return 60
         case .rightOption: return 61
         case .rightControl: return 62
@@ -28,28 +38,36 @@ enum ForkDictationTrigger: String, CaseIterable, Identifiable {
         }
     }
 
-    /// The flag that is set while this very key is down. The right-hand
-    /// keys have device bits of their own (IOLLEvent.h), so the left-hand
-    /// key held at the same time does not count.
+    /// The flag that is set while this very key is down. Each side has a
+    /// device bit of its own (IOLLEvent.h), so the other side held at the
+    /// same time does not count.
     var downMask: UInt64 {
         switch self {
         case .rightCommand: return 0x10
+        case .leftCommand: return 0x08
         case .rightShift: return 0x04
+        case .leftShift: return 0x02
         case .rightOption: return 0x40
+        case .leftOption: return 0x20
         case .rightControl: return 0x2000
+        case .leftControl: return 0x01
         case .fn: return CGEventFlags.maskSecondaryFn.rawValue
         }
     }
 
     var symbol: String {
         switch self {
-        case .rightCommand: return "⌘"
-        case .rightOption: return "⌥"
-        case .rightControl: return "⌃"
-        case .rightShift: return "⇧"
+        case .rightCommand, .leftCommand: return "⌘"
+        case .rightOption, .leftOption: return "⌥"
+        case .rightControl, .leftControl: return "⌃"
+        case .rightShift, .leftShift: return "⇧"
         case .fn: return "fn 🌐"
         }
     }
+
+    /// fn starts no shortcut of its own, so the microphone may open on the
+    /// press. The others wait a moment to see whether a shortcut follows.
+    var armsImmediately: Bool { self == .fn }
 
     static var current: ForkDictationTrigger {
         UserDefaults.standard.string(forKey: ForkDefaultsKey.dictationTrigger)
@@ -64,12 +82,17 @@ enum ForkDictationTrigger: String, CaseIterable, Identifiable {
     }
 }
 
-/// When to listen, from the trigger key alone, the way Wispr Flow does:
+/// When to listen, from the shortcut alone. Hybrid is the way Wispr Flow
+/// does it:
 ///
 /// - held, then released: dictates what was said while it was down;
 /// - tapped: hands-free, until the next press of the key;
 /// - held together with another key: a shortcut, so nothing happens;
 /// - Escape: gives up what was said.
+///
+/// Hold only dictates while the key is down, and toggle always goes
+/// hands-free on the release. In every mode another key during the first
+/// press is a keyboard shortcut, never a dictation.
 struct ForkDictationGesture {
     enum State: Equatable {
         case idle
@@ -84,13 +107,22 @@ struct ForkDictationGesture {
         case none
         case start
         case finish
+        /// Given up on purpose (Escape): said so, with a sound.
         case cancel
+        /// Not a dictation after all (a keyboard shortcut, a press too short
+        /// to hold): dropped without a sound or a word.
+        case abort
     }
 
     /// A press shorter than this is a tap.
     static let tapLimit: TimeInterval = 0.35
 
+    let mode: ForkDictationShortcut.Mode
     private(set) var state: State = .idle
+
+    init(mode: ForkDictationShortcut.Mode = .hybrid) {
+        self.mode = mode
+    }
 
     var isListening: Bool {
         switch state {
@@ -98,6 +130,8 @@ struct ForkDictationGesture {
         case .idle, .awaitingRelease: return false
         }
     }
+
+    var isHandsFree: Bool { state == .handsFree }
 
     mutating func triggerDown(at time: TimeInterval) -> Command {
         switch state {
@@ -115,12 +149,18 @@ struct ForkDictationGesture {
     mutating func triggerUp(at time: TimeInterval) -> Command {
         switch state {
         case let .holding(since):
-            if time - since < Self.tapLimit {
+            let tapped = time - since < Self.tapLimit
+            switch mode {
+            case .hybrid:
+                state = tapped ? .handsFree : .idle
+                return tapped ? .none : .finish
+            case .hold:
+                state = .idle
+                return tapped ? .abort : .finish
+            case .toggle:
                 state = .handsFree
                 return .none
             }
-            state = .idle
-            return .finish
         case .awaitingRelease:
             state = .idle
             return .none
@@ -129,12 +169,14 @@ struct ForkDictationGesture {
         }
     }
 
-    /// Another key while the trigger is held: a shortcut, not a dictation.
-    /// Hands-free, the person may type and keep talking.
-    mutating func otherKey() -> Command {
-        guard case .holding = state else { return .none }
+    /// Another key (or a click) while the shortcut is held: a keyboard
+    /// shortcut, not a dictation. Once the person has been speaking a while
+    /// (`keepsListening`), it is part of the dictation, not a reason to drop
+    /// it. Hands-free, the person may type and keep talking.
+    mutating func otherKey(keepsListening: Bool = false) -> Command {
+        guard case .holding = state, !keepsListening else { return .none }
         state = .awaitingRelease
-        return .cancel
+        return .abort
     }
 
     mutating func escape() -> Command {
@@ -150,7 +192,7 @@ struct ForkDictationGesture {
         }
     }
 
-    /// The dictation ended on its own (an error, the time limit).
+    /// The dictation ended on its own (an error, the time limit, silence).
     mutating func end(triggerHeld: Bool) {
         state = triggerHeld ? .awaitingRelease : .idle
     }
@@ -162,6 +204,32 @@ enum ForkDictationSupport {
     static let maximumDuration: TimeInterval = 5 * 60
     /// How long the recognizer may take to settle once the person stops.
     static let finishTimeout: TimeInterval = 4
+
+    /// Pieces of one dictation put back together: a space between words,
+    /// none where Chinese, Japanese or Korean text, or full-width
+    /// punctuation, meets the next piece.
+    static func joined(_ pieces: [String]) -> String {
+        var result = ""
+        for piece in pieces where !piece.isEmpty {
+            if let last = result.unicodeScalars.last, let first = piece.unicodeScalars.first,
+               !isWide(last), !isWide(first) {
+                result += " "
+            }
+            result += piece
+        }
+        return result
+    }
+
+    private static func isWide(_ scalar: Unicode.Scalar) -> Bool {
+        switch scalar.value {
+        case 0x1100...0x11FF, 0x2E80...0x2FDF, 0x3000...0x303F, 0x3040...0x30FF, 0x3130...0x318F,
+             0x31F0...0x31FF, 0x3400...0x4DBF, 0x4E00...0x9FFF, 0xAC00...0xD7AF, 0xF900...0xFAFF,
+             0xFF00...0xFFEF, 0x20000...0x2FA1F:
+            return true
+        default:
+            return false
+        }
+    }
 
     /// What goes into the text field: nothing when nothing was understood.
     static func insertion(_ transcript: String) -> String? {
@@ -205,6 +273,7 @@ enum ForkDictationSupport {
         words.joined(separator: "\n")
     }
 
+    /// Applied by `ForkDictationReplacements`, in a single pass.
     struct Replacement: Equatable, Hashable {
         var heard: String
         var written: String
@@ -226,22 +295,6 @@ enum ForkDictationSupport {
         replacements.map { "\($0.heard)\t\($0.written)" }.joined(separator: "\n")
     }
 
-    /// Writes each replacement in place of what was heard, as whole words,
-    /// whatever the case. The longest first, so "pull request" wins over
-    /// "pull".
-    static func applying(_ replacements: [Replacement], to text: String) -> String {
-        var result = text
-        for replacement in replacements.sorted(by: { $0.heard.count > $1.heard.count }) {
-            let pattern = "(?<![\\p{L}\\p{N}])" + NSRegularExpression.escapedPattern(for: replacement.heard)
-                + "(?![\\p{L}\\p{N}])"
-            guard let regex = try? NSRegularExpression(pattern: pattern, options: [.caseInsensitive]) else { continue }
-            result = regex.stringByReplacingMatches(
-                in: result, range: NSRange(result.startIndex..., in: result),
-                withTemplate: NSRegularExpression.escapedTemplate(for: replacement.written))
-        }
-        return result
-    }
-
     static func normalized(_ identifier: String) -> String {
         identifier.replacingOccurrences(of: "_", with: "-")
     }
@@ -252,5 +305,27 @@ enum ForkDictationSupport {
         guard rms > 0 else { return 0 }
         let decibels = 20 * log10(rms)
         return min(1, max(0, (decibels + 50) / 40))
+    }
+}
+
+/// Clicks, the wheel and system keys seen while a shortcut is held: which
+/// of them mean the shortcut is part of something else.
+enum ForkDictationOtherInput {
+    /// NX_SUBTYPE_AUX_CONTROL_BUTTONS: the media, volume and brightness keys.
+    static let mediaKeysSubtype = 8
+    private static let keyDownState: UInt32 = 0x0A
+
+    /// The momentum that keeps a flick scrolling for a second or two is not
+    /// the person touching anything.
+    static func scrollCounts(momentumPhase: Int64) -> Bool {
+        momentumPhase == 0
+    }
+
+    /// Only the press of a media key; its release, its repeats and the other
+    /// system events (power, eject, auxiliary buttons) do not count.
+    static func systemKeyCounts(subtype: Int, data1: Int) -> Bool {
+        guard subtype == mediaKeysSubtype else { return false }
+        let raw = UInt32(truncatingIfNeeded: data1)
+        return (raw >> 8) & 0xFF == keyDownState && raw & 0x1 == 0
     }
 }

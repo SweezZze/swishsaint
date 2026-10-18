@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 Sweeze
+// Copyright (C) 2026 Martial
 
 import Foundation
 
@@ -10,6 +11,27 @@ enum ForkDictationTests {
         language(suite)
         text(suite)
         vocabulary(suite)
+        otherInput(suite)
+    }
+
+    private static func otherInput(_ suite: TestSuite) {
+        suite.expect(ForkDictationOtherInput.scrollCounts(momentumPhase: 0),
+                     "the wheel turned by the person while a shortcut is held is another input")
+        suite.expect(!ForkDictationOtherInput.scrollCounts(momentumPhase: 1)
+                        && !ForkDictationOtherInput.scrollCounts(momentumPhase: 2),
+                     "the momentum after a flick is not: dictating right after scrolling works")
+        // data1: key code << 16 | state << 8 | repeat bit. 0x0A down, 0x0B up.
+        let volumeUpDown = (0 << 16) | (0x0A << 8)
+        let volumeUpRelease = (0 << 16) | (0x0B << 8)
+        let volumeUpRepeat = volumeUpDown | 0x1
+        suite.expect(ForkDictationOtherInput.systemKeyCounts(subtype: 8, data1: volumeUpDown),
+                     "a media key pressed with fn is another input")
+        suite.expect(!ForkDictationOtherInput.systemKeyCounts(subtype: 8, data1: volumeUpRelease)
+                        && !ForkDictationOtherInput.systemKeyCounts(subtype: 8, data1: volumeUpRepeat),
+                     "its release and repeats are not new inputs")
+        suite.expect(!ForkDictationOtherInput.systemKeyCounts(subtype: 1, data1: volumeUpDown)
+                        && !ForkDictationOtherInput.systemKeyCounts(subtype: 7, data1: volumeUpDown),
+                     "other system events (power, auxiliary buttons) never end a dictation")
     }
 
     private static func gesture(_ suite: TestSuite) {
@@ -32,9 +54,20 @@ enum ForkDictationTests {
 
         var shortcut = ForkDictationGesture()
         _ = shortcut.triggerDown(at: 10)
-        suite.expect(shortcut.otherKey() == .cancel && shortcut.triggerUp(at: 10.5) == .none
+        suite.expect(shortcut.otherKey() == .abort && shortcut.triggerUp(at: 10.5) == .none
                         && shortcut.state == .idle,
                      "the key held with another key is a shortcut: nothing is written")
+
+        var speaking = ForkDictationGesture()
+        _ = speaking.triggerDown(at: 10)
+        suite.expect(speaking.otherKey(keepsListening: true) == .none && speaking.triggerUp(at: 15) == .finish,
+                     "another key after a while of speaking keeps the dictation")
+
+        suite.expect(ForkDictationSupport.joined(["Bonjour.", "Ça va ?"]) == "Bonjour. Ça va ?"
+                        && ForkDictationSupport.joined(["你好。", "下一段"]) == "你好。下一段"
+                        && ForkDictationSupport.joined(["こんにちは", "Mac"]) == "こんにちはMac"
+                        && ForkDictationSupport.joined(["", "un", ""]) == "un",
+                     "pieces join with a space, but none against Chinese, Japanese or Korean")
 
         var escaped = ForkDictationGesture()
         _ = escaped.triggerDown(at: 10)
@@ -49,6 +82,40 @@ enum ForkDictationTests {
         ended.end(triggerHeld: true)
         suite.expect(ended.triggerUp(at: 20) == .none && ended.state == .idle,
                      "after a dictation that ended on its own, the release of the key is not a new press")
+
+        var hold = ForkDictationGesture(mode: .hold)
+        suite.expect(hold.triggerDown(at: 10) == .start && hold.triggerUp(at: 11) == .finish && hold.state == .idle,
+                     "hold: the release writes what was said")
+        _ = hold.triggerDown(at: 20)
+        suite.expect(hold.triggerUp(at: 20.1) == .abort && hold.state == .idle && !hold.isHandsFree,
+                     "hold: a tap is too short to dictate, and drops silently")
+        _ = hold.triggerDown(at: 30)
+        suite.expect(hold.otherKey() == .abort && hold.triggerUp(at: 31) == .none && hold.state == .idle,
+                     "hold: another key makes it a keyboard shortcut")
+        _ = hold.triggerDown(at: 40)
+        suite.expect(hold.escape() == .cancel && hold.triggerUp(at: 41) == .none && hold.state == .idle,
+                     "hold: Escape gives up, and the release starts nothing")
+
+        var toggle = ForkDictationGesture(mode: .toggle)
+        suite.expect(toggle.triggerDown(at: 10) == .start && toggle.triggerUp(at: 12) == .none
+                        && toggle.isHandsFree,
+                     "toggle: even a long first press goes hands-free on the release")
+        suite.expect(toggle.otherKey() == .none && toggle.triggerDown(at: 20) == .finish
+                        && toggle.triggerUp(at: 20.1) == .none && toggle.state == .idle,
+                     "toggle: typing keeps listening, the next press writes")
+        _ = toggle.triggerDown(at: 30)
+        suite.expect(toggle.otherKey() == .abort && toggle.triggerUp(at: 30.2) == .none && toggle.state == .idle,
+                     "toggle: another key during the first press is a keyboard shortcut")
+
+        var hybrid = ForkDictationGesture()
+        suite.expect(hybrid.mode == .hybrid, "the gesture is hybrid by default")
+        _ = hybrid.triggerDown(at: 10)
+        suite.expect(hybrid.triggerUp(at: 10.349) == .none && hybrid.isHandsFree,
+                     "hybrid: just under the tap limit is a tap")
+        _ = hybrid.triggerDown(at: 11)
+        _ = hybrid.triggerUp(at: 11.1)
+        _ = hybrid.triggerDown(at: 20)
+        suite.expect(hybrid.triggerUp(at: 20.35) == .finish, "hybrid: the tap limit itself is a hold")
     }
 
     private static func trigger(_ suite: TestSuite) {
@@ -58,6 +125,17 @@ enum ForkDictationTests {
                      "right Command reads down and up from its own device bit")
         suite.expect(command.isDown(keyCode: 55, flags: 0x100008) == nil,
                      "left Command is another key")
+        let left = ForkDictationTrigger.leftCommand
+        suite.expect(left.isDown(keyCode: 55, flags: 0x100008) == true && left.isDown(keyCode: 55, flags: 0x100010) == false,
+                     "left Command reads from its own device bit, not the right one's")
+        suite.expect(ForkDictationTrigger.leftShift.isDown(keyCode: 56, flags: 0x20002) == true
+                        && ForkDictationTrigger.leftOption.isDown(keyCode: 58, flags: 0x80020) == true
+                        && ForkDictationTrigger.leftControl.isDown(keyCode: 59, flags: 0x40001) == true,
+                     "each left modifier has its own device bit")
+        suite.expect(Set(ForkDictationTrigger.allCases.map(\.downMask)).count == ForkDictationTrigger.allCases.count,
+                     "no two keys share a device bit")
+        suite.expect(ForkDictationTrigger.allCases.filter(\.armsImmediately) == [.fn],
+                     "only fn opens the microphone on the press")
         suite.expect(ForkDictationTrigger.fn.isDown(keyCode: 63, flags: 0x800000) == true
                         && ForkDictationTrigger.fn.isDown(keyCode: 63, flags: 0) == false,
                      "fn reads from the secondary function flag")
@@ -108,14 +186,5 @@ enum ForkDictationTests {
         let replacements = ForkDictationSupport.replacements(from: stored)
         suite.expect(replacements.count == 2 && replacements[0] == .init(heard: "poule", written: "pull"),
                      "replacements come back as stored")
-        suite.expect(ForkDictationSupport.applying(replacements, to: "Ouvre la Poule rique ouest et la poule.")
-                        == "Ouvre la pull request et la pull.",
-                     "the longest replacement wins, whatever the case")
-        suite.expect(ForkDictationSupport.applying(replacements, to: "Les poulets et la poulette")
-                        == "Les poulets et la poulette",
-                     "only whole words are replaced")
-        suite.expect(ForkDictationSupport.applying([.init(heard: "c++", written: "C++ $1")], to: "en c++ !")
-                        == "en C++ $1 !",
-                     "what is heard and written is taken literally")
     }
 }
