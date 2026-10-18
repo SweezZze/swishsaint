@@ -142,7 +142,7 @@ enum ForkMeetingSettingsTests {
         suite.expect(languages.allSatisfy { language in
                         let strings = ForkMeetingStrings.strings(language)
                         let presets = [strings.qualityLight, strings.qualityStandard, strings.qualityHigh]
-                        let pictures = [strings.pictureWindow, strings.pictureDisplay]
+                        let pictures = [strings.pictureFrontWindow, strings.pictureFrontDisplay]
                         let sounds = [strings.soundApp, strings.soundAll, strings.soundOff]
                         return Set(presets).count == 3 && Set(pictures).count == 2 && Set(sounds).count == 3
                      },

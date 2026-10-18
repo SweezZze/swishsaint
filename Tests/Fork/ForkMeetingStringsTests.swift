@@ -153,7 +153,7 @@ enum ForkMeetingStringsTests {
     private static func liveTexts(_ suite: TestSuite) {
         let live: [KeyPath<ForkMeetingStrings, String>] = [
             \.pillPaused, \.pillStopping, \.pillFinalizing, \.pillPictureFrozen, \.pillPause, \.pillResume,
-            \.pillStop, \.pillFilmDisplay, \.pillFilmWindow, \.pillMicrophoneLevel, \.pillMeetingLevel,
+            \.pillStop, \.pillFilmDisplay, \.pillFilmTheWindow, \.pillMicrophoneLevel, \.pillMeetingLevel,
             \.pillMicrophoneOff, \.pillElapsed, \.pillRecording, \.actionShow, \.actionOpenSettings,
             \.actionOpenStorage, \.actionOpenMeetings, \.bubbleClose,
         ]
@@ -168,7 +168,7 @@ enum ForkMeetingStringsTests {
                      "the final file's three audio tracks have three names in every language")
         suite.expect(ForkMeetingStrings.strings(.fr).trackMeeting == "Réunion" && ForkMeetingStrings.strings(.fr).trackMicrophone == "Micro",
                      "in French the sources are Réunion and Micro")
-        suite.expect(allStrings.allSatisfy { $0.pillPause != $0.pillResume && $0.pillFilmDisplay != $0.pillFilmWindow
+        suite.expect(allStrings.allSatisfy { $0.pillPause != $0.pillResume && $0.pillFilmDisplay != $0.pillFilmTheWindow
                                                 && $0.pillMicrophoneLevel != $0.pillMeetingLevel },
                      "the buttons and meters VoiceOver reads are told apart in every language")
     }

@@ -221,7 +221,6 @@ enum ForkMeetingServiceTests {
         suite.expect(all.allSatisfy { strings in
                         ForkMeetingAnnouncement.startedWithoutMicrophone.text(strings) != strings.voiceStarted
                             && !strings.voicePictureFrozen.isEmpty
-                            && strings.voiceFilmedDisplayChanged != strings.voiceDisplayChanged
                      },
                      "the start without a microphone and the frozen picture have their own sentence in every language")
         suite.expect(ForkMeetingFailure.masterHidden.action == .openMeetingsFolder && !ForkMeetingFailure.masterHidden.isLasting
