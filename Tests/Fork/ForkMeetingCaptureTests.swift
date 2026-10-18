@@ -111,35 +111,98 @@ enum ForkMeetingCaptureTests {
         suite.expect(!ForkMeetingSoundSource.none.streamListens && ForkMeetingSoundSource.appTap(pid: 1).streamListens,
                      "the stream listens whenever there is sound, to check the tap; never when it is off")
 
-        var fresh = ForkMeetingSoundArbiter(hasTap: true, trusted: false)
-        suite.expect(fresh.writesStream, "an unproven tap leaves the track to the stream")
-        fresh.tapBuffer(heard: false)
-        suite.expect(fresh.writesStream, "a silent tap proves nothing")
-        fresh.tapBuffer(heard: true)
-        suite.expect(fresh.writesTap, "the tap takes the track as soon as it heard something")
+        arbiter(suite)
+    }
 
-        var trusted = ForkMeetingSoundArbiter(hasTap: true, trusted: true)
-        suite.expect(trusted.writesTap, "a tap an earlier recording proved writes from the start")
-        var said = 0
-        for _ in 0..<40 where trusted.streamBuffer(heard: true, counts: true, seconds: 0.1) { said += 1 }
-        suite.expect(said == 1 && trusted.writesStream,
-                     "a tap that stays silent while the stream hears three seconds is given up, said once")
-        trusted.tapBuffer(heard: true)
-        suite.expect(trusted.writesStream, "a tap given up stays given up for the recording")
+    /// What one 10 ms tick of a recording carries: what the meeting app
+    /// plays (its tap), what every other app plays, and whether system audio
+    /// recording is allowed (without it, both taps hear silence).
+    private struct Tick {
+        var meeting: Bool
+        var others: Bool
+        var allowed = true
+    }
 
-        var proven = ForkMeetingSoundArbiter(hasTap: true, trusted: false)
-        proven.tapBuffer(heard: true)
-        suite.expect(!proven.streamBuffer(heard: true, counts: true, seconds: 10) && proven.writesTap,
-                     "a tap that heard is never judged deaf: the stream also hears other apps")
-        var early = ForkMeetingSoundArbiter(hasTap: true, trusted: true)
-        suite.expect(!early.streamBuffer(heard: true, counts: false, seconds: 10) && early.writesTap,
-                     "sound from before the app's tap came up does not count against it")
-        var lost = ForkMeetingSoundArbiter(hasTap: true, trusted: true)
-        lost.tapReaderLost()
-        lost.tapBuffer(heard: true)
-        suite.expect(lost.writesStream, "a tap that lost its reader gives the track back to the stream")
-        let none = ForkMeetingSoundArbiter(hasTap: false, trusted: true)
-        suite.expect(none.writesStream, "without a tap, the stream")
+    /// Plays `ticks` through an arbiter the way the recorder feeds it (the
+    /// stream, then the two taps, each tick) and returns what the meeting
+    /// track got, tick by tick: "meeting" for the app's tap with sound,
+    /// "silence" for the tap without, "mac" for the stream's sound, and how
+    /// many times each verdict was said.
+    private static func play(_ ticks: [Tick], hasWitness: Bool = true, witnessSettles: Double = 0)
+        -> (track: [String], missing: Int, allowed: Int, arbiter: ForkMeetingSoundArbiter) {
+        var arbiter = ForkMeetingSoundArbiter(hasTap: true, hasWitness: hasWitness)
+        var track: [String] = []
+        var missing = 0, allowed = 0
+        for (index, tick) in ticks.enumerated() {
+            let streamHears = tick.meeting || tick.others
+            let counts = Double(index) * 0.01 >= witnessSettles
+            if arbiter.streamBuffer(heard: streamHears, counts: counts, seconds: 0.01) { missing += 1 }
+            if arbiter.writesStream, streamHears { track.append("mac") }
+            if arbiter.tapBuffer(heard: tick.allowed && tick.meeting) { allowed += 1 }
+            if arbiter.writesTap { track.append(tick.allowed && tick.meeting ? "meeting" : "silence") }
+            if hasWitness, arbiter.needsWitness, arbiter.witnessBuffer(heard: tick.allowed && streamHears) { allowed += 1 }
+        }
+        return (track, missing, allowed, arbiter)
+    }
+
+    private static func ticks(_ seconds: Double, meeting: Bool = false, others: Bool = false,
+                              allowed: Bool = true) -> [Tick] {
+        Array(repeating: Tick(meeting: meeting, others: others, allowed: allowed), count: Int((seconds * 100).rounded()))
+    }
+
+    private static func arbiter(_ suite: TestSuite) {
+        let fresh = ForkMeetingSoundArbiter(hasTap: true, hasWitness: true)
+        suite.expect(fresh.writesTap && !fresh.writesStream && fresh.needsWitness && fresh.permission == .unknown,
+                     "the app's tap writes the meeting track from the very start, before anything is proven")
+
+        let waitingRoom = play(ticks(30, others: true))
+        suite.expect(waitingRoom.track.allSatisfy { $0 == "silence" } && waitingRoom.missing == 0
+                        && waitingRoom.allowed == 1 && waitingRoom.arbiter.permission == .allowed,
+                     "a silent waiting room while Spotify plays for 30 s: the track is silence, Spotify is never written")
+        suite.expect(!waitingRoom.arbiter.needsWitness, "the witness heard Spotify: the permission is proven, it can go")
+
+        let spotifyThenMeeting = play(ticks(4, others: true) + ticks(10, meeting: true) + ticks(5, meeting: true, others: true))
+        suite.expect(!spotifyThenMeeting.track.contains("mac") && spotifyThenMeeting.track.contains("meeting")
+                        && spotifyThenMeeting.missing == 0,
+                     "Spotify 4 s, then the meeting speaks: the track holds the meeting only, never the Mac")
+
+        let tapFirst = play(ticks(1, meeting: true) + ticks(10, others: true))
+        suite.expect(tapFirst.allowed == 1 && tapFirst.arbiter.permission == .allowed && !tapFirst.track.contains("mac"),
+                     "the app's tap hearing its app proves the permission as well, once")
+
+        let denied = play(ticks(2, others: true, allowed: false) + ticks(10, meeting: true, others: true, allowed: false))
+        let firstMac = denied.track.firstIndex(of: "mac")
+        let beforeMac = firstMac.map { denied.track[..<$0] } ?? denied.track[...]
+        suite.expect(denied.missing == 1 && denied.arbiter.permission == .missing && denied.arbiter.writesStream
+                        && !denied.arbiter.needsWitness,
+                     "both taps deaf while the stream hears 3 s: the permission is missing, said once")
+        suite.expect(abs(beforeMac.count - 300) <= 1 && beforeMac.allSatisfy { $0 == "silence" }
+                        && denied.track[(firstMac ?? 0)...].allSatisfy { $0 == "mac" },
+                     "the track is the app's silence for those 3 s, then the whole Mac for the rest of the recording")
+
+        let settling = play(ticks(2.9, others: true, allowed: false) + ticks(0.5), witnessSettles: 2.5)
+        suite.expect(settling.missing == 0 && settling.arbiter.writesTap,
+                     "the stream's sound from before the witness settled counts for nothing")
+
+        let quietMac = play(ticks(60, allowed: false))
+        suite.expect(quietMac.missing == 0 && quietMac.arbiter.permission == .unknown && quietMac.arbiter.writesTap,
+                     "a Mac that plays nothing proves nothing either way: the tap keeps the track")
+
+        let blind = play(ticks(60, others: true, allowed: false), hasWitness: false)
+        suite.expect(blind.missing == 0 && !blind.track.contains("mac") && !blind.arbiter.needsWitness,
+                     "without a witness nothing is judged: the tap keeps the track, the Mac is never written")
+        var lost = ForkMeetingSoundArbiter(hasTap: true, hasWitness: true)
+        lost.witnessUnavailable()
+        suite.expect(!lost.streamBuffer(heard: true, counts: true, seconds: 10) && lost.writesTap,
+                     "a witness that lost its reader judges nothing more")
+
+        var once = ForkMeetingSoundArbiter(hasTap: true, hasWitness: true)
+        _ = once.streamBuffer(heard: true, counts: true, seconds: 3)
+        suite.expect(!once.tapBuffer(heard: true) && !once.witnessBuffer(heard: true) && once.writesStream,
+                     "a verdict is final for the recording")
+
+        let none = ForkMeetingSoundArbiter(hasTap: false, hasWitness: true)
+        suite.expect(none.writesStream && !none.needsWitness, "the whole Mac's sound, by choice or without a tap: the stream")
     }
 
     private static func microphone(_ suite: TestSuite) {

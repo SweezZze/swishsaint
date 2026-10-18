@@ -237,6 +237,12 @@ struct ForkMeetingStrings {
     let trackMix: String
     let trackMeeting: String
     let trackMicrophone: String
+
+    // MARK: Fixes F1
+
+    /// Under the system audio permission: what a recording does about it,
+    /// and that without it the whole Mac is heard.
+    let systemAudioWholeMac: String
 }
 
 extension ForkMeetingStrings {
@@ -399,7 +405,9 @@ extension ForkMeetingStrings {
         voiceSourceGone: "The filmed app quit. The recording goes on with the sound; the picture stays on its last frame.",
         trackMix: "Mix",
         trackMeeting: "Meeting",
-        trackMicrophone: "Microphone"
+        trackMicrophone: "Microphone",
+        // MARK: Fixes F1
+        systemAudioWholeMac: "Each recording checks it in its first seconds: without it, the meeting app’s sound can’t be recorded on its own, so the whole Mac’s sound is recorded instead, and the recording says so."
     )
 }
 
@@ -563,7 +571,9 @@ extension ForkMeetingStrings {
         voiceSourceGone: "O app filmado foi fechado. A gravação continua com o som; a imagem fica parada no último quadro.",
         trackMix: "Mixagem",
         trackMeeting: "Reunião",
-        trackMicrophone: "Microfone"
+        trackMicrophone: "Microfone",
+        // MARK: Fixes F1
+        systemAudioWholeMac: "Cada gravação verifica isso nos primeiros segundos: sem essa permissão, o som do app da reunião não pode ser gravado sozinho, então o som de todo o Mac é gravado no lugar, e a gravação avisa."
     )
 }
 
@@ -727,7 +737,9 @@ extension ForkMeetingStrings {
         voiceSourceGone: "Kaydedilen uygulama kapandı. Kayıt sesle devam ediyor; görüntü son karede kalıyor.",
         trackMix: "Karışım",
         trackMeeting: "Toplantı",
-        trackMicrophone: "Mikrofon"
+        trackMicrophone: "Mikrofon",
+        // MARK: Fixes F1
+        systemAudioWholeMac: "Her kayıt bunu ilk saniyelerinde denetler: bu izin olmadan toplantı uygulamasının sesi tek başına kaydedilemez, bu yüzden onun yerine tüm Mac’in sesi kaydedilir ve kayıt bunu bildirir."
     )
 }
 
@@ -891,7 +903,9 @@ extension ForkMeetingStrings {
         voiceSourceGone: "Снимаемое приложение закрылось. Запись продолжается со звуком, изображение остановилось на последнем кадре.",
         trackMix: "Микс",
         trackMeeting: "Встреча",
-        trackMicrophone: "Микрофон"
+        trackMicrophone: "Микрофон",
+        // MARK: Fixes F1
+        systemAudioWholeMac: "Каждая запись проверяет его в первые секунды: без него звук приложения встречи нельзя записать отдельно, поэтому вместо него записывается звук всего Mac, и запись сообщает об этом."
     )
 }
 
@@ -1055,7 +1069,9 @@ extension ForkMeetingStrings {
         voiceSourceGone: "La app grabada se cerró. La grabación sigue con el sonido; la imagen se queda en su último fotograma.",
         trackMix: "Mezcla",
         trackMeeting: "Reunión",
-        trackMicrophone: "Micrófono"
+        trackMicrophone: "Micrófono",
+        // MARK: Fixes F1
+        systemAudioWholeMac: "Cada grabación lo comprueba en sus primeros segundos: sin él, el sonido de la app de la reunión no se puede grabar por separado, así que se graba el sonido de todo el Mac y la grabación lo avisa."
     )
 }
 
@@ -1219,7 +1235,9 @@ extension ForkMeetingStrings {
         voiceSourceGone: "Nahrávaná aplikácia skončila. Nahrávanie pokračuje so zvukom, obraz zostáva na poslednom zábere.",
         trackMix: "Zmes",
         trackMeeting: "Stretnutie",
-        trackMicrophone: "Mikrofón"
+        trackMicrophone: "Mikrofón",
+        // MARK: Fixes F1
+        systemAudioWholeMac: "Každé nahrávanie ho overí v prvých sekundách: bez neho sa zvuk aplikácie stretnutia nedá nahrať samostatne, preto sa namiesto neho nahráva zvuk celého Macu a nahrávanie na to upozorní."
     )
 }
 
@@ -1383,7 +1401,9 @@ extension ForkMeetingStrings {
         voiceSourceGone: "Die gefilmte App wurde beendet. Die Aufnahme läuft mit dem Ton weiter, das Bild bleibt beim letzten Frame stehen.",
         trackMix: "Mischung",
         trackMeeting: "Besprechung",
-        trackMicrophone: "Mikrofon"
+        trackMicrophone: "Mikrofon",
+        // MARK: Fixes F1
+        systemAudioWholeMac: "Jede Aufnahme prüft sie in den ersten Sekunden: Ohne sie lässt sich der Ton der Besprechungs-App nicht allein aufnehmen, daher wird stattdessen der Ton des ganzen Mac aufgenommen, und die Aufnahme sagt es."
     )
 }
 
@@ -1547,7 +1567,9 @@ extension ForkMeetingStrings {
         voiceSourceGone: "L’app filmée a quitté. L’enregistrement continue avec le son ; l’image reste figée sur la dernière vue.",
         trackMix: "Mixage",
         trackMeeting: "Réunion",
-        trackMicrophone: "Micro"
+        trackMicrophone: "Micro",
+        // MARK: Fixes F1
+        systemAudioWholeMac: "Chaque enregistrement la vérifie dans ses premières secondes : sans elle, le son de l’app de visio ne peut pas être enregistré seul, c’est donc le son de tout le Mac qui est enregistré, et l’enregistrement le signale."
     )
 }
 
@@ -1711,7 +1733,9 @@ extension ForkMeetingStrings {
         voiceSourceGone: "L’app ripresa è stata chiusa. La registrazione continua con l’audio; l’immagine resta sull’ultimo fotogramma.",
         trackMix: "Missaggio",
         trackMeeting: "Riunione",
-        trackMicrophone: "Microfono"
+        trackMicrophone: "Microfono",
+        // MARK: Fixes F1
+        systemAudioWholeMac: "Ogni registrazione lo verifica nei primi secondi: senza, l’audio dell’app della riunione non può essere registrato da solo, quindi viene registrato l’audio di tutto il Mac e la registrazione lo segnala."
     )
 }
 
@@ -1875,7 +1899,9 @@ extension ForkMeetingStrings {
         voiceSourceGone: "撮影中のアプリが終了しました。録画は音声のまま続き、映像は最後のフレームで止まります。",
         trackMix: "ミックス",
         trackMeeting: "ミーティング",
-        trackMicrophone: "マイク"
+        trackMicrophone: "マイク",
+        // MARK: Fixes F1
+        systemAudioWholeMac: "録画のたびに最初の数秒でこの許可を確認します。許可がない場合はミーティングアプリの音声だけを録音できないため、代わりに Mac 全体の音声を録音し、そのことをお知らせします。"
     )
 }
 
@@ -2039,7 +2065,9 @@ extension ForkMeetingStrings {
         voiceSourceGone: "녹화 중인 앱이 종료되었습니다. 녹화는 소리와 함께 계속되며, 화면은 마지막 프레임에 멈춥니다.",
         trackMix: "믹스",
         trackMeeting: "회의",
-        trackMicrophone: "마이크"
+        trackMicrophone: "마이크",
+        // MARK: Fixes F1
+        systemAudioWholeMac: "녹화할 때마다 처음 몇 초 안에 이 권한을 확인합니다. 권한이 없으면 회의 앱의 소리만 따로 녹음할 수 없어 대신 Mac 전체의 소리를 녹음하고, 그 사실을 알려 드립니다."
     )
 }
 
@@ -2203,7 +2231,9 @@ extension ForkMeetingStrings {
         voiceSourceGone: "Знімана програма закрилася. Запис триває зі звуком, зображення зупинилося на останньому кадрі.",
         trackMix: "Мікс",
         trackMeeting: "Зустріч",
-        trackMicrophone: "Мікрофон"
+        trackMicrophone: "Мікрофон",
+        // MARK: Fixes F1
+        systemAudioWholeMac: "Кожен запис перевіряє його в перші секунди: без нього звук програми зустрічі не можна записати окремо, тому натомість записується звук усього Mac, і запис повідомляє про це."
     )
 }
 
@@ -2367,7 +2397,9 @@ extension ForkMeetingStrings {
         voiceSourceGone: "被录制的应用已退出。录制会继续录下声音，画面停在最后一帧。",
         trackMix: "混音",
         trackMeeting: "会议",
-        trackMicrophone: "麦克风"
+        trackMicrophone: "麦克风",
+        // MARK: Fixes F1
+        systemAudioWholeMac: "每次录制都会在最初几秒检查此权限：没有它，就无法单独录制会议 App 的声音，因此会改为录制整台 Mac 的声音，并告知你。"
     )
 }
 
@@ -2531,7 +2563,9 @@ extension ForkMeetingStrings {
         voiceSourceGone: "被錄製的 App 已結束。錄製會繼續錄下聲音，畫面停在最後一格。",
         trackMix: "混音",
         trackMeeting: "會議",
-        trackMicrophone: "麥克風"
+        trackMicrophone: "麥克風",
+        // MARK: Fixes F1
+        systemAudioWholeMac: "每次錄製都會在最初幾秒檢查此權限：沒有它，就無法單獨錄製會議 App 的聲音，因此會改為錄製整台 Mac 的聲音，並告知你。"
     )
 }
 
@@ -2695,6 +2729,8 @@ extension ForkMeetingStrings {
         voiceSourceGone: "被錄製的 App 已結束。錄製會繼續錄下聲音，畫面停在最後一格。",
         trackMix: "混音",
         trackMeeting: "會議",
-        trackMicrophone: "麥克風"
+        trackMicrophone: "麥克風",
+        // MARK: Fixes F1
+        systemAudioWholeMac: "每次錄製都會在最初幾秒檢查此權限：沒有它，就無法單獨錄製會議 App 的聲音，因此會改為錄製整部 Mac 的聲音，並通知你。"
     )
 }

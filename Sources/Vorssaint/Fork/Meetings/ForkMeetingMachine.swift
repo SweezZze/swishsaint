@@ -281,9 +281,10 @@ struct ForkMeetingMachine {
         case stop
         /// The stream runs and the writer took the first samples, in `folder`.
         /// `target` is what the picture really follows, `microphone` the
-        /// name of the one recording, when the engine knows them.
+        /// name of the one recording, `systemAudio` what the meeting track
+        /// hears, when the engine knows them.
         case captureStarted(ForkMeetingToken, folder: URL, target: ForkMeetingCaptureTarget? = nil,
-                            microphone: String? = nil)
+                            microphone: String? = nil, systemAudio: ForkMeetingSystemAudio? = nil)
         case captureFailed(ForkMeetingToken, ForkMeetingFailure)
         /// Exactly once after `stopCapture`: the file is closed, or not.
         case writerFinished(ForkMeetingToken, ForkMeetingWriterResult)
@@ -356,7 +357,7 @@ struct ForkMeetingMachine {
             guard phase == .idle, !terminating else { return [] }
             return start(origin: .manual, request: request)
 
-        case let .captureStarted(token, folder, target, microphone):
+        case let .captureStarted(token, folder, target, microphone, systemAudio):
             guard case let .starting(pending) = phase, pending.token == token else { return [] }
             let setting = pending.config.settings.target
             var session = Session(token: token, config: pending.config, folder: folder, startedAt: now,
@@ -369,6 +370,7 @@ struct ForkMeetingMachine {
             // really records.
             var patch = ForkMeetingSidecarPatch(microphone: microphone)
             if session.target != setting { patch.target = session.target }
+            if let systemAudio, systemAudio != pending.config.settings.systemAudio { patch.systemAudio = systemAudio }
             if patch != ForkMeetingSidecarPatch() { effects.insert(.writeSidecar(folder, patch), at: 0) }
             return effects
 
@@ -492,7 +494,9 @@ struct ForkMeetingMachine {
                 return [.writeSidecar(session.folder, patch), .notice(.failure(.microphoneDenied)),
                         .announce(.failure(.microphoneDenied))]
             case .systemAudio:
-                return [.notice(.failure(.systemAudioUnavailable)), .announce(.failure(.systemAudioUnavailable))]
+                // The meeting track now hears the whole Mac: the file says so.
+                return [.writeSidecar(session.folder, ForkMeetingSidecarPatch(systemAudio: .all)),
+                        .notice(.failure(.systemAudioUnavailable)), .announce(.failure(.systemAudioUnavailable))]
             }
 
         case .displayChanged:

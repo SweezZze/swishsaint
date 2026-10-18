@@ -109,6 +109,17 @@ enum ForkMeetingMachineTests {
         suite.expect(muted.handle(.captureStarted(token1, folder: folder), now: t0).contains(.notice(.failure(.microphoneDenied))),
                      "and the start says the microphone is missing")
 
+        var wholeMac = Machine()
+        wholeMac.handle(request(), now: t0)
+        suite.expect(wholeMac.handle(.captureStarted(token1, folder: folder, systemAudio: .all), now: at(1)).first
+                        == .writeSidecar(folder, Patch(systemAudio: .all)),
+                     "the app's sound asked, but no tap could hear the app: meeting.json says the whole Mac was heard")
+        var asked = Machine()
+        asked.handle(request(), now: t0)
+        suite.expect(!asked.handle(.captureStarted(token1, folder: folder, systemAudio: .app), now: at(1))
+                        .contains { if case .writeSidecar = $0 { return true }; return false },
+                     "what the setting asked for needs no correction")
+
         var off = Machine()
         var noMicrophone = settings
         noMicrophone.microphone = ForkMeetingCaptureSettings.microphoneOff
@@ -403,8 +414,9 @@ enum ForkMeetingMachineTests {
                         && gone.contains(.notice(.failure(.microphoneDenied))) && microphone.activeSession != nil,
                      "the microphone taken back: the meeting goes on without it, and meeting.json says so")
         let audio = microphone.handle(.permissionLost(.systemAudio), now: at(6))
-        suite.expect(audio == [.notice(.failure(.systemAudioUnavailable)), .announce(.failure(.systemAudioUnavailable))],
-                     "the app's sound unavailable: said, the meeting goes on with the Mac's sound")
+        suite.expect(audio == [.writeSidecar(folder, Patch(systemAudio: .all)), .notice(.failure(.systemAudioUnavailable)),
+                               .announce(.failure(.systemAudioUnavailable))],
+                     "the app's sound unavailable: said, the meeting goes on with the Mac's sound, and meeting.json says so")
 
         var window = recording()
         suite.expect(window.handle(.displayChanged, now: at(5)).isEmpty,

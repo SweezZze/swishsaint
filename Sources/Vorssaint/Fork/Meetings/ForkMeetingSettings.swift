@@ -268,6 +268,10 @@ struct ForkMeetingSystemAudioRow: View {
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
+            Text(text.systemAudioWholeMac)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
             Button(text.systemAudioCheck) { Permissions.shared.openAudioCaptureSettings() }
                 .controlSize(.small)
         }

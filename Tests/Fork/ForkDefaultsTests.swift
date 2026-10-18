@@ -15,7 +15,8 @@ enum ForkDefaultsTests {
         suite.expect(ForkDefaults.registered.keys.allSatisfy { $0.hasPrefix("fork.") }
                         && ForkDefaultsKey.updatePostponedBuild.hasPrefix("fork.")
                         && [ForkDefaultsKey.meetingsFolder, ForkDefaultsKey.meetingsPillPositions,
-                            ForkDefaultsKey.meetingsConsentAcknowledged].allSatisfy { $0.hasPrefix("fork.meetings.") },
+                            ForkDefaultsKey.meetingsConsentAcknowledged,
+                            ForkDefaultsKey.meetingsSystemAudioVerified].allSatisfy { $0.hasPrefix("fork.meetings.") },
                      "every fork setting lives under fork., where the official app never writes")
         suite.expect(Set(ForkDefaults.registered.keys).isDisjoint(with: Defaults.registeredDefaults.keys),
                      "no fork setting shadows an official one")
@@ -51,6 +52,9 @@ enum ForkDefaultsTests {
                      "where the meeting pill was dragged stays on this Mac, whose displays it describes")
         suite.expect(!ForkDefaults.backupKeys.contains(ForkDefaultsKey.meetingsConsentAcknowledged),
                      "the first-use consent sheet already confirmed stays on this Mac")
+        suite.expect(!ForkDefaults.backupKeys.contains(ForkDefaultsKey.meetingsSystemAudioVerified)
+                        && ForkDefaults.registered[ForkDefaultsKey.meetingsSystemAudioVerified] == nil,
+                     "whether this Mac allows system audio recording stays on this Mac, and is never registered")
         suite.expect(ForkDefaults.backupKeys.isSuperset(of: [ForkDefaultsKey.meetingsEnabled, ForkDefaultsKey.meetingsQuality,
                                                              ForkDefaultsKey.meetingsShortcut, ForkDefaultsKey.meetingsAnnouncement]),
                      "the meetings choices go into the backup")

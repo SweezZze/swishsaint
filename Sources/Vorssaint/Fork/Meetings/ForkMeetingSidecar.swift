@@ -444,6 +444,9 @@ struct ForkMeetingSidecarPatch: Equatable {
     /// What the picture really followed at the start, when it was not the
     /// setting.
     var target: ForkMeetingCaptureTarget?
+    /// What the meeting track really heard, when it was not the setting:
+    /// the whole Mac, when no app's tap could hear the meeting app.
+    var systemAudio: ForkMeetingSystemAudio?
     var recovered: Bool?
     var finalPass: ForkMeetingSidecar.FinalPass?
 
@@ -457,10 +460,11 @@ struct ForkMeetingSidecarPatch: Equatable {
         if let recordedSeconds { result.recordedSeconds = recordedSeconds }
         if let pause, sidecar.preserved["pauses"] == nil { result.pauses = (result.pauses ?? []) + [pause] }
         if let gap, sidecar.preserved["gaps"] == nil { result.gaps = (result.gaps ?? []) + [gap] }
-        if microphone != nil || target != nil, sidecar.preserved["capture"] == nil {
+        if microphone != nil || target != nil || systemAudio != nil, sidecar.preserved["capture"] == nil {
             var capture = result.capture ?? ForkMeetingSidecar.Capture()
             if let microphone { capture.microphone = microphone }
             if let target { capture.target = target }
+            if let systemAudio { capture.systemAudio = systemAudio }
             result.capture = capture
         }
         if let recovered { result.recovered = recovered }

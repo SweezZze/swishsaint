@@ -87,6 +87,10 @@ enum ForkDefaultsKey {
     /// The first-use sheet with the consent reminder was confirmed on this
     /// Mac. Machine state.
     static let meetingsConsentAcknowledged = "fork.meetings.consentAcknowledged"
+    /// A recording's witness tap heard sound (true) or stayed deaf to what
+    /// the screen stream heard (false): whether system audio recording is
+    /// allowed on this Mac, which macOS gives no way to read. Machine state.
+    static let meetingsSystemAudioVerified = "fork.meetings.systemAudioVerified"
     /// The build the person answered "Later" for. Machine state: kept out
     /// of the settings backup.
     static let updatePostponedBuild = "fork.update.postponedBuild"

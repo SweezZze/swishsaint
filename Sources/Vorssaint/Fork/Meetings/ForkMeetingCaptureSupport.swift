@@ -196,52 +196,93 @@ enum ForkMeetingSoundSource: Equatable {
 }
 
 /// Decides, buffer by buffer, whether the meeting track takes the app's tap
-/// or the stream's sound. A tap without its permission delivers silence, never
-/// an error, so the stream's sound is written until the tap has heard
-/// something, unless an earlier recording already proved it; and a tap that
-/// stays silent while the stream hears for `proofSeconds` is given up for the
-/// rest of the recording, said once. A tap that loses its reader (a device
-/// change) gives the track back to the stream for good.
+/// or the stream's sound (every app but this one).
+///
+/// **The app's tap always writes the track** when there is one: silence when
+/// the app is silent, never the stream's sound "meanwhile" — another app
+/// playing while the meeting is quiet is no business of the recording.
+///
+/// A tap without its permission delivers silence, never an error, and macOS
+/// has no call that reads that permission. A **witness** settles it: a tap of
+/// the whole Mac but this app, which hears exactly what the stream hears.
+/// - the app's tap or the witness hears anything: the permission is there,
+///   and the witness is no longer needed;
+/// - the witness stays silent while the stream hears `proofSeconds` of sound
+///   it should have heard: the permission is missing, the track goes to the
+///   stream (the whole Mac) for the rest of the recording, said once;
+/// - no witness could be made: nothing can be judged, the tap keeps the track.
+///
+/// A tap that loses its reader (a device change) keeps the track too: it
+/// comes back when the tap rebuilds, and the writer fills the hole with
+/// silence meanwhile.
 struct ForkMeetingSoundArbiter: Equatable {
-    /// Sound heard by the stream, and not by the tap, before the tap is
-    /// declared deaf.
+    /// Sound heard by the stream, and not by the witness, before the
+    /// permission is judged missing.
     static let proofSeconds: Double = 3
 
-    private(set) var writesTap: Bool
-    private var hasTap: Bool
-    private var tapHeard = false
-    private var tapLost = false
-    private var unheard: Double = 0
-    private(set) var deafSaid = false
+    enum Permission: Equatable {
+        case unknown
+        /// A tap heard something: system audio recording is allowed.
+        case allowed
+        /// The witness stayed deaf to what the stream heard.
+        case missing
+    }
 
-    init(hasTap: Bool, trusted: Bool) {
+    private(set) var writesTap: Bool
+    private(set) var permission: Permission = .unknown
+    private let hasTap: Bool
+    private var hasWitness: Bool
+    private var unheard: Double = 0
+
+    /// `hasTap`: the app's tap exists. `hasWitness`: a witness listens.
+    init(hasTap: Bool, hasWitness: Bool) {
         self.hasTap = hasTap
-        writesTap = hasTap && trusted
+        self.hasWitness = hasTap && hasWitness
+        writesTap = hasTap
     }
 
     var writesStream: Bool { !writesTap }
 
-    /// A tap buffer: `heard` when it held more than silence.
-    mutating func tapBuffer(heard: Bool) {
-        guard hasTap, !tapLost, heard else { return }
-        tapHeard = true
-        writesTap = true
+    /// Whether the witness still has something to settle; once false it
+    /// can be stopped.
+    var needsWitness: Bool { hasWitness && permission == .unknown }
+
+    /// A buffer of the app's tap, `heard` when it held more than silence.
+    /// True once, when it proves the permission.
+    mutating func tapBuffer(heard: Bool) -> Bool {
+        guard hasTap, heard else { return false }
+        return allow()
     }
 
-    mutating func tapReaderLost() {
-        tapLost = true
-        writesTap = false
+    /// A buffer of the witness. True once, when it proves the permission.
+    mutating func witnessBuffer(heard: Bool) -> Bool {
+        guard hasWitness, heard else { return false }
+        return allow()
     }
 
-    /// A stream buffer of `seconds` that held sound the tap was there to
-    /// hear (`counts`). True once, when the tap is found deaf.
+    /// The witness could not be made, or has no reader: nothing can be
+    /// judged any more, and the tap keeps the track.
+    mutating func witnessUnavailable() {
+        hasWitness = false
+        unheard = 0
+    }
+
+    /// A stream buffer of `seconds`, `heard` when it held sound, `counts`
+    /// when the witness was there to hear it too (its pipeline running and
+    /// settled). True once, when the permission is judged missing: the track
+    /// goes to the stream from now on.
     mutating func streamBuffer(heard: Bool, counts: Bool, seconds: Double) -> Bool {
-        guard hasTap, !tapHeard, !tapLost, heard, counts, seconds > 0 else { return false }
+        guard needsWitness, heard, counts, seconds > 0 else { return false }
         unheard += seconds
-        guard unheard >= Self.proofSeconds, !deafSaid else { return false }
-        deafSaid = true
-        tapLost = true
+        guard unheard >= Self.proofSeconds else { return false }
+        permission = .missing
         writesTap = false
+        return true
+    }
+
+    private mutating func allow() -> Bool {
+        guard permission == .unknown else { return false }
+        permission = .allowed
         return true
     }
 }
