@@ -18,6 +18,7 @@ enum ForkMeetingFixesG1Tests {
         sourceGonePill(suite)
         quickLock(suite)
         heardAtStop(suite)
+        pillVoice(suite)
     }
 
     typealias Machine = ForkMeetingMachine
@@ -341,5 +342,19 @@ enum ForkMeetingFixesG1Tests {
         machine.handle(.writerFinished(token1, .finished(recordedSeconds: 30)), now: at(31))
         suite.expect(machine.handle(.soundHeard(token1, .all), now: at(32)).isEmpty,
                      "once the file is closed and handed on, nothing more is written by the machine")
+    }
+
+    /// What VoiceOver reads of the pill, sentence after sentence, in the
+    /// punctuation of each language.
+    private static func pillVoice(_ suite: TestSuite) {
+        let zh = ForkMeetingStrings.strings(.zhHans), ja = ForkMeetingStrings.strings(.ja)
+        let fr = ForkMeetingStrings.strings(.fr)
+        let chinese = ForkMeetingLiveText.sentences(zh.untitledMeeting, zh.filmedDisplay)
+        let japanese = ForkMeetingLiveText.sentences(ja.untitledMeeting, ja.filmedDisplay)
+        suite.expect(!chinese.contains(", ") && chinese.contains("。") && !japanese.contains(", ") && japanese.contains("。"),
+                     "in Chinese and Japanese the pill's name and what is filmed are joined by 。, never \", \" (\(chinese), \(japanese))")
+        suite.expect(ForkMeetingLiveText.sentences(fr.untitledMeeting, fr.filmedDisplay)
+                        == fr.untitledMeeting + ". " + fr.filmedDisplay,
+                     "in French, a full stop and a space")
     }
 }

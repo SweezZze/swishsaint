@@ -527,10 +527,12 @@ struct ForkMeetingPillView: View {
                                          noWindowToFilm: model.context.noWindowToFilm, strings: model.text)
     }
 
+    /// One sentence after the other, with the stop of the language: no
+    /// ", " between Chinese or Japanese words.
     private var accessibilityValue: String {
         guard model.look?.showsControls == true else { return "" }
-        let value = (model.context.title ?? model.text.untitledMeeting) + ", " + filmed
-        return soundNote.map { value + ", " + $0 } ?? value
+        let value = ForkMeetingLiveText.sentences(model.context.title ?? model.text.untitledMeeting, filmed)
+        return soundNote.map { ForkMeetingLiveText.sentences(value, $0) } ?? value
     }
 
     /// Why the meeting's meter is crossed out, when it is.
