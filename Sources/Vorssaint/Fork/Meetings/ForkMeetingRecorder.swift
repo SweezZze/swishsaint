@@ -161,11 +161,14 @@ final class ForkMeetingRecorder: @unchecked Sendable {
     /// - `excludingWindows`: windows never chosen as the one to film. In
     ///   display mode every window of this app is left out anyway, those
     ///   opened later included.
+    /// - `titles`: the master's two sound tracks are named with them, in the
+    ///   person's language.
     func start(config: ForkMeetingCaptureConfig, folder: URL, meetingWindow: CGWindowID? = nil,
                meetingMicrophone: String? = nil, excludingWindows: [CGWindowID] = [],
+               titles: ForkMeetingFinalizer.TrackTitles = .standard,
                completion: @escaping (Result<ForkMeetingRecorderStart, ForkMeetingFailure>) -> Void) {
         let request = Request(config: config, folder: folder, window: meetingWindow,
-                              microphone: meetingMicrophone, excluded: Set(excludingWindows))
+                              microphone: meetingMicrophone, excluded: Set(excludingWindows), titles: titles)
         let finish = MainOnce(completion)
         Task { [self] in
             let result = await launch(request)
@@ -179,6 +182,7 @@ final class ForkMeetingRecorder: @unchecked Sendable {
         let window: CGWindowID?
         let microphone: String?
         let excluded: Set<CGWindowID>
+        let titles: ForkMeetingFinalizer.TrackTitles
     }
 
     private func launch(_ request: Request) async -> Result<ForkMeetingRecorderStart, ForkMeetingFailure> {
@@ -216,7 +220,7 @@ final class ForkMeetingRecorder: @unchecked Sendable {
             return .failure(.folderUnavailable)
         }
         guard let writer = await Self.prepareWriter(url: url, size: outputSize, quality: settings.quality,
-                                                    clock: pauseClock), writer.start() else {
+                                                    clock: pauseClock, titles: request.titles), writer.start() else {
             _ = gate.claimStartFailure()
             return .failure(.writerFailed)
         }
@@ -642,10 +646,11 @@ final class ForkMeetingRecorder: @unchecked Sendable {
     }
 
     private static func prepareWriter(url: URL, size: ForkMeetingPixelSize, quality: ForkMeetingQuality,
-                                      clock: RecorderPauseClock) async -> ForkMeetingWriter? {
+                                      clock: RecorderPauseClock,
+                                      titles: ForkMeetingFinalizer.TrackTitles) async -> ForkMeetingWriter? {
         let queue = DispatchQueue(label: "fork.meetings.recorder.prepared")
         return await withCheckedContinuation { continuation in
-            ForkMeetingWriter.prepare(url: url, outputSize: size, quality: quality, pauseClock: clock,
+            ForkMeetingWriter.prepare(url: url, outputSize: size, quality: quality, pauseClock: clock, titles: titles,
                                       completionQueue: queue) { continuation.resume(returning: $0) }
         }
     }

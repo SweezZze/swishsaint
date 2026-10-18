@@ -236,7 +236,8 @@ extension ForkMeetingService {
             // Never one of ours to film; in display mode the whole app is
             // left out anyway.
             let excluded = presenter.windowNumbers.compactMap { CGWindowID(exactly: $0) }
-            recorder.start(config: config, folder: folder, excludingWindows: excluded) { [weak self] result in
+            recorder.start(config: config, folder: folder, excludingWindows: excluded,
+                           titles: trackTitles) { [weak self] result in
                 self?.captureAnswered(result, folder: folder, token: token)
             }
         }

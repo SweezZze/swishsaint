@@ -33,16 +33,17 @@ import VideoToolbox
 /// thread. The failure callback is called once at most.
 final class ForkMeetingWriter: @unchecked Sendable {
     /// The audio tracks, in their order in the file. The final pass finds
-    /// them by that order; the titles are only a help for a person reading
-    /// the file (an MP4 keeps a track's title, not its identifier).
+    /// them by that order; the titles, in the person's language, are only a
+    /// help for a person reading the master (an MP4 keeps a track's title,
+    /// not its identifier).
     enum Track: Int, CaseIterable {
         case meeting = 0
         case microphone = 1
 
-        var title: String {
+        func title(_ titles: ForkMeetingFinalizer.TrackTitles) -> String {
             switch self {
-            case .meeting: return "Réunion"
-            case .microphone: return "Micro"
+            case .meeting: return titles.meeting
+            case .microphone: return titles.microphone
             }
         }
     }
@@ -95,16 +96,18 @@ final class ForkMeetingWriter: @unchecked Sendable {
     /// Builds the writer off the main thread (encoder discovery can wait on
     /// VideoToolbox), then answers on `completionQueue`.
     static func prepare(url: URL, outputSize: ForkMeetingPixelSize, quality: ForkMeetingQuality,
-                        pauseClock: RecorderPauseClock, completionQueue: DispatchQueue,
-                        completion: @escaping (ForkMeetingWriter?) -> Void) {
+                        pauseClock: RecorderPauseClock, titles: ForkMeetingFinalizer.TrackTitles,
+                        completionQueue: DispatchQueue, completion: @escaping (ForkMeetingWriter?) -> Void) {
         let box = PauseClockBox(pauseClock)
         preparationQueue.async {
-            let writer = ForkMeetingWriter(url: url, outputSize: outputSize, quality: quality, pauseClock: box.clock)
+            let writer = ForkMeetingWriter(url: url, outputSize: outputSize, quality: quality, pauseClock: box.clock,
+                                           titles: titles)
             completionQueue.async { completion(writer) }
         }
     }
 
-    init?(url: URL, outputSize: ForkMeetingPixelSize, quality: ForkMeetingQuality, pauseClock: RecorderPauseClock) {
+    init?(url: URL, outputSize: ForkMeetingPixelSize, quality: ForkMeetingQuality, pauseClock: RecorderPauseClock,
+          titles: ForkMeetingFinalizer.TrackTitles = .standard) {
         guard outputSize.width >= 2, outputSize.height >= 2,
               let format = AVAudioFormat(commonFormat: .pcmFormatFloat32, sampleRate: Self.sampleRate, channels: 1,
                                          interleaved: false),
@@ -139,7 +142,7 @@ final class ForkMeetingWriter: @unchecked Sendable {
         for track in Track.allCases {
             let input = AVAssetWriterInput(mediaType: .audio, outputSettings: audioSettings)
             input.expectsMediaDataInRealTime = true
-            input.metadata = [Self.title(track.title)]
+            input.metadata = [Self.title(track.title(titles))]
             guard writer.canAdd(input) else { return nil }
             writer.add(input)
             audioInputs.append(input)
