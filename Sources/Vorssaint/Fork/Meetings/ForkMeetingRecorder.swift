@@ -44,6 +44,8 @@ struct ForkMeetingRecorderStart: Equatable {
 ///   leaves no file behind). Its completion runs exactly once, after the
 ///   file is closed: `.finished` with the seconds recorded, or `.failed`.
 ///   A second `stop` gets the same answer.
+/// - `stopBlocking` instead, when the app quits: the same stop, waited for
+///   on the calling thread, within a bound.
 ///
 /// **Stopping** follows the official order: the stream, the microphone and
 /// the tap stop and drain first, then the writer's queue, then the file is
@@ -317,15 +319,37 @@ final class ForkMeetingRecorder: @unchecked Sendable {
     // MARK: - Stop
 
     func stop(completion: @escaping (ForkMeetingWriterResult) -> Void) {
-        let end = ForkMeetingWriter.hostSeconds()
         let answer = MainOnce(completion)
+        stop(delivering: { answer.call($0) })
+    }
+
+    /// The same stop, for the app's last moments (`willTerminate`): waited
+    /// for on the calling thread, the main one, up to `timeout`. Nothing it
+    /// waits for needs that thread: the result is taken where the teardown
+    /// ends, never on the main queue. `nil` when the file did not close in
+    /// time; the fragments written so far stay for the next launch. A stop
+    /// already under way is waited for, not started again.
+    func stopBlocking(timeout: TimeInterval) -> ForkMeetingWriterResult? {
+        let box = ResultBox()
+        let closed = ForkMeetingBoundedWait.run(timeout: timeout) { done in
+            stop(delivering: { result in
+                box.set(result)
+                done()
+            })
+        }
+        return closed ? box.value : nil
+    }
+
+    /// `deliver` runs once, on whatever thread the teardown ends.
+    private func stop(delivering deliver: @escaping (ForkMeetingWriterResult) -> Void) {
+        let end = ForkMeetingWriter.hostSeconds()
         let (known, first) = lock.withLock { () -> (ForkMeetingWriterResult?, Bool) in
             if let stopResult { return (stopResult, false) }
-            stopWaiters.append { answer.call($0) }
+            stopWaiters.append(deliver)
             defer { stopRequested = true }
             return (nil, !stopRequested)
         }
-        if let known { return answer.call(known) }
+        if let known { return deliver(known) }
         guard first else { return }
         Task { [self] in
             let result = await tearDown(end: end)
@@ -514,6 +538,14 @@ final class ForkMeetingRecorder: @unchecked Sendable {
             let box = ValueBox(value)
             if Thread.isMainThread { body(box.value) } else { DispatchQueue.main.async { body(box.value) } }
         }
+    }
+
+    private final class ResultBox: @unchecked Sendable {
+        private let lock = NSLock()
+        private var result: ForkMeetingWriterResult?
+
+        func set(_ value: ForkMeetingWriterResult) { lock.withLock { result = value } }
+        var value: ForkMeetingWriterResult? { lock.withLock { result } }
     }
 
     private struct ValueBox<Value>: @unchecked Sendable {
