@@ -188,7 +188,15 @@ struct ForkMeetingResolver {
                 case .exit:
                     exits.insert(window.windowID)
                 case let .meeting(code, name):
-                    let identity = Self.identity(provider, window: window, code: code)
+                    // The same window, its code gone from the title ("Meet –
+                    // Point hebdo" after "Meet – Point hebdo – abc-defg-hij"):
+                    // still that meeting, never a new one to offer.
+                    var identity = Self.identity(provider, window: window, code: code)
+                    if code == nil, let same = tracks.values.first(where: {
+                        $0.provider == provider && $0.windowID == window.windowID && $0.meetCode != nil
+                    }) {
+                        identity = same.identity
+                    }
                     // Two windows of one meeting: the one on screen, else the
                     // one already followed.
                     if let other = sightings[identity] {
