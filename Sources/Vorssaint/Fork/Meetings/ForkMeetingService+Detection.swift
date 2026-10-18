@@ -84,7 +84,8 @@ extension ForkMeetingService {
         detection.calendar?.stop()
         if let windows = detection.windows {
             let cost = windows.measuredCost
-            log.notice("detection off: \(cost.readings) window readings, \(String(format: "%.2f", cost.meanMilliseconds), privacy: .public) ms each")
+            let mean = Int((cost.meanMilliseconds * 1000).rounded())
+            log.notice("detection off: \(cost.readings) window readings, \(mean) µs each")
         }
         detection.windows = nil
         detection.microphones = nil
