@@ -249,14 +249,19 @@ final class ForkMeetingWriter: @unchecked Sendable {
                   let time = fileTime(of: sample) else { return }
             guard let samples = convert(sample, track: track), !samples.isEmpty else { return }
             let start = Int64((time.seconds * Self.sampleRate).rounded())
-            guard let placement = timelines[track.rawValue].place(start: start, count: Int64(samples.count))
+            let clock = Int64((pauseClock.elapsed(at: Self.hostSeconds()) * Self.sampleRate).rounded())
+            guard let placement = timelines[track.rawValue].place(start: start, count: Int64(samples.count),
+                                                                  clock: clock)
             else { return }
             if placement.silence > 0 {
                 writeSilence(placement.silence, at: placement.start - placement.silence, track: track)
             }
             let kept = samples.dropFirst(Int(placement.skip))
             lastFed[track.rawValue] = Self.hostSeconds()
-            writeSamples(Array(kept), at: placement.start, track: track)
+            // A drift absorbed: the first sample held a little longer.
+            let held = placement.stretch > 0 && !kept.isEmpty
+                ? [Float](repeating: kept[kept.startIndex], count: Int(placement.stretch)) : []
+            writeSamples(held + kept, at: placement.start, track: track)
             publish(peak: Self.peak(kept), track: track)
         }
     }

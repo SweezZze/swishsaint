@@ -275,5 +275,54 @@ enum ForkMeetingCaptureTests {
                      "a buffer already covered is dropped")
         suite.expect(track.pad(to: 60_000) == 7_760 && track.end == 60_000 && track.pad(to: 50_000) == 0,
                      "a silent source is filled up to the clock, never backwards")
+        drift(suite)
+    }
+
+    /// A source whose clock runs `ppm` parts per million off the host's, for
+    /// an hour of 10 ms buffers, with a few samples of jitter on each stamp:
+    /// the largest correction a placement made, and how far the track ever
+    /// got from the source's own time.
+    private static func drift(ppm: Double, jitter: Int64, buffers: Int = 360_000)
+        -> (largestStep: Int64, silences: Int, largestLag: Int64) {
+        var track = ForkMeetingTrackTimeline()
+        var seed: UInt64 = 0x2545F4914F6CDD1D
+        var largestStep: Int64 = 0
+        var silences = 0
+        var largestLag: Int64 = 0
+        let count: Int64 = 480
+        for index in 0..<buffers {
+            // Where the buffer truly starts on the host clock, as the stream
+            // stamps it: its samples run at (1 + ppm) of the nominal rate.
+            seed = seed &* 6364136223846793005 &+ 1442695040888963407
+            let noise = Int64(seed >> 33) % (2 * jitter + 1) - jitter
+            let truth = Int64((Double(index) * Double(count) / (1 + ppm / 1_000_000)).rounded())
+            guard let placement = track.place(start: truth + noise, count: count) else { continue }
+            if placement.silence > 0 { silences += 1 }
+            largestStep = max(largestStep, placement.stretch, placement.skip, placement.silence)
+            largestLag = max(largestLag, abs(track.end - (truth + count)))
+        }
+        return (largestStep, silences, largestLag)
+    }
+
+    private static func drift(_ suite: TestSuite) {
+        for ppm in [20.0, -20.0, 100.0, -100.0] {
+            let result = drift(ppm: ppm, jitter: 0)
+            suite.expect(result.largestStep <= 1 && result.silences == 0
+                            && result.largestLag <= ForkMeetingTrackTimeline.deadband + 1,
+                         "an hour at \(Int(ppm)) ppm: absorbed one sample at a time (largest step \(result.largestStep)), "
+                            + "never a hole, the track within half a millisecond of the source (\(result.largestLag) samples)")
+        }
+        let jittery = drift(ppm: 20, jitter: 12)
+        suite.expect(jittery.largestStep <= 1 && jittery.silences == 0 && jittery.largestLag <= 2 * 24 + 12,
+                     "the same with a quarter of a millisecond of jitter on every stamp: still never more than a sample "
+                        + "at a time (\(jittery.largestStep)), \(jittery.largestLag) samples from the source at most")
+
+        var aberrant = ForkMeetingTrackTimeline()
+        _ = aberrant.place(start: 0, count: 480, clock: 480)
+        suite.expect(aberrant.place(start: 172_800_000, count: 480, clock: 1_000)
+                        == .init(silence: 0, skip: 0, start: 480) && aberrant.end == 960,
+                     "a buffer stamped an hour past the clock is joined where the track ends, never after an hour of silence")
+        suite.expect(aberrant.place(start: 48_960, count: 480, clock: 49_500) == .init(silence: 48_000, skip: 0, start: 48_960),
+                     "a real hole of a second, within the clock, is still filled with silence")
     }
 }

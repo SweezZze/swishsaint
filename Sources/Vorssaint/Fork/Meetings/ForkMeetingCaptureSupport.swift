@@ -358,13 +358,29 @@ struct ForkMeetingSilenceWatch: Equatable {
 }
 
 /// One audio track's timeline in the file, in samples at the file's rate.
-/// Sources jitter, restart and overlap; the file's tracks must not. A buffer
-/// that starts within `tolerance` of where the track ends is joined to it, a
-/// later one leaves a gap the writer fills with silence, an earlier one loses
-/// the part already written.
+/// Sources jitter, drift, restart and overlap; the file's tracks must not.
+///
+/// - A buffer that starts within `tolerance` of where the track ends is
+///   joined to it. A device's clock drifts from the host's by some parts per
+///   million (20 ppm is 72 ms an hour): that drift is absorbed as it comes,
+///   one sample at a time (repeated, or dropped) whenever the track is more
+///   than `deadband` away from the source, so the track never jumps.
+/// - A later buffer leaves a gap the writer fills with silence (a source
+///   that restarted); an earlier one loses the part already written.
+/// - A buffer that says it starts well past the clock is aberrant: joined
+///   where the track ends, never preceded by a silence as long as its error.
 struct ForkMeetingTrackTimeline: Equatable {
     /// 20 ms at 48 kHz: the jitter of a host clock conversion, never a gap.
     static let tolerance: Int64 = 960
+    /// 0.5 ms: closer than this, the buffer goes where the track ends as is.
+    static let deadband: Int64 = 24
+    /// One sample at most is repeated or dropped per this many samples
+    /// (10 ms): up to 2 000 ppm, a hundred times a real device's drift, by
+    /// steps of a fiftieth of a millisecond.
+    static let correctionSpan: Int64 = 480
+    /// A buffer cannot start after the clock it was captured by; one that
+    /// says it starts more than this past it (1 s) is aberrant.
+    static let aheadLimit: Int64 = 48_000
 
     /// Where the next sample goes.
     private(set) var end: Int64 = 0
@@ -372,19 +388,34 @@ struct ForkMeetingTrackTimeline: Equatable {
     struct Placement: Equatable {
         /// Silence to write first, in samples.
         var silence: Int64
-        /// Samples of the buffer to skip, already covered.
+        /// Samples of the buffer to skip, already covered (or one dropped
+        /// to absorb a drift).
         var skip: Int64
-        /// Where the kept samples start.
+        /// Where the written samples start.
         var start: Int64
+        /// The buffer's first sample written this many more times before
+        /// it: a drift absorbed.
+        var stretch: Int64 = 0
     }
 
     /// Where `count` samples that say they start at `start` go, or `nil` when
-    /// all of them are already covered.
-    mutating func place(start: Int64, count: Int64) -> Placement? {
+    /// all of them are already covered. `clock`, the file's time now in
+    /// samples, bounds an aberrant start.
+    mutating func place(start: Int64, count: Int64, clock: Int64? = nil) -> Placement? {
         guard count > 0 else { return nil }
-        if abs(start - end) <= Self.tolerance {
-            defer { end += count }
-            return Placement(silence: 0, skip: 0, start: end)
+        var start = start
+        if let clock, start > clock + Self.aheadLimit { start = end }
+        let offset = start - end
+        if abs(offset) <= Self.tolerance {
+            let step = max(1, count / Self.correctionSpan)
+            let correction = abs(offset) <= Self.deadband ? 0 : max(-step, min(step, offset))
+            if correction >= 0 {
+                defer { end += correction + count }
+                return Placement(silence: 0, skip: 0, start: end, stretch: correction)
+            }
+            let skip = min(-correction, count - 1)
+            defer { end += count - skip }
+            return Placement(silence: 0, skip: skip, start: end)
         }
         if start > end {
             let silence = start - end
