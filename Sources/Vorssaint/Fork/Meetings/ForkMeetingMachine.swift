@@ -162,8 +162,9 @@ enum ForkMeetingAnnouncement: Equatable {
     case soundLost
     /// A meeting is offered; its name.
     case offered(String)
-    /// "Always" started it; `seconds` left to cancel it.
-    case autoStarted(seconds: Int)
+    /// "Always" started it; `seconds` left to cancel it. Without the
+    /// microphone, because it is not allowed, it says so in the same breath.
+    case autoStarted(seconds: Int, withoutMicrophone: Bool = false)
     case endingSoon(seconds: Int)
     case continued
     case discarded
@@ -184,7 +185,12 @@ enum ForkMeetingAnnouncement: Equatable {
         case .startedWithoutMicrophone: return s.voiceStartedWithoutMicrophone
         case .soundLost: return s.voiceSoundLost
         case let .offered(name): return s.voiceOffer(name)
-        case let .autoStarted(seconds): return s.voiceAutoStarted(seconds: seconds)
+        case let .autoStarted(seconds, withoutMicrophone):
+            let started = s.voiceAutoStarted(seconds: seconds)
+            guard withoutMicrophone else { return started }
+            let denied = ForkMeetingFailure.microphoneDenied
+            return ForkMeetingLiveText.sentences(started, ForkMeetingLiveText.sentences(denied.summary(s),
+                                                                                        denied.remedy(s)))
         case let .endingSoon(seconds): return s.voiceEndingSoon(seconds: seconds)
         case .continued: return s.voiceContinued
         case .discarded: return s.voiceDiscarded
@@ -529,7 +535,7 @@ struct ForkMeetingMachine {
                 session.undoUntil = now.addingTimeInterval(Self.undoWindow)
                 if denied { effects.append(.notice(.failure(.microphoneDenied))) }
                 effects += [.showUndo(until: now.addingTimeInterval(Self.undoWindow)),
-                            .announce(.autoStarted(seconds: Int(Self.undoWindow)))]
+                            .announce(.autoStarted(seconds: Int(Self.undoWindow), withoutMicrophone: denied))]
             } else {
                 effects += [.notice(denied ? .failure(.microphoneDenied) : .started),
                             .announce(denied ? .startedWithoutMicrophone : .started)]
