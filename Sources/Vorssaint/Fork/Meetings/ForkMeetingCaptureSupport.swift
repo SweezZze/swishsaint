@@ -166,6 +166,25 @@ enum ForkMeetingCaptureSupport {
     /// displays come back: it is tried again after each of these delays.
     static let restartDelays: [TimeInterval] = [0, 0.5, 1, 2, 4]
 
+    /// A stream stopped "by the system" (-3821) may be the screen locking,
+    /// whose notification can come after it: the stop is reported this much
+    /// later, so the machine knows of the lock by then and waits for the
+    /// unlock instead of ending the meeting.
+    static let externalStopGrace: TimeInterval = 2
+
+    /// How long a running stream's stop waits before it is reported.
+    static func reportDelay(_ stop: StreamStop) -> TimeInterval {
+        stop == .external ? externalStopGrace : 0
+    }
+
+    /// A start that has not answered by then fails (`captureFailed`): never
+    /// a "starting" that lasts. Measured starts take 0.3 to 1.4 s.
+    static let startTimeout: TimeInterval = 15
+    /// A stop that has not closed the file by then answers `writerFailed`:
+    /// the fragments written are the next launch's to recover. Measured
+    /// stops take under 50 ms.
+    static let stopTimeout: TimeInterval = 10
+
     /// What a stream about to be built does when its aim did not resolve.
     enum Unresolved: Equatable {
         /// The window is gone (its app quit, it closed): the display that

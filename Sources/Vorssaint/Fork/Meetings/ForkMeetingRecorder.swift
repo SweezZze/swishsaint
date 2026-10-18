@@ -174,6 +174,11 @@ final class ForkMeetingRecorder: @unchecked Sendable {
             let result = await launch(request)
             finish.call(result)
         }
+        // Never a start that does not answer: the machine would wait in
+        // "starting" for good. Its `stop` then cleans up what came up.
+        DispatchQueue.main.asyncAfter(deadline: .now() + ForkMeetingCaptureSupport.startTimeout) {
+            finish.call(.failure(.captureFailed))
+        }
     }
 
     private struct Request {
@@ -193,11 +198,11 @@ final class ForkMeetingRecorder: @unchecked Sendable {
         // What to film.
         let window = request.window ?? Self.frontWindow(excluding: request.excluded)
         var aim = Self.aim(for: settings.target, window: window)
-        var resolved = await Self.resolve(aim)
+        var resolved = await Self.resolve(aim, excluding: request.excluded)
         if case .failure(.sourceGone) = resolved, case .window = aim {
             // The window went in the meantime: its display, or the main one.
             aim = .displayOf(nil)
-            resolved = await Self.resolve(aim)
+            resolved = await Self.resolve(aim, excluding: request.excluded)
         }
         let target: ForkMeetingCaptureStream.Resolved
         switch resolved {
@@ -262,6 +267,7 @@ final class ForkMeetingRecorder: @unchecked Sendable {
 
         // The picture, and the stream's sound.
         let stream = ForkMeetingCaptureStream(outputSize: outputSize, capturesAudio: sound.streamListens,
+                                              excludedWindows: request.excluded,
                                               callbacks: streamCallbacks())
         lock.withLock { self.stream = stream }
         let zero = ZeroBox()
@@ -419,9 +425,14 @@ final class ForkMeetingRecorder: @unchecked Sendable {
 
     // MARK: - Stop
 
+    /// Answers `.failed(.writerFailed)` if the file did not close within
+    /// `stopTimeout`: the machine never waits in "stopping" for good.
     func stop(completion: @escaping (ForkMeetingWriterResult) -> Void) {
         let answer = MainOnce(completion)
         stop(delivering: { answer.call($0) })
+        DispatchQueue.main.asyncAfter(deadline: .now() + ForkMeetingCaptureSupport.stopTimeout) {
+            answer.call(.failed(.writerFailed))
+        }
     }
 
     /// The same stop, for the app's last moments (`willTerminate`): waited
@@ -608,14 +619,19 @@ final class ForkMeetingRecorder: @unchecked Sendable {
             return
         }
         guard let failure = ForkMeetingCaptureSupport.runningFailure(stop) else { return }
-        send { $0.onFailure?($0.token, failure) }
+        send(after: ForkMeetingCaptureSupport.reportDelay(stop)) { $0.onFailure?($0.token, failure) }
     }
 
     /// On the main thread, unless a stop was asked meanwhile.
-    private func send(_ event: @escaping (ForkMeetingRecorder) -> Void) {
-        DispatchQueue.main.async { [self] in
+    private func send(after delay: TimeInterval = 0, _ event: @escaping (ForkMeetingRecorder) -> Void) {
+        let deliver = { [self] in
             guard !lock.withLock({ stopRequested }) else { return }
             event(self)
+        }
+        if delay > 0 {
+            DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: deliver)
+        } else {
+            DispatchQueue.main.async(execute: deliver)
         }
     }
 
@@ -638,10 +654,10 @@ final class ForkMeetingRecorder: @unchecked Sendable {
         return aim
     }
 
-    private static func resolve(_ aim: ForkMeetingCaptureStream.Aim) async
+    private static func resolve(_ aim: ForkMeetingCaptureStream.Aim, excluding: Set<CGWindowID>) async
         -> Result<ForkMeetingCaptureStream.Resolved, ForkMeetingCaptureSupport.StreamStop> {
         await withCheckedContinuation { continuation in
-            ForkMeetingCaptureStream.resolve(aim) { continuation.resume(returning: $0) }
+            ForkMeetingCaptureStream.resolve(aim, excluding: excluding) { continuation.resume(returning: $0) }
         }
     }
 

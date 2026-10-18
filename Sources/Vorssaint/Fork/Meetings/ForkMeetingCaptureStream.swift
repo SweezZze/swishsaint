@@ -52,6 +52,9 @@ final class ForkMeetingCaptureStream: @unchecked Sendable {
     let outputSize: ForkMeetingPixelSize
     private let capturesAudio: Bool
     private let callbacks: Callbacks
+    /// This app's windows the caller knows, for a display filter made while
+    /// the app is not listed.
+    private let excludedWindows: Set<CGWindowID>
 
     private let lock = NSLock()
     // Under `lock`.
@@ -65,23 +68,28 @@ final class ForkMeetingCaptureStream: @unchecked Sendable {
     private var isFrozen = false
     private var stopping = false
 
-    init(outputSize: ForkMeetingPixelSize, capturesAudio: Bool, callbacks: Callbacks) {
+    init(outputSize: ForkMeetingPixelSize, capturesAudio: Bool, excludedWindows: Set<CGWindowID> = [],
+         callbacks: Callbacks) {
         self.outputSize = outputSize
         self.capturesAudio = capturesAudio
+        self.excludedWindows = excludedWindows
         self.callbacks = callbacks
     }
 
     // MARK: - Resolving
 
     /// What `aim` points at, read from ScreenCaptureKit's list (windows on
-    /// other Spaces included). Any thread; answers on an arbitrary one.
-    static func resolve(_ aim: Aim, completion: @escaping (Result<Resolved, ForkMeetingCaptureSupport.StreamStop>) -> Void) {
+    /// other Spaces included). `excluding`: windows of this app known to the
+    /// caller, left out of a display when the app itself is not listed. Any
+    /// thread; answers on an arbitrary one.
+    static func resolve(_ aim: Aim, excluding: Set<CGWindowID> = [],
+                        completion: @escaping (Result<Resolved, ForkMeetingCaptureSupport.StreamStop>) -> Void) {
         SCShareableContent.getExcludingDesktopWindows(false, onScreenWindowsOnly: false) { content, error in
             guard let content else {
                 completion(.failure(error.map { Self.stop(for: $0) } ?? ForkMeetingCaptureSupport.StreamStop.failed))
                 return
             }
-            if let resolved = Resolved.make(aim, in: content) {
+            if let resolved = Resolved.make(aim, in: content, excluding: excluding) {
                 completion(.success(resolved))
             } else {
                 completion(.failure(.sourceGone))
@@ -92,9 +100,9 @@ final class ForkMeetingCaptureStream: @unchecked Sendable {
     /// What `aim` points at; a window that is gone gives way to the display
     /// that held it (`ForkMeetingCaptureSupport.unresolved`), with the aim
     /// really used. Answers on an arbitrary queue.
-    static func resolveOrDisplay(_ aim: Aim,
+    static func resolveOrDisplay(_ aim: Aim, excluding: Set<CGWindowID> = [],
                                  completion: @escaping (Result<(Resolved, Aim), ForkMeetingCaptureSupport.StreamStop>) -> Void) {
-        resolve(aim) { result in
+        resolve(aim, excluding: excluding) { result in
             switch result {
             case let .success(resolved):
                 completion(.success((resolved, aim)))
@@ -104,7 +112,7 @@ final class ForkMeetingCaptureStream: @unchecked Sendable {
                     return completion(.failure(stop))
                 }
                 let display = Aim.displayOf(id)
-                resolve(display) { completion($0.map { ($0, display) }) }
+                resolve(display, excluding: excluding) { completion($0.map { ($0, display) }) }
             }
         }
     }
@@ -120,8 +128,13 @@ final class ForkMeetingCaptureStream: @unchecked Sendable {
         /// The app of the window aimed at, when there is one: the app whose
         /// sound the meeting track hears.
         let ownerPID: pid_t?
+        /// A display's filter leaves out every window of this app, those
+        /// opened later included. False when the app was not listed: only
+        /// the windows known then are left out, and the filter is made again
+        /// once it is listed.
+        var excludesOwnApp = true
 
-        static func make(_ aim: Aim, in content: SCShareableContent) -> Resolved? {
+        static func make(_ aim: Aim, in content: SCShareableContent, excluding: Set<CGWindowID> = []) -> Resolved? {
             let mainID = CGMainDisplayID()
             let frames = content.displays.map { ForkMeetingDisplayFrame(id: $0.displayID, frame: $0.frame) }
             func pixels(of display: SCDisplay) -> ForkMeetingPixelSize {
@@ -148,10 +161,19 @@ final class ForkMeetingCaptureStream: @unchecked Sendable {
                 // Every window of this app, present and future, stays out.
                 let ownPID = ProcessInfo.processInfo.processIdentifier
                 let own = content.applications.filter { $0.processID == ownPID }
-                return Resolved(filter: SCContentFilter(display: display, excludingApplications: own,
-                                                        exceptingWindows: []),
-                                windowAspect: nil, displayPixels: pixels(of: display), isWindow: false,
-                                ownerPID: window?.owningApplication?.processID)
+                let filter: SCContentFilter
+                if own.isEmpty {
+                    // Not listed: an empty exclusion would let the pill in.
+                    // Its windows known now stay out, one by one.
+                    let ours = content.windows.filter {
+                        $0.owningApplication?.processID == ownPID || excluding.contains($0.windowID)
+                    }
+                    filter = SCContentFilter(display: display, excludingWindows: ours)
+                } else {
+                    filter = SCContentFilter(display: display, excludingApplications: own, exceptingWindows: [])
+                }
+                return Resolved(filter: filter, windowAspect: nil, displayPixels: pixels(of: display), isWindow: false,
+                                ownerPID: window?.owningApplication?.processID, excludesOwnApp: !own.isEmpty)
             }
         }
     }
@@ -188,7 +210,17 @@ final class ForkMeetingCaptureStream: @unchecked Sendable {
         guard accepted else { return completion(.ignored) }
         willStart(ForkMeetingWriter.hostSeconds())
         stream.startCapture { [self] error in
-            guard let error else { return completion(nil) }
+            guard let error else {
+                // `stop`, or another restart, came while it started: it let
+                // go of a stream that was not running yet, so this one is
+                // stopped here, never left running unowned.
+                guard lock.withLock({ stopping || self.stream !== stream }) else {
+                    if !resolved.isWindow, !resolved.excludesOwnApp { refreshOwnExclusion(of: stream, tries: 0) }
+                    return completion(nil)
+                }
+                stream.stopCapture { _ in withExtendedLifetime(receiver) {} }
+                return completion(.ignored)
+            }
             lock.withLock {
                 if self.stream === stream { self.stream = nil; self.receiver = nil }
             }
@@ -202,7 +234,7 @@ final class ForkMeetingCaptureStream: @unchecked Sendable {
     /// refused (the caller then builds a new one).
     func switchTo(_ aim: Aim, completion: @escaping (Aim?) -> Void) {
         guard let stream = lock.withLock({ stopping ? nil : self.stream }) else { return completion(nil) }
-        Self.resolveOrDisplay(aim) { [self] result in
+        Self.resolveOrDisplay(aim, excluding: excludedWindows) { [self] result in
             guard case let .success((resolved, used)) = result else { return completion(nil) }
             // Already what is filmed (⧉ to a window that went, on its display).
             if lock.withLock({ self.stream === stream && self.aim == used }) { return completion(used) }
@@ -216,6 +248,7 @@ final class ForkMeetingCaptureStream: @unchecked Sendable {
                     return configuration
                 }
                 guard let configuration else { return completion(nil) }
+                if !resolved.isWindow, !resolved.excludesOwnApp { refreshOwnExclusion(of: stream, tries: 0) }
                 stream.updateConfiguration(configuration) { error in completion(error == nil ? used : nil) }
             }
         }
@@ -251,6 +284,23 @@ final class ForkMeetingCaptureStream: @unchecked Sendable {
         guard let old else { return then() }
         old.stopCapture { _ in
             withExtendedLifetime(receiver) { then() }
+        }
+    }
+
+    /// A display filter made while this app was not listed: made again once
+    /// it is (the pill shows up right after the start), so the windows it
+    /// opens later stay out too. Tried for about ten seconds.
+    private func refreshOwnExclusion(of stream: SCStream, tries: Int) {
+        guard tries < 5 else { return }
+        queue.asyncAfter(deadline: .now() + 1 + Double(tries)) { [self] in
+            guard let aim = lock.withLock({ !stopping && self.stream === stream ? self.aim : nil }),
+                  case .displayOf = aim else { return }
+            Self.resolve(aim, excluding: excludedWindows) { [self] result in
+                guard case let .success(resolved) = result, !resolved.isWindow else { return }
+                guard resolved.excludesOwnApp else { return refreshOwnExclusion(of: stream, tries: tries + 1) }
+                guard lock.withLock({ !stopping && self.stream === stream && self.aim == aim }) else { return }
+                stream.updateContentFilter(resolved.filter) { _ in }
+            }
         }
     }
 
@@ -416,7 +466,7 @@ final class ForkMeetingCaptureStream: @unchecked Sendable {
                 completion(.ignored, aim)
                 return
             }
-            ForkMeetingCaptureStream.resolveOrDisplay(aim) { [self] result in
+            ForkMeetingCaptureStream.resolveOrDisplay(aim, excluding: owner.excludedWindows) { [self] result in
                 switch result {
                 case let .success((resolved, used)):
                     aim = used

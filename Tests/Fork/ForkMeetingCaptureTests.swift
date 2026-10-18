@@ -103,6 +103,15 @@ enum ForkMeetingCaptureTests {
                      "a display not back yet after a wake, or a passing failure: tried again later")
         suite.expect(ForkMeetingCaptureSupport.unresolved(.permission, aimsAtWindow: true) == .giveUp,
                      "Screen Recording taken back: waiting will not bring it back")
+        suite.expect(ForkMeetingCaptureSupport.reportDelay(.external) == ForkMeetingCaptureSupport.externalStopGrace
+                        && ForkMeetingCaptureSupport.externalStopGrace >= 1 && ForkMeetingCaptureSupport.externalStopGrace <= 3,
+                     "a stream stopped by the system is reported a couple of seconds later: a lock said meanwhile wins")
+        suite.expect([.permission, .failed, .sourceGone].allSatisfy { ForkMeetingCaptureSupport.reportDelay($0) == 0 },
+                     "Screen Recording taken back, or a plain failure, is reported at once")
+        suite.expect(ForkMeetingCaptureSupport.startTimeout >= 10 && ForkMeetingCaptureSupport.startTimeout <= 20
+                        && ForkMeetingCaptureSupport.stopTimeout >= 5 && ForkMeetingCaptureSupport.stopTimeout <= 15
+                        && ForkMeetingCaptureSupport.stopTimeout > ForkMeetingBoundedWait.quitTimeout,
+                     "a start answers within 15 s and a stop within 10 s, whatever happens: never a state that lasts")
     }
 
     private static func sound(_ suite: TestSuite) {
