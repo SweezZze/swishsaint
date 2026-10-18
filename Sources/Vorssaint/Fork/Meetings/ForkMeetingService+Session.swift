@@ -414,7 +414,7 @@ extension ForkMeetingService {
             self?.systemAudioJudged(.allowed, token: token)
         }
         recorder.onSoundHeard = { [weak self] token, heard in
-            guard let self, self.isCurrent(token) else { return }
+            guard let self, self.isCurrent(token) || self.isStopping(token) else { return }
             self.send(.soundHeard(token, heard))
         }
         recorder.onTrackSound = { [weak self] token, sound in

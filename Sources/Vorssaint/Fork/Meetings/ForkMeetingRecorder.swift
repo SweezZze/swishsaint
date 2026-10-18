@@ -115,7 +115,8 @@ final class ForkMeetingRecorder: @unchecked Sendable {
     /// warning may go). Also kept in `fork.meetings.systemAudioVerified`.
     var onSystemAudioAllowed: ((ForkMeetingToken) -> Void)?
     /// The meeting track heard more than said so far (the whole Mac after
-    /// the app alone): its widest, for `meeting.json`. Never narrows.
+    /// the app alone): its widest, for `meeting.json`. Never narrows, and
+    /// sent even once a stop is asked: what the file holds must be said.
     var onSoundHeard: ((ForkMeetingToken, ForkMeetingSystemAudio) -> Void)?
     /// What the meeting track holds changed (`ForkMeetingTrackSound`): the
     /// app's sound has no app to hear any more, or again.
@@ -492,7 +493,7 @@ final class ForkMeetingRecorder: @unchecked Sendable {
             heard = next
             return next
         }
-        if let widened { send { $0.onSoundHeard?($0.token, widened) } }
+        if let widened { send(evenAfterStop: true) { $0.onSoundHeard?($0.token, widened) } }
     }
 
     /// The pill's meters. Any thread.
@@ -730,10 +731,12 @@ final class ForkMeetingRecorder: @unchecked Sendable {
         send(after: ForkMeetingCaptureSupport.reportDelay(stop)) { $0.onFailure?($0.token, failure) }
     }
 
-    /// On the main thread, unless a stop was asked meanwhile.
-    private func send(after delay: TimeInterval = 0, _ event: @escaping (ForkMeetingRecorder) -> Void) {
+    /// On the main thread, unless a stop was asked meanwhile (and the event
+    /// is not one the file needs said, `evenAfterStop`).
+    private func send(after delay: TimeInterval = 0, evenAfterStop: Bool = false,
+                      _ event: @escaping (ForkMeetingRecorder) -> Void) {
         let deliver = { [self] in
-            guard !lock.withLock({ stopRequested }) else { return }
+            guard evenAfterStop || !lock.withLock({ stopRequested }) else { return }
             event(self)
         }
         if delay > 0 {

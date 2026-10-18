@@ -17,6 +17,7 @@ enum ForkMeetingFixesG1Tests {
         bidiNames(suite)
         sourceGonePill(suite)
         quickLock(suite)
+        heardAtStop(suite)
     }
 
     typealias Machine = ForkMeetingMachine
@@ -326,5 +327,19 @@ enum ForkMeetingFixesG1Tests {
         let stopped = late.handle(.captureFailed(token1, .streamStopped), now: at(14))
         suite.expect(stopped.contains(.stopCapture(token1)) && stopped.contains(.notice(.failure(.streamStopped))),
                      "a stop that comes later than the grace after the unlock is a real one: the meeting stops, said")
+    }
+
+    /// The track heard the whole Mac just before Stop: meeting.json says so.
+    private static func heardAtStop(_ suite: TestSuite) {
+        var machine = recording()
+        machine.handle(.stop, now: at(30))
+        let effects = machine.handle(.soundHeard(token1, .all), now: at(30.1))
+        suite.expect(patches(effects) == [ForkMeetingSidecarPatch(systemAudio: .all)],
+                     "a widening that arrives while the file closes is still written")
+        suite.expect(machine.handle(.soundHeard(ForkMeetingToken(value: 7), .all), now: at(30.2)).isEmpty,
+                     "another session's word changes nothing")
+        machine.handle(.writerFinished(token1, .finished(recordedSeconds: 30)), now: at(31))
+        suite.expect(machine.handle(.soundHeard(token1, .all), now: at(32)).isEmpty,
+                     "once the file is closed and handed on, nothing more is written by the machine")
     }
 }

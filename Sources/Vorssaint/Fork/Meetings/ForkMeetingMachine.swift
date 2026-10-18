@@ -585,7 +585,11 @@ struct ForkMeetingMachine {
             return [.notice(.microphoneSilent), .announce(.microphoneSilent)]
 
         case let .soundHeard(token, heard):
-            guard let session = activeSession, session.token == token else { return [] }
+            // Stopping too: the track heard it just before the Stop, and the
+            // file holds it.
+            let session: Session?
+            if case let .stopping(stopping, _) = phase { session = stopping } else { session = activeSession }
+            guard let session, session.token == token else { return [] }
             return [.writeSidecar(session.folder, ForkMeetingSidecarPatch(systemAudio: heard))]
 
         case .microphoneSoundBack:
