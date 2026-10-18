@@ -14,6 +14,7 @@ enum ForkMeetingFixesG1Tests {
         failedPassShown(suite)
         startAttempts(suite)
         recoveryLeavesLiveMeetings(suite)
+        bidiNames(suite)
     }
 
     typealias Machine = ForkMeetingMachine
@@ -263,5 +264,21 @@ enum ForkMeetingFixesG1Tests {
             .components(separatedBy: "\n    }\n").first ?? ""
         suite.expect(claim.contains("if claims[path] != nil { return sharedHere }"),
                      "a lock this process holds is refused to the recovery, under the same lock as the check")
+    }
+
+    /// A title cannot make a folder's name lie about what it holds.
+    private static func bidiNames(_ suite: TestSuite) {
+        let spoof = ForkMeetingFolder.sanitized("Budget \u{202E}xslx.4pm")
+        suite.expect(spoof == "Budget xslx.4pm",
+                     "a right-to-left override goes: the name reads as typed, not as \"Budget mp4.xlsx\" (\(spoof ?? "nil"))")
+        let all = (0x202A...0x202E).map { "a\(Character(Unicode.Scalar($0)!))b" }
+            + (0x2066...0x2069).map { "a\(Character(Unicode.Scalar($0)!))b" }
+        suite.expect(all.allSatisfy { ForkMeetingFolder.sanitized($0) == "a b" },
+                     "every embedding, override and isolate becomes a space, like the other forbidden characters")
+        let marks = ["\u{200E}", "\u{200F}", "\u{061C}"].map { "שלום\($0) 2026" }
+        suite.expect(marks.allSatisfy { ForkMeetingFolder.sanitized($0) == $0 },
+                     "the direction marks a Hebrew or Arabic title needs stay")
+        suite.expect(ForkMeetingFolder.sanitized("👨‍👩‍👧 Famille") == "👨‍👩‍👧 Famille",
+                     "the zero-width joiner of an emoji family still stays")
     }
 }
