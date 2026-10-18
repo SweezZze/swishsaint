@@ -66,6 +66,9 @@ final class ForkMeetingStore: @unchecked Sendable {
     private let defaults: UserDefaults
     private let strings: () -> ForkMeetingStrings
     private let callbackQueue: DispatchQueue
+    /// Where a finished meeting is listed; the official Recent captures in
+    /// the app.
+    private let recentCaptures: (URL) -> Void
     /// Every write of a `meeting.json`, and the making of a folder.
     private let queue = DispatchQueue(label: "fork.meetings.store", qos: .utility)
     private let lock = NSLock()
@@ -77,14 +80,19 @@ final class ForkMeetingStore: @unchecked Sendable {
     /// Under `lock`: the lock file held for each claimed folder, by path.
     private var claims: [String: Int32] = [:]
 
-    /// - Parameter callbackQueue: where every completion is called; the
-    ///   main queue in the app.
+    /// - Parameters:
+    ///   - callbackQueue: where every completion is called; the main queue
+    ///     in the app.
+    ///   - recentCaptures: lists a finished meeting's video, any thread;
+    ///     the official Recent captures by default.
     init(defaults: UserDefaults = .standard,
          strings: @escaping () -> ForkMeetingStrings = { ForkMeetingStrings.current },
-         callbackQueue: DispatchQueue = .main) {
+         callbackQueue: DispatchQueue = .main,
+         recentCaptures: @escaping (URL) -> Void = ForkMeetingStore.officialRecentCaptures) {
         self.defaults = defaults
         self.strings = strings
         self.callbackQueue = callbackQueue
+        self.recentCaptures = recentCaptures
     }
 
     // MARK: - Root
@@ -401,6 +409,11 @@ final class ForkMeetingStore: @unchecked Sendable {
             if let patch { write(patch, in: folder) }
             if removeMaster { try? manager.removeItem(at: master) }
             if discardDrafts { discardDraftFiles(in: folder) }
+            // The app died between the final file and its M4A: made again,
+            // from the final file's mix.
+            if extractAudio, contents.audio == nil, let video {
+                await finalizer.remakeAudio(from: video)
+            }
             if let video { addToRecentCaptures(video) }
             return Recovery(folder: folder, action: action, outcome: nil, seconds: facts.final?.duration)
         case .finalize:
@@ -427,6 +440,10 @@ final class ForkMeetingStore: @unchecked Sendable {
     /// and an entry whose file moved or went away is dropped by itself.
     /// Removing the entry or clearing the list never touches the file.
     func addToRecentCaptures(_ video: URL) {
+        recentCaptures(video)
+    }
+
+    static func officialRecentCaptures(_ video: URL) {
         DispatchQueue.main.async {
             RecentCaptureService.shared.recordRecording(at: video)
         }

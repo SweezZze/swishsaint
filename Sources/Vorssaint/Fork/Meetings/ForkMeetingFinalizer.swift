@@ -291,7 +291,9 @@ final class ForkMeetingFinalizer: ObservableObject, @unchecked Sendable {
         var note: String?
         if job.extractAudio, layout.hasMix {
             do {
-                try await extractMix(job, paths: paths)
+                try await extractMix(from: paths.final, to: paths.audio, draft: paths.audioDraft) { [self] seconds in
+                    publish(ForkMeetingFinalPass.progress(copy: 1, audio: seconds, extractsAudio: true), for: job)
+                }
                 audio = paths.audio
             } catch {
                 try? manager.removeItem(at: paths.audioDraft)
@@ -466,10 +468,46 @@ final class ForkMeetingFinalizer: ObservableObject, @unchecked Sendable {
         return (layout, seconds)
     }
 
+    /// The M4A of a final file whose own was never made (the app quit right
+    /// after the copy), named after the video and beside it. Only from a
+    /// file the final pass wrote: its mix enabled, its sources not. A
+    /// promoted master has no mix, and its meeting track alone would be a
+    /// false M4A. `nil` when nothing was made. Off the main thread.
+    @discardableResult
+    func remakeAudio(from video: URL) async -> URL? {
+        let folder = video.deletingLastPathComponent()
+        let audio = video.deletingPathExtension().appendingPathExtension(ForkMeetingFolder.audioExtension)
+        let draft = folder.appendingPathComponent(ForkMeetingFolder.audioDraftName)
+        guard !FileManager.default.fileExists(atPath: audio.path), await Self.hasMix(video) else { return nil }
+        do {
+            try await extractMix(from: video, to: audio, draft: draft, progress: nil)
+            return audio
+        } catch {
+            try? FileManager.default.removeItem(at: draft)
+            Self.log.error("no M4A for \(folder.lastPathComponent): \(String(describing: error), privacy: .public)")
+            return nil
+        }
+    }
+
+    /// The final pass's layout: the first audio track, the mix, plays; the
+    /// sources after it do not.
+    private static func hasMix(_ video: URL) async -> Bool {
+        let asset = AVURLAsset(url: video)
+        guard let tracks = try? await asset.loadTracks(withMediaType: .audio).sorted(by: { $0.trackID < $1.trackID }),
+              tracks.count >= 2 else { return false }
+        var enabled: [Bool] = []
+        for track in tracks {
+            guard let isEnabled = try? await track.load(.isEnabled) else { return false }
+            enabled.append(isEnabled)
+        }
+        return enabled.first == true && enabled.dropFirst().allSatisfy { !$0 }
+    }
+
     /// The M4A: the final file's mix, copied as it is (about a second an
-    /// hour), never encoded again.
-    private func extractMix(_ job: Job, paths: Paths) async throws {
-        let asset = AVURLAsset(url: paths.final)
+    /// hour), never encoded again. `progress` gets the share copied, 0…1.
+    private func extractMix(from final: URL, to audio: URL, draft: URL,
+                            progress: (@Sendable (Double) -> Void)?) async throws {
+        let asset = AVURLAsset(url: final)
         // The mix is the first audio track the copy wrote.
         guard let mix = try await asset.loadTracks(withMediaType: .audio).min(by: { $0.trackID < $1.trackID }) else {
             throw PassError.cannotSetUp("the M4A: no mixed track")
@@ -480,7 +518,8 @@ final class ForkMeetingFinalizer: ObservableObject, @unchecked Sendable {
         output.alwaysCopiesSampleData = false
         guard reader.canAdd(output) else { throw PassError.cannotSetUp("the M4A's reader") }
         reader.add(output)
-        let writer = try AVAssetWriter(outputURL: paths.audioDraft, fileType: .m4a)
+        try? FileManager.default.removeItem(at: draft)
+        let writer = try AVAssetWriter(outputURL: draft, fileType: .m4a)
         let input = AVAssetWriterInput(mediaType: .audio, outputSettings: nil,
                                        sourceFormatHint: try await mix.load(.formatDescriptions).first)
         input.expectsMediaDataInRealTime = false
@@ -492,9 +531,8 @@ final class ForkMeetingFinalizer: ObservableObject, @unchecked Sendable {
             throw PassError.writing(writer.error?.localizedDescription ?? "")
         }
         writer.startSession(atSourceTime: .zero)
-        let stalled = await Self.pump([Pair(output: output, input: input, label: "m4a", onAppend: { [self] seconds in
-            publish(ForkMeetingFinalPass.progress(copy: 1, audio: seconds / max(mixSeconds, 1), extractsAudio: true),
-                    for: job)
+        let stalled = await Self.pump([Pair(output: output, input: input, label: "m4a", onAppend: { seconds in
+            progress?(seconds / max(mixSeconds, 1))
         })], abandon: Abandon(readers: [reader], writer: writer))
         guard !stalled else { throw PassError.stalled }
         guard reader.status == .completed else {
@@ -505,12 +543,12 @@ final class ForkMeetingFinalizer: ObservableObject, @unchecked Sendable {
         guard writer.status == .completed else {
             throw PassError.writing(writer.error?.localizedDescription ?? "status \(writer.status.rawValue)")
         }
-        let seconds = await Self.playableSeconds(at: paths.audioDraft)
+        let seconds = await Self.playableSeconds(at: draft)
         guard ForkMeetingFinalPass.isWhole(seconds: seconds, masterSeconds: mixSeconds),
-              (Self.fileSize(paths.audioDraft) ?? 0) > 0 else {
+              (Self.fileSize(draft) ?? 0) > 0 else {
             throw PassError.incomplete(seconds, of: mixSeconds)
         }
-        try ForkMeetingStore.replace(paths.audio, with: paths.audioDraft)
+        try ForkMeetingStore.replace(audio, with: draft)
     }
 
     // MARK: - Moving samples
