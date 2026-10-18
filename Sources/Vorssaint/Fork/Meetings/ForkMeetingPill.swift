@@ -27,6 +27,8 @@ final class ForkMeetingPill {
         var resume: () -> Void = {}
         var stop: () -> Void = {}
         var toggleTarget: () -> Void = {}
+        /// "Continue" while the countdown of a meeting that seems over runs.
+        var continueRecording: () -> Void = {}
     }
 
     private let model = ForkMeetingPillModel()
@@ -136,6 +138,15 @@ final class ForkMeetingPill {
         fit()
     }
 
+    /// "Meeting over? Stopping in 12 s [Continue]" until `until`, or gone
+    /// with `nil`. The seconds follow the pill's own ticks.
+    func setEndingSoon(until: Date?) {
+        guard model.endingSoonUntil != until else { return }
+        withAnimation(model.reducesMotion ? nil : .smooth(duration: 0.25)) { model.endingSoonUntil = until }
+        tick()
+        fit()
+    }
+
     /// The final pass's share done, between 0 and 1; `nil` while unknown.
     func setFinalizing(progress: Double?) {
         guard model.progress != progress else { return }
@@ -147,6 +158,7 @@ final class ForkMeetingPill {
     func hide() {
         stopTicker()
         unobserve()
+        model.endingSoonUntil = nil
         collapseWork?.cancel()
         collapseWork = nil
         guard let panel, panel.isVisible else {
@@ -207,6 +219,15 @@ final class ForkMeetingPill {
                 if widens { fit() }
             }
         }
+        if let until = model.endingSoonUntil {
+            let words = ForkMeetingOfferText.endingSoon(until: until, now: Date(), strings: model.text)
+            if words != ticker.countdown {
+                // From 10 s to 9 s the words lose a digit: the pill follows.
+                let resizes = words.count != ticker.countdown.count
+                ticker.countdown = words
+                if resizes { fit() }
+            }
+        }
         if case .recording = model.state {
             let reading = levels()
             if reading != ticker.levels { ticker.levels = reading }
@@ -223,7 +244,8 @@ final class ForkMeetingPill {
         let forward = Actions(pause: { [weak self] in self?.actions.pause() },
                               resume: { [weak self] in self?.actions.resume() },
                               stop: { [weak self] in self?.actions.stop() },
-                              toggleTarget: { [weak self] in self?.actions.toggleTarget() })
+                              toggleTarget: { [weak self] in self?.actions.toggleTarget() },
+                              continueRecording: { [weak self] in self?.actions.continueRecording() })
         return ForkMeetingPillView(model: model, ticker: ticker, actions: forward,
                             beginDrag: { [weak self] in self?.beginDrag() },
                             resetPlace: { [weak self] in self?.resetPlace() })
@@ -293,7 +315,7 @@ final class ForkMeetingPill {
     }
 
     /// A display's lasting name: its ID can change between two launches.
-    private static func key(_ screen: NSScreen) -> String {
+    static func key(_ screen: NSScreen) -> String {
         let id = screen.displayID
         if let uuid = CGDisplayCreateUUIDFromDisplayID(id)?.takeRetainedValue(),
            let string = CFUUIDCreateString(nil, uuid) as String? {
@@ -470,10 +492,13 @@ final class ForkMeetingPillModel: ObservableObject {
     @Published var progress: Double?
     @Published var hovering = false
     @Published var reducesMotion = false
+    /// The countdown of a meeting that seems over, while it runs.
+    @Published var endingSoonUntil: Date?
     var text = ForkMeetingStrings.current
 
     var look: ForkMeetingPillLook? {
-        ForkMeetingPillLook(state: state, context: context, finalizingProgress: progress, reducesMotion: reducesMotion)
+        ForkMeetingPillLook(state: state, context: context, finalizingProgress: progress, reducesMotion: reducesMotion,
+                            endingSoon: endingSoonUntil != nil)
     }
 }
 
@@ -482,6 +507,8 @@ final class ForkMeetingPillModel: ObservableObject {
 final class ForkMeetingPillTicker: ObservableObject {
     @Published var clock = "0:00"
     @Published var levels = ForkMeetingLevels()
+    /// "Meeting over? Stopping in 12 s", while the countdown runs.
+    @Published var countdown = ""
 }
 
 // MARK: - The pill
@@ -618,6 +645,22 @@ struct ForkMeetingPillView: View {
                     .frame(width: 44)
                     .accessibilityLabel(text.pillFinalizing)
             }
+        case .endingSoon:
+            ForkMeetingPillCountdown(ticker: ticker)
+            Button(action: actions.continueRecording) {
+                Text(text.endingSoonContinue)
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(Color.white)
+                    .lineLimit(1)
+                    .fixedSize()
+                    .padding(.horizontal, 9)
+                    .frame(height: 24)
+                    .background(Color.white.opacity(0.16), in: Capsule(style: .continuous))
+                    .contentShape(Capsule(style: .continuous))
+            }
+            .buttonStyle(NotchButtonStyle(cornerRadius: 12, lifts: false))
+            .help(text.endingSoonContinue)
+            .accessibilityLabel(text.endingSoonContinue)
         }
     }
 
@@ -633,9 +676,12 @@ struct ForkMeetingPillView: View {
     @ViewBuilder
     private func controls(paused: Bool, text: ForkMeetingStrings) -> some View {
         HStack(spacing: 0) {
-            pillButton(symbol: paused ? "play.fill" : "pause.fill", color: .white,
-                       label: paused ? text.pillResume : text.pillPause,
-                       action: paused ? actions.resume : actions.pause)
+            // During the countdown "Continue" stands where pause was.
+            if model.look?.status != .endingSoon {
+                pillButton(symbol: paused ? "play.fill" : "pause.fill", color: .white,
+                           label: paused ? text.pillResume : text.pillPause,
+                           action: paused ? actions.resume : actions.pause)
+            }
             pillButton(symbol: "stop.fill", color: Color(nsColor: .systemRed), label: text.pillStop,
                        action: actions.stop)
             if model.hovering, model.context.canSwitchTarget {
@@ -660,6 +706,24 @@ struct ForkMeetingPillView: View {
         .buttonStyle(NotchButtonStyle(cornerRadius: 8, lifts: false))
         .help(label)
         .accessibilityLabel(label)
+    }
+}
+
+/// "Meeting over? Stopping in 12 s": its seconds in digits of one width,
+/// so the pill keeps its size as they go down.
+private struct ForkMeetingPillCountdown: View {
+    @ObservedObject var ticker: ForkMeetingPillTicker
+
+    var body: some View {
+        Text(ticker.countdown)
+            .font(.system(size: 12, weight: .semibold).monospacedDigit())
+            .foregroundStyle(Color.orange)
+            .lineLimit(1)
+            .fixedSize()
+            .allowsHitTesting(false)
+            // Read as it goes down; VoiceOver heard it said once already.
+            .accessibilityElement()
+            .accessibilityLabel(ticker.countdown)
     }
 }
 

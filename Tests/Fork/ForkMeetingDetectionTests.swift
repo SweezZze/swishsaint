@@ -592,7 +592,7 @@ enum ForkMeetingDetectionTests {
         suite.expect(french.offerRecord == "Enregistrer" && french.offerNotNow == "Pas cette fois"
                         && french.offerAlways("Meet") == "Toujours pour Meet"
                         && french.offerCapture(window: "Chrome", sound: "Chrome", microphone: "AirPods")
-                            == "Fenêtre de Chrome · son de Chrome · micro AirPods"
+                            == "Fenêtre\u{00A0}: Chrome · son\u{00A0}: Chrome · micro\u{00A0}: AirPods"
                         && french.endingSoonTitle + " " + french.endingSoon(seconds: 15) == "Réunion terminée\u{00A0}? Arrêt dans 15 s",
                      "the French offer reads as the plan writes it")
         let announcements: [ForkMeetingAnnouncement] = [.offered("X"), .autoStarted(seconds: 5), .endingSoon(seconds: 15),

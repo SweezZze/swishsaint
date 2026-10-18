@@ -75,6 +75,9 @@ struct ForkMeetingPillLook: Equatable {
         case sourceGone
         case stopping
         case finalizing(progress: Double?)
+        /// "Meeting over? Stopping in 12 s [Continue]": the detection
+        /// thinks the meeting ended, the recording stops unless continued.
+        case endingSoon
     }
 
     let mark: Mark
@@ -86,12 +89,22 @@ struct ForkMeetingPillLook: Equatable {
     let showsControls: Bool
     let paused: Bool
 
-    /// `nil` when the pill is hidden.
+    /// `nil` when the pill is hidden. `endingSoon` while the countdown of
+    /// a meeting that seems over runs: it outranks every other word, since
+    /// the recording stops in seconds unless the person continues; the
+    /// time makes room for it, pause goes (stop stays).
     init?(state: ForkMeetingPillState, context: ForkMeetingLiveContext, finalizingProgress: Double?,
-          reducesMotion: Bool) {
+          reducesMotion: Bool, endingSoon: Bool = false) {
         switch state {
         case .hidden:
             return nil
+        case .recording where endingSoon:
+            mark = .recording(pulses: !reducesMotion)
+            status = .endingSoon
+            showsClock = false
+            clockIsAlert = false
+            showsControls = true
+            paused = false
         case let .recording(_, diskMinutesLeft):
             mark = .recording(pulses: !reducesMotion)
             // The disk outranks the frozen picture: it ends the meeting.
