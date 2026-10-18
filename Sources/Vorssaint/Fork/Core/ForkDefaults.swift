@@ -78,6 +78,9 @@ enum ForkDefaultsKey {
     /// The shortcut that starts and stops a recording, stored like the
     /// official shortcuts (`GlobalShortcut.storageValue`); empty: none.
     static let meetingsShortcut = "fork.meetings.shortcut"
+    /// Meetings older than this many days go to the Trash
+    /// (`ForkMeetingRetention`); 0: never.
+    static let meetingsRetentionDays = "fork.meetings.retentionDays"
     /// The meetings folder's path; empty: a folder in Movies, named in the
     /// person's language and saved here at the first recording. Machine
     /// state, like the official recorder's folder: kept out of the backup.
@@ -140,6 +143,7 @@ enum ForkDefaults {
         ForkDefaultsKey.meetingsConsentReminder: true,
         ForkDefaultsKey.meetingsAnnouncement: "",
         ForkDefaultsKey.meetingsShortcut: "",
+        ForkDefaultsKey.meetingsRetentionDays: ForkMeetingRetention.fallback,
     ]
 
     /// Where each setting lived in the test builds made before the fork
