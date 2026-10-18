@@ -13,6 +13,7 @@ enum ForkMeetingFixesG1Tests {
         verdicts(suite)
         failedPassShown(suite)
         startAttempts(suite)
+        recoveryLeavesLiveMeetings(suite)
     }
 
     typealias Machine = ForkMeetingMachine
@@ -241,5 +242,26 @@ enum ForkMeetingFixesG1Tests {
         suite.expect(ForkMeetingServiceSupport.canStart(wanted: true, machineBusy: false, preparingStart: false,
                                                         terminating: false),
                      "the cancel leaves nothing being prepared: a start may be asked at once")
+    }
+
+    /// The folder of a meeting about to record is this process's before it
+    /// exists, and the recovery never takes a lock this process holds.
+    private static func recoveryLeavesLiveMeetings(_ suite: TestSuite) {
+        let store = ForkMeetingFinalizeTests.source("Sources/Vorssaint/Fork/Meetings/ForkMeetingStore.swift")
+        let make = store.components(separatedBy: "private func makeFolder(").dropFirst().first?
+            .components(separatedBy: "\n    }\n").first ?? ""
+        let reserved = make.range(of: "reserve(folder)\n            do {")
+        let created = make.range(of: "try manager.createDirectory(at: folder")
+        suite.expect(reserved != nil && created != nil && reserved!.upperBound < created!.lowerBound,
+                     "the new folder is reserved as this process's (made[id]) before it is made")
+        let scan = store.components(separatedBy: "private func recover(root: URL").dropFirst().first?
+            .components(separatedBy: "\n    }\n").first ?? ""
+        suite.expect(scan.contains("!isMadeHere(folder), !isClaimedHere(folder)")
+                        && scan.contains("guard claimForRecovery(folder) else { continue }"),
+                     "the recovery skips a folder this process made or holds, and never shares its lock")
+        let claim = store.components(separatedBy: "private func claim(_ folder: URL, sharedHere: Bool)").dropFirst().first?
+            .components(separatedBy: "\n    }\n").first ?? ""
+        suite.expect(claim.contains("if claims[path] != nil { return sharedHere }"),
+                     "a lock this process holds is refused to the recovery, under the same lock as the check")
     }
 }

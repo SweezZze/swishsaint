@@ -86,7 +86,7 @@ enum ForkMeetingStoreTests {
                      "every write of meeting.json goes through the store's one serial queue")
         let scan = store.components(separatedBy: "private func recover(root: URL").dropFirst().first?
             .components(separatedBy: "\n    }\n").first ?? ""
-        let claimed = scan.range(of: "guard claim(folder) else { continue }")
+        let claimed = scan.range(of: "guard claimForRecovery(folder) else { continue }")
         let probed = scan.range(of: "await recover(folder")
         suite.expect(scan.contains("!isMadeHere(folder)") && claimed != nil && probed != nil
                         && claimed!.upperBound < probed!.lowerBound,

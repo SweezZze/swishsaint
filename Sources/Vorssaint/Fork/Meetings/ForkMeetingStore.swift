@@ -147,11 +147,11 @@ final class ForkMeetingStore: @unchecked Sendable {
         let started = ForkMeetingSidecar.started(id: id, startedAt: startedAt, origin: origin, title: title,
                                                  titleSource: titleSource, capture: capture)
         queue.async { [self] in
-            let result = makeFolder(in: root, for: started, name: ForkMeetingFolder.name(startedAt: startedAt,
-                                                                                         title: title))
+            let result = makeFolder(in: root, for: started, id: id,
+                                    name: ForkMeetingFolder.name(startedAt: startedAt, title: title))
             lock.lock()
             opening = false
-            if case let .success(folder) = result { made[id] = folder }
+            if case let .success(folder) = result { made[id] = folder } else { made[id] = nil }
             lock.unlock()
             if case let .success(folder) = result {
                 _ = self.root(storing: true)
@@ -161,8 +161,10 @@ final class ForkMeetingStore: @unchecked Sendable {
         }
     }
 
-    /// Store queue.
-    private func makeFolder(in root: URL, for sidecar: ForkMeetingSidecar,
+    /// Store queue. The folder is this process's (`made`) before it exists:
+    /// a recovery scanning meanwhile never takes a meeting about to record
+    /// for one a crash left.
+    private func makeFolder(in root: URL, for sidecar: ForkMeetingSidecar, id: UUID,
                             name base: String) -> Result<URL, Failure> {
         let manager = FileManager.default
         // The meetings folder itself, never its parents: a folder chosen on
@@ -176,9 +178,11 @@ final class ForkMeetingStore: @unchecked Sendable {
                 return .failure(.folderUnavailable(error.localizedDescription))
             }
         }
-        let id = sidecar.id
         func occupant(_ name: String) -> ForkMeetingFolder.Occupant {
             Self.occupant(of: root.appendingPathComponent(name, isDirectory: true), id: id)
+        }
+        func reserve(_ folder: URL) {
+            lock.withLock { made[id] = folder }
         }
         let folder: URL
         var createdHere = false
@@ -187,12 +191,14 @@ final class ForkMeetingStore: @unchecked Sendable {
             return .failure(.namesExhausted)
         case let .adopt(name):
             folder = root.appendingPathComponent(name, isDirectory: true)
+            reserve(folder)
             // Ours already, sidecar included: nothing to write again.
             if occupant(name) == .sameMeeting { return .success(folder) }
             // An empty folder of ours left behind: closed to the others too.
             try? manager.setAttributes([.posixPermissions: Self.folderPermissions], ofItemAtPath: folder.path)
         case let .create(name):
             folder = root.appendingPathComponent(name, isDirectory: true)
+            reserve(folder)
             do {
                 try manager.createDirectory(at: folder, withIntermediateDirectories: false,
                                             attributes: [.posixPermissions: Self.folderPermissions])
@@ -317,10 +323,16 @@ final class ForkMeetingStore: @unchecked Sendable {
     /// Any thread.
     @discardableResult
     func claim(_ folder: URL) -> Bool {
+        claim(folder, sharedHere: true)
+    }
+
+    /// `sharedHere` false: refused too when this process holds it already
+    /// (the recovery never takes a lock a meeting of this process holds).
+    private func claim(_ folder: URL, sharedHere: Bool) -> Bool {
         let path = folder.standardizedFileURL.path
         lock.lock()
         defer { lock.unlock() }
-        if claims[path] != nil { return true }
+        if claims[path] != nil { return sharedHere }
         let descriptor = open(path + "/" + Self.lockName, O_RDWR | O_CREAT | O_CLOEXEC, 0o600)
         guard descriptor >= 0 else { return true }
         guard flock(descriptor, LOCK_EX | LOCK_NB) == 0 else {
@@ -342,6 +354,19 @@ final class ForkMeetingStore: @unchecked Sendable {
         unlink(path + "/" + Self.lockName)
         flock(descriptor, LOCK_UN)
         close(descriptor)
+    }
+
+    /// This process holds the folder's lock: a meeting of its own records
+    /// or finishes there.
+    private func isClaimedHere(_ folder: URL) -> Bool {
+        let path = folder.standardizedFileURL.path
+        return lock.withLock { claims[path] != nil }
+    }
+
+    /// The lock for the recovery alone: refused when this process already
+    /// holds it, not only when another one does.
+    private func claimForRecovery(_ folder: URL) -> Bool {
+        claim(folder, sharedHere: false)
     }
 
     private func isMadeHere(_ folder: URL) -> Bool {
@@ -381,15 +406,21 @@ final class ForkMeetingStore: @unchecked Sendable {
             let folder = root.appendingPathComponent(name, isDirectory: true)
             var isDirectory: ObjCBool = false
             guard manager.fileExists(atPath: folder.path, isDirectory: &isDirectory), isDirectory.boolValue,
-                  !isMadeHere(folder),
+                  !isMadeHere(folder), !isClaimedHere(folder),
                   let entries = try? manager.contentsOfDirectory(atPath: folder.path) else { continue }
             let contents = ForkMeetingFolder.contents(of: entries, folderName: name)
             guard contents.hasSidecar else { continue }
             let sidecar = self.sidecar(in: folder)
             guard ForkMeetingRecoveryPlan.needsInspection(sidecar, contents: contents) else { continue }
             // Before probing anything: a master another copy of the app is
-            // still writing must not even be opened.
-            guard claim(folder) else { continue }
+            // still writing must not even be opened, nor one this process
+            // claimed in the meantime (its claim is never shared, nor let go
+            // by the recovery).
+            guard claimForRecovery(folder) else { continue }
+            guard !isMadeHere(folder) else {
+                release(folder)
+                continue
+            }
             if let recovery = await recover(folder, contents: contents, sidecar: sidecar, finalizer: finalizer,
                                             extractAudio: extractAudio, titles: titles) {
                 found.append(recovery)
