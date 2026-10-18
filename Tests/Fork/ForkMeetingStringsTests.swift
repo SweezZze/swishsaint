@@ -10,6 +10,7 @@ enum ForkMeetingStringsTests {
         formats(suite)
         failures(suite)
         liveTexts(suite)
+        typography(suite)
     }
 
     private static let languages = AppLanguage.allCases
@@ -134,6 +135,19 @@ enum ForkMeetingStringsTests {
                      "a failure that ends a meeting says what happened to its file")
     }
 
+    /// The official French puts a no-break space before « : ; ! ? » and
+    /// inside the quotes, and typographic apostrophes everywhere.
+    private static func typography(_ suite: TestSuite) {
+        let french = fields(.fr).map(\.1) + [ForkUpdateStrings.strings(.fr).afterMeeting]
+        let loose = french.filter { text in
+            text.contains("'") || text.contains("« ")
+                || [":", ";", "!", "?", "»"].contains { text.contains(" " + $0) }
+        }
+        suite.expect(loose.isEmpty, "French texts use no-break spaces and typographic apostrophes: \(loose)")
+        let straight = allStrings.flatMap { fields($0).map(\.1) }.filter { $0.contains("'") }
+        suite.expect(straight.isEmpty, "no meetings text uses a straight apostrophe: \(straight)")
+    }
+
     /// Every text of the pill, the bubble and their buttons is short,
     /// written for that room in each language.
     private static func liveTexts(_ suite: TestSuite) {
@@ -141,7 +155,7 @@ enum ForkMeetingStringsTests {
             \.pillPaused, \.pillStopping, \.pillFinalizing, \.pillPictureFrozen, \.pillPause, \.pillResume,
             \.pillStop, \.pillFilmDisplay, \.pillFilmWindow, \.pillMicrophoneLevel, \.pillMeetingLevel,
             \.pillMicrophoneOff, \.pillElapsed, \.pillRecording, \.actionShow, \.actionOpenSettings,
-            \.actionOpenMeetings, \.bubbleClose,
+            \.actionOpenStorage, \.actionOpenMeetings, \.bubbleClose,
         ]
         var tooLong: [String] = []
         for (language, strings) in zip(languages, allStrings) {
