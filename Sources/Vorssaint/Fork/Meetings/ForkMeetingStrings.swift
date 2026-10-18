@@ -430,7 +430,7 @@ extension ForkMeetingStrings {
         trackMix: "Mix",
         trackMeeting: "Meeting",
         trackMicrophone: "Microphone",
-        // MARK: Fixes F2,
+        // MARK: Fixes F2
         stateStarting: "Starting…",
         pictureFrontWindow: "Window in front",
         pictureFrontDisplay: "Its whole display",
@@ -611,7 +611,7 @@ extension ForkMeetingStrings {
         trackMix: "Mixagem",
         trackMeeting: "Reunião",
         trackMicrophone: "Microfone",
-        // MARK: Fixes F2,
+        // MARK: Fixes F2
         stateStarting: "Iniciando…",
         pictureFrontWindow: "Janela da frente",
         pictureFrontDisplay: "A tela inteira dela",
@@ -792,7 +792,7 @@ extension ForkMeetingStrings {
         trackMix: "Karışım",
         trackMeeting: "Toplantı",
         trackMicrophone: "Mikrofon",
-        // MARK: Fixes F2,
+        // MARK: Fixes F2
         stateStarting: "Başlatılıyor…",
         pictureFrontWindow: "Öndeki pencere",
         pictureFrontDisplay: "Bulunduğu ekranın tamamı",
@@ -973,7 +973,7 @@ extension ForkMeetingStrings {
         trackMix: "Микс",
         trackMeeting: "Встреча",
         trackMicrophone: "Микрофон",
-        // MARK: Fixes F2,
+        // MARK: Fixes F2
         stateStarting: "Запуск…",
         pictureFrontWindow: "Переднее окно",
         pictureFrontDisplay: "Весь его экран",
@@ -1154,7 +1154,7 @@ extension ForkMeetingStrings {
         trackMix: "Mezcla",
         trackMeeting: "Reunión",
         trackMicrophone: "Micrófono",
-        // MARK: Fixes F2,
+        // MARK: Fixes F2
         stateStarting: "Iniciando…",
         pictureFrontWindow: "Ventana de delante",
         pictureFrontDisplay: "Toda su pantalla",
@@ -1335,7 +1335,7 @@ extension ForkMeetingStrings {
         trackMix: "Zmes",
         trackMeeting: "Stretnutie",
         trackMicrophone: "Mikrofón",
-        // MARK: Fixes F2,
+        // MARK: Fixes F2
         stateStarting: "Spúšťa sa…",
         pictureFrontWindow: "Okno vpredu",
         pictureFrontDisplay: "Celá jeho obrazovka",
@@ -1516,7 +1516,7 @@ extension ForkMeetingStrings {
         trackMix: "Mischung",
         trackMeeting: "Besprechung",
         trackMicrophone: "Mikrofon",
-        // MARK: Fixes F2,
+        // MARK: Fixes F2
         stateStarting: "Wird gestartet …",
         pictureFrontWindow: "Vorderstes Fenster",
         pictureFrontDisplay: "Sein ganzer Bildschirm",
@@ -1697,7 +1697,7 @@ extension ForkMeetingStrings {
         trackMix: "Mixage",
         trackMeeting: "Réunion",
         trackMicrophone: "Micro",
-        // MARK: Fixes F2,
+        // MARK: Fixes F2
         stateStarting: "Démarrage…",
         pictureFrontWindow: "Fenêtre au premier plan",
         pictureFrontDisplay: "Tout son écran",
@@ -1878,7 +1878,7 @@ extension ForkMeetingStrings {
         trackMix: "Missaggio",
         trackMeeting: "Riunione",
         trackMicrophone: "Microfono",
-        // MARK: Fixes F2,
+        // MARK: Fixes F2
         stateStarting: "Avvio…",
         pictureFrontWindow: "Finestra in primo piano",
         pictureFrontDisplay: "Tutto il suo schermo",
@@ -2059,7 +2059,7 @@ extension ForkMeetingStrings {
         trackMix: "ミックス",
         trackMeeting: "ミーティング",
         trackMicrophone: "マイク",
-        // MARK: Fixes F2,
+        // MARK: Fixes F2
         stateStarting: "開始しています…",
         pictureFrontWindow: "最前面のウインドウ",
         pictureFrontDisplay: "そのディスプレイ全体",
@@ -2240,7 +2240,7 @@ extension ForkMeetingStrings {
         trackMix: "믹스",
         trackMeeting: "회의",
         trackMicrophone: "마이크",
-        // MARK: Fixes F2,
+        // MARK: Fixes F2
         stateStarting: "시작하는 중…",
         pictureFrontWindow: "맨 앞 창",
         pictureFrontDisplay: "그 창의 전체 디스플레이",
@@ -2421,7 +2421,7 @@ extension ForkMeetingStrings {
         trackMix: "Мікс",
         trackMeeting: "Зустріч",
         trackMicrophone: "Мікрофон",
-        // MARK: Fixes F2,
+        // MARK: Fixes F2
         stateStarting: "Запуск…",
         pictureFrontWindow: "Переднє вікно",
         pictureFrontDisplay: "Увесь його екран",
@@ -2602,7 +2602,7 @@ extension ForkMeetingStrings {
         trackMix: "混音",
         trackMeeting: "会议",
         trackMicrophone: "麦克风",
-        // MARK: Fixes F2,
+        // MARK: Fixes F2
         stateStarting: "正在开始…",
         pictureFrontWindow: "最前面的窗口",
         pictureFrontDisplay: "它所在的整个显示器",
@@ -2783,7 +2783,7 @@ extension ForkMeetingStrings {
         trackMix: "混音",
         trackMeeting: "會議",
         trackMicrophone: "麥克風",
-        // MARK: Fixes F2,
+        // MARK: Fixes F2
         stateStarting: "正在開始…",
         pictureFrontWindow: "最前面的視窗",
         pictureFrontDisplay: "它所在的整個顯示器",
@@ -2964,7 +2964,7 @@ extension ForkMeetingStrings {
         trackMix: "混音",
         trackMeeting: "會議",
         trackMicrophone: "麥克風",
-        // MARK: Fixes F2,
+        // MARK: Fixes F2
         stateStarting: "正在開始…",
         pictureFrontWindow: "最前面的視窗",
         pictureFrontDisplay: "它所在的整個顯示器",
