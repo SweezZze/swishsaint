@@ -14,6 +14,12 @@ import Foundation
 /// | a readable master of a second or more | final pass again, drafts dropped |
 /// | neither | marked interrupted, everything kept |
 ///
+/// **A final pass that failed is tried once more, not at every launch**: the
+/// next launch makes its last try, marked `interrupted` beforehand, and one
+/// that fails again stays as it is, its master readable, for the library to
+/// flag. A master that cannot be copied today will not be copied tomorrow,
+/// and each try costs the reading of the whole meeting.
+///
 /// **Nothing is ever removed unless what it holds is safe elsewhere**: the
 /// master only once a final file at least as long is verified, a draft only
 /// when the master or a whole final file can replace it. A sidecar that does
@@ -88,6 +94,8 @@ enum ForkMeetingRecoveryPlan {
             return .complete(removeMaster: masterCanGo, discardDrafts: facts.hasDrafts)
         }
         if state == .complete { return .leave }
+        // Its last try already failed: the master stays as it is.
+        if state == .interrupted && meeting.finalPass == .failed { return .leave }
 
         if let masterSeconds, masterSeconds >= minimumMasterSeconds {
             return .finalize(stopReason: meeting.stopReason ?? .crash,
@@ -106,7 +114,11 @@ enum ForkMeetingRecoveryPlan {
         case .leave:
             return nil
         case let .finalize(stopReason, recovered, _):
-            var patch = ForkMeetingSidecarPatch(state: .finalizing, stopReason: stopReason)
+            // After a failed final pass, the last try: should it fail too,
+            // `interrupted` keeps the next launches from trying again.
+            var lastTry = false
+            if case let .success(meeting) = facts.sidecar { lastTry = meeting.finalPass == .failed }
+            var patch = ForkMeetingSidecarPatch(state: lastTry ? .interrupted : .finalizing, stopReason: stopReason)
             if recovered { patch.recovered = true }
             if case let .success(meeting) = facts.sidecar, let seconds = facts.master?.duration,
                seconds > (meeting.recordedSeconds ?? 0) {

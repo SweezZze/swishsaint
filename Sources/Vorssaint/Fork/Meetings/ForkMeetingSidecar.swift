@@ -156,6 +156,10 @@ struct ForkMeetingSidecar: Equatable {
         case streamRestart
         /// The screen was locked: the sound went on, the picture froze.
         case screenLocked
+        /// Not a loss: ⧉ switched the picture between the window and the
+        /// display (`seconds` 0). `capture.target` is the start's; each switch
+        /// flips it.
+        case targetSwitch
     }
 
     /// `at` and every time below are seconds of recording, pauses excluded;
@@ -437,6 +441,9 @@ struct ForkMeetingSidecarPatch: Equatable {
     var gap: ForkMeetingSidecar.Gap?
     /// The microphone now recording.
     var microphone: String?
+    /// What the picture really followed at the start, when it was not the
+    /// setting.
+    var target: ForkMeetingCaptureTarget?
     var recovered: Bool?
     var finalPass: ForkMeetingSidecar.FinalPass?
 
@@ -450,9 +457,10 @@ struct ForkMeetingSidecarPatch: Equatable {
         if let recordedSeconds { result.recordedSeconds = recordedSeconds }
         if let pause, sidecar.preserved["pauses"] == nil { result.pauses = (result.pauses ?? []) + [pause] }
         if let gap, sidecar.preserved["gaps"] == nil { result.gaps = (result.gaps ?? []) + [gap] }
-        if let microphone, sidecar.preserved["capture"] == nil {
+        if microphone != nil || target != nil, sidecar.preserved["capture"] == nil {
             var capture = result.capture ?? ForkMeetingSidecar.Capture()
-            capture.microphone = microphone
+            if let microphone { capture.microphone = microphone }
+            if let target { capture.target = target }
             result.capture = capture
         }
         if let recovered { result.recovered = recovered }

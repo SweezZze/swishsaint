@@ -26,6 +26,7 @@ enum ForkMeetingMachineTests {
         permissionsAndDevices(suite)
         quitting(suite)
         featureOff(suite)
+        targetsAndSources(suite)
         invariants(suite)
     }
 
@@ -481,6 +482,44 @@ enum ForkMeetingMachineTests {
         suite.expect(idle.handle(.featureDisabled, now: t0).isEmpty, "turning it off with no meeting does nothing")
     }
 
+    /// What the picture really follows, ⧉, and the filmed app quitting.
+    private static func targetsAndSources(_ suite: TestSuite) {
+        var fallback = Machine()
+        fallback.handle(request(), now: t0)
+        let started = fallback.handle(.captureStarted(token1, folder: folder, target: .display, microphone: "MacBook Pro"),
+                                      now: t0)
+        suite.expect(started.first == .writeSidecar(folder, Patch(microphone: "MacBook Pro", target: .display))
+                        && fallback.activeSession?.target == .display,
+                     "a window recording with no window to film films the display, and meeting.json says so with the microphone")
+        var plain = Machine()
+        plain.handle(request(), now: t0)
+        suite.expect(patches(plain.handle(.captureStarted(token1, folder: folder, target: .window), now: t0)).isEmpty
+                        && plain.activeSession?.target == .window,
+                     "a start that records as set writes nothing more")
+
+        var machine = recording()
+        let toggled = machine.handle(.toggleTarget, now: at(10))
+        suite.expect(toggled == [.switchTarget, .writeSidecar(folder, Patch(gap: .init(at: 10, seconds: 0, kind: .targetSwitch)))]
+                        && machine.activeSession?.target == .display && isRecording(machine),
+                     "⧉ films the display, the recording goes on, and the switch is noted where it happened")
+        suite.expect(machine.handle(.displayChanged, now: at(11)).first == .switchTarget,
+                     "once on the display, a display change is followed, whatever the setting")
+        machine.handle(.toggleTarget, now: at(12))
+        suite.expect(machine.activeSession?.target == .window && machine.handle(.displayChanged, now: at(13)).isEmpty,
+                     "⧉ again films the window")
+        machine.handle(.pause, now: at(14))
+        suite.expect(machine.handle(.toggleTarget, now: at(15)).first == .switchTarget, "⧉ works during a pause too")
+        var idle = Machine()
+        suite.expect(idle.handle(.toggleTarget, now: t0).isEmpty, "⧉ with nothing recording does nothing")
+
+        var gone = recording()
+        suite.expect(gone.handle(.sourceGone(token1), now: at(20)) == [.notice(.sourceGone), .announce(.sourceGone)]
+                        && isRecording(gone),
+                     "the filmed app quitting is said, and a recording started by hand goes on with the sound")
+        suite.expect(gone.handle(.sourceGone(ForkMeetingToken(value: 7)), now: at(21)).isEmpty,
+                     "a late word from another session says nothing")
+    }
+
     /// Every event, from a recording and from a pause: whatever leaves them
     /// goes through stopping, and nothing ever finalizes twice.
     private static func invariants(_ suite: TestSuite) {
@@ -492,6 +531,7 @@ enum ForkMeetingMachineTests {
             .willSleep, .didWake, .locked, .unlocked, .diskLow(freeBytes: 1_000_000_000), .diskLow(freeBytes: 1),
             .diskCritical, .permissionLost(.screenRecording), .permissionLost(.microphone), .permissionLost(.systemAudio),
             .displayChanged, .microphoneChanged(name: "X", gap: 1), .microphoneSilent, .appWillTerminate, .featureDisabled,
+            .toggleTarget, .sourceGone(token1),
         ]
         var throughStopping = true
         for start in ["recording", "paused", "sleeping"] {

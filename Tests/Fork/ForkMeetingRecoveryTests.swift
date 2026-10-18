@@ -15,6 +15,7 @@ enum ForkMeetingRecoveryTests {
         patches(suite)
         inspection(suite)
         nothingLost(suite)
+        failedPasses(suite)
     }
 
     private static func sidecar(_ state: ForkMeetingSidecar.State?, stopReason: ForkMeetingStopReason? = nil,
@@ -158,5 +159,37 @@ enum ForkMeetingRecoveryTests {
         }
         suite.expect(safe && checked == 250,
                      "in all \(checked) cases, the master goes only behind a whole final file, a draft only behind a readable copy")
+    }
+
+    /// A final pass that failed is tried once more at the next launch, then
+    /// left alone: never a full reading of the meeting at every launch.
+    private static func failedPasses(_ suite: TestSuite) {
+        func failed(_ state: ForkMeetingSidecar.State, master: Media? = Media(duration: 3000),
+                    final: Media? = nil) -> Plan.Facts {
+            var meeting = ForkMeetingSidecar()
+            meeting.schema = 1
+            meeting.state = state
+            meeting.stopReason = .user
+            meeting.recordedSeconds = 3000
+            meeting.finalPass = .failed
+            return Plan.Facts(sidecar: .success(meeting), master: master, final: final)
+        }
+        let once = failed(.finalizing)
+        suite.expect(Plan.plan(once) == .finalize(stopReason: .user, recovered: false, discardDrafts: false),
+                     "a final pass that failed during the session is tried again at the next launch")
+        suite.expect(Plan.patch(for: Plan.plan(once), facts: once) == ForkMeetingSidecarPatch(state: .interrupted, stopReason: .user),
+                     "that try is the last: marked interrupted beforehand, so a second failure stays")
+        suite.expect(Plan.plan(failed(.interrupted)) == .leave,
+                     "once the last try failed too, launches leave the master as it is")
+        suite.expect(Plan.plan(failed(.interrupted, final: Media(duration: 3000))) == .complete(removeMaster: true, discardDrafts: false),
+                     "a last try that wrote a whole final file before the app died still completes the meeting")
+        var quit = failed(.interrupted)
+        if case var .success(meeting) = quit.sidecar {
+            meeting.finalPass = nil
+            meeting.stopReason = .quit
+            quit.sidecar = .success(meeting)
+        }
+        suite.expect(Plan.plan(quit) == .finalize(stopReason: .quit, recovered: true, discardDrafts: false),
+                     "a meeting interrupted by a quit, never finalized, is still recovered")
     }
 }

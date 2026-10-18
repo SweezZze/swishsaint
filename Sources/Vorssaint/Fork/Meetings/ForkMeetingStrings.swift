@@ -225,6 +225,18 @@ struct ForkMeetingStrings {
     let actionOpenSettings: String
     let actionOpenMeetings: String
     let bubbleClose: String
+
+    // MARK: Service
+
+    /// The filmed window's app quit, during a recording started by hand: it
+    /// goes on with the sound, the picture frozen.
+    let noticeSourceGone: String
+    let voiceSourceGone: String
+    /// The final file's audio tracks, as QuickTime and VLC list them: the
+    /// mix every player plays, then the two sources.
+    let trackMix: String
+    let trackMeeting: String
+    let trackMicrophone: String
 }
 
 extension ForkMeetingStrings {
@@ -381,7 +393,13 @@ extension ForkMeetingStrings {
         actionShow: "Show in Finder",
         actionOpenSettings: "Open System Settings",
         actionOpenMeetings: "Meetings settings",
-        bubbleClose: "Close"
+        bubbleClose: "Close",
+        // MARK: Service
+        noticeSourceGone: "Filmed app quit",
+        voiceSourceGone: "The filmed app quit. The recording goes on with the sound; the picture stays on its last frame.",
+        trackMix: "Mix",
+        trackMeeting: "Meeting",
+        trackMicrophone: "Microphone"
     )
 }
 
@@ -539,7 +557,13 @@ extension ForkMeetingStrings {
         actionShow: "Mostrar no Finder",
         actionOpenSettings: "Abrir Ajustes do Sistema",
         actionOpenMeetings: "Ajustes das reuniões",
-        bubbleClose: "Fechar"
+        bubbleClose: "Fechar",
+        // MARK: Service
+        noticeSourceGone: "O app filmado foi fechado",
+        voiceSourceGone: "O app filmado foi fechado. A gravação continua com o som; a imagem fica parada no último quadro.",
+        trackMix: "Mixagem",
+        trackMeeting: "Reunião",
+        trackMicrophone: "Microfone"
     )
 }
 
@@ -697,7 +721,13 @@ extension ForkMeetingStrings {
         actionShow: "Finder’da göster",
         actionOpenSettings: "Sistem Ayarları’nı aç",
         actionOpenMeetings: "Toplantı ayarları",
-        bubbleClose: "Kapat"
+        bubbleClose: "Kapat",
+        // MARK: Service
+        noticeSourceGone: "Kaydedilen uygulama kapandı",
+        voiceSourceGone: "Kaydedilen uygulama kapandı. Kayıt sesle devam ediyor; görüntü son karede kalıyor.",
+        trackMix: "Karışım",
+        trackMeeting: "Toplantı",
+        trackMicrophone: "Mikrofon"
     )
 }
 
@@ -855,7 +885,13 @@ extension ForkMeetingStrings {
         actionShow: "Показать в Finder",
         actionOpenSettings: "Открыть Системные настройки",
         actionOpenMeetings: "Настройки встреч",
-        bubbleClose: "Закрыть"
+        bubbleClose: "Закрыть",
+        // MARK: Service
+        noticeSourceGone: "Снимаемое приложение закрыто",
+        voiceSourceGone: "Снимаемое приложение закрылось. Запись продолжается со звуком, изображение остановилось на последнем кадре.",
+        trackMix: "Микс",
+        trackMeeting: "Встреча",
+        trackMicrophone: "Микрофон"
     )
 }
 
@@ -1013,7 +1049,13 @@ extension ForkMeetingStrings {
         actionShow: "Mostrar en el Finder",
         actionOpenSettings: "Abrir Ajustes del Sistema",
         actionOpenMeetings: "Ajustes de reuniones",
-        bubbleClose: "Cerrar"
+        bubbleClose: "Cerrar",
+        // MARK: Service
+        noticeSourceGone: "La app grabada se cerró",
+        voiceSourceGone: "La app grabada se cerró. La grabación sigue con el sonido; la imagen se queda en su último fotograma.",
+        trackMix: "Mezcla",
+        trackMeeting: "Reunión",
+        trackMicrophone: "Micrófono"
     )
 }
 
@@ -1171,7 +1213,13 @@ extension ForkMeetingStrings {
         actionShow: "Zobraziť vo Finderi",
         actionOpenSettings: "Otvoriť Systémové nastavenia",
         actionOpenMeetings: "Nastavenia stretnutí",
-        bubbleClose: "Zavrieť"
+        bubbleClose: "Zavrieť",
+        // MARK: Service
+        noticeSourceGone: "Nahrávaná aplikácia skončila",
+        voiceSourceGone: "Nahrávaná aplikácia skončila. Nahrávanie pokračuje so zvukom, obraz zostáva na poslednom zábere.",
+        trackMix: "Zmes",
+        trackMeeting: "Stretnutie",
+        trackMicrophone: "Mikrofón"
     )
 }
 
@@ -1329,7 +1377,13 @@ extension ForkMeetingStrings {
         actionShow: "Im Finder zeigen",
         actionOpenSettings: "Systemeinstellungen öffnen",
         actionOpenMeetings: "Besprechungseinstellungen",
-        bubbleClose: "Schließen"
+        bubbleClose: "Schließen",
+        // MARK: Service
+        noticeSourceGone: "Gefilmte App beendet",
+        voiceSourceGone: "Die gefilmte App wurde beendet. Die Aufnahme läuft mit dem Ton weiter, das Bild bleibt beim letzten Frame stehen.",
+        trackMix: "Mischung",
+        trackMeeting: "Besprechung",
+        trackMicrophone: "Mikrofon"
     )
 }
 
@@ -1487,7 +1541,13 @@ extension ForkMeetingStrings {
         actionShow: "Afficher dans le Finder",
         actionOpenSettings: "Ouvrir les Réglages",
         actionOpenMeetings: "Réglages des réunions",
-        bubbleClose: "Fermer"
+        bubbleClose: "Fermer",
+        // MARK: Service
+        noticeSourceGone: "L’app filmée a quitté",
+        voiceSourceGone: "L’app filmée a quitté. L’enregistrement continue avec le son ; l’image reste figée sur la dernière vue.",
+        trackMix: "Mixage",
+        trackMeeting: "Réunion",
+        trackMicrophone: "Micro"
     )
 }
 
@@ -1645,7 +1705,13 @@ extension ForkMeetingStrings {
         actionShow: "Mostra nel Finder",
         actionOpenSettings: "Apri Impostazioni di Sistema",
         actionOpenMeetings: "Impostazioni riunioni",
-        bubbleClose: "Chiudi"
+        bubbleClose: "Chiudi",
+        // MARK: Service
+        noticeSourceGone: "L’app ripresa è stata chiusa",
+        voiceSourceGone: "L’app ripresa è stata chiusa. La registrazione continua con l’audio; l’immagine resta sull’ultimo fotogramma.",
+        trackMix: "Missaggio",
+        trackMeeting: "Riunione",
+        trackMicrophone: "Microfono"
     )
 }
 
@@ -1803,7 +1869,13 @@ extension ForkMeetingStrings {
         actionShow: "Finderに表示",
         actionOpenSettings: "システム設定を開く",
         actionOpenMeetings: "ミーティングの設定",
-        bubbleClose: "閉じる"
+        bubbleClose: "閉じる",
+        // MARK: Service
+        noticeSourceGone: "撮影中のアプリが終了",
+        voiceSourceGone: "撮影中のアプリが終了しました。録画は音声のまま続き、映像は最後のフレームで止まります。",
+        trackMix: "ミックス",
+        trackMeeting: "ミーティング",
+        trackMicrophone: "マイク"
     )
 }
 
@@ -1961,7 +2033,13 @@ extension ForkMeetingStrings {
         actionShow: "Finder에서 보기",
         actionOpenSettings: "시스템 설정 열기",
         actionOpenMeetings: "회의 설정",
-        bubbleClose: "닫기"
+        bubbleClose: "닫기",
+        // MARK: Service
+        noticeSourceGone: "녹화 중인 앱이 종료됨",
+        voiceSourceGone: "녹화 중인 앱이 종료되었습니다. 녹화는 소리와 함께 계속되며, 화면은 마지막 프레임에 멈춥니다.",
+        trackMix: "믹스",
+        trackMeeting: "회의",
+        trackMicrophone: "마이크"
     )
 }
 
@@ -2119,7 +2197,13 @@ extension ForkMeetingStrings {
         actionShow: "Показати у Finder",
         actionOpenSettings: "Відкрити Системні параметри",
         actionOpenMeetings: "Параметри зустрічей",
-        bubbleClose: "Закрити"
+        bubbleClose: "Закрити",
+        // MARK: Service
+        noticeSourceGone: "Знімана програма закрилася",
+        voiceSourceGone: "Знімана програма закрилася. Запис триває зі звуком, зображення зупинилося на останньому кадрі.",
+        trackMix: "Мікс",
+        trackMeeting: "Зустріч",
+        trackMicrophone: "Мікрофон"
     )
 }
 
@@ -2277,7 +2361,13 @@ extension ForkMeetingStrings {
         actionShow: "在访达中显示",
         actionOpenSettings: "打开系统设置",
         actionOpenMeetings: "会议设置",
-        bubbleClose: "关闭"
+        bubbleClose: "关闭",
+        // MARK: Service
+        noticeSourceGone: "被录制的应用已退出",
+        voiceSourceGone: "被录制的应用已退出。录制会继续录下声音，画面停在最后一帧。",
+        trackMix: "混音",
+        trackMeeting: "会议",
+        trackMicrophone: "麦克风"
     )
 }
 
@@ -2435,7 +2525,13 @@ extension ForkMeetingStrings {
         actionShow: "在 Finder 中顯示",
         actionOpenSettings: "打開系統設定",
         actionOpenMeetings: "會議設定",
-        bubbleClose: "關閉"
+        bubbleClose: "關閉",
+        // MARK: Service
+        noticeSourceGone: "被錄製的 App 已結束",
+        voiceSourceGone: "被錄製的 App 已結束。錄製會繼續錄下聲音，畫面停在最後一格。",
+        trackMix: "混音",
+        trackMeeting: "會議",
+        trackMicrophone: "麥克風"
     )
 }
 
@@ -2593,6 +2689,12 @@ extension ForkMeetingStrings {
         actionShow: "在 Finder 中顯示",
         actionOpenSettings: "打開系統設定",
         actionOpenMeetings: "會議設定",
-        bubbleClose: "關閉"
+        bubbleClose: "關閉",
+        // MARK: Service
+        noticeSourceGone: "被錄製的 App 已結束",
+        voiceSourceGone: "被錄製的 App 已結束。錄製會繼續錄下聲音，畫面停在最後一格。",
+        trackMix: "混音",
+        trackMeeting: "會議",
+        trackMicrophone: "麥克風"
     )
 }

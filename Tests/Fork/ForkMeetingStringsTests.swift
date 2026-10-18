@@ -44,7 +44,7 @@ enum ForkMeetingStringsTests {
     /// written for that room, never cut.
     private static func shortTexts(_ suite: TestSuite) {
         let notices: [ForkMeetingNotice] = [.started, .resumed, .saved, .recovered, .microphone("AirPods"),
-                                            .microphoneSilent, .diskLow(minutesLeft: 25), .displayChanged]
+                                            .microphoneSilent, .diskLow(minutesLeft: 25), .displayChanged, .sourceGone]
             + ForkMeetingFailure.all.map { .failure($0) }
         var tooLong: [String] = []
         for (language, strings) in zip(languages, allStrings) {
@@ -76,7 +76,7 @@ enum ForkMeetingStringsTests {
                      "every language names the new microphone")
         let announcements: [ForkMeetingAnnouncement] = [.started, .paused, .resumed, .stopped, .microphone("X"),
                                                         .microphoneSilent, .diskLow(minutesLeft: 5), .displayChanged,
-                                                        .failure(.diskFull)]
+                                                        .sourceGone, .failure(.diskFull)]
         suite.expect(allStrings.allSatisfy { strings in
                         let texts = announcements.map { $0.text(strings) }
                         return Set(texts).count == texts.count && texts.allSatisfy { !$0.isEmpty }
@@ -150,6 +150,10 @@ enum ForkMeetingStringsTests {
             }
         }
         suite.expect(tooLong.isEmpty, "every text of the pill and the bubble fits in 28 characters: \(tooLong)")
+        suite.expect(allStrings.allSatisfy { Set([$0.trackMix, $0.trackMeeting, $0.trackMicrophone]).count == 3 },
+                     "the final file's three audio tracks have three names in every language")
+        suite.expect(ForkMeetingStrings.strings(.fr).trackMeeting == "Réunion" && ForkMeetingStrings.strings(.fr).trackMicrophone == "Micro",
+                     "in French the sources are Réunion and Micro")
         suite.expect(allStrings.allSatisfy { $0.pillPause != $0.pillResume && $0.pillFilmDisplay != $0.pillFilmWindow
                                                 && $0.pillMicrophoneLevel != $0.pillMeetingLevel },
                      "the buttons and meters VoiceOver reads are told apart in every language")

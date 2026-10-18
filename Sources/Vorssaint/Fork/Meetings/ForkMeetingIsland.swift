@@ -54,6 +54,7 @@ enum ForkMeetingIsland {
         case .microphoneSilent: return "mic.slash"
         case .diskLow: return "externaldrive.badge.exclamationmark"
         case .displayChanged: return "display"
+        case .sourceGone: return "rectangle.on.rectangle.slash"
         case .failure: return "exclamationmark.triangle.fill"
         }
     }

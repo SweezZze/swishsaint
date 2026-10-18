@@ -197,6 +197,14 @@ enum ForkMeetingSidecarTests {
         suite.expect(ForkMeetingSidecarPatch().applied(to: after) == after, "an empty patch changes nothing")
         suite.expect(ForkMeetingSidecar.rewriting(.success(first), with: patch) == after,
                      "a readable sidecar of this version takes the patch")
+        let display = ForkMeetingSidecarPatch(target: .display).applied(to: first)
+        suite.expect(display.capture?.target == .display && display.capture?.microphone == first.capture?.microphone
+                        && display.capture?.quality == .standard,
+                     "the target really filmed replaces the setting's, nothing else of the capture")
+        let switched = ForkMeetingSidecarPatch(gap: .init(at: 42, seconds: 0, kind: .targetSwitch)).applied(to: first)
+        suite.expect(ForkMeetingSidecar.GapKind.targetSwitch.rawValue == "targetSwitch"
+                        && decoded(text(switched))?.gaps == [.init(at: 42, seconds: 0, kind: .targetSwitch)],
+                     "a switch between the window and the display is a gap of no length, written targetSwitch")
     }
 
     private static func onDisk(_ suite: TestSuite) {

@@ -100,6 +100,9 @@ enum ForkMeetingNotice: Equatable {
     case microphoneSilent
     case diskLow(minutesLeft: Int)
     case displayChanged
+    /// The filmed window's app quit: the picture holds its last frame, the
+    /// sound goes on.
+    case sourceGone
     case failure(ForkMeetingFailure)
 
     /// 28 characters at most.
@@ -113,6 +116,7 @@ enum ForkMeetingNotice: Equatable {
         case .microphoneSilent: return s.noticeMicrophoneSilent
         case .diskLow: return s.noticeDiskLow
         case .displayChanged: return s.noticeDisplayChanged
+        case .sourceGone: return s.noticeSourceGone
         case let .failure(failure): return failure.summary(s)
         }
     }
@@ -123,7 +127,8 @@ enum ForkMeetingNotice: Equatable {
         switch self {
         case let .microphone(name): return name
         case let .diskLow(minutes): return s.diskMinutes(minutes)
-        case .started, .resumed, .saved, .recovered, .microphoneSilent, .displayChanged, .failure: return nil
+        case .started, .resumed, .saved, .recovered, .microphoneSilent, .displayChanged, .sourceGone, .failure:
+            return nil
         }
     }
 }
@@ -138,6 +143,7 @@ enum ForkMeetingAnnouncement: Equatable {
     case microphoneSilent
     case diskLow(minutesLeft: Int)
     case displayChanged
+    case sourceGone
     case failure(ForkMeetingFailure)
 
     func text(_ s: ForkMeetingStrings) -> String {
@@ -150,6 +156,7 @@ enum ForkMeetingAnnouncement: Equatable {
         case .microphoneSilent: return s.voiceMicrophoneSilent
         case let .diskLow(minutes): return s.voiceDiskLow(minutes)
         case .displayChanged: return s.voiceDisplayChanged
+        case .sourceGone: return s.voiceSourceGone
         case let .failure(failure): return failure.summary(s) + ". " + failure.remedy(s)
         }
     }
@@ -181,7 +188,8 @@ enum ForkMeetingAnnouncement: Equatable {
 /// - a meeting started by hand is never ended by the detection
 ///   (`Session.endsWithMeeting`), and resumes after a sleep;
 /// - a locked screen pauses nothing: the sound goes on, the picture
-///   freezes, and the lock is noted in `meeting.json` as a gap.
+///   freezes, and the lock is noted in `meeting.json` as a gap;
+/// - the filmed app quitting ends nothing either: the sound goes on.
 struct ForkMeetingMachine {
     /// A start asked, the capture not running yet.
     struct Pending: Equatable {
@@ -196,6 +204,9 @@ struct ForkMeetingMachine {
         let config: ForkMeetingCaptureConfig
         let folder: URL
         let startedAt: Date
+        /// What the picture follows now: the setting, unless the capture had
+        /// to film the display (no window to film), or ⧉ switched it.
+        var target: ForkMeetingCaptureTarget = .window
         /// Seconds recorded before `runningSince`.
         var recordedBefore: TimeInterval = 0
         /// `nil` while paused or stopped.
@@ -269,7 +280,10 @@ struct ForkMeetingMachine {
         case resume
         case stop
         /// The stream runs and the writer took the first samples, in `folder`.
-        case captureStarted(ForkMeetingToken, folder: URL)
+        /// `target` is what the picture really follows, `microphone` the
+        /// name of the one recording, when the engine knows them.
+        case captureStarted(ForkMeetingToken, folder: URL, target: ForkMeetingCaptureTarget? = nil,
+                            microphone: String? = nil)
         case captureFailed(ForkMeetingToken, ForkMeetingFailure)
         /// Exactly once after `stopCapture`: the file is closed, or not.
         case writerFinished(ForkMeetingToken, ForkMeetingWriterResult)
@@ -285,6 +299,10 @@ struct ForkMeetingMachine {
         /// The microphone changed; `gap` seconds were lost rebuilding it.
         case microphoneChanged(name: String, gap: TimeInterval)
         case microphoneSilent
+        /// ⧉: the picture switches between the window and the display.
+        case toggleTarget
+        /// The filmed window's app quit; its last frame stays.
+        case sourceGone(ForkMeetingToken)
         case appWillTerminate
         case featureDisabled
     }
@@ -296,7 +314,8 @@ struct ForkMeetingMachine {
         case resumeCapture
         /// A new stream, for the same writer.
         case restartStream
-        /// The picture follows the meeting window's display again.
+        /// The picture follows the session's target again: the window, or the
+        /// display that holds it now.
         case switchTarget
         /// Stops everything the token started. A start that never ran
         /// leaves nothing behind; a recording closes its file and answers
@@ -337,13 +356,21 @@ struct ForkMeetingMachine {
             guard phase == .idle, !terminating else { return [] }
             return start(origin: .manual, request: request)
 
-        case let .captureStarted(token, folder):
+        case let .captureStarted(token, folder, target, microphone):
             guard case let .starting(pending) = phase, pending.token == token else { return [] }
-            var session = Session(token: token, config: pending.config, folder: folder, startedAt: now, runningSince: now)
+            let setting = pending.config.settings.target
+            var session = Session(token: token, config: pending.config, folder: folder, startedAt: now,
+                                  target: target ?? setting, runningSince: now)
             if locked { session.lockedAt = 0 }
             phase = .recording(session)
             let notice: ForkMeetingNotice = pending.config.microphoneDenied ? .failure(.microphoneDenied) : .started
-            return [.showPill(pill(session, paused: nil)), .notice(notice), .announce(.started)]
+            var effects: [Effect] = [.showPill(pill(session, paused: nil)), .notice(notice), .announce(.started)]
+            // The first `meeting.json` has the setting; it now says what
+            // really records.
+            var patch = ForkMeetingSidecarPatch(microphone: microphone)
+            if session.target != setting { patch.target = session.target }
+            if patch != ForkMeetingSidecarPatch() { effects.insert(.writeSidecar(folder, patch), at: 0) }
+            return effects
 
         case let .captureFailed(token, failure):
             if case let .starting(pending) = phase, pending.token == token {
@@ -469,8 +496,22 @@ struct ForkMeetingMachine {
             }
 
         case .displayChanged:
-            guard let session = activeSession, session.config.settings.target == .display else { return [] }
+            guard let session = activeSession, session.target == .display else { return [] }
             return [.switchTarget, .notice(.displayChanged), .announce(.displayChanged)]
+
+        case .toggleTarget:
+            guard var session = activeSession else { return [] }
+            session.target = session.target == .window ? .display : .window
+            replace(session)
+            // Nothing is lost: the switch is noted where the picture changes.
+            let gap = ForkMeetingSidecar.Gap(at: session.recorded(at: now), seconds: 0, kind: .targetSwitch)
+            return [.switchTarget, .writeSidecar(session.folder, ForkMeetingSidecarPatch(gap: gap))]
+
+        case let .sourceGone(token):
+            // Started by hand, the recording goes on with the sound: only the
+            // person ends it. (A detected meeting's end is the detection's.)
+            guard let session = activeSession, session.token == token else { return [] }
+            return [.notice(.sourceGone), .announce(.sourceGone)]
 
         case let .microphoneChanged(name, gap):
             guard var session = activeSession else { return [] }
