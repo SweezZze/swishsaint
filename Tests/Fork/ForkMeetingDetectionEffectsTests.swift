@@ -92,16 +92,16 @@ enum ForkMeetingDetectionEffectsTests {
     private static func offerCapture(_ suite: TestSuite) {
         let french = ForkMeetingStrings.strings(.fr)
         suite.expect(Support.offerCapture(window: "Chrome", sound: "Chrome", microphone: "AirPods", strings: french)
-                        == "Fenêtre de Chrome · son de Chrome · micro AirPods"
+                        == "Fenêtre\u{00A0}: Chrome · son\u{00A0}: Chrome · micro\u{00A0}: AirPods"
                         && Support.offerCapture(window: "Chrome", sound: french.offerWholeMac, microphone: "AirPods",
-                                                strings: french) == "Fenêtre de Chrome · son de tout le Mac · micro AirPods",
+                                                strings: french) == "Fenêtre\u{00A0}: Chrome · son\u{00A0}: tout le Mac · micro\u{00A0}: AirPods",
                      "the offer says the window, the sound and the microphone it records")
         suite.expect(Support.offerCapture(window: "Chrome", sound: nil, microphone: "AirPods", strings: french)
-                        == "Fenêtre de Chrome · micro AirPods"
+                        == "Fenêtre\u{00A0}: Chrome · micro\u{00A0}: AirPods"
                         && Support.offerCapture(window: "Chrome", sound: "Chrome", microphone: nil, strings: french)
-                        == "Fenêtre de Chrome · son de Chrome"
+                        == "Fenêtre\u{00A0}: Chrome · son\u{00A0}: Chrome"
                         && Support.offerCapture(window: "Chrome", sound: nil, microphone: nil, strings: french)
-                        == "Fenêtre de Chrome",
+                        == "Fenêtre\u{00A0}: Chrome",
                      "a sound or a microphone turned off is left out, never named as nothing")
         suite.expect(AppLanguage.allCases.map(ForkMeetingStrings.strings).allSatisfy { strings in
                         let line = Support.offerCapture(window: "Chrome", sound: nil, microphone: "AirPods", strings: strings)
