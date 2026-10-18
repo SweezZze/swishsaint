@@ -17,6 +17,7 @@ FORK_SOURCES=(
     Sources/Vorssaint/Fork/Core/ForkDefaults.swift
     Sources/Vorssaint/Fork/Core/ForkExtrasStrings.swift
     Sources/Vorssaint/Fork/Dictation/ForkDictationEngineChoice.swift
+    Sources/Vorssaint/Fork/Dictation/ForkDictationParakeetOffer.swift
     Sources/Vorssaint/Fork/Dictation/ForkDictationFailure.swift
     Sources/Vorssaint/Fork/Dictation/ForkDictationMachine.swift
     Sources/Vorssaint/Fork/Dictation/ForkDictationPresentation.swift

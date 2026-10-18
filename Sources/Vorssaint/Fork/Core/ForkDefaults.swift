@@ -56,6 +56,9 @@ enum ForkDefaultsKey {
     /// The build the person answered "Later" for. Machine state: kept out
     /// of the settings backup.
     static let updatePostponedBuild = "fork.update.postponedBuild"
+    /// Whether Parakeet was already offered on this Mac at a launch with
+    /// dictation on. Machine state: kept out of the settings backup.
+    static let dictationParakeetOffered = "fork.dictation.parakeetOffered"
 }
 
 enum ForkDefaults {

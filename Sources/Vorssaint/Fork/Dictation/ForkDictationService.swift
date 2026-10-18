@@ -94,6 +94,11 @@ final class ForkDictationService: ObservableObject {
     /// The model left the disk (deleted, downloading) since it was found
     /// damaged.
     var modelReplaced = false
+    /// Whether dictation was wanted at the last sync: turning it on offers
+    /// Parakeet (`+ParakeetOffer`). Nil until the first sync.
+    var wasWanted: Bool?
+    var parakeetOfferAlert: NonModalAlert?
+    var launchOfferAttempts = 0
     lazy var sounds: [ForkDictationSound: NSSound] = Self.loadSounds()
 
     private init() {}
@@ -110,6 +115,7 @@ final class ForkDictationService: ObservableObject {
         shared.followPermissions()
         shared.sync()
         DispatchQueue.main.asyncAfter(deadline: .now() + 5) {
+            shared.offerParakeetAtLaunch()
             guard shared.isRunning else { return }
             shared.engines.warmUpIfWanted()
         }
@@ -126,6 +132,9 @@ final class ForkDictationService: ObservableObject {
 
     func sync() {
         revalidateFailure()
+        let wanted = Self.isWanted
+        if wasWanted == false, wanted { offerParakeet(.turnedOn) }
+        wasWanted = wanted
         let canRun = SessionActivitySupport.tapShouldRun(featureWanted: Self.isWanted,
                                                          accessibilityGranted: AXIsProcessTrusted(),
                                                          sessionIsActive: SessionActivity.shared.isActive)

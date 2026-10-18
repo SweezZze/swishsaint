@@ -36,6 +36,8 @@ enum ForkDefaultsTests {
     private static func backup(_ suite: TestSuite) {
         suite.expect(!ForkDefaults.backupKeys.contains(ForkDefaultsKey.updatePostponedBuild),
                      "the postponed update stays on this Mac")
+        suite.expect(!ForkDefaults.backupKeys.contains(ForkDefaultsKey.dictationParakeetOffered),
+                     "the Parakeet offer already made stays on this Mac")
         let key = SettingsBackupSupport.settingsKey
         let payload: [String: Any] = [
             SettingsBackupSupport.formatVersionKey: SettingsBackupSupport.formatVersion,

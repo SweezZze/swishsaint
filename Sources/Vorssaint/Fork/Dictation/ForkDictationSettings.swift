@@ -52,6 +52,14 @@ struct ForkDictationSettingsSection: View {
             .disabled(!enabled)
         }
 
+        // Until Parakeet is installed, its card comes first: it is what
+        // dictation needs next, and its download shows its progress here.
+        if ForkParakeetCard.isWanted(store: store, engine: engineRaw) {
+            Section {
+                ForkParakeetCard(text: text, store: store, isProminent: true)
+            }
+        }
+
         // Off, what only matters while dictating is greyed out, like the
         // other Extras pages. The model can still be downloaded beforehand.
         ForkDictationShortcutsSection(text: text)
@@ -579,7 +587,7 @@ private struct ForkDictationRecognitionSection: View {
             }
             inUse
 
-            if setting != .apple {
+            if setting != .apple, !ForkParakeetCard.isWanted(store: store, engine: engineRaw) {
                 ForkParakeetCard(text: text, store: store)
             }
 
@@ -644,6 +652,16 @@ private struct ForkDictationRecognitionSection: View {
 private struct ForkParakeetCard: View {
     let text: ForkDictationStrings
     @ObservedObject var store: ForkParakeetModelStore
+    /// At the top of the page, while the model is missing: its main button
+    /// stands out.
+    var isProminent = false
+
+    /// Whether the model is still to install for the engine chosen.
+    static func isWanted(store: ForkParakeetModelStore, engine: String) -> Bool {
+        guard (ForkDictationEngineSetting(rawValue: engine) ?? .fallback) != .apple else { return false }
+        if case .installed = store.state { return false }
+        return true
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -678,7 +696,8 @@ private struct ForkParakeetCard: View {
             Button(store.canCloneFromFluidAudioCache
                    ? text.actionInstall
                    : text.parakeetDownload(Self.size(store.totalBytes - store.resumableBytes))) { store.install() }
-                .controlSize(.small)
+                .controlSize(isProminent ? .regular : .small)
+                .buttonStyle(ProminenceButtonStyle(isProminent: isProminent))
         case .downloading:
             Button(text.parakeetCancel) { store.cancel() }
                 .controlSize(.small)
@@ -695,7 +714,8 @@ private struct ForkParakeetCard: View {
             }
         case .failed:
             Button(text.parakeetRetry) { store.install() }
-                .controlSize(.small)
+                .controlSize(isProminent ? .regular : .small)
+                .buttonStyle(ProminenceButtonStyle(isProminent: isProminent))
         }
     }
 
@@ -1112,6 +1132,19 @@ private struct ForkDictationAdvancedSection: View {
                         .font(.caption)
                 }
             }
+        }
+    }
+}
+
+/// `.borderedProminent` when it stands out, the default style otherwise.
+private struct ProminenceButtonStyle: PrimitiveButtonStyle {
+    let isProminent: Bool
+
+    func makeBody(configuration: Configuration) -> some View {
+        if isProminent {
+            Button(configuration).buttonStyle(.borderedProminent)
+        } else {
+            Button(configuration).buttonStyle(.automatic)
         }
     }
 }
