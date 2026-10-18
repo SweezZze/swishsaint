@@ -56,6 +56,31 @@ struct ForkDictationRecord: Codable, Equatable, Identifiable {
         self.hasAudio = hasAudio
         self.clipboardEntryID = clipboardEntryID
     }
+
+    private enum CodingKeys: String, CodingKey {
+        case id, date, duration, engine, language, rawText, text, outcome, failure
+        case targetBundleID, targetName, isPinned, hasAudio, clipboardEntryID
+    }
+
+    /// Tolerant: a field added by a later version, or one this version does
+    /// not know, never costs the record. Only the id is required.
+    init(from decoder: Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        id = try values.decode(UUID.self, forKey: .id)
+        date = (try? values.decodeIfPresent(Date.self, forKey: .date)) ?? Date(timeIntervalSince1970: 0)
+        duration = (try? values.decodeIfPresent(TimeInterval.self, forKey: .duration)) ?? 0
+        engine = (try? values.decodeIfPresent(String.self, forKey: .engine)) ?? ""
+        language = try? values.decodeIfPresent(String.self, forKey: .language)
+        rawText = (try? values.decodeIfPresent(String.self, forKey: .rawText)) ?? ""
+        text = (try? values.decodeIfPresent(String.self, forKey: .text)) ?? ""
+        outcome = (try? values.decodeIfPresent(Outcome.self, forKey: .outcome)) ?? .inHistoryOnly
+        failure = try? values.decodeIfPresent(String.self, forKey: .failure)
+        targetBundleID = try? values.decodeIfPresent(String.self, forKey: .targetBundleID)
+        targetName = try? values.decodeIfPresent(String.self, forKey: .targetName)
+        isPinned = (try? values.decodeIfPresent(Bool.self, forKey: .isPinned)) ?? false
+        hasAudio = (try? values.decodeIfPresent(Bool.self, forKey: .hasAudio)) ?? false
+        clipboardEntryID = try? values.decodeIfPresent(UUID.self, forKey: .clipboardEntryID)
+    }
 }
 
 /// How long the history keeps what: the audio a week, the text until the
@@ -91,11 +116,24 @@ enum ForkDictationIndex {
         return try encoder.encode(records)
     }
 
-    /// An unreadable index gives an empty history rather than an error: the
-    /// audio files alone are no use without their text.
-    static func decode(_ data: Data) -> [ForkDictationRecord] {
-        let decoder = JSONDecoder()
-        let records = (try? decoder.decode([ForkDictationRecord].self, from: data)) ?? []
-        return records.sorted { $0.date > $1.date }
+    /// The records, record by record: one that cannot be read is skipped,
+    /// the others stay. Nil when the file is not a list at all, so the
+    /// caller can set it aside instead of writing over it.
+    static func decode(_ data: Data) -> [ForkDictationRecord]? {
+        guard let items = try? JSONDecoder().decode([Lenient].self, from: data) else { return nil }
+        return items.compactMap(\.record).sorted { $0.date > $1.date }
+    }
+
+    private struct Lenient: Decodable {
+        let record: ForkDictationRecord?
+        init(from decoder: Decoder) throws {
+            record = try? ForkDictationRecord(from: decoder)
+        }
+    }
+
+    /// The audio files no record names any more (`<id>.m4a`), to remove.
+    static func orphans(_ fileNames: [String], records: [ForkDictationRecord]) -> [String] {
+        let kept = Set(records.map { "\($0.id.uuidString).m4a" })
+        return fileNames.filter { $0.hasSuffix(".m4a") && !$0.hasPrefix(".") && !kept.contains($0) }
     }
 }

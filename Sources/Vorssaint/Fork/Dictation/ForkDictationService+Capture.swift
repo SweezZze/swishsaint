@@ -18,6 +18,9 @@ extension ForkDictationService {
     }
 
     func startCapture() {
+        // The Dictations panel takes keys while open: the text must go to
+        // the app the person dictates into, not to its search field.
+        ForkDictationHistoryPanel.shared.hide()
         if let failure = pendingFailure {
             // Said once the person clearly meant to dictate, never for a
             // shortcut that only lingered on its modifier.
@@ -161,7 +164,8 @@ extension ForkDictationService {
         case let .failure(failure):
             // Kept with its audio: the history can try again, with the
             // other engine if need be.
-            let recordID = keepInHistory(text: "", outcome: .failed, failure: failure)
+            let recordID = keepInHistory(takeKeptCapture(), text: "", outcome: .failed, failure: failure,
+                                         clipboardEntryID: nil)
             send(.failed(failure))
             if let recordID { presenter.attach(recordID: recordID) }
         }

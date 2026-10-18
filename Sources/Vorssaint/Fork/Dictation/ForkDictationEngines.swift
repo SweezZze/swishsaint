@@ -11,6 +11,10 @@ final class ForkDictationEngines {
 
     let apple = ForkAppleSpeechEngine()
     let parakeet: ForkParakeetSpeechEngine
+    /// Apple's engine for the history alone: a dictation that begins or is
+    /// cancelled while a recording is transcribed again never touches it.
+    /// Parakeet shares its loaded model instead (`transcribeDetached`).
+    private let historyApple = ForkAppleSpeechEngine()
 
     private let store: ForkParakeetModelStore
     private var storeObserver: AnyCancellable?
@@ -72,21 +76,27 @@ final class ForkDictationEngines {
         parakeet.warmUpInBackground()
     }
 
-    /// Transcribes audio kept in the dictation history, outside any session
-    /// (the caller makes sure none is under way: the engines are shared).
-    /// `language` nil: the dictation language. `completion` on the main
-    /// thread, with the raw text.
+    /// Transcribes audio kept in the dictation history, apart from any
+    /// dictation: Parakeet through its detached path, Apple through an
+    /// engine of its own. `language` nil: the dictation language.
+    /// `completion` on the main thread, with the raw text, called once.
     func transcribe(samples: [Float], setting: ForkDictationEngineSetting, language: String?,
                     completion: @escaping (Result<String, ForkDictationFailure>) -> Void) {
         let language = language
             ?? UserDefaults.standard.string(forKey: ForkDefaultsKey.dictationLocale) ?? ""
-        let engine: ForkDictationEngine
-        switch self.engine(for: setting, language: language) {
-        case let .success(chosen): engine = chosen
+        switch kind(for: setting, language: language) {
         case let .failure(failure):
             completion(.failure(failure))
-            return
+        case .success(.parakeet):
+            parakeet.transcribeDetached(samples, language: language, completion: completion)
+        case .success(.apple):
+            transcribeWithApple(samples, language: language, completion: completion)
         }
+    }
+
+    private func transcribeWithApple(_ samples: [Float], language: String,
+                                     completion: @escaping (Result<String, ForkDictationFailure>) -> Void) {
+        let engine = historyApple
         let vocabulary = ForkDictationSupport.vocabulary(
             from: UserDefaults.standard.string(forKey: ForkDefaultsKey.dictationVocabulary) ?? "")
         if let failure = engine.begin(language: language, vocabulary: vocabulary) {
@@ -106,10 +116,6 @@ final class ForkDictationEngines {
             answer(.failure(failure))
         }
         engine.onStopped = nil
-        guard engine.kind == .apple else {
-            engine.finish(samples: samples, completion: answer)
-            return
-        }
         // Apple recognizes what it is fed: the recording goes in by blocks,
         // as the microphone would have sent it, then the request ends.
         DispatchQueue.global(qos: .userInitiated).async {
@@ -126,9 +132,15 @@ final class ForkDictationEngines {
         }
     }
 
+    /// Gives up a history transcription that outlived its guard delay.
+    func cancelHistoryTranscription() {
+        historyApple.cancel()
+    }
+
     /// Dictation turned off or the app quitting: nothing stays in memory.
     func suspend() {
         apple.cancel()
+        historyApple.cancel()
         parakeet.cancel()
         parakeet.unload()
     }

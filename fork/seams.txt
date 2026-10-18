@@ -14,4 +14,4 @@ settings2      Sources/Vorssaint/UI/Settings/SettingsView.swift               # 
 settings3      Sources/Vorssaint/UI/Settings/SettingsDirectory.swift          # page « Extras » : sa ligne dans la barre latérale et la recherche
 settings4      Sources/Vorssaint/UI/Settings/SettingsDirectory.swift          # pages des features du fork : leur ligne dans la barre latérale et la recherche
 window-layout  Sources/Vorssaint/Services/WindowLayout/WindowLayoutService.swift  # gestes du trackpad : suivent chaque synchro et chaque arrêt de Disposition des fenêtres
-dictation-history  Sources/Vorssaint/Services/Clipboard/ClipboardHistoryService.swift  # dictée : chaque transcription entre dans l'historique du presse-papiers, avec l'app comme source, et rend l'id de l'entrée (promote est privé)
+dictation-history  Sources/Vorssaint/Services/Clipboard/ClipboardHistoryService.swift  # dictée : chaque transcription entre dans l'historique du presse-papiers, avec l'app comme source (promote est privé)

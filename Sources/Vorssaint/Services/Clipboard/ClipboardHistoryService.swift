@@ -127,7 +127,7 @@ final class ClipboardHistoryService: ObservableObject {
     func ignoreNextChange(upTo changeCount: Int) {
         lastChangeCount = max(lastChangeCount, changeCount)
     }
-    @discardableResult func forkRecordText(_ text: String, source: String?) -> UUID? { guard isRunning else { return nil }; promote(text, source: source, keepsSource: false); let kept = text.trimmingCharacters(in: .whitespacesAndNewlines); return entries.first { $0.kind == .text && $0.text == kept }?.id } // FORK(dictation-history)
+    func forkRecordText(_ text: String, source: String?) { guard isRunning else { return }; promote(text, source: source, keepsSource: false) } // FORK(dictation-history)
 
     /// ClipboardAutoClearService calls this after it actually empties the
     /// system pasteboard, so the menu bar preview stops showing content that

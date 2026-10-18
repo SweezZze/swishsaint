@@ -16,6 +16,8 @@ struct ForkDictationHistoryRowView: View {
     let playback: Playback
     let clock: ForkDictationHistoryPlaybackClock
     let isRetranscribing: Bool
+    /// False while another dictation is transcribed again: one at a time.
+    let canRetranscribe: Bool
     let problem: String?
     let justCopied: Bool
     /// Pinned dictations and search results sit under no day: their own
@@ -51,6 +53,7 @@ struct ForkDictationHistoryRowView: View {
                         panel.retranscribe(record, with: ForkDictationEngines.setting)
                     }
                     .controlSize(.small)
+                    .disabled(!canRetranscribe)
                     .padding(.top, 1)
                 }
             }
@@ -246,7 +249,7 @@ struct ForkDictationHistoryRowView: View {
                     panel.retranscribe(record, with: .apple)
                 }
             }
-            .disabled(isRetranscribing)
+            .disabled(!canRetranscribe)
         }
         Button(record.isPinned ? text.historyUnpin : text.historyPin) { panel.togglePin(record) }
         if record.hasAudio {

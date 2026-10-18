@@ -80,6 +80,12 @@ final class ForkDictationService: ObservableObject {
     var pasteLastGeneration = 0
     /// The session's audio and raw text, for the dictation history: kept
     /// from the end of the capture until the record is written.
+    struct KeptCapture {
+        let samples: [Float]
+        let duration: TimeInterval
+        let rawText: String
+    }
+
     var keptCapture: (samples: [Float], duration: TimeInterval)?
     var keptRawText: String?
 

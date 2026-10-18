@@ -31,6 +31,12 @@ final class ForkDictationArchive: ObservableObject {
     private let queue = DispatchQueue(label: "fork.dictation.archive", qos: .utility)
     private let log = Logger(subsystem: "fork.dictation", category: "archive")
     private var purgeTimer: Timer?
+    /// Bumped by each transcription again and by its guard: a late answer
+    /// is dropped.
+    private var retranscribeGeneration = 0
+    private var retranscribeGuard: DispatchWorkItem?
+    /// How long a transcription again may take before it is given up.
+    static let retranscribeTimeout: TimeInterval = 120
 
     init(directory: URL? = nil) {
         // Outside a real bundle (a test tool) there is no container: the
@@ -70,7 +76,7 @@ final class ForkDictationArchive: ObservableObject {
                     PrivateFileStore.createDirectory(at: directory)
                     try Self.writeAudio(samples, to: url)
                 } catch {
-                    self.log.error("audio not kept: \(error.localizedDescription, privacy: .public)")
+                    self.log.error("audio not kept: \(error.localizedDescription, privacy: .private)")
                     DispatchQueue.main.async { self.update(record.id) { $0.hasAudio = false } }
                 }
             }
@@ -110,6 +116,7 @@ final class ForkDictationArchive: ObservableObject {
 
     func deleteAll() {
         precondition(Thread.isMainThread)
+        endRetranscription()
         records = []
         let directory = directory
         queue.async { [weak self] in
@@ -141,29 +148,39 @@ final class ForkDictationArchive: ObservableObject {
 
     /// Transcribes a kept recording again, with `engine` (Parakeet or Apple,
     /// or the automatic choice) and `language` (nil: the dictation's). The
-    /// record takes the new text. Refused while a dictation is under way:
-    /// both share the engines.
+    /// record takes the new text. One at a time; a dictation may run
+    /// meanwhile, the engines keep the two apart. `completion` is called
+    /// once, at the latest after `retranscribeTimeout`.
     func retranscribe(_ id: UUID, engine setting: ForkDictationEngineSetting, language: String?,
                       completion: @escaping (Result<String, ForkDictationFailure>) -> Void) {
         precondition(Thread.isMainThread)
-        guard retranscribing == nil, !ForkDictationService.shared.isDictating else {
+        guard retranscribing == nil else {
             completion(.failure(.transcriptionFailed))
             return
         }
         retranscribing = id
+        retranscribeGeneration += 1
+        let generation = retranscribeGeneration
+        let finish: (Result<String, ForkDictationFailure>) -> Void = { [weak self] result in
+            guard let self, self.retranscribeGeneration == generation else { return }
+            self.endRetranscription()
+            completion(result)
+        }
+        let guardWork = DispatchWorkItem { [weak self] in
+            ForkDictationEngines.shared.cancelHistoryTranscription()
+            self?.log.error("transcription again gave up after \(Self.retranscribeTimeout, format: .fixed(precision: 0)) s")
+            finish(.failure(.transcriptionFailed))
+        }
+        retranscribeGuard = guardWork
+        DispatchQueue.main.asyncAfter(deadline: .now() + Self.retranscribeTimeout, execute: guardWork)
         loadSamples(id) { [weak self] samples in
-            guard let self else { return }
-            guard let samples else {
-                self.retranscribing = nil
-                completion(.failure(.transcriptionFailed))
-                return
-            }
+            guard let self, self.retranscribeGeneration == generation else { return }
+            guard let samples else { return finish(.failure(.transcriptionFailed)) }
             let engines = ForkDictationEngines.shared
             let kind = engines.kind(for: setting, language: language ?? "")
             engines.transcribe(samples: samples, setting: setting, language: language) { result in
-                self.retranscribing = nil
-                switch result {
-                case let .success(raw):
+                guard self.retranscribeGeneration == generation else { return }
+                if case let .success(raw) = result {
                     let text = ForkDictationService.corrected(raw)
                     self.update(id) { record in
                         record.rawText = raw
@@ -175,12 +192,21 @@ final class ForkDictationArchive: ObservableObject {
                             record.failure = nil
                         }
                     }
-                    completion(.success(text))
-                case let .failure(failure):
-                    completion(.failure(failure))
+                    finish(.success(text))
+                } else if case let .failure(failure) = result {
+                    finish(.failure(failure))
                 }
             }
         }
+    }
+
+    /// Ends the transcription again under way, if any: its answer, should
+    /// it still come, is dropped.
+    private func endRetranscription() {
+        retranscribeGuard?.cancel()
+        retranscribeGuard = nil
+        retranscribeGeneration += 1
+        if retranscribing != nil { retranscribing = nil }
     }
 
     // MARK: Retention
@@ -191,7 +217,11 @@ final class ForkDictationArchive: ObservableObject {
         precondition(Thread.isMainThread)
         let plan = ForkDictationRetention.plan(records, now: Date())
         guard !plan.dropAudio.isEmpty || !plan.dropRecords.isEmpty else {
-            queue.async { [weak self] in self?.measure() }
+            let snapshot = records
+            queue.async { [weak self] in
+                self?.removeOrphans(keeping: snapshot)
+                self?.measure()
+            }
             return
         }
         let dropped = Set(plan.dropRecords)
@@ -207,6 +237,7 @@ final class ForkDictationArchive: ObservableObject {
         queue.async { [weak self] in
             files.forEach { try? FileManager.default.removeItem(at: $0) }
             self?.writeIndex(snapshot)
+            self?.removeOrphans(keeping: snapshot)
             self?.measure()
         }
     }
@@ -226,8 +257,26 @@ final class ForkDictationArchive: ObservableObject {
 
     private func load() {
         guard let data = try? Data(contentsOf: indexFile) else { return }
-        records = ForkDictationIndex.decode(data)
+        guard let decoded = ForkDictationIndex.decode(data) else {
+            // Set aside, never written over: a later version may read it.
+            // The audio, of no use without its text, goes at the next purge.
+            let aside = directory.appendingPathComponent(
+                "index.unreadable-\(Int(Date().timeIntervalSince1970)).json")
+            try? FileManager.default.moveItem(at: indexFile, to: aside)
+            log.error("unreadable index set aside")
+            return
+        }
+        records = decoded
         queue.async { [weak self] in self?.measure() }
+    }
+
+    /// On the queue. Audio files no record names: left by a crash, a
+    /// deleted record or an index set aside.
+    private func removeOrphans(keeping records: [ForkDictationRecord]) {
+        let names = (try? FileManager.default.contentsOfDirectory(atPath: directory.path)) ?? []
+        for name in ForkDictationIndex.orphans(names, records: records) {
+            try? FileManager.default.removeItem(at: directory.appendingPathComponent(name))
+        }
     }
 
     private func saveIndex() {

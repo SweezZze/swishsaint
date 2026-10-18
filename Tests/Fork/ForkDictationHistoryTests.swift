@@ -52,12 +52,38 @@ enum ForkDictationHistoryTests {
         failed.clipboardEntryID = UUID()
         let records = [record(daysAgo: 3), failed, record(daysAgo: 0.5, pinned: true)]
         let data = try? ForkDictationIndex.encode(records)
-        let decoded = data.map(ForkDictationIndex.decode) ?? []
+        let decoded = data.flatMap(ForkDictationIndex.decode) ?? []
         suite.expect(decoded.count == 3 && decoded.map(\.id) == records.sorted { $0.date > $1.date }.map(\.id),
                      "the index reads back newest first")
         suite.expect(decoded.first(where: { $0.id == failed.id }) == failed, "every field survives the index")
-        suite.expect(ForkDictationIndex.decode(Data("not json".utf8)).isEmpty,
-                     "an unreadable index gives an empty history, not a crash")
+        suite.expect(ForkDictationIndex.decode(Data("not json".utf8)) == nil,
+                     "an unreadable index is said so, to be set aside rather than written over")
+
+        // One record a later version wrote with a field this one does not
+        // know, one missing fields, one broken: only the broken one goes.
+        let known = record(daysAgo: 1)
+        let later = UUID(), sparse = UUID()
+        let json = """
+        [\(String(decoding: (try? ForkDictationIndex.encode([known])) ?? Data(), as: UTF8.self).dropFirst().dropLast()),
+         {"id": "\(later.uuidString)", "text": "Plus tard", "hasAudio": true, "isPinned": true,
+          "outcome": "pasted", "newField": {"x": 1}, "date": 1},
+         {"id": "\(sparse.uuidString)"},
+         {"id": "not a uuid", "text": "lost"},
+         {"id": "\(UUID().uuidString)", "outcome": "a future outcome", "text": "Kept"}]
+        """
+        let partial = ForkDictationIndex.decode(Data(json.utf8)) ?? []
+        suite.expect(partial.count == 4, "a record that cannot be read costs only itself (got \(partial.count))")
+        suite.expect(partial.contains { $0.id == known.id && $0 == known }, "a known record reads back whole")
+        suite.expect(partial.first { $0.id == later }.map { $0.isPinned && $0.text == "Plus tard" } == true,
+                     "an unknown field is ignored, the pin stays")
+        suite.expect(partial.first { $0.id == sparse }.map { !$0.hasAudio && $0.text.isEmpty } == true,
+                     "missing fields take safe defaults")
+        suite.expect(partial.contains { $0.text == "Kept" && $0.outcome == .inHistoryOnly },
+                     "an outcome this version does not know reads as kept in the history")
+
+        let names = ["\(known.id.uuidString).m4a", "\(UUID().uuidString).m4a", ".x.partial.m4a", "index.json"]
+        suite.expect(ForkDictationIndex.orphans(names, records: [known]) == [names[1]],
+                     "only audio no record names is an orphan; partial files and the index are left alone")
     }
 
     private static func shortcuts(_ suite: TestSuite) {

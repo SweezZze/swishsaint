@@ -4,6 +4,7 @@
 import AppKit
 import AVFoundation
 import Carbon.HIToolbox
+import Combine
 import SwiftUI
 
 /// The dictations window: the clipboard history's quick panel, for what was
@@ -119,14 +120,14 @@ final class ForkDictationHistoryPanel {
     }
 
     func retranscribe(_ record: ForkDictationRecord, with engine: ForkDictationEngineSetting) {
-        guard record.hasAudio, !model.retranscribing.contains(record.id) else { return }
+        // One at a time: the archive says which, and the rows grey the
+        // others meanwhile.
+        guard record.hasAudio, model.archive.retranscribing == nil else { return }
         if model.player.playingID == record.id { model.player.stop() }
-        model.retranscribing.insert(record.id)
         model.problems[record.id] = nil
         let id = record.id
         ForkDictationArchive.shared.retranscribe(id, engine: engine, language: record.language) { [weak self] result in
             guard let self else { return }
-            self.model.retranscribing.remove(id)
             if case let .failure(failure) = result {
                 self.model.problems[id] = failure.summary(ForkDictationStrings.current)
             }
@@ -336,7 +337,6 @@ final class ForkDictationHistoryModel: ObservableObject {
     @Published private(set) var revealID = UUID()
     /// Bumped on every opening, so the list starts from the top.
     @Published var presentationID = UUID()
-    @Published var retranscribing: Set<UUID> = []
     /// A retranscription that failed, said on its row.
     @Published var problems: [UUID: String] = [:]
     /// Rows that just copied, for a short confirmation.
@@ -345,6 +345,24 @@ final class ForkDictationHistoryModel: ObservableObject {
     let player = ForkDictationHistoryPlayer()
 
     var archive: ForkDictationArchive { .shared }
+
+    private var recordsObserver: AnyCancellable?
+
+    init() {
+        // A dictation deleted elsewhere (the settings page clears them all)
+        // stops playing and loses what was said about it.
+        recordsObserver = ForkDictationArchive.shared.$records
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] records in
+                guard let self else { return }
+                let ids = Set(records.map(\.id))
+                if let playing = self.player.playingID, !ids.contains(playing) { self.player.stop() }
+                if self.problems.keys.contains(where: { !ids.contains($0) }) {
+                    self.problems = self.problems.filter { ids.contains($0.key) }
+                }
+                if let selected = self.selectedID, !ids.contains(selected) { self.selectedID = nil }
+            }
+    }
 
     func sections(calendar: Calendar = .current) -> [ForkDictationHistoryListing.Section] {
         ForkDictationHistoryListing.sections(archive.records, query: query, calendar: calendar)
