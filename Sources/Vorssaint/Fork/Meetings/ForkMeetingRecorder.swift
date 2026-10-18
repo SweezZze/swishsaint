@@ -86,6 +86,9 @@ final class ForkMeetingRecorder: @unchecked Sendable {
     /// The picture froze (true: window minimized or hidden, display asleep)
     /// or came back (false). The sound goes on meanwhile.
     var onPictureFrozen: ((ForkMeetingToken, Bool) -> Void)?
+    /// What the picture follows changed: ⧉ took, or the window went and its
+    /// display is filmed instead. Never sent for a switch that did not take.
+    var onTargetChanged: ((ForkMeetingToken, ForkMeetingCaptureTarget) -> Void)?
     /// Another microphone took over, after `gap` seconds without it:
     /// `microphoneChanged(name:gap:)`.
     var onMicrophoneSwitch: ((ForkMeetingToken, String, TimeInterval) -> Void)?
@@ -114,9 +117,15 @@ final class ForkMeetingRecorder: @unchecked Sendable {
     private var microphone: ForkMeetingMicrophone?
     private var arbiter = ForkMeetingSoundArbiter(hasTap: false, hasWitness: false)
     private var window: CGWindowID?
+    /// What the stream films (or filmed last, while none runs).
     private var aim: ForkMeetingCaptureStream.Aim?
+    /// ⧉ during a sleep: the restart at the wake takes it.
+    private var pendingAim: ForkMeetingCaptureStream.Aim?
     private var running = false
     private var restarting = false
+    /// The stream was stopped for a sleep: only `restartStream` builds the
+    /// next one.
+    private var suspended = false
     private var stopResult: ForkMeetingWriterResult?
     private var stopWaiters: [(ForkMeetingWriterResult) -> Void] = []
     private var stopRequested = false
@@ -285,9 +294,7 @@ final class ForkMeetingRecorder: @unchecked Sendable {
         guard gate.isAuthorized else { return cancelled() }
         lock.withLock { running = true }
         let codec = writer.codec == .hevc ? "hvc1" : "avc1"
-        let filmed: ForkMeetingCaptureTarget
-        if case .window = aim { filmed = .window } else { filmed = .display }
-        return .success(ForkMeetingRecorderStart(target: filmed, window: window, sound: sound,
+        return .success(ForkMeetingRecorderStart(target: Self.target(of: aim), window: window, sound: sound,
                                                  microphone: microphoneName, outputSize: outputSize, codec: codec))
     }
 
@@ -306,7 +313,12 @@ final class ForkMeetingRecorder: @unchecked Sendable {
         let now = ForkMeetingWriter.hostSeconds()
         guard lock.withLock({ running }) else { return }
         pauseClock.pause(at: now)
-        if stoppingStream { lock.withLock { stream }?.suspend() }
+        if stoppingStream {
+            lock.withLock {
+                suspended = true
+                return stream
+            }?.suspend()
+        }
     }
 
     func resume() {
@@ -316,41 +328,63 @@ final class ForkMeetingRecorder: @unchecked Sendable {
     }
 
     /// A new stream on the same writer, aimed where the current one was (a
-    /// window, or the display that holds it now). Tried again for a few
-    /// seconds while the displays come back; `onFailure(.streamStopped)` if
-    /// it never runs.
+    /// window, or the display that holds it now), or where ⧉ asked during a
+    /// sleep. A window that went gives way to its display. Tried again for a
+    /// few seconds while the displays come back; `onFailure(.streamStopped)`
+    /// if it never runs.
     func restartStream() {
+        restart(to: nil)
+    }
+
+    private func restart(to requested: ForkMeetingCaptureStream.Aim?) {
         let job = lock.withLock { () -> (ForkMeetingCaptureStream, ForkMeetingCaptureStream.Aim)? in
             guard running, !restarting, let stream, let aim else { return nil }
             restarting = true
-            return (stream, Self.refreshed(aim, window: window))
+            suspended = false
+            defer { pendingAim = nil }
+            return (stream, Self.refreshed(requested ?? pendingAim ?? aim, window: window))
         }
-        guard let (stream, aim) = job else { return }
-        stream.restart(aim) { [weak self] stop in
+        guard let (stream, next) = job else { return }
+        stream.restart(next) { [weak self] stop, used in
             guard let self else { return }
             self.lock.withLock { self.restarting = false }
-            guard let stop, stop != .ignored else { return }
+            guard let stop else { return self.adopt(used) }
+            guard stop != .ignored else { return }
             let failure = ForkMeetingCaptureSupport.runningFailure(stop) ?? .streamStopped
             self.send { $0.onFailure?($0.token, failure) }
         }
     }
 
     /// Films the window, or the display that holds it now (again: a display
-    /// unplugged). Without a window to film, the display. The output keeps
-    /// its size; if the running stream refuses the change, a new one is
-    /// built.
+    /// unplugged). Without a window to film, or once it went, the display.
+    /// The output keeps its size; if the running stream refuses the change,
+    /// a new one is built, and if none runs (the filmed app quit) one is
+    /// started. What is filmed afterwards is said by `onTargetChanged`, only
+    /// when it changed.
     func switchTarget(_ target: ForkMeetingCaptureTarget) {
-        let job = lock.withLock { () -> (ForkMeetingCaptureStream, ForkMeetingCaptureStream.Aim)? in
+        let job = lock.withLock { () -> (ForkMeetingCaptureStream, ForkMeetingCaptureStream.Aim, Bool)? in
             guard running, let stream else { return nil }
-            let next = Self.aim(for: target, window: window)
-            aim = next
-            return (stream, next)
+            let wanted = Self.aim(for: target, window: window)
+            if suspended { pendingAim = wanted }
+            return (stream, wanted, suspended)
         }
-        guard let (stream, next) = job else { return }
-        guard stream.isRunning else { return } // the next restart takes the new aim
-        stream.switchTo(next) { [weak self] switched in
-            if !switched { self?.restartStream() }
+        guard let (stream, wanted, asleep) = job, !asleep else { return }
+        guard stream.isRunning else { return restart(to: wanted) }
+        stream.switchTo(wanted) { [weak self] used in
+            guard let self else { return }
+            if let used { self.adopt(used) } else { self.restart(to: wanted) }
         }
+    }
+
+    /// Any thread: the stream films `used` now; said when what the picture
+    /// follows changed.
+    private func adopt(_ used: ForkMeetingCaptureStream.Aim) {
+        let changed = lock.withLock { () -> Bool in
+            defer { aim = used }
+            return aim.map(Self.target(of:)) != Self.target(of: used)
+        }
+        let target = Self.target(of: used)
+        if changed { send { $0.onTargetChanged?($0.token, target) } }
     }
 
     /// The pill's meters. Any thread.
@@ -572,6 +606,11 @@ final class ForkMeetingRecorder: @unchecked Sendable {
     private static func aim(for target: ForkMeetingCaptureTarget, window: CGWindowID?) -> ForkMeetingCaptureStream.Aim {
         if target == .window, let window { return .window(window) }
         return .displayOf(window)
+    }
+
+    private static func target(of aim: ForkMeetingCaptureStream.Aim) -> ForkMeetingCaptureTarget {
+        if case .window = aim { return .window }
+        return .display
     }
 
     /// A display aim follows the window to the display it is on now.

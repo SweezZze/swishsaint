@@ -302,6 +302,9 @@ struct ForkMeetingMachine {
         case microphoneSilent
         /// ⧉: the picture switches between the window and the display.
         case toggleTarget
+        /// The engine films something else now: ⧉ took, or the window went
+        /// and its display is filmed. A switch that did not take sends none.
+        case targetSwitched(ForkMeetingToken, ForkMeetingCaptureTarget)
         /// The filmed window's app quit; its last frame stays.
         case sourceGone(ForkMeetingToken)
         case appWillTerminate
@@ -315,9 +318,10 @@ struct ForkMeetingMachine {
         case resumeCapture
         /// A new stream, for the same writer.
         case restartStream
-        /// The picture follows the session's target again: the window, or the
-        /// display that holds it now.
-        case switchTarget
+        /// The picture follows this target: the window, or the display that
+        /// holds it now. The engine answers with `targetSwitched` when what
+        /// it films changed.
+        case switchTarget(ForkMeetingCaptureTarget)
         /// Stops everything the token started. A start that never ran
         /// leaves nothing behind; a recording closes its file and answers
         /// with `writerFinished`.
@@ -501,15 +505,22 @@ struct ForkMeetingMachine {
 
         case .displayChanged:
             guard let session = activeSession, session.target == .display else { return [] }
-            return [.switchTarget, .notice(.displayChanged), .announce(.displayChanged)]
+            return [.switchTarget(.display), .notice(.displayChanged), .announce(.displayChanged)]
 
         case .toggleTarget:
-            guard var session = activeSession else { return [] }
-            session.target = session.target == .window ? .display : .window
+            // Asked only: the engine says what it films once it does, and
+            // only then is the switch noted (a window that went cannot be
+            // filmed again).
+            guard let session = activeSession else { return [] }
+            return [.switchTarget(session.target == .window ? .display : .window)]
+
+        case let .targetSwitched(token, target):
+            guard var session = activeSession, session.token == token, session.target != target else { return [] }
+            session.target = target
             replace(session)
             // Nothing is lost: the switch is noted where the picture changes.
             let gap = ForkMeetingSidecar.Gap(at: session.recorded(at: now), seconds: 0, kind: .targetSwitch)
-            return [.switchTarget, .writeSidecar(session.folder, ForkMeetingSidecarPatch(gap: gap))]
+            return [.writeSidecar(session.folder, ForkMeetingSidecarPatch(gap: gap))]
 
         case let .sourceGone(token):
             // Started by hand, the recording goes on with the sound: only the

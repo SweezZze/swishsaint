@@ -165,6 +165,26 @@ enum ForkMeetingCaptureSupport {
     /// A stream rebuilt after a sleep or a lost display may fail while the
     /// displays come back: it is tried again after each of these delays.
     static let restartDelays: [TimeInterval] = [0, 0.5, 1, 2, 4]
+
+    /// What a stream about to be built does when its aim did not resolve.
+    enum Unresolved: Equatable {
+        /// The window is gone (its app quit, it closed): the display that
+        /// held it is filmed instead, at once. A recording never ends
+        /// because a window went.
+        case filmDisplay
+        /// The displays may be coming back (a wake): later, again.
+        case retry
+        /// Waiting will not change it.
+        case giveUp
+    }
+
+    static func unresolved(_ stop: StreamStop, aimsAtWindow: Bool) -> Unresolved {
+        switch stop {
+        case .sourceGone: return aimsAtWindow ? .filmDisplay : .retry
+        case .permission: return .giveUp
+        case .external, .failed, .ignored: return .retry
+        }
+    }
 }
 
 /// Where the meeting track's sound comes from for a whole recording.

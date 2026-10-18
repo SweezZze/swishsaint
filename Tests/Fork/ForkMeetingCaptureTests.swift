@@ -95,6 +95,14 @@ enum ForkMeetingCaptureTests {
         suite.expect(ForkMeetingCaptureSupport.restartDelays.first == 0
                         && ForkMeetingCaptureSupport.restartDelays.reduce(0, +) <= 10,
                      "a stream rebuilt after a sleep is tried at once, then again for at most ten seconds")
+        suite.expect(ForkMeetingCaptureSupport.unresolved(.sourceGone, aimsAtWindow: true) == .filmDisplay,
+                     "⧉ or a wake towards a window that went films its display at once, never ends the recording")
+        suite.expect(ForkMeetingCaptureSupport.unresolved(.sourceGone, aimsAtWindow: false) == .retry
+                        && ForkMeetingCaptureSupport.unresolved(.failed, aimsAtWindow: true) == .retry
+                        && ForkMeetingCaptureSupport.unresolved(.external, aimsAtWindow: false) == .retry,
+                     "a display not back yet after a wake, or a passing failure: tried again later")
+        suite.expect(ForkMeetingCaptureSupport.unresolved(.permission, aimsAtWindow: true) == .giveUp,
+                     "Screen Recording taken back: waiting will not bring it back")
     }
 
     private static func sound(_ suite: TestSuite) {

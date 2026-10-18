@@ -129,11 +129,9 @@ extension ForkMeetingService {
             activeRecorder?.resume()
         case .restartStream:
             activeRecorder?.restartStream()
-        case .switchTarget:
+        case let .switchTarget(target):
             guard let session = machine.activeSession else { return }
-            recorders[session.token]?.switchTarget(session.target)
-            context.target = session.target
-            presenter.update(context)
+            recorders[session.token]?.switchTarget(target)
         case let .stopCapture(token):
             stopCapture(token)
         case let .writeSidecar(folder, patch):
@@ -272,6 +270,12 @@ extension ForkMeetingService {
         }
         recorder.onSourceGone = { [weak self] token in
             self?.send(.sourceGone(token))
+        }
+        recorder.onTargetChanged = { [weak self] token, target in
+            guard let self, self.isCurrent(token) else { return }
+            self.context.target = target
+            self.presenter.update(self.context)
+            self.send(.targetSwitched(token, target))
         }
         recorder.onPictureFrozen = { [weak self] token, frozen in
             guard let self, self.isCurrent(token), self.context.pictureFrozen != frozen else { return }

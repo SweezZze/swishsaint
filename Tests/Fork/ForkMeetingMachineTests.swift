@@ -424,7 +424,7 @@ enum ForkMeetingMachineTests {
         var displaySettings = settings
         displaySettings.target = .display
         var display = recording(displaySettings)
-        suite.expect(display.handle(.displayChanged, now: at(5)) == [.switchTarget, .notice(.displayChanged), .announce(.displayChanged)],
+        suite.expect(display.handle(.displayChanged, now: at(5)) == [.switchTarget(.display), .notice(.displayChanged), .announce(.displayChanged)],
                      "filming the display, a display change moves to the meeting window's display")
 
         var devices = recording()
@@ -511,16 +511,30 @@ enum ForkMeetingMachineTests {
 
         var machine = recording()
         let toggled = machine.handle(.toggleTarget, now: at(10))
-        suite.expect(toggled == [.switchTarget, .writeSidecar(folder, Patch(gap: .init(at: 10, seconds: 0, kind: .targetSwitch)))]
+        suite.expect(toggled == [.switchTarget(.display)] && machine.activeSession?.target == .window && isRecording(machine),
+                     "⧉ asks the engine for the display, and notes nothing before it films it")
+        let switched = machine.handle(.targetSwitched(token1, .display), now: at(10))
+        suite.expect(switched == [.writeSidecar(folder, Patch(gap: .init(at: 10, seconds: 0, kind: .targetSwitch)))]
                         && machine.activeSession?.target == .display && isRecording(machine),
-                     "⧉ films the display, the recording goes on, and the switch is noted where it happened")
-        suite.expect(machine.handle(.displayChanged, now: at(11)).first == .switchTarget,
+                     "once the display is filmed, the recording goes on and the switch is noted where it happened")
+        suite.expect(machine.handle(.targetSwitched(token1, .display), now: at(10.5)).isEmpty
+                        && machine.handle(.targetSwitched(ForkMeetingToken(value: 7), .window), now: at(10.6)).isEmpty,
+                     "the same report again, or another session's, notes nothing")
+        suite.expect(machine.handle(.displayChanged, now: at(11)).first == .switchTarget(.display),
                      "once on the display, a display change is followed, whatever the setting")
-        machine.handle(.toggleTarget, now: at(12))
+        suite.expect(machine.handle(.toggleTarget, now: at(12)) == [.switchTarget(.window)]
+                        && machine.activeSession?.target == .display,
+                     "⧉ back to a window that went: asked, and nothing changes until the engine films it")
+        machine.handle(.targetSwitched(token1, .window), now: at(12.1))
         suite.expect(machine.activeSession?.target == .window && machine.handle(.displayChanged, now: at(13)).isEmpty,
                      "⧉ again films the window")
         machine.handle(.pause, now: at(14))
-        suite.expect(machine.handle(.toggleTarget, now: at(15)).first == .switchTarget, "⧉ works during a pause too")
+        suite.expect(machine.handle(.toggleTarget, now: at(15)).first == .switchTarget(.display), "⧉ works during a pause too")
+        var gonePicture = recording()
+        gonePicture.handle(.sourceGone(token1), now: at(20))
+        suite.expect(gonePicture.handle(.targetSwitched(token1, .display), now: at(30)).count == 1
+                        && gonePicture.activeSession?.target == .display && isRecording(gonePicture),
+                     "the window gone, the engine filming its display instead is noted, and the recording goes on")
         var idle = Machine()
         suite.expect(idle.handle(.toggleTarget, now: t0).isEmpty, "⧉ with nothing recording does nothing")
 
@@ -543,7 +557,7 @@ enum ForkMeetingMachineTests {
             .willSleep, .didWake, .locked, .unlocked, .diskLow(freeBytes: 1_000_000_000), .diskLow(freeBytes: 1),
             .diskCritical, .permissionLost(.screenRecording), .permissionLost(.microphone), .permissionLost(.systemAudio),
             .displayChanged, .microphoneChanged(name: "X", gap: 1), .microphoneSilent, .appWillTerminate, .featureDisabled,
-            .toggleTarget, .sourceGone(token1),
+            .toggleTarget, .targetSwitched(token1, .display), .sourceGone(token1),
         ]
         var throughStopping = true
         for start in ["recording", "paused", "sleeping"] {

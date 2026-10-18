@@ -89,6 +89,26 @@ final class ForkMeetingCaptureStream: @unchecked Sendable {
         }
     }
 
+    /// What `aim` points at; a window that is gone gives way to the display
+    /// that held it (`ForkMeetingCaptureSupport.unresolved`), with the aim
+    /// really used. Answers on an arbitrary queue.
+    static func resolveOrDisplay(_ aim: Aim,
+                                 completion: @escaping (Result<(Resolved, Aim), ForkMeetingCaptureSupport.StreamStop>) -> Void) {
+        resolve(aim) { result in
+            switch result {
+            case let .success(resolved):
+                completion(.success((resolved, aim)))
+            case let .failure(stop):
+                guard case let .window(id) = aim,
+                      ForkMeetingCaptureSupport.unresolved(stop, aimsAtWindow: true) == .filmDisplay else {
+                    return completion(.failure(stop))
+                }
+                let display = Aim.displayOf(id)
+                resolve(display) { completion($0.map { ($0, display) }) }
+            }
+        }
+    }
+
     /// A filter and what it shows.
     struct Resolved: @unchecked Sendable {
         let filter: SCContentFilter
@@ -177,33 +197,38 @@ final class ForkMeetingCaptureStream: @unchecked Sendable {
     }
 
     /// Films `aim` instead, on the same stream: the output keeps its size.
-    /// Answers on an arbitrary queue, true when it took.
-    func switchTo(_ aim: Aim, completion: @escaping (Bool) -> Void) {
-        guard let stream = lock.withLock({ stopping ? nil : self.stream }) else { return completion(false) }
-        Self.resolve(aim) { [self] (result: Result<Resolved, ForkMeetingCaptureSupport.StreamStop>) in
-            guard case let .success(resolved) = result else { return completion(false) }
+    /// A window that is gone gives way to its display. Answers on an
+    /// arbitrary queue with the aim filmed now, `nil` when the stream
+    /// refused (the caller then builds a new one).
+    func switchTo(_ aim: Aim, completion: @escaping (Aim?) -> Void) {
+        guard let stream = lock.withLock({ stopping ? nil : self.stream }) else { return completion(nil) }
+        Self.resolveOrDisplay(aim) { [self] result in
+            guard case let .success((resolved, used)) = result else { return completion(nil) }
+            // Already what is filmed (⧉ to a window that went, on its display).
+            if lock.withLock({ self.stream === stream && self.aim == used }) { return completion(used) }
             stream.updateContentFilter(resolved.filter) { [self] error in
-                guard error == nil else { return completion(false) }
+                guard error == nil else { return completion(nil) }
                 let configuration = lock.withLock { () -> SCStreamConfiguration? in
                     guard self.stream === stream, let configuration = self.configuration else { return nil }
-                    self.aim = aim
+                    self.aim = used
                     placedAspect = resolved.windowAspect
                     place(configuration, aspect: resolved.windowAspect)
                     return configuration
                 }
-                guard let configuration else { return completion(false) }
-                stream.updateConfiguration(configuration) { error in completion(error == nil) }
+                guard let configuration else { return completion(nil) }
+                stream.updateConfiguration(configuration) { error in completion(error == nil ? used : nil) }
             }
         }
     }
 
-    /// The current stream ends (a sleep, a display gone) and a new one
-    /// films `aim`, for the same callbacks; tried again while the displays
-    /// come back. Answers once, on an arbitrary queue.
-    func restart(_ aim: Aim, completion: @escaping (ForkMeetingCaptureSupport.StreamStop?) -> Void) {
-        let attempt = RestartAttempt(owner: self, aim: aim, completion: completion)
-        // The old stream's error (-3808 when it already died) means nothing.
-        detach { attempt.run() }
+    /// A new stream films `aim`, for the same callbacks, and the current one
+    /// (if any) ends, only once the new aim resolved: a running stream is
+    /// never cut for a target that cannot be filmed. A window that is gone
+    /// gives way to its display; the displays coming back after a sleep are
+    /// waited for. Answers once, on an arbitrary queue, with the aim filmed
+    /// (`nil` stop: it runs).
+    func restart(_ aim: Aim, completion: @escaping (ForkMeetingCaptureSupport.StreamStop?, Aim) -> Void) {
+        RestartAttempt(owner: self, aim: aim, completion: completion).run()
     }
 
     /// Stops the running stream without giving up: `restart` builds the next
@@ -364,14 +389,15 @@ final class ForkMeetingCaptureStream: @unchecked Sendable {
     // MARK: - Restart
 
     /// One rebuild, tried after each of `restartDelays` until a stream runs.
+    /// Its own queue's work, one step after the other: never two at once.
     private final class RestartAttempt: @unchecked Sendable {
         private let owner: ForkMeetingCaptureStream
-        private let aim: Aim
-        private let completion: (ForkMeetingCaptureSupport.StreamStop?) -> Void
+        private var aim: Aim
+        private let completion: (ForkMeetingCaptureSupport.StreamStop?, Aim) -> Void
         private var tries = 0
 
         init(owner: ForkMeetingCaptureStream, aim: Aim,
-             completion: @escaping (ForkMeetingCaptureSupport.StreamStop?) -> Void) {
+             completion: @escaping (ForkMeetingCaptureSupport.StreamStop?, Aim) -> Void) {
             self.owner = owner
             self.aim = aim
             self.completion = completion
@@ -379,7 +405,7 @@ final class ForkMeetingCaptureStream: @unchecked Sendable {
 
         func run() {
             let delays = ForkMeetingCaptureSupport.restartDelays
-            guard tries < delays.count else { return completion(.failed) }
+            guard tries < delays.count else { return completion(.failed, aim) }
             let delay = delays[tries]
             tries += 1
             owner.queue.asyncAfter(deadline: .now() + delay) { [self] in attempt() }
@@ -387,14 +413,19 @@ final class ForkMeetingCaptureStream: @unchecked Sendable {
 
         private func attempt() {
             if owner.lock.withLock({ owner.stopping }) {
-                completion(.ignored)
+                completion(.ignored, aim)
                 return
             }
-            ForkMeetingCaptureStream.resolve(aim) { [self] result in
+            ForkMeetingCaptureStream.resolveOrDisplay(aim) { [self] result in
                 switch result {
-                case let .success(resolved):
-                    owner.start(resolved, aim: aim, willStart: { _ in }) { [self] stop in
-                        if let stop { retry(after: stop) } else { completion(nil) }
+                case let .success((resolved, used)):
+                    aim = used
+                    // The old stream's error (-3808 when it already died)
+                    // means nothing: it is let go before the new one starts.
+                    owner.detach { [self] in
+                        owner.start(resolved, aim: used, willStart: { _ in }) { [self] stop in
+                            if let stop { retry(after: stop) } else { completion(nil, used) }
+                        }
                     }
                 case let .failure(stop):
                     retry(after: stop)
@@ -402,9 +433,20 @@ final class ForkMeetingCaptureStream: @unchecked Sendable {
             }
         }
 
-        /// A refusal of the permission will not change by waiting.
+        /// A refusal of the permission will not change by waiting; a window
+        /// that went between the resolving and the start gives way to its
+        /// display at once.
         private func retry(after stop: ForkMeetingCaptureSupport.StreamStop) {
-            if stop == .permission { completion(stop) } else { run() }
+            let window: CGWindowID? = { if case let .window(id) = aim { return id }; return nil }()
+            switch ForkMeetingCaptureSupport.unresolved(stop, aimsAtWindow: window != nil) {
+            case .giveUp:
+                completion(stop, aim)
+            case .filmDisplay:
+                aim = .displayOf(window)
+                owner.queue.async { [self] in attempt() }
+            case .retry:
+                run()
+            }
         }
     }
 }
