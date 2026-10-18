@@ -62,6 +62,9 @@ final class ForkMeetingStore: @unchecked Sendable {
     static let lockName = ".meeting.lock"
 
     private static let log = Logger(subsystem: "fork.meetings", category: "store")
+    /// Who may read a meeting: its owner alone, wherever the folder is (a
+    /// folder chosen outside Movies may be readable by every account).
+    static let folderPermissions: Int16 = 0o700
 
     private let defaults: UserDefaults
     private let strings: () -> ForkMeetingStrings
@@ -167,7 +170,8 @@ final class ForkMeetingStore: @unchecked Sendable {
         // the Mac's own disk under /Volumes.
         if !manager.fileExists(atPath: root.path) {
             do {
-                try manager.createDirectory(at: root, withIntermediateDirectories: false)
+                try manager.createDirectory(at: root, withIntermediateDirectories: false,
+                                            attributes: [.posixPermissions: Self.folderPermissions])
             } catch {
                 return .failure(.folderUnavailable(error.localizedDescription))
             }
@@ -185,10 +189,13 @@ final class ForkMeetingStore: @unchecked Sendable {
             folder = root.appendingPathComponent(name, isDirectory: true)
             // Ours already, sidecar included: nothing to write again.
             if occupant(name) == .sameMeeting { return .success(folder) }
+            // An empty folder of ours left behind: closed to the others too.
+            try? manager.setAttributes([.posixPermissions: Self.folderPermissions], ofItemAtPath: folder.path)
         case let .create(name):
             folder = root.appendingPathComponent(name, isDirectory: true)
             do {
-                try manager.createDirectory(at: folder, withIntermediateDirectories: false)
+                try manager.createDirectory(at: folder, withIntermediateDirectories: false,
+                                            attributes: [.posixPermissions: Self.folderPermissions])
                 createdHere = true
             } catch {
                 return .failure(.folderUnavailable(error.localizedDescription))
@@ -210,10 +217,22 @@ final class ForkMeetingStore: @unchecked Sendable {
         guard FileManager.default.fileExists(atPath: folder.path, isDirectory: &isDirectory) else { return .free }
         guard isDirectory.boolValue else { return .taken }
         switch ForkMeetingSidecar.read(at: folder.appendingPathComponent(ForkMeetingFolder.sidecarName)) {
-        case .failure(.absent): return .folderWithoutSidecar
+        case .failure(.absent): return isAdoptable(folder) ? .folderWithoutSidecar : .taken
         case let .success(sidecar) where sidecar.id != nil && sidecar.id == id: return .sameMeeting
         default: return .taken
         }
+    }
+
+    /// A folder without a `meeting.json` is taken over only when it is ours
+    /// and holds nothing (a start that died before its first write, or a
+    /// folder the Finder opened): never one that belongs to another account,
+    /// whose files a meeting would then be written among.
+    static func isAdoptable(_ folder: URL) -> Bool {
+        let manager = FileManager.default
+        guard let owner = (try? manager.attributesOfItem(atPath: folder.path))?[.ownerAccountID] as? NSNumber,
+              owner.uint32Value == getuid(),
+              let names = try? manager.contentsOfDirectory(atPath: folder.path) else { return false }
+        return names.allSatisfy { $0 == ".DS_Store" }
     }
 
     // MARK: - meeting.json
@@ -250,7 +269,7 @@ final class ForkMeetingStore: @unchecked Sendable {
         let url = folder.appendingPathComponent(ForkMeetingFolder.sidecarName)
         let read = ForkMeetingSidecar.read(at: url)
         guard let next = ForkMeetingSidecar.rewriting(read, with: patch) else {
-            Self.log.error("meeting.json left as it is in \(folder.lastPathComponent): \(String(describing: read))")
+            Self.log.error("meeting.json left as it is in \(folder.lastPathComponent, privacy: .private): \(String(describing: read), privacy: .private)")
             return false
         }
         return writeSidecar(next, in: folder) == nil
@@ -270,7 +289,7 @@ final class ForkMeetingStore: @unchecked Sendable {
             return nil
         } catch {
             try? manager.removeItem(at: draft)
-            Self.log.error("meeting.json not written in \(folder.lastPathComponent): \(error.localizedDescription)")
+            Self.log.error("meeting.json not written in \(folder.lastPathComponent, privacy: .private): \(error.localizedDescription, privacy: .private)")
             return error.localizedDescription
         }
     }
@@ -397,7 +416,7 @@ final class ForkMeetingStore: @unchecked Sendable {
         }
         let action = ForkMeetingRecoveryPlan.plan(facts)
         let patch = ForkMeetingRecoveryPlan.patch(for: action, facts: facts)
-        Self.log.notice("recovery of \(folder.lastPathComponent): \(String(describing: action), privacy: .public)")
+        Self.log.notice("recovery of \(folder.lastPathComponent, privacy: .private): \(String(describing: action), privacy: .public)")
 
         switch action {
         case .leave:
@@ -430,6 +449,53 @@ final class ForkMeetingStore: @unchecked Sendable {
         for name in [ForkMeetingFolder.videoDraftName, ForkMeetingFolder.audioDraftName] {
             try? FileManager.default.removeItem(at: folder.appendingPathComponent(name))
         }
+    }
+
+    // MARK: - A final pass that failed
+
+    /// Where the recording of a meeting whose final pass failed now is.
+    enum Revealed: Equatable {
+        /// Under the meeting's name, where a final file would be.
+        case visible(URL)
+        /// Still under its hidden name: it could not be renamed.
+        case hidden(URL)
+        /// No master to show, or another copy of the app holds the folder.
+        case none
+    }
+
+    /// Gives the master of a meeting whose final pass failed the meeting's
+    /// name, so the Finder shows it: its tracks stay separate, as when the
+    /// pass is skipped for room, and `meeting.json` says `complete`, its
+    /// pass `failed`. Never over a final file already there, never in a
+    /// folder another copy of the app holds. Any thread; `completion` on
+    /// the callback queue.
+    func revealMaster(in folder: URL, completion: @escaping (Revealed) -> Void) {
+        queue.async { [self] in
+            let revealed = reveal(folder)
+            callbackQueue.async { completion(revealed) }
+        }
+    }
+
+    /// Store queue.
+    private func reveal(_ folder: URL) -> Revealed {
+        let manager = FileManager.default
+        let master = folder.appendingPathComponent(ForkMeetingFolder.masterName)
+        guard manager.fileExists(atPath: master.path) else { return .none }
+        let path = folder.standardizedFileURL.path
+        let held = lock.withLock { claims[path] != nil }
+        guard claim(folder) else { return .none }
+        defer { if !held { release(folder) } }
+        let final = folder.appendingPathComponent("\(folder.lastPathComponent).\(ForkMeetingFolder.videoExtension)")
+        guard !manager.fileExists(atPath: final.path) else { return .hidden(master) }
+        do {
+            try Self.replace(final, with: master)
+        } catch {
+            Self.log.error("master left hidden in \(folder.lastPathComponent, privacy: .private): \(error.localizedDescription, privacy: .private)")
+            return .hidden(master)
+        }
+        _ = apply(ForkMeetingSidecarPatch(state: .complete), in: folder)
+        addToRecentCaptures(final)
+        return .visible(final)
     }
 
     // MARK: - Recent captures

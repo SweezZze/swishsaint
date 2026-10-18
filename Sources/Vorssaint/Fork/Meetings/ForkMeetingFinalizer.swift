@@ -192,7 +192,7 @@ final class ForkMeetingFinalizer: ObservableObject, @unchecked Sendable {
         Task.detached(priority: .utility) { [self] in
             let outcome = await run(job)
             let finished = removeFirstJob()
-            Self.log.notice("final pass of \(job.folder.lastPathComponent): \(outcome.finalPass.rawValue, privacy: .public) \(outcome.note ?? "")")
+            Self.log.notice("final pass of \(job.folder.lastPathComponent, privacy: .private): \(outcome.finalPass.rawValue, privacy: .public) \(outcome.note ?? "", privacy: .private)")
             callbackQueue.async { [self] in
                 if publishing == job.serial {
                     publishing = nil
@@ -284,7 +284,7 @@ final class ForkMeetingFinalizer: ObservableObject, @unchecked Sendable {
             try manager.removeItem(at: paths.master)
         } catch {
             // Harmless: the next launch removes it, the final being whole.
-            Self.log.error("master kept in \(job.folder.lastPathComponent): \(error.localizedDescription)")
+            Self.log.error("master kept in \(job.folder.lastPathComponent, privacy: .private): \(error.localizedDescription, privacy: .private)")
         }
 
         var audio: URL?
@@ -484,7 +484,7 @@ final class ForkMeetingFinalizer: ObservableObject, @unchecked Sendable {
             return audio
         } catch {
             try? FileManager.default.removeItem(at: draft)
-            Self.log.error("no M4A for \(folder.lastPathComponent): \(String(describing: error), privacy: .public)")
+            Self.log.error("no M4A for \(folder.lastPathComponent, privacy: .private): \(String(describing: error), privacy: .private)")
             return nil
         }
     }
