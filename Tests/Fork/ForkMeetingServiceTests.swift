@@ -227,6 +227,12 @@ enum ForkMeetingServiceTests {
         suite.expect(ForkMeetingFailure.masterHidden.action == .openMeetingsFolder && !ForkMeetingFailure.masterHidden.isLasting
                         && all.allSatisfy { $0.failMasterHiddenRemedy.contains(".recording.mp4") },
                      "a master left hidden says, in every language, the name it is under")
+        suite.expect(all.allSatisfy { strings in
+                        strings.pictureFrontWindow != strings.pictureFrontDisplay
+                            && strings.pillFilmTheWindow != strings.pillFilmDisplay
+                            && strings.filmedDisplay != strings.filmedNoWindow
+                     },
+                     "the picture's two choices, ⧉'s two labels and what is filmed never read alike")
         let english = ForkMeetingStrings.strings(.enUS), french = ForkMeetingStrings.strings(.fr)
         let page = [english.pictureFrontWindow, english.pictureFrontWindowCaption, english.consentIntroFrontWindow,
                     english.voiceFilmedDisplayChanged, english.pillFilmTheWindow]
