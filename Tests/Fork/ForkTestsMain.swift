@@ -20,10 +20,12 @@ struct ForkTests {
             ("fork-dictation-parakeet-offer", { ForkDictationParakeetOfferTests.run(suite) }),
             ("fork-parakeet", { ForkParakeetTests.run(suite) }),
             ("fork-parakeet-store", { ForkParakeetStoreTests.run(suite) }),
+            ("fork-meetings-machine", { ForkMeetingMachineTests.run(suite) }),
             ("fork-meetings-quality", { ForkMeetingQualityTests.run(suite) }),
             ("fork-meetings-folder", { ForkMeetingFolderTests.run(suite) }),
             ("fork-meetings-sidecar", { ForkMeetingSidecarTests.run(suite) }),
             ("fork-meetings-recovery", { ForkMeetingRecoveryTests.run(suite) }),
+            ("fork-meetings-strings", { ForkMeetingStringsTests.run(suite) }),
         ]
         var selected = Set<String>()
         var listOnly = false
