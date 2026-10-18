@@ -11,8 +11,7 @@ import VideoToolbox
 /// - **Compressed once, while it records**, at the preset's rate: HEVC when
 ///   the encoder really encodes at this size, H.264 otherwise. Each optional
 ///   compression key is tried with `canApply` first: a key the encoder
-///   rejects raises an Objective-C exception Swift cannot catch (bran
-///   `3350e66`).
+///   rejects raises an Objective-C exception Swift cannot catch.
 /// - **Fragments of two seconds**: after a crash or a `kill -9`, everything
 ///   but the last fragment plays (measured in spike S1: under a second lost).
 /// - **Every sound converted here to 48 kHz mono**, whatever its source

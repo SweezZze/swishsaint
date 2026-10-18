@@ -130,7 +130,7 @@ enum ForkMeetingBehaviorTests {
                     .writeSidecar(folder, Patch(pause: .init(at: 600, seconds: 3109, reason: .user))),
                     .showPill(.recording(.init(recordedBefore: 600, runningSince: at(3710)), diskMinutesLeft: nil)),
                     .announce(.resumed)])
-        let airpods = "AirPods de Martial"
+        let airpods = "AirPods d’Alice"
         step("microphoneChanged", run(.microphoneChanged(name: airpods, gap: 1.5), 3770)
                 == [.writeSidecar(folder, Patch(gap: .init(at: 658.5, seconds: 1.5, kind: .microphoneSwitch),
                                                 microphone: airpods)),

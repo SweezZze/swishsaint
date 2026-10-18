@@ -54,8 +54,8 @@ enum ForkMeetingDiskSignal: Equatable {
 
     /// `nil` when there is nothing to say: enough room and nothing was
     /// `warned`, or **a reading that failed**. A failed reading is not a full
-    /// disk (bran stopped meetings on a zero it made up,
-    /// `CaptureSession.swift:445`), nor an empty one.
+    /// disk (a recorder that reads a failure as zero stops meetings on a
+    /// number it made up), nor an empty one.
     static func reading(freeBytes: Int64?, quality: ForkMeetingQuality, warned: Bool = false) -> ForkMeetingDiskSignal? {
         guard let freeBytes else { return nil }
         switch ForkMeetingDisk.level(freeBytes: freeBytes, quality: quality) {

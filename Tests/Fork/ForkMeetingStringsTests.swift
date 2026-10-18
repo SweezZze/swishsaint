@@ -73,7 +73,7 @@ enum ForkMeetingStringsTests {
                      "every language says how many minutes of disk are left")
         suite.expect(allStrings.allSatisfy { $0.failDiskAtStart(gigabytes: 2).contains("2") },
                      "every language says how much room a meeting needs")
-        suite.expect(allStrings.allSatisfy { $0.voiceMicrophone("AirPods de Martial").contains("AirPods de Martial") },
+        suite.expect(allStrings.allSatisfy { $0.voiceMicrophone("AirPods d’Alice").contains("AirPods d’Alice") },
                      "every language names the new microphone")
         let announcements: [ForkMeetingAnnouncement] = [.started, .paused, .resumed, .stopped, .microphone("X"),
                                                         .microphoneSilent, .diskLow(minutesLeft: 5), .displayChanged,

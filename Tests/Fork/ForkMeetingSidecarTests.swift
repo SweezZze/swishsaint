@@ -20,7 +20,7 @@ enum ForkMeetingSidecarTests {
 
     private static func started() -> ForkMeetingSidecar {
         ForkMeetingSidecar.started(id: id, startedAt: start, origin: .manual, title: nil, titleSource: .user,
-                                   capture: .init(target: .window, systemAudio: .app, microphone: "AirPods de Martial",
+                                   capture: .init(target: .window, systemAudio: .app, microphone: "AirPods d’Alice",
                                                   quality: .standard))
     }
 
@@ -65,7 +65,7 @@ enum ForkMeetingSidecarTests {
           "provider": "meet", "meetCode": "abc-defg-hij", "app": "com.google.Chrome",
           "startedAt": "2026-10-18T08:02:11Z", "endedAt": "2026-10-18T08:54:20Z",
           "recordedSeconds": 2829, "pauses": [{"at": 610, "seconds": 300, "reason": "user"}],
-          "capture": {"target": "window", "systemAudio": "app", "microphone": "AirPods de Martial", "quality": "standard"},
+          "capture": {"target": "window", "systemAudio": "app", "microphone": "AirPods d’Alice", "quality": "standard"},
           "gaps": [{"at": 1500, "seconds": 1.4, "kind": "microphoneSwitch"}],
           "stopReason": "meetingEnded",
           "recovered": false, "finalPass": "done",
@@ -86,7 +86,7 @@ enum ForkMeetingSidecarTests {
                      "the plan's example reads with every field")
         suite.expect(meeting.pauses == [.init(at: 610, seconds: 300, reason: .user)]
                         && meeting.gaps == [.init(at: 1500, seconds: 1.4, kind: .microphoneSwitch)]
-                        && meeting.capture == .init(target: .window, systemAudio: .app, microphone: "AirPods de Martial",
+                        && meeting.capture == .init(target: .window, systemAudio: .app, microphone: "AirPods d’Alice",
                                                     quality: .standard)
                         && meeting.stopReason == .meetingEnded && meeting.recovered == false && meeting.finalPass == .done
                         && meeting.notes == "" && meeting.exports?.first?.exporter == "dropFolder",

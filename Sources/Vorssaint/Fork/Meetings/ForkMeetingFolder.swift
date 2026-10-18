@@ -24,7 +24,7 @@ import Foundation
 /// - The sidecar keeps a fixed name: it is what tells a meeting folder from
 ///   any other folder in the same place.
 ///
-/// Ported from bran's `MeetingFolder`, with its measurements. Everything here
+/// The length limits are measured on APFS, not guessed. Everything here
 /// is names and decisions; the store does the file operations.
 enum ForkMeetingFolder {
     static let sidecarName = "meeting.json"

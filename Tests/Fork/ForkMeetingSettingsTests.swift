@@ -135,7 +135,7 @@ enum ForkMeetingSettingsTests {
                      "the Extras summary of meetings is written in each language")
         suite.expect(languages.allSatisfy { language in
                         let strings = ForkMeetingStrings.strings(language)
-                        return strings.microphoneMissing("AirPods de Martial").contains("AirPods de Martial")
+                        return strings.microphoneMissing("AirPods d’Alice").contains("AirPods d’Alice")
                             && strings.perHour("0,6").contains("0,6")
                      },
                      "every language names the unplugged microphone and the size per hour")

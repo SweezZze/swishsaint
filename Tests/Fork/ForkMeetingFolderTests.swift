@@ -3,7 +3,7 @@
 
 import Foundation
 
-/// Ported from bran's MeetingFolderTests, plus renaming and the root folder.
+/// Names, stamps, renaming and the root folder, checked against a real disk.
 enum ForkMeetingFolderTests {
     static func run(_ suite: TestSuite) {
         stamps(suite)
@@ -73,7 +73,7 @@ enum ForkMeetingFolderTests {
                      "sixty accented letters fit")
     }
 
-    /// Measured by bran on APFS: the limit is 255 UTF-16 units of the
+    /// Measured on APFS: the limit is 255 UTF-16 units of the
     /// decomposed form. Each name is really created, with the longest
     /// suffix and a media file inside.
     private static func fileSystemLimit(_ suite: TestSuite) {

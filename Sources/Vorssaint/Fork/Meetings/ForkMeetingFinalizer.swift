@@ -17,7 +17,7 @@ import os
 ///   mixed track every player plays (`ForkMeetingFinalPass`): about 15 s
 ///   an hour of meeting, measured in spike S1.
 /// - The draft replaces the final file only once a **fresh** `AVURLAsset`
-///   plays it whole (an asset caches what it read, bran `e093dd3`), with its
+///   plays it whole (an asset caches what it read the first time), with its
 ///   size read by `FileManager`; the master goes only after that.
 /// - No room for the copy: the master itself becomes the final file, its
 ///   tracks separate (`skipped-disk`). Any failure keeps the master and
@@ -403,8 +403,8 @@ final class ForkMeetingFinalizer: ObservableObject, @unchecked Sendable {
                 AVNumberOfChannelsKey: 1,
                 AVEncoderBitRateKey: ForkMeetingQuality.Rates.mixAudio,
             ]
-            // An unsupported setting raises an exception Swift cannot catch
-            // (bran `3350e66`): asked first.
+            // An unsupported setting raises an exception Swift cannot catch:
+            // asked first.
             guard writer.canApply(outputSettings: settings, forMediaType: .audio) else {
                 throw PassError.cannotSetUp("the mixed track's encoder")
             }
@@ -713,7 +713,7 @@ final class ForkMeetingFinalizer: ObservableObject, @unchecked Sendable {
         guard worth else { return }
         callbackQueue.async { [self] in
             // A report that arrives after its job ended must not bring the
-            // gauge back (bran `126808c`).
+            // gauge back over the next meeting's.
             guard publishing == job.serial else { return }
             progress = Progress(folder: job.folder, fraction: min(max(fraction, 0), 1))
         }
@@ -723,7 +723,7 @@ final class ForkMeetingFinalizer: ObservableObject, @unchecked Sendable {
 
     /// How long a file plays as a **fresh** asset sees it, or `nil` when it
     /// does not open or play. Never an asset kept from before: it would
-    /// answer what it read the first time (bran `e093dd3`).
+    /// answer what it read the first time, even after the file changed.
     static func playableSeconds(at url: URL) async -> Double? {
         guard FileManager.default.fileExists(atPath: url.path) else { return nil }
         let asset = AVURLAsset(url: url, options: [AVURLAssetPreferPreciseDurationAndTimingKey: true])

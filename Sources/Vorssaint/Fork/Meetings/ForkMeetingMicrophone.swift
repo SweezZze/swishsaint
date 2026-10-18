@@ -11,7 +11,7 @@ import Foundation
 ///
 /// - `AVCaptureSession`, never `AVAudioEngine`: the engine's output node
 ///   makes CoreAudio build an aggregate device that forces AirPods into call
-///   mode and records silence (bran `a041ebe`). A second session on the same
+///   mode and records silence. A second session on the same
 ///   device, the dictation's, is allowed and loses nothing (spike S5).
 /// - **Followed**: the system's default input, the device list, a device that
 ///   disconnects, a session error or interruption all lead to `rebuild`,

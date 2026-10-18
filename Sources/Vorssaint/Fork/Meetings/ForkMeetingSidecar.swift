@@ -113,7 +113,7 @@ enum ForkMeetingJSON: Codable, Equatable {
 /// - **Every field is optional when read.** Swift's synthesized decoding
 ///   ignores default values, so one required field added later would make
 ///   every file already on the disk unreadable, and the library would empty
-///   itself without a word (bran's lesson).
+///   itself without a word.
 /// - **Nothing is ever lost.** A key this version does not know (written by
 ///   a later one), or a value it cannot read (an unknown state), is kept in
 ///   `preserved` and written back as it was.

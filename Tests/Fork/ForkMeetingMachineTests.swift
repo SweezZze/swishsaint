@@ -447,10 +447,10 @@ enum ForkMeetingMachineTests {
                      "filming the display, a display change moves to the meeting window's display")
 
         var devices = recording()
-        let changed = devices.handle(.microphoneChanged(name: "AirPods de Martial", gap: 1.5), now: at(100))
+        let changed = devices.handle(.microphoneChanged(name: "AirPods d’Alice", gap: 1.5), now: at(100))
         suite.expect(changed == [.writeSidecar(folder, Patch(gap: .init(at: 98.5, seconds: 1.5, kind: .microphoneSwitch),
-                                                             microphone: "AirPods de Martial")),
-                                 .notice(.microphone("AirPods de Martial")), .announce(.microphone("AirPods de Martial"))],
+                                                             microphone: "AirPods d’Alice")),
+                                 .notice(.microphone("AirPods d’Alice")), .announce(.microphone("AirPods d’Alice"))],
                      "a new microphone is named, and the moment lost switching is noted in meeting.json")
         suite.expect(patches(devices.handle(.microphoneChanged(name: "MacBook Pro", gap: 0), now: at(200)))
                         == [Patch(microphone: "MacBook Pro")],

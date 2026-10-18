@@ -27,7 +27,7 @@ final class ForkMeetingStore: @unchecked Sendable {
 
     enum Failure: Error, Equatable {
         /// A folder is being made for another start: two starts in the same
-        /// instant would make a second, ghost folder (bran `126808c`).
+        /// instant would otherwise make a second, ghost folder.
         case alreadyOpening
         /// The meetings folder or the meeting's own could not be made:
         /// read-only, volume gone.
@@ -276,7 +276,8 @@ final class ForkMeetingStore: @unchecked Sendable {
     }
 
     /// Store queue. Through a draft, then `replaceItemAt`: never a removal
-    /// followed by a write (bran `dffbef7`). `nil` when written, else why not.
+    /// followed by a write, which a crash in between would leave with no
+    /// sidecar at all. `nil` when written, else why not.
     private func writeSidecar(_ sidecar: ForkMeetingSidecar, in folder: URL) -> String? {
         let manager = FileManager.default
         let target = folder.appendingPathComponent(ForkMeetingFolder.sidecarName)
@@ -295,7 +296,7 @@ final class ForkMeetingStore: @unchecked Sendable {
     }
 
     /// `replaceItemAt` creates the destination when it is missing (measured
-    /// in S1 and in bran on macOS 26 and 27); the move stays as a fallback
+    /// in spike S1, on macOS 26 and 27); the move stays as a fallback
     /// for a volume that refuses.
     static func replace(_ destination: URL, with source: URL) throws {
         let manager = FileManager.default

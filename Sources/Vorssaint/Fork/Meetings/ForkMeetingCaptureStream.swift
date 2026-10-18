@@ -25,8 +25,8 @@ import ScreenCaptureKit
 ///   "suspended", then nothing at all, and no delegate call (spike S5): that
 ///   status, and the next real picture, are what `frozen` reports.
 ///
-/// ScreenCaptureKit keeps its delegate and outputs weakly (bran `1c188fb`),
-/// so `Receiver` is owned here, strongly, for as long as its stream lives.
+/// ScreenCaptureKit keeps its delegate and outputs weakly: a stream whose
+/// receiver nobody else holds goes silent. So `Receiver` is owned here, strongly, for as long as its stream lives.
 /// Every callback of a stream runs on `queue`; a callback from a stream that
 /// was replaced or stopped is dropped there.
 final class ForkMeetingCaptureStream: @unchecked Sendable {
