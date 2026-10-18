@@ -322,10 +322,24 @@ struct ForkMeetingStrings {
     let voiceDiscarded: String
     let voiceNeverFormat: String
 
+    // MARK: Offer UI
+
+    /// What a start films when it films the whole screen (the display
+    /// chosen, or no window to film), then the sound's and the
+    /// microphone's values, as `offerCaptureFormat` says them.
+    let offerCaptureDisplayFormat: String
+    /// A value of the capture line: no sound, no microphone.
+    let offerNone: String
+    /// The microphone's value while macOS does not allow it.
+    let offerMicrophoneDenied: String
+
     func offerAlways(_ provider: String) -> String { String(format: offerAlwaysFormat, provider) }
     func offerNever(_ provider: String) -> String { String(format: offerNeverFormat, provider) }
     func offerCapture(window: String, sound: String, microphone: String) -> String {
         String(format: offerCaptureFormat, window, sound, microphone)
+    }
+    func offerCaptureDisplay(sound: String, microphone: String) -> String {
+        String(format: offerCaptureDisplayFormat, sound, microphone)
     }
     func offerReminder(_ meeting: String) -> String { String(format: offerReminderFormat, meeting) }
     func endingSoon(seconds: Int) -> String { String(format: endingSoonFormat, seconds) }
@@ -527,7 +541,7 @@ extension ForkMeetingStrings {
         offerNeverFormat: "Never for %@",
         offerMore: "More options",
         offerConsent: "Remember to tell the participants.",
-        offerCaptureFormat: "%1$@ window · %2$@ sound · %3$@ mic",
+        offerCaptureFormat: "Window: %1$@ · sound: %2$@ · mic: %3$@",
         offerWholeMac: "whole Mac",
         offerRecorderBusy: "A screen recording is in progress.",
         offerReminderFormat: "Offer to record %@",
@@ -542,7 +556,11 @@ extension ForkMeetingStrings {
         voiceEndingSoonFormat: "The meeting seems over. The recording stops in %d seconds unless you choose Continue.",
         voiceContinued: "The recording goes on.",
         voiceDiscarded: "Recording cancelled. Its file is deleted.",
-        voiceNeverFormat: "Meetings from %@ will no longer be offered."
+        voiceNeverFormat: "Meetings from %@ will no longer be offered.",
+        // MARK: Offer UI
+        offerCaptureDisplayFormat: "Whole screen · sound: %1$@ · mic: %2$@",
+        offerNone: "none",
+        offerMicrophoneDenied: "not allowed"
     )
 }
 
@@ -736,7 +754,7 @@ extension ForkMeetingStrings {
         offerNeverFormat: "Nunca para %@",
         offerMore: "Mais opções",
         offerConsent: "Lembre-se de avisar os participantes.",
-        offerCaptureFormat: "Janela do %1$@ · som do %2$@ · microfone %3$@",
+        offerCaptureFormat: "Janela: %1$@ · som: %2$@ · microfone: %3$@",
         offerWholeMac: "Mac inteiro",
         offerRecorderBusy: "Uma gravação de tela está em curso.",
         offerReminderFormat: "Proposta de gravar %@",
@@ -751,7 +769,11 @@ extension ForkMeetingStrings {
         voiceEndingSoonFormat: "A reunião parece ter terminado. A gravação para em %d segundos, a menos que você escolha Continuar.",
         voiceContinued: "A gravação continua.",
         voiceDiscarded: "Gravação cancelada. O arquivo foi apagado.",
-        voiceNeverFormat: "As reuniões do %@ não serão mais oferecidas."
+        voiceNeverFormat: "As reuniões do %@ não serão mais oferecidas.",
+        // MARK: Offer UI
+        offerCaptureDisplayFormat: "Tela inteira · som: %1$@ · microfone: %2$@",
+        offerNone: "nenhum",
+        offerMicrophoneDenied: "não permitido"
     )
 }
 
@@ -945,7 +967,7 @@ extension ForkMeetingStrings {
         offerNeverFormat: "%@ için asla",
         offerMore: "Diğer seçenekler",
         offerConsent: "Katılımcıları bilgilendirmeyi unutmayın.",
-        offerCaptureFormat: "%1$@ penceresi · %2$@ sesi · %3$@ mikrofonu",
+        offerCaptureFormat: "Pencere: %1$@ · ses: %2$@ · mikrofon: %3$@",
         offerWholeMac: "tüm Mac",
         offerRecorderBusy: "Bir ekran kaydı sürüyor.",
         offerReminderFormat: "%@ kayıt önerisi",
@@ -960,7 +982,11 @@ extension ForkMeetingStrings {
         voiceEndingSoonFormat: "Toplantı bitmiş görünüyor. Devam et’i seçmezseniz kayıt %d saniye içinde duracak.",
         voiceContinued: "Kayıt devam ediyor.",
         voiceDiscarded: "Kayıt iptal edildi. Dosyası silindi.",
-        voiceNeverFormat: "%@ toplantıları artık önerilmeyecek."
+        voiceNeverFormat: "%@ toplantıları artık önerilmeyecek.",
+        // MARK: Offer UI
+        offerCaptureDisplayFormat: "Tüm ekran · ses: %1$@ · mikrofon: %2$@",
+        offerNone: "yok",
+        offerMicrophoneDenied: "izin yok"
     )
 }
 
@@ -1154,8 +1180,8 @@ extension ForkMeetingStrings {
         offerNeverFormat: "Никогда для %@",
         offerMore: "Другие действия",
         offerConsent: "Не забудьте предупредить участников.",
-        offerCaptureFormat: "Окно %1$@ · звук %2$@ · микрофон %3$@",
-        offerWholeMac: "всего Mac",
+        offerCaptureFormat: "Окно: %1$@ · звук: %2$@ · микрофон: %3$@",
+        offerWholeMac: "весь Mac",
         offerRecorderBusy: "Идёт запись экрана.",
         offerReminderFormat: "Предложение записать %@",
         endingSoonTitle: "Встреча окончена?",
@@ -1169,7 +1195,11 @@ extension ForkMeetingStrings {
         voiceEndingSoonFormat: "Похоже, встреча закончилась. Запись остановится через %d секунд, если не выбрать «Продолжить».",
         voiceContinued: "Запись продолжается.",
         voiceDiscarded: "Запись отменена. Её файл удалён.",
-        voiceNeverFormat: "Встречи %@ больше не будут предлагаться."
+        voiceNeverFormat: "Встречи %@ больше не будут предлагаться.",
+        // MARK: Offer UI
+        offerCaptureDisplayFormat: "Весь экран · звук: %1$@ · микрофон: %2$@",
+        offerNone: "нет",
+        offerMicrophoneDenied: "не разрешён"
     )
 }
 
@@ -1363,7 +1393,7 @@ extension ForkMeetingStrings {
         offerNeverFormat: "Nunca para %@",
         offerMore: "Más opciones",
         offerConsent: "Recuerda avisar a los participantes.",
-        offerCaptureFormat: "Ventana de %1$@ · sonido de %2$@ · micro %3$@",
+        offerCaptureFormat: "Ventana: %1$@ · sonido: %2$@ · micro: %3$@",
         offerWholeMac: "todo el Mac",
         offerRecorderBusy: "Hay una grabación de pantalla en curso.",
         offerReminderFormat: "Propuesta de grabar %@",
@@ -1378,7 +1408,11 @@ extension ForkMeetingStrings {
         voiceEndingSoonFormat: "La reunión parece terminada. La grabación se detiene en %d segundos, salvo que elijas Continuar.",
         voiceContinued: "La grabación continúa.",
         voiceDiscarded: "Grabación cancelada. Su archivo se ha borrado.",
-        voiceNeverFormat: "Las reuniones de %@ ya no se propondrán."
+        voiceNeverFormat: "Las reuniones de %@ ya no se propondrán.",
+        // MARK: Offer UI
+        offerCaptureDisplayFormat: "Pantalla completa · sonido: %1$@ · micro: %2$@",
+        offerNone: "ninguno",
+        offerMicrophoneDenied: "no permitido"
     )
 }
 
@@ -1572,8 +1606,8 @@ extension ForkMeetingStrings {
         offerNeverFormat: "Nikdy pre %@",
         offerMore: "Ďalšie možnosti",
         offerConsent: "Nezabudnite upozorniť účastníkov.",
-        offerCaptureFormat: "Okno %1$@ · zvuk %2$@ · mikrofón %3$@",
-        offerWholeMac: "celého Macu",
+        offerCaptureFormat: "Okno: %1$@ · zvuk: %2$@ · mikrofón: %3$@",
+        offerWholeMac: "celý Mac",
         offerRecorderBusy: "Prebieha nahrávanie obrazovky.",
         offerReminderFormat: "Ponuka nahrať %@",
         endingSoonTitle: "Stretnutie skončilo?",
@@ -1587,7 +1621,11 @@ extension ForkMeetingStrings {
         voiceEndingSoonFormat: "Stretnutie sa zdá skončené. Nahrávanie sa zastaví o %d sekúnd, ak nevyberiete Pokračovať.",
         voiceContinued: "Nahrávanie pokračuje.",
         voiceDiscarded: "Nahrávanie zrušené. Jeho súbor je vymazaný.",
-        voiceNeverFormat: "Stretnutia %@ sa už nebudú ponúkať."
+        voiceNeverFormat: "Stretnutia %@ sa už nebudú ponúkať.",
+        // MARK: Offer UI
+        offerCaptureDisplayFormat: "Celá obrazovka · zvuk: %1$@ · mikrofón: %2$@",
+        offerNone: "žiadny",
+        offerMicrophoneDenied: "nepovolený"
     )
 }
 
@@ -1796,7 +1834,11 @@ extension ForkMeetingStrings {
         voiceEndingSoonFormat: "Die Besprechung scheint vorbei. Die Aufnahme stoppt in %d Sekunden, außer du wählst Fortsetzen.",
         voiceContinued: "Die Aufnahme läuft weiter.",
         voiceDiscarded: "Aufnahme abgebrochen. Ihre Datei wurde gelöscht.",
-        voiceNeverFormat: "Besprechungen von %@ werden nicht mehr angeboten."
+        voiceNeverFormat: "Besprechungen von %@ werden nicht mehr angeboten.",
+        // MARK: Offer UI
+        offerCaptureDisplayFormat: "Ganzer Bildschirm · Ton: %1$@ · Mikro: %2$@",
+        offerNone: "aus",
+        offerMicrophoneDenied: "nicht erlaubt"
     )
 }
 
@@ -1990,7 +2032,7 @@ extension ForkMeetingStrings {
         offerNeverFormat: "Jamais pour %@",
         offerMore: "Plus d’options",
         offerConsent: "Pensez à prévenir les participants.",
-        offerCaptureFormat: "Fenêtre de %1$@ · son de %2$@ · micro %3$@",
+        offerCaptureFormat: "Fenêtre\u{00A0}: %1$@ · son\u{00A0}: %2$@ · micro\u{00A0}: %3$@",
         offerWholeMac: "tout le Mac",
         offerRecorderBusy: "Un enregistrement d’écran est en cours.",
         offerReminderFormat: "Proposition d’enregistrer %@",
@@ -2005,7 +2047,11 @@ extension ForkMeetingStrings {
         voiceEndingSoonFormat: "La réunion semble terminée. L’enregistrement s’arrête dans %d secondes, sauf si vous choisissez Continuer.",
         voiceContinued: "L’enregistrement continue.",
         voiceDiscarded: "Enregistrement annulé. Son fichier est supprimé.",
-        voiceNeverFormat: "Les réunions %@ ne seront plus proposées."
+        voiceNeverFormat: "Les réunions %@ ne seront plus proposées.",
+        // MARK: Offer UI
+        offerCaptureDisplayFormat: "Écran entier · son\u{00A0}: %1$@ · micro\u{00A0}: %2$@",
+        offerNone: "aucun",
+        offerMicrophoneDenied: "non autorisé"
     )
 }
 
@@ -2199,7 +2245,7 @@ extension ForkMeetingStrings {
         offerNeverFormat: "Mai per %@",
         offerMore: "Altre opzioni",
         offerConsent: "Ricorda di avvisare i partecipanti.",
-        offerCaptureFormat: "Finestra di %1$@ · audio di %2$@ · microfono %3$@",
+        offerCaptureFormat: "Finestra: %1$@ · audio: %2$@ · microfono: %3$@",
         offerWholeMac: "tutto il Mac",
         offerRecorderBusy: "È in corso una registrazione dello schermo.",
         offerReminderFormat: "Proposta di registrare %@",
@@ -2214,7 +2260,11 @@ extension ForkMeetingStrings {
         voiceEndingSoonFormat: "La riunione sembra finita. La registrazione si ferma tra %d secondi, a meno che tu non scelga Continua.",
         voiceContinued: "La registrazione continua.",
         voiceDiscarded: "Registrazione annullata. Il file è stato eliminato.",
-        voiceNeverFormat: "Le riunioni di %@ non saranno più proposte."
+        voiceNeverFormat: "Le riunioni di %@ non saranno più proposte.",
+        // MARK: Offer UI
+        offerCaptureDisplayFormat: "Schermo intero · audio: %1$@ · microfono: %2$@",
+        offerNone: "nessuno",
+        offerMicrophoneDenied: "non consentito"
     )
 }
 
@@ -2408,7 +2458,7 @@ extension ForkMeetingStrings {
         offerNeverFormat: "%@ では録画しない",
         offerMore: "その他のオプション",
         offerConsent: "参加者に知らせることを忘れずに。",
-        offerCaptureFormat: "%1$@ のウインドウ · %2$@ の音声 · マイク %3$@",
+        offerCaptureFormat: "ウインドウ：%1$@ · 音声：%2$@ · マイク：%3$@",
         offerWholeMac: "Mac 全体",
         offerRecorderBusy: "画面収録が進行中です。",
         offerReminderFormat: "%@ の録画の提案",
@@ -2423,7 +2473,11 @@ extension ForkMeetingStrings {
         voiceEndingSoonFormat: "ミーティングが終了したようです。「続ける」を選ばない場合、%d 秒後に録画を停止します。",
         voiceContinued: "録画を続けます。",
         voiceDiscarded: "録画を取り消しました。ファイルは削除されました。",
-        voiceNeverFormat: "%@ のミーティングは今後提案されません。"
+        voiceNeverFormat: "%@ のミーティングは今後提案されません。",
+        // MARK: Offer UI
+        offerCaptureDisplayFormat: "画面全体 · 音声：%1$@ · マイク：%2$@",
+        offerNone: "なし",
+        offerMicrophoneDenied: "未許可"
     )
 }
 
@@ -2617,7 +2671,7 @@ extension ForkMeetingStrings {
         offerNeverFormat: "%@에서 녹화 안 함",
         offerMore: "기타 옵션",
         offerConsent: "참가자에게 알리는 것을 잊지 마세요.",
-        offerCaptureFormat: "%1$@ 윈도우 · %2$@ 사운드 · 마이크 %3$@",
+        offerCaptureFormat: "윈도우: %1$@ · 사운드: %2$@ · 마이크: %3$@",
         offerWholeMac: "Mac 전체",
         offerRecorderBusy: "화면 녹화가 진행 중입니다.",
         offerReminderFormat: "%@ 녹화 제안",
@@ -2632,7 +2686,11 @@ extension ForkMeetingStrings {
         voiceEndingSoonFormat: "회의가 끝난 것 같습니다. 계속을 선택하지 않으면 %d초 후 녹화가 중지됩니다.",
         voiceContinued: "녹화를 계속합니다.",
         voiceDiscarded: "녹화가 취소되었습니다. 파일이 삭제되었습니다.",
-        voiceNeverFormat: "%@ 회의는 더 이상 제안되지 않습니다."
+        voiceNeverFormat: "%@ 회의는 더 이상 제안되지 않습니다.",
+        // MARK: Offer UI
+        offerCaptureDisplayFormat: "전체 화면 · 사운드: %1$@ · 마이크: %2$@",
+        offerNone: "없음",
+        offerMicrophoneDenied: "허용 안 됨"
     )
 }
 
@@ -2826,8 +2884,8 @@ extension ForkMeetingStrings {
         offerNeverFormat: "Ніколи для %@",
         offerMore: "Інші дії",
         offerConsent: "Не забудьте попередити учасників.",
-        offerCaptureFormat: "Вікно %1$@ · звук %2$@ · мікрофон %3$@",
-        offerWholeMac: "усього Mac",
+        offerCaptureFormat: "Вікно: %1$@ · звук: %2$@ · мікрофон: %3$@",
+        offerWholeMac: "увесь Mac",
         offerRecorderBusy: "Триває запис екрана.",
         offerReminderFormat: "Пропозиція записати %@",
         endingSoonTitle: "Зустріч завершено?",
@@ -2841,7 +2899,11 @@ extension ForkMeetingStrings {
         voiceEndingSoonFormat: "Схоже, зустріч завершилася. Запис зупиниться через %d секунд, якщо не вибрати «Продовжити».",
         voiceContinued: "Запис триває.",
         voiceDiscarded: "Запис скасовано. Його файл видалено.",
-        voiceNeverFormat: "Зустрічі %@ більше не пропонуватимуться."
+        voiceNeverFormat: "Зустрічі %@ більше не пропонуватимуться.",
+        // MARK: Offer UI
+        offerCaptureDisplayFormat: "Весь екран · звук: %1$@ · мікрофон: %2$@",
+        offerNone: "немає",
+        offerMicrophoneDenied: "не дозволено"
     )
 }
 
@@ -3035,7 +3097,7 @@ extension ForkMeetingStrings {
         offerNeverFormat: "%@ 永不录制",
         offerMore: "更多选项",
         offerConsent: "记得告知参与者。",
-        offerCaptureFormat: "%1$@ 的窗口 · %2$@ 的声音 · 麦克风 %3$@",
+        offerCaptureFormat: "窗口：%1$@ · 声音：%2$@ · 麦克风：%3$@",
         offerWholeMac: "整台 Mac",
         offerRecorderBusy: "正在进行屏幕录制。",
         offerReminderFormat: "录制 %@ 的提议",
@@ -3050,7 +3112,11 @@ extension ForkMeetingStrings {
         voiceEndingSoonFormat: "会议似乎已结束。除非你选择“继续”，录制将在 %d 秒后停止。",
         voiceContinued: "录制继续。",
         voiceDiscarded: "录制已取消，文件已删除。",
-        voiceNeverFormat: "将不再提议录制 %@ 会议。"
+        voiceNeverFormat: "将不再提议录制 %@ 会议。",
+        // MARK: Offer UI
+        offerCaptureDisplayFormat: "整个屏幕 · 声音：%1$@ · 麦克风：%2$@",
+        offerNone: "无",
+        offerMicrophoneDenied: "未允许"
     )
 }
 
@@ -3244,7 +3310,7 @@ extension ForkMeetingStrings {
         offerNeverFormat: "%@ 永不錄製",
         offerMore: "更多選項",
         offerConsent: "記得告知與會者。",
-        offerCaptureFormat: "%1$@ 的視窗 · %2$@ 的聲音 · 麥克風 %3$@",
+        offerCaptureFormat: "視窗：%1$@ · 聲音：%2$@ · 麥克風：%3$@",
         offerWholeMac: "整台 Mac",
         offerRecorderBusy: "正在進行螢幕錄製。",
         offerReminderFormat: "錄製 %@ 的提議",
@@ -3259,7 +3325,11 @@ extension ForkMeetingStrings {
         voiceEndingSoonFormat: "會議似乎已結束。除非你選擇「繼續」，錄製將在 %d 秒後停止。",
         voiceContinued: "錄製繼續。",
         voiceDiscarded: "錄製已取消，檔案已刪除。",
-        voiceNeverFormat: "將不再提議錄製 %@ 會議。"
+        voiceNeverFormat: "將不再提議錄製 %@ 會議。",
+        // MARK: Offer UI
+        offerCaptureDisplayFormat: "整個螢幕 · 聲音：%1$@ · 麥克風：%2$@",
+        offerNone: "無",
+        offerMicrophoneDenied: "未允許"
     )
 }
 
@@ -3453,7 +3523,7 @@ extension ForkMeetingStrings {
         offerNeverFormat: "%@ 永不錄製",
         offerMore: "更多選項",
         offerConsent: "記得通知與會者。",
-        offerCaptureFormat: "%1$@ 的視窗 · %2$@ 的聲音 · 咪高風 %3$@",
+        offerCaptureFormat: "視窗：%1$@ · 聲音：%2$@ · 咪高風：%3$@",
         offerWholeMac: "整部 Mac",
         offerRecorderBusy: "正在進行螢幕錄製。",
         offerReminderFormat: "錄製 %@ 的提議",
@@ -3468,6 +3538,10 @@ extension ForkMeetingStrings {
         voiceEndingSoonFormat: "會議似乎已完結。除非你選擇「繼續」，錄製將在 %d 秒後停止。",
         voiceContinued: "錄製繼續。",
         voiceDiscarded: "錄製已取消，檔案已刪除。",
-        voiceNeverFormat: "將不再提議錄製 %@ 會議。"
+        voiceNeverFormat: "將不再提議錄製 %@ 會議。",
+        // MARK: Offer UI
+        offerCaptureDisplayFormat: "整個螢幕 · 聲音：%1$@ · 咪高風：%2$@",
+        offerNone: "無",
+        offerMicrophoneDenied: "未允許"
     )
 }
