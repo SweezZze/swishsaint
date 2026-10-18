@@ -19,6 +19,9 @@ struct ForkMeetingRecorderStart: Equatable {
     var outputSize: ForkMeetingPixelSize
     /// "hvc1" or "avc1".
     var codec: String
+    /// The app of the window filmed, or whose display is filmed, by name:
+    /// what the start's notice and the pill say. `nil` without a window.
+    var appName: String? = nil
 }
 
 /// One meeting's capture engine: the screen stream, the meeting app's sound
@@ -160,7 +163,8 @@ final class ForkMeetingRecorder: @unchecked Sendable {
         let url = request.folder.appendingPathComponent(ForkMeetingFolder.masterName)
         // A master already there belongs to another recording: it is never
         // written over (each meeting has a folder of its own).
-        guard (try? FileManager.default.createDirectory(at: request.folder, withIntermediateDirectories: true)) != nil,
+        guard (try? FileManager.default.createDirectory(at: request.folder, withIntermediateDirectories: true,
+                                                        attributes: [.posixPermissions: ForkMeetingStore.folderPermissions])) != nil,
               FileManager.default.isWritableFile(atPath: request.folder.path),
               !FileManager.default.fileExists(atPath: url.path) else {
             _ = gate.claimStartFailure()
@@ -237,7 +241,8 @@ final class ForkMeetingRecorder: @unchecked Sendable {
         let filmed: ForkMeetingCaptureTarget
         if case .window = aim { filmed = .window } else { filmed = .display }
         return .success(ForkMeetingRecorderStart(target: filmed, window: window, sound: sound,
-                                                 microphone: microphoneName, outputSize: outputSize, codec: codec))
+                                                 microphone: microphoneName, outputSize: outputSize, codec: codec,
+                                                 appName: Self.appName(of: window)))
     }
 
     /// `stop` came during the start: it owns the teardown, and the start's
@@ -496,6 +501,15 @@ final class ForkMeetingRecorder: @unchecked Sendable {
             ForkMeetingWriter.prepare(url: url, outputSize: size, quality: quality, pauseClock: clock,
                                       completionQueue: queue) { continuation.resume(returning: $0) }
         }
+    }
+
+    /// The name of the app that owns `window`, as the Dock shows it.
+    static func appName(of window: CGWindowID?) -> String? {
+        guard let window,
+              let info = (CGWindowListCopyWindowInfo([.optionIncludingWindow], window) as? [[String: Any]])?.first,
+              let pid = info[kCGWindowOwnerPID as String] as? pid_t else { return nil }
+        return NSRunningApplication(processIdentifier: pid)?.localizedName
+            ?? info[kCGWindowOwnerName as String] as? String
     }
 
     /// The frontmost ordinary window of another regular app, front to back

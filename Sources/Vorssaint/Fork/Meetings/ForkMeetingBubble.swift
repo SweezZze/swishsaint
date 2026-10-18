@@ -41,7 +41,7 @@ struct ForkMeetingCardView: View {
             if inIsland {
                 HStack(alignment: .center, spacing: 10) {
                     mark
-                    words(lineLimit: 2)
+                    words(lineLimit: 3)
                     Spacer(minLength: 8)
                     buttons
                 }
@@ -166,8 +166,11 @@ final class ForkMeetingBubble {
 
     private var reducesMotion: Bool { NSWorkspace.shared.accessibilityDisplayShouldReduceMotion }
 
-    /// `hold` nil keeps the card until it is replaced or hidden.
-    func show(_ card: ForkMeetingCard, on screen: NSScreen?, hold: TimeInterval?, expire: (() -> Void)? = nil) {
+    /// `hold` nil keeps the card until it is replaced or hidden. False when
+    /// there is no display to show it on: the caller says it otherwise.
+    @discardableResult
+    func show(_ card: ForkMeetingCard, on screen: NSScreen?, hold: TimeInterval?, expire: (() -> Void)? = nil) -> Bool {
+        guard let screen = screen ?? ForkDictationHUD.activeScreen() ?? NSScreen.main else { return false }
         generation += 1
         let panel = self.panel ?? makePanel()
         self.panel = panel
@@ -182,13 +185,14 @@ final class ForkMeetingBubble {
         self.expire = expire
         place(panel, on: screen)
         scheduleHold()
-        guard appearing else { return }
+        guard appearing else { return true }
         panel.alphaValue = 0
         panel.orderFrontRegardless()
         NSAnimationContext.runAnimationGroup { context in
             context.duration = 0.18
             panel.animator().alphaValue = 1
         }
+        return true
     }
 
     func hide() {
@@ -277,8 +281,7 @@ final class ForkMeetingBubble {
     /// is as wide as its words; a long one takes the bubble's width and wraps,
     /// and its height is asked at that width. Measured on hosts of their own,
     /// so the answer is about the new card.
-    private func place(_ panel: NSPanel, on screen: NSScreen?) {
-        guard let screen = screen ?? ForkDictationHUD.activeScreen() else { return }
+    private func place(_ panel: NSPanel, on screen: NSScreen) {
         let view = ForkMeetingBubbleView(model: model, cornerRadius: Self.cornerRadius) {}
         let ideal = NSHostingView(rootView: view).fittingSize
         var size = CGSize(width: max(240, ideal.width.rounded(.up)), height: ideal.height)

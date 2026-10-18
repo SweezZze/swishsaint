@@ -33,6 +33,16 @@ struct ForkMeetingLiveContext: Equatable {
     /// The display of the recorded window, where the pill and the bubble
     /// appear; `nil` takes the display being worked on.
     var displayID: UInt32?
+
+    // MARK: Fixes F2
+
+    /// The filmed window's app, by name: "Chrome window".
+    var appName: String?
+    /// A window was asked for and none could be filmed: the whole display is.
+    var noWindowToFilm = false
+    /// The announcement the start's card copies while the consent reminder
+    /// is on; `nil` when it is off.
+    var announcement: String?
 }
 
 /// What the pill shows, decided from the machine's state and the live
@@ -117,6 +127,9 @@ enum ForkMeetingPillLayout {
     static let drop: CGFloat = 10
     /// Room the pill keeps from a display's edges.
     static let margin: CGFloat = 4
+    /// Half the official recorder's own pill, centred under the menu bar
+    /// (`RecorderIndicator`, 150 pt wide): ours never covers it.
+    static let officialPillHalfWidth: CGFloat = 75
 
     /// "m:ss" under the hour, "h:mm:ss" from it on: a three-hour meeting
     /// reads 3:00:05, never 180:05.
@@ -136,11 +149,12 @@ enum ForkMeetingPillLayout {
         return global ? auxiliaryMinX : screenFrame.minX + auxiliaryMinX
     }
 
-    /// Under the menu bar, just right of the island at rest or of the camera,
-    /// whichever reaches further; right of the middle without either.
+    /// Under the menu bar, just right of the island at rest, of the camera,
+    /// or of the official recorder's pill (centred, should it record at the
+    /// same time), whichever reaches furthest.
     static func defaultOrigin(size: CGSize, visibleFrame: CGRect, cameraRightEdge: CGFloat?,
                               islandFrame: CGRect?) -> CGPoint {
-        let edges = [cameraRightEdge, islandFrame?.maxX].compactMap { $0 }
+        let edges = [cameraRightEdge, islandFrame?.maxX, visibleFrame.midX + officialPillHalfWidth].compactMap { $0 }
         let left = (edges.max() ?? visibleFrame.midX) + gap
         let frame = CGRect(origin: CGPoint(x: left, y: visibleFrame.maxY - drop - size.height), size: size)
         return clamped(frame, into: visibleFrame).origin.wholePoints
