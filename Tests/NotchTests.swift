@@ -92,11 +92,12 @@ enum NotchTests {
                && controls.height == NotchLayout.cardHeight + NotchLayout.rowSpacing + NotchLayout.shortcutHeight
                && controls.height < NotchLayout.compactContentHeight,
                "the default home page is the player's card row over one shortcut rail, shorter than the compact strip")
+        let nineTiles = NotchLayout.controls(hasCards: false, shortcutCount: 9, width: 424, height: 154)
         suite.expect(NotchLayout.controls(hasCards: true, shortcutCount: 4, width: 424, height: 154)
                == NotchControlsLayout(cardRow: 154 - NotchLayout.shortcutHeight - NotchLayout.rowSpacing, shortcutRows: 1)
                && NotchLayout.controls(hasCards: false, shortcutCount: 0, width: 424, height: 154) == NotchControlsLayout(cardRow: 0, shortcutRows: 0)
                && NotchLayout.controls(hasCards: true, shortcutCount: 0, width: 424, height: 154).height == NotchLayout.cardHeight
-               && NotchLayout.controls(hasCards: false, shortcutCount: 9, width: 424, height: 154).height == NotchLayout.shortcutHeight,
+               && nineTiles == NotchControlsLayout(cardRow: 0, shortcutRows: 2, shortcutRowSpacing: NotchLayout.shortcutLeastRowSpacing),
                "the smallest custom island shortens the cards to keep the rail, and rows nobody enabled cost nothing")
         let timerSetup = NotchLayout.timer(mode: .timer, hasSession: false, height: 180)
         let pomodoroSetup = NotchLayout.timer(mode: .pomodoro, hasSession: false, height: 180)
@@ -511,6 +512,336 @@ enum NotchTests {
         suite.expect(readings, "every page's row but the player's keeps a level reading's percentage beside a camera")
         suite.expect(player && narrowestPlayer.isFinite,
                      "across from the player's cover a reading keeps its glyph and a meter at least 36 points long: \(narrowestPlayer)")
+    }
+
+    /// The home page's rail never scrolls a tile it could show whole. Where
+    /// its tiles would just miss the island's width it closes the gaps
+    /// between them, so four fit across at every allowed width, beside a
+    /// camera and in a capsule; a rail that fit already keeps its gaps.
+    private static func homeRailContracts(_ suite: TestSuite) {
+        let screen = CGRect(x: 0, y: 0, width: 1710, height: 1112)
+        let levels: [NotchControlItem] = [.volume, .brightness, .keyboardLight]
+        let tiles: [NotchControlItem] = [.mixer, .keepAwake, .timer, .calendar, .microphone, .screenshot, .recording,
+                                         .speedTest, .panel, .commandBar, .scratchpad]
+        let tile = NotchLayout.shortcutWidth, spacing = NotchLayout.shortcutSpacing
+        var sizes: [(NotchSize, Double, Double)] = [(.compact, NotchSize.defaultWidth, NotchSize.defaultHeight),
+                                                    (.spacious, NotchSize.defaultWidth, NotchSize.defaultHeight)]
+        let heights: [Double] = [NotchSize.heightRange.lowerBound, 340, NotchSize.defaultHeight, NotchSize.heightRange.upperBound]
+        for width in stride(from: NotchSize.widthRange.lowerBound, through: NotchSize.widthRange.upperBound, by: 10) {
+            for height in heights { sizes.append((.custom, width, height)) }
+        }
+        var whole: String?, kept: String?, inside: String?
+        var closed = 0
+        let surfaces: [(CGFloat, NotchSilhouette)] = [(0, .capsule), (0, .notch), (185, .notch), (224, .notch)]
+        for (camera, silhouette) in surfaces {
+            for (size, width, height) in sizes {
+                let base = NotchGeometry(screen: screen, safeAreaTop: camera > 0 ? 32 : 0, cameraWidth: camera, layout: size,
+                                         customWidth: width, customHeight: height, silhouette: silhouette)
+                for count in 0...tiles.count {
+                    for music in [false, true] {
+                        for levelCount in 0...levels.count {
+                            for button in [false, true] {
+                                // One part per line: Swift 6.0.3 cannot type-check them as one sum in time.
+                                var controls = Array(levels.prefix(levelCount))
+                                if music { controls.append(.music) }
+                                controls += tiles.prefix(count)
+                                // The page as the island draws it: the height it is given, its levels and its rows.
+                                let page = base.page(.controls, controls: controls, sectionsButton: button)
+                                let content = page.contentSize(for: page.expandedSize(module: .controls, shortcutCount: count,
+                                                                                      sliderCount: levelCount,
+                                                                                      controlsHaveMusic: music))
+                                let band = NotchBand(geometry: page, contentWidth: content.width)
+                                let below = NotchLayout.bandLevelCount(levelCount, band: band) < levelCount
+                                let pageHeight = max(content.height, NotchLayout.controls(
+                                    hasCards: music, levelRow: below, shortcutCount: count,
+                                    width: content.width, height: content.height).height)
+                                let rows = NotchLayout.controls(hasCards: music, levelRow: below, shortcutCount: count,
+                                                                width: content.width, height: pageHeight).shortcutRows
+                                guard rows > 0 else { continue }
+                                let columns = NotchLayout.railColumns(count: count, rows: rows)
+                                let gap = NotchLayout.railGap(columns: columns, itemWidth: tile, spacing: spacing,
+                                                              least: NotchLayout.shortcutLeastSpacing, width: content.width)
+                                func name() -> String {
+                                    let surface: String = camera > 0 ? "\(Int(camera))-point camera" : silhouette == .capsule ? "capsule" : "no camera"
+                                    let island: String = size == .custom ? "custom \(Int(width))×\(Int(height))" : size.rawValue
+                                    return "\(surface), \(island), \(count) tiles, \(columns) across \(content.width) points"
+                                }
+                                if gap == nil, columns <= 4 || CGFloat(columns) * tile <= content.width {
+                                    whole = whole ?? name()
+                                }
+                                if NotchLayout.railFits(columns: columns, itemWidth: tile, spacing: spacing, width: content.width),
+                                   gap != spacing {
+                                    kept = kept ?? name()
+                                }
+                                if let gap {
+                                    if gap < spacing { closed += 1 }
+                                    let used: CGFloat = CGFloat(columns) * tile + CGFloat(columns - 1) * gap
+                                    if gap < NotchLayout.shortcutLeastSpacing || used > content.width + 0.001 {
+                                        inside = inside ?? name()
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        suite.expect(whole == nil,
+                     "the home page's tiles never scroll while they fit side by side, four across at every allowed width: \(whole ?? "")")
+        suite.expect(kept == nil, "a home page rail that fit with its gaps keeps them: \(kept ?? "")")
+        suite.expect(inside == nil && closed > 0,
+                     "a rail that closes its gaps stays inside the page and keeps at least the least gap: \(inside ?? "") (\(closed) closed)")
+        // The narrowest island in the reported setup: eight tiles, three
+        // levels across the capsule's row and no player, two rows of four.
+        var narrowControls = levels
+        narrowControls += tiles.prefix(8)
+        let narrowest = NotchGeometry(screen: screen, safeAreaTop: 0, cameraWidth: 0, layout: .custom,
+                                      customWidth: NotchSize.widthRange.lowerBound,
+                                      customHeight: NotchSize.heightRange.lowerBound, silhouette: .capsule)
+            .page(.controls, controls: narrowControls, sectionsButton: false)
+        let content = narrowest.contentSize(for: narrowest.expandedSize(module: .controls, shortcutCount: 8, sliderCount: 3,
+                                                                        controlsHaveMusic: false))
+        let rows = NotchLayout.controls(hasCards: false, shortcutCount: 8, width: content.width, height: content.height).shortcutRows
+        let narrowGap = NotchLayout.railGap(columns: NotchLayout.railColumns(count: 8, rows: rows), itemWidth: tile,
+                                            spacing: spacing, least: NotchLayout.shortcutLeastSpacing, width: content.width)
+        suite.expect(content.width == CGFloat(304) && rows == 2 && narrowGap == CGFloat(0),
+                     "at the narrowest width eight tiles sit in two rows of four with their gaps closed")
+        // The island and its Layout preview hand the rail the same least gap.
+        for path in ["Sources/Vorssaint/UI/Notch/NotchControlsView.swift", "Sources/Vorssaint/UI/Settings/NotchLayoutEditor.swift"] {
+            let source = (try? String(contentsOfFile: path, encoding: .utf8)) ?? ""
+            suite.expect(source.components(separatedBy: "leastSpacing: NotchLayout.shortcutLeastSpacing").count == 2,
+                         "the home page's rail closes its gaps before it scrolls in \(path)")
+        }
+    }
+
+    /// A home page rail a few points short of its next row closes its rows,
+    /// as it closes its columns, before it scrolls sideways: down to 6 points,
+    /// where a title on two lines sits as near the circle under it as its own
+    /// circle above. Any other rail keeps its rows and gaps, presets included.
+    private static func homeRailRowContracts(_ suite: TestSuite) {
+        let screen = CGRect(x: 0, y: 0, width: 1710, height: 1112)
+        let levels: [NotchControlItem] = [.volume, .brightness, .keyboardLight]
+        let tiles: [NotchControlItem] = [.mixer, .keepAwake, .timer, .calendar, .microphone, .screenshot, .recording,
+                                         .speedTest, .panel, .commandBar, .scratchpad]
+        let tile = NotchLayout.shortcutWidth, row = NotchLayout.shortcutHeight, spacing = NotchLayout.shortcutSpacing
+        var sizes: [(NotchSize, Double, Double)] = [(.compact, NotchSize.defaultWidth, NotchSize.defaultHeight),
+                                                    (.spacious, NotchSize.defaultWidth, NotchSize.defaultHeight)]
+        // The slider's lowest steps, heights the Layout tab's corner reaches
+        // between them, and taller islands.
+        let heights: [Double] = [NotchSize.heightRange.lowerBound, 261, 262.5, 264, 266, 268, 270, 340,
+                                 NotchSize.heightRange.upperBound]
+        for width in stride(from: NotchSize.widthRange.lowerBound, through: NotchSize.widthRange.upperBound, by: 20) {
+            for height in heights { sizes.append((.custom, width, height)) }
+        }
+        // Cameras from a scaled display's short one to a tall menu bar's.
+        var surfaces: [(CGFloat, CGFloat, NotchSilhouette)] = [(0, 0, .capsule), (0, 0, .notch)]
+        for top: CGFloat in [28, 32, 38] {
+            surfaces += [(top, 156, .notch), (top, 224, .notch)]
+        }
+        var taken: String?, kept: String?, tight: String?, filled: String?
+        var closed = 0
+        for (top, camera, silhouette) in surfaces {
+            for (size, width, height) in sizes {
+                let base = NotchGeometry(screen: screen, safeAreaTop: top, cameraWidth: camera, layout: size,
+                                         customWidth: width, customHeight: height, silhouette: silhouette)
+                for count in 1...tiles.count {
+                    for music in [false, true] {
+                        // No levels, one on each side of a camera, or three in a row below it.
+                        for levelCount in [0, 2, 3] {
+                            for button in [false, true] {
+                                // One part per line: Swift 6.0.3 cannot type-check them as one sum in time.
+                                var controls = Array(levels.prefix(levelCount))
+                                if music { controls.append(.music) }
+                                controls += tiles.prefix(count)
+                                let page = base.page(.controls, controls: controls, sectionsButton: button)
+                                let content = page.contentSize(for: page.expandedSize(module: .controls, shortcutCount: count,
+                                                                                      sliderCount: levelCount,
+                                                                                      controlsHaveMusic: music))
+                                let band = NotchBand(geometry: page, contentWidth: content.width)
+                                let below = NotchLayout.bandLevelCount(levelCount, band: band) < levelCount
+                                // The page as the island draws it, from the height it is given.
+                                let pageHeight = max(content.height, NotchLayout.controls(
+                                    hasCards: music, levelRow: below, shortcutCount: count,
+                                    width: content.width, height: content.height).height)
+                                let layout = NotchLayout.controls(hasCards: music, levelRow: below, shortcutCount: count,
+                                                                  width: content.width, height: pageHeight)
+                                // The most the island gives the rail, and the rows that held at the full gap.
+                                let levelRow: CGFloat = NotchLayout.levelRowHeight + NotchLayout.rowSpacing
+                                let card: CGFloat = NotchLayout.minimumCardHeight + NotchLayout.rowSpacing
+                                var room = page.contentBudget
+                                if below && size != .custom { room += levelRow }
+                                var rail = room
+                                if below { rail -= levelRow }
+                                if music { rail -= card }
+                                let perRow = NotchLayout.railCapacity(width: content.width, itemWidth: tile, spacing: spacing)
+                                let full = NotchLayout.railRows(count: count, perRow: perRow, rowHeight: row,
+                                                                spacing: spacing, height: rail)
+                                let scrolls = NotchLayout.railGap(columns: NotchLayout.railColumns(count: count, rows: full),
+                                                                  itemWidth: tile, spacing: spacing,
+                                                                  least: NotchLayout.shortcutLeastSpacing, width: content.width) == nil
+                                func name() -> String {
+                                    let surface: String = camera > 0 ? "\(Int(camera))×\(top) camera" : silhouette == .capsule ? "capsule" : "no camera"
+                                    let island: String = size == .custom ? "custom \(Int(width))×\(height)" : size.rawValue
+                                    return "\(surface), \(island), \(count) tiles, music \(music), \(levelCount) levels, sections button \(button)"
+                                }
+                                let closedRows: CGFloat = CGFloat(full + 1) * row + CGFloat(full) * 6
+                                if scrolls, closedRows <= rail {
+                                    closed += 1
+                                    if layout.shortcutRows != full + 1 { taken = taken ?? name() }
+                                    if abs(content.height - room) > 0.001 { filled = filled ?? name() }
+                                } else if layout.shortcutRows != full || layout.shortcutRowSpacing != spacing {
+                                    kept = kept ?? name()
+                                }
+                                let rowGap = layout.shortcutRowSpacing
+                                let outside = rowGap < CGFloat(6) || rowGap > spacing
+                                let presetMoved = size != .custom && rowGap != spacing
+                                if outside || presetMoved || layout.height > pageHeight + CGFloat(0.001) {
+                                    tight = tight ?? name()
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        suite.expect(taken == nil && closed > 0,
+                     "a home page rail that would scroll takes the row it is a few points short of, its rows closed: \(taken ?? "") (\(closed) closed)")
+        suite.expect(kept == nil, "any other home page rail keeps its rows and their gaps: \(kept ?? "")")
+        suite.expect(tight == nil,
+                     "rows close no further than 6 points, never in a preset, and stay inside the page: \(tight ?? "")")
+        suite.expect(filled == nil, "an island whose rows close takes the height chosen for it: \(filled ?? "")")
+        // The report: eight shortcuts and no player in the smallest custom
+        // island, its row below a 32-point camera, 2 points short of a second
+        // row. Its rows close to 6 points and hold all eight, four across.
+        for camera: CGFloat in [156, 185, 224] {
+            var cameraControls = Array(levels.prefix(2))
+            cameraControls += tiles.prefix(8)
+            let page = NotchGeometry(screen: screen, safeAreaTop: 32, cameraWidth: camera, layout: .custom,
+                                     customWidth: NotchSize.widthRange.lowerBound,
+                                     customHeight: NotchSize.heightRange.lowerBound)
+                .page(.controls, controls: cameraControls, sectionsButton: false)
+            let island = page.expandedSize(module: .controls, shortcutCount: 8, sliderCount: 2, controlsHaveMusic: false)
+            let content = page.contentSize(for: island)
+            let layout = NotchLayout.controls(hasCards: false, shortcutCount: 8, width: content.width, height: content.height)
+            let gap = NotchLayout.railGap(columns: NotchLayout.railColumns(count: 8, rows: layout.shortcutRows),
+                                          itemWidth: tile, spacing: spacing, least: NotchLayout.shortcutLeastSpacing,
+                                          width: content.width)
+            let fills = page.headerCameraGap == 0 && island.height == CGFloat(NotchSize.heightRange.lowerBound)
+            let twoRows = layout == NotchControlsLayout(cardRow: 0, shortcutRows: 2, shortcutRowSpacing: 6)
+            suite.expect(fills && content == CGSize(width: 304, height: 154) && twoRows && gap == CGFloat(0),
+                         "below a \(Int(camera))-point camera the smallest island holds eight shortcuts in two rows of four")
+        }
+        // The island and its Layout preview space the rows as the layout does.
+        for (path, call) in [("Sources/Vorssaint/UI/Notch/NotchControlsView.swift", "rowSpacing: layout.shortcutRowSpacing"),
+                             ("Sources/Vorssaint/UI/Settings/NotchLayoutEditor.swift", "rowSpacing: controls.shortcutRowSpacing")] {
+            let source = (try? String(contentsOfFile: path, encoding: .utf8)) ?? ""
+            suite.expect(source.components(separatedBy: call).count == 2,
+                         "the home page's rail spaces its rows as its layout does in \(path)")
+        }
+    }
+
+    /// The Tools page's rail never scrolls a column it could show whole
+    /// either. Its titles span their cells, so where it closes its gaps they
+    /// give up what was closed and stay as far apart as anywhere else, and
+    /// the arrows walk rows exactly when the rail draws rows.
+    private static func toolRailContracts(_ suite: TestSuite) {
+        let screen = CGRect(x: 0, y: 0, width: 1710, height: 1112)
+        let tile = NotchLayout.toolWidth, spacing = NotchLayout.toolSpacing
+        var sizes: [(NotchSize, Double, Double)] = [(.compact, NotchSize.defaultWidth, NotchSize.defaultHeight),
+                                                    (.spacious, NotchSize.defaultWidth, NotchSize.defaultHeight)]
+        let heights: [Double] = [NotchSize.heightRange.lowerBound, 280, 300, 340, 400, NotchSize.defaultHeight,
+                                 NotchSize.heightRange.upperBound]
+        for width in stride(from: NotchSize.widthRange.lowerBound, through: NotchSize.widthRange.upperBound, by: 5) {
+            for height in heights { sizes.append((.custom, width, height)) }
+        }
+        let surfaces: [(CGFloat, NotchSilhouette)] = [(0, .capsule), (0, .notch), (156, .notch), (185, .notch), (210, .notch),
+                                                      (224, .notch)]
+        let tools = QuickLauncherContract.QuickLauncherItem.allCases.count
+        var whole: String?, kept: String?, apart: String?, walk: String?
+        var closed = 0
+        for (camera, silhouette) in surfaces {
+            for (size, width, height) in sizes {
+                let base = NotchGeometry(screen: screen, safeAreaTop: camera > 0 ? 32 : 0, cameraWidth: camera, layout: size,
+                                         customWidth: width, customHeight: height, silhouette: silhouette)
+                for button in [false, true] {
+                    // The page as the island draws it, for as many tools as the launcher lists.
+                    let page = base.page(.tools, controls: [], sectionsButton: button)
+                    for count in 1...tools {
+                        let content = page.contentSize(for: page.expandedSize(module: .tools, toolCount: count))
+                        let perRow = NotchLayout.railCapacity(width: content.width, itemWidth: tile, spacing: spacing)
+                        let rows = NotchLayout.railRows(count: count, perRow: perRow, rowHeight: NotchLayout.toolHeight,
+                                                        spacing: spacing, height: content.height)
+                        let columns = NotchLayout.railColumns(count: count, rows: rows)
+                        let side = CGFloat(columns) * tile
+                        let gap = NotchLayout.railGap(columns: columns, itemWidth: tile, spacing: spacing,
+                                                      least: NotchLayout.toolLeastSpacing, width: content.width)
+                        let inset = NotchLayout.toolTitleInset(count: count, rows: rows, width: content.width)
+                        func name() -> String {
+                            let surface = camera > 0 ? "\(Int(camera))-point camera" : "\(silhouette.rawValue)"
+                            let chosen = size == .custom ? "custom \(Int(width))×\(Int(height))" : size.rawValue
+                            return "\(surface), \(chosen), \(count) tools, \(columns) across \(content.width) points"
+                        }
+                        if gap == nil, side <= content.width {
+                            whole = whole ?? name()
+                        }
+                        let fitsWithGaps = NotchLayout.railFits(columns: columns, itemWidth: tile, spacing: spacing,
+                                                                width: content.width)
+                        if fitsWithGaps, gap != spacing || inset != 0 {
+                            kept = kept ?? name()
+                        }
+                        if gap == nil, inset != 0 {
+                            kept = kept ?? name()
+                        }
+                        if let gap {
+                            if gap < spacing { closed += 1 }
+                            let used: CGFloat = side + CGFloat(columns - 1) * gap
+                            let titlesApart: CGFloat = gap + inset * 2
+                            let inside = gap >= NotchLayout.toolLeastSpacing && used <= content.width + 0.001
+                            if !inside || abs(titlesApart - spacing) > 0.001 {
+                                apart = apart ?? name()
+                            }
+                        }
+                        let drawn: QuickToolsSupport.GridFlow = gap == nil ? .columns(rows: rows) : .rows(columns: columns)
+                        if page.toolFlow(count: count) != drawn || page.toolRows(count: count) != rows {
+                            walk = walk ?? name()
+                        }
+                    }
+                }
+            }
+        }
+        suite.expect(whole == nil,
+                     "the Tools page's tiles never scroll while they fit side by side, four across at every allowed width: \(whole ?? "")")
+        suite.expect(kept == nil,
+                     "a Tools rail that fits with its gaps, or scrolls, keeps its gaps and its titles' full width: \(kept ?? "")")
+        suite.expect(apart == nil && closed > 0,
+                     "titles in a Tools rail that closed its gaps stay as far apart as its spacing keeps them: \(apart ?? "") (\(closed) closed)")
+        suite.expect(walk == nil, "the Tools arrows walk rows exactly when the rail draws rows: \(walk ?? "")")
+        // The reported setup: eight tools at the narrowest island, in a
+        // capsule and beside cameras, two rows of four.
+        for camera: CGFloat in [0, 185, 224] {
+            let page = NotchGeometry(screen: screen, safeAreaTop: camera > 0 ? 32 : 0, cameraWidth: camera, layout: .custom,
+                                     customWidth: NotchSize.widthRange.lowerBound,
+                                     customHeight: NotchSize.heightRange.lowerBound,
+                                     silhouette: camera > 0 ? .notch : .capsule)
+                .page(.tools, controls: [], sectionsButton: false)
+            let content = page.contentSize(for: page.expandedSize(module: .tools, toolCount: 8))
+            let rows = page.toolRows(count: 8)
+            let gap = NotchLayout.railGap(columns: 4, itemWidth: tile, spacing: spacing,
+                                          least: NotchLayout.toolLeastSpacing, width: content.width)
+            let inset = NotchLayout.toolTitleInset(count: 8, rows: rows, width: content.width)
+            let twoRowsOfFour = content.width == 304 && rows == 2
+            let closedAndInset = gap == CGFloat(0) && inset == spacing / 2
+            suite.expect(twoRowsOfFour && closedAndInset,
+                         "at the narrowest width eight tools sit in two rows of four, gaps closed and titles inset: \(camera)")
+            suite.expect(page.toolFlow(count: 8) == .rows(columns: 4),
+                         "at the narrowest width the Tools arrows walk two rows of four: \(camera)")
+        }
+        // The island's page and the Content tab's preview share the view.
+        let source = (try? String(contentsOfFile: "Sources/Vorssaint/UI/QuickLauncher/QuickLauncherView.swift",
+                                  encoding: .utf8)) ?? ""
+        let rail = source.contains("leastSpacing: NotchLayout.toolLeastSpacing")
+        let titles = source.contains("cell(item, titleInset: titleInset)") && source.contains(".padding(.horizontal, titleInset)")
+        suite.expect(rail && titles, "the Tools page's rail closes its gaps before it scrolls and insets its titles by them")
     }
 
     private static func noticeLayoutContracts(_ suite: TestSuite) {
@@ -1261,6 +1592,9 @@ enum NotchTests {
         pageTopContracts(suite)
         pageWidthContracts(suite)
         sectionsButtonContracts(suite)
+        homeRailContracts(suite)
+        homeRailRowContracts(suite)
+        toolRailContracts(suite)
         noticeLayoutContracts(suite)
         simulatedMenuBoundsContracts(suite)
         simulatedDisplayContracts(suite)

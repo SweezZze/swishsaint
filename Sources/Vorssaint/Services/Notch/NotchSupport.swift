@@ -276,6 +276,14 @@ enum NotchLayout {
     static let shortcutHeight: CGFloat = 74
     static let shortcutWidth: CGFloat = 76
     static let shortcutSpacing: CGFloat = 8
+    /// Tiles that would just miss the island's width close their gaps, down
+    /// to none, before their rail scrolls: each tile's own margin keeps them
+    /// apart, and the narrowest island holds four across.
+    static let shortcutLeastSpacing: CGFloat = 0
+    /// A rail a few points short of its next row closes its rows only this
+    /// far: a title on two lines then sits as near the circle under it as
+    /// its own circle above, never nearer.
+    static let shortcutLeastRowSpacing: CGFloat = 6
     static let systemCardHeight: CGFloat = 72
     static let systemCardWidth: CGFloat = 128
     /// Leave room for the card's hover scale, including a single full-width card.
@@ -283,6 +291,10 @@ enum NotchLayout {
     static let toolHeight: CGFloat = 72
     static let toolWidth: CGFloat = 76
     static let toolSpacing: CGFloat = 6
+    /// Tools that would just miss the island's width close their gaps, down
+    /// to none, before their rail scrolls, so the narrowest island holds
+    /// four across, as the home page's shortcuts do.
+    static let toolLeastSpacing: CGFloat = 0
     /// Three rows fit the gallery's page; two still fill a compact strip.
     static let sectionTileHeight: CGFloat = 86
     static let sectionTileWidth: CGFloat = 92
@@ -496,6 +508,27 @@ enum NotchLayout {
         CGFloat(columns) * itemWidth + CGFloat(max(0, columns - 1)) * spacing <= width
     }
 
+    /// The room between the columns of a rail that fits: its own spacing,
+    /// or what is left where that would just miss the width, down to
+    /// `least`, so the rail closes its gaps before it scrolls. Nil once
+    /// the columns would not fit even then.
+    static func railGap(columns: Int, itemWidth: CGFloat, spacing: CGFloat, least: CGFloat, width: CGFloat) -> CGFloat? {
+        if railFits(columns: columns, itemWidth: itemWidth, spacing: spacing, width: width) { return spacing }
+        guard columns > 1, railFits(columns: columns, itemWidth: itemWidth, spacing: least, width: width) else { return nil }
+        return (width - CGFloat(columns) * itemWidth) / CGFloat(columns - 1)
+    }
+
+    /// A tool's title spans its cell, where a shortcut's label keeps a
+    /// margin, so where the rail closes its gaps each title gives up half
+    /// of the closed gap on either side: neighbouring titles stay as far
+    /// apart as the rail's spacing keeps them elsewhere. Zero where the
+    /// rail keeps its gaps or scrolls.
+    static func toolTitleInset(count: Int, rows: Int, width: CGFloat) -> CGFloat {
+        let gap = railGap(columns: railColumns(count: count, rows: rows), itemWidth: toolWidth, spacing: toolSpacing,
+                          least: toolLeastSpacing, width: width)
+        return max(0, toolSpacing - (gap ?? toolSpacing)) / 2
+    }
+
     /// Square artwork, its gap, the three compact transport buttons under the
     /// title, and horizontal padding. Track titles truncate within the
     /// remaining space; a wider card moves the transport beside them.
@@ -558,22 +591,33 @@ enum NotchLayout {
 
     /// The home page: the levels a camera's row has no room for, the
     /// player's card and a rail of shortcuts. A tight budget shortens the
-    /// card before it drops a row.
+    /// card, then closes the rows of a rail that would scroll, before it
+    /// drops a row.
     static func controls(hasCards: Bool, levelRow: Bool = false, shortcutCount: Int,
                          width: CGFloat, height: CGFloat) -> NotchControlsLayout {
         let levels = levelRow ? levelRowHeight : 0
         guard hasCards || shortcutCount > 0 else { return NotchControlsLayout(levelRow: levels, cardRow: 0, shortcutRows: 0) }
         let budget = height - (levels > 0 ? levels + rowSpacing : 0)
-        var rows = 0
+        var rows = 0, rowGap = shortcutSpacing
         if shortcutCount > 0 {
             let remaining = hasCards ? budget - minimumCardHeight - rowSpacing : budget
             rows = railRows(count: shortcutCount,
                             perRow: railCapacity(width: width, itemWidth: shortcutWidth, spacing: shortcutSpacing),
                             rowHeight: shortcutHeight, spacing: shortcutSpacing, height: remaining)
+            // A rail that would scroll sideways closes its rows as it closes
+            // its columns, to take the row it is a few points short of; one
+            // that fits keeps its rows and gaps.
+            if railGap(columns: railColumns(count: shortcutCount, rows: rows), itemWidth: shortcutWidth,
+                       spacing: shortcutSpacing, least: shortcutLeastSpacing, width: width) == nil,
+               let gap = railGap(columns: rows + 1, itemWidth: shortcutHeight, spacing: shortcutSpacing,
+                                 least: shortcutLeastRowSpacing, width: remaining) {
+                rows += 1
+                rowGap = gap
+            }
         }
-        let rail = rows > 0 ? railHeight(rows: rows, rowHeight: shortcutHeight, spacing: shortcutSpacing) + rowSpacing : 0
+        let rail = rows > 0 ? railHeight(rows: rows, rowHeight: shortcutHeight, spacing: rowGap) + rowSpacing : 0
         let cardRow = hasCards ? min(cardHeight, max(minimumCardHeight, budget - rail)) : 0
-        return NotchControlsLayout(levelRow: levels, cardRow: cardRow, shortcutRows: rows)
+        return NotchControlsLayout(levelRow: levels, cardRow: cardRow, shortcutRows: rows, shortcutRowSpacing: rowGap)
     }
 
     /// The modes and Start are in the island's top row, so setup is the
@@ -643,10 +687,11 @@ struct NotchControlsLayout: Equatable {
     var levelRow: CGFloat = 0
     let cardRow: CGFloat
     let shortcutRows: Int
+    var shortcutRowSpacing = NotchLayout.shortcutSpacing
 
     var height: CGFloat {
         let rail = shortcutRows > 0
-            ? NotchLayout.railHeight(rows: shortcutRows, rowHeight: NotchLayout.shortcutHeight, spacing: NotchLayout.shortcutSpacing) : 0
+            ? NotchLayout.railHeight(rows: shortcutRows, rowHeight: NotchLayout.shortcutHeight, spacing: shortcutRowSpacing) : 0
         let rows = [levelRow, cardRow, rail].filter { $0 > 0 }
         return rows.reduce(0, +) + CGFloat(max(0, rows.count - 1)) * NotchLayout.rowSpacing
     }
@@ -2603,12 +2648,13 @@ struct NotchGeometry: Equatable {
     }
 
     /// The arrows walk the tiles the way the rail draws them: reading order
-    /// while every column fits, the columns it fills once it scrolls.
+    /// while every column fits, closing its gaps if it must, the columns it
+    /// fills once it scrolls.
     func toolFlow(count: Int) -> QuickToolsSupport.GridFlow {
         let rows = toolRows(count: count)
         let columns = NotchLayout.railColumns(count: count, rows: rows)
-        return NotchLayout.railFits(columns: columns, itemWidth: NotchLayout.toolWidth,
-                                    spacing: NotchLayout.toolSpacing, width: contentWidth)
+        return NotchLayout.railGap(columns: columns, itemWidth: NotchLayout.toolWidth, spacing: NotchLayout.toolSpacing,
+                                   least: NotchLayout.toolLeastSpacing, width: contentWidth) != nil
             ? .rows(columns: columns) : .columns(rows: rows)
     }
 

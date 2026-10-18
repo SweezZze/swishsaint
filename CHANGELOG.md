@@ -6,8 +6,16 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [3.4.2-beta.1] - 2026-10-18
+
 ### Summary
 A cleaner Dynamic Island, a What's New window that shows what changed in the features you use, and new screenshot editor tools. Also a faster Command Bar, better AI Agents, recordings and window switcher, and many fixes.
+
+### Highlights
+- **What's New for the features you use.** After an update, a window shows what changed in the features you use, and the release notes before updating can be turned off. Settings → About → Updates.
+- **A cleaner Dynamic Island.** The open island drops page titles and the ⋯ menu, keeps each page's controls beside the camera and plays music in a compact Now Playing player.
+- **New screenshot editor tools.** The editor adds a Spotlight tool, canvas expansion and image layers pasted with Command-V.
+- **AI Agents for every Codex account.** Limits show for each separate Codex account, and Claude's limits come through Claude Code, so use on other Macs counts. Settings → Dynamic Island → Content → AI Agents.
 
 ### Added
 - Dynamic Island can show the keyboard input source when it changes. Settings → Dynamic Island → Activity → Indicators.
@@ -39,6 +47,7 @@ A cleaner Dynamic Island, a What's New window that shows what changed in the fea
 ### Fixed
 - Dynamic Island no longer runs below the physical notch when the menu bar is taller than it, and Hide gap below notch is now off by default. Settings → Dynamic Island → Layout → Notch fit.
 - Dynamic Island hides its focus ring until you use the keyboard, keeps slider levels off the top row and shows the playing app's icon for songs without a cover.
+- Dynamic Island's home and Tools pages fit their tiles at small custom sizes instead of cutting off a column.
 - Playing music takes the idle companion's place in Dynamic Island and stays selectable beside AI activity.
 - The island scratchpad's shortcut opens and closes it every time.
 - Clipboard, Scratchpad, Quick Launcher and Shelf shortcuts expand the island's capture controls instead of opening the island after the capture.
@@ -67,6 +76,7 @@ A cleaner Dynamic Island, a What's New window that shows what changed in the fea
 - Disk Image Installer ignores Homebrew's cached installers.
 - The screenshot editor keeps every tool reachable in short windows.
 - Recordings and exports fall back to H.264 when HEVC cannot encode their size, starting a recording no longer freezes the interface and exporting makes it stutter less.
+- Window recordings keep only their app's sound after a browser starts a video mid-recording.
 - AI Agents follows OpenCode 2, keeps an edited Codex conversation working as one task with its reviews and subagents, and estimates Claude renewals safely after long gaps.
 - CPU temperature on Apple M4 Pro reads its hottest cores, so alerts and fan curves react in time.
 - Display brightness ignores stale DDC replies from other monitor controls.
