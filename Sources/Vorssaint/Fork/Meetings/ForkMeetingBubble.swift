@@ -41,7 +41,9 @@ struct ForkMeetingCardView: View {
             if inIsland {
                 HStack(alignment: .center, spacing: 10) {
                     mark
-                    words(lineLimit: 3)
+                    // Never cut: the island's card is as tall as its words
+                    // (`ForkMeetingIsland.height(of:minimum:)`).
+                    words(lineLimit: nil)
                     Spacer(minLength: 8)
                     buttons
                 }
@@ -70,7 +72,7 @@ struct ForkMeetingCardView: View {
             .accessibilityHidden(true)
     }
 
-    private func words(lineLimit: Int) -> some View {
+    private func words(lineLimit: Int?) -> some View {
         VStack(alignment: .leading, spacing: 2) {
             Text(card.title)
                 .font(.system(size: 13, weight: .semibold))

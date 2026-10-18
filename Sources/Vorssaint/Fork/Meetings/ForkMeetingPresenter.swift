@@ -175,7 +175,8 @@ final class ForkMeetingPresenter {
             lastShown = (notice, show(notice, detail: filmed))
             return
         }
-        lastShown = (notice, present(make, height: Self.cardHeight(make({}).lines), hold: Self.cardHold))
+        lastShown = (notice, present(make, height: ForkMeetingIsland.height(of: make({}), minimum: Self.savedCardHeight),
+                                     hold: Self.cardHold))
     }
 
     /// "Meeting saved · 52 min · 410 MB [Show in Finder]": a card in the
@@ -285,7 +286,8 @@ final class ForkMeetingPresenter {
                     ?? ForkMeetingCard(symbol: ForkMeetingIsland.symbol(for: notice), tint: .orange,
                                        title: notice.title(text))
             }
-            return present(make, height: Self.cardHeight(make({}).lines), hold: Self.hold(for: notice))
+            return present(make, height: ForkMeetingIsland.height(of: make({}), minimum: Self.savedCardHeight),
+                           hold: Self.hold(for: notice))
         }
         if ForkMeetingIsland.show(notice, detail: detail, text: text) {
             // The island has the newest word: an older one in the bubble
@@ -352,12 +354,6 @@ final class ForkMeetingPresenter {
             return false
         }
         return bubble.show(card, on: screen, hold: hold)
-    }
-
-    /// The island's card height for its lines: a remedy takes about two.
-    private static func cardHeight(_ lines: [String]) -> CGFloat {
-        let rows = lines.reduce(0) { $0 + ($1.count > 70 ? 2 : 1) }
-        return max(savedCardHeight, 50 + CGFloat(rows) * 15)
     }
 
     /// A transition passes quickly; a failure stays as long as the island

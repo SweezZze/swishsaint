@@ -75,6 +75,20 @@ enum ForkMeetingIsland {
             takeFocus: false, closeOnCollapse: true, fallback: fallback, close: close, hover: hover)
     }
 
+    /// The card's height in the island, measured at the island's width:
+    /// a remedy of three lines is never cut, nor one of one line given room
+    /// for two. Main thread.
+    static func height(of card: ForkMeetingCard, minimum: CGFloat) -> CGFloat {
+        let width = NotchService.shared.expandedGeometry.contentWidth
+        guard width > 0 else { return minimum }
+        let host = NSHostingView(rootView: ForkMeetingCardView(card: card)
+            .environment(\.notchPresentation, true)
+            .frame(width: width)
+            .fixedSize(horizontal: false, vertical: true))
+        let measured = host.fittingSize.height
+        return measured.isFinite ? max(minimum, measured.rounded(.up)) : minimum
+    }
+
     /// Takes the card away; never calls its `close`.
     static func remove(id: UUID) {
         NotchService.shared.removeCapture(id: id)
