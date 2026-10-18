@@ -42,6 +42,9 @@ final class ForkUpdateService: ObservableObject {
         case downloading
         case installing
         case failed(String)
+        /// A build to install once the meeting recording or finishing is
+        /// saved (installing quits the app): no failure, said as a wait.
+        case waitingForMeeting
     }
 
     @Published private(set) var state: State = .idle
@@ -54,6 +57,11 @@ final class ForkUpdateService: ObservableObject {
 
     private static let checkInterval: TimeInterval = 6 * 60 * 60
     private var timer: Timer?
+    /// A build met while a meeting records or finishes: offered, or
+    /// installed if the person already chose to, once the meeting is safe.
+    /// Installing quits the app, which would cut the recording.
+    private var afterMeeting: (candidate: ForkUpdateSupport.Candidate, install: Bool)?
+    private var meetingObserver: NSObjectProtocol?
 
     private init() {}
 
@@ -125,7 +133,13 @@ final class ForkUpdateService: ObservableObject {
                 self.state = .available(candidate)
                 let postponed = UserDefaults.standard.integer(forKey: ForkDefaultsKey.updatePostponedBuild)
                 if reporting || (offering && postponed != candidate.build) {
-                    self.offer(candidate)
+                    // An alert in the middle of a meeting would take the
+                    // keyboard from the call: asked once it is over.
+                    if ForkMeetingActivity.isBusy && !reporting {
+                        self.waitForMeeting(candidate, install: false)
+                    } else {
+                        self.offer(candidate)
+                    }
                 }
             }
         }.resume()
@@ -160,6 +174,10 @@ final class ForkUpdateService: ObservableObject {
 
     func install(_ candidate: ForkUpdateSupport.Candidate) {
         guard repository != nil else { return }
+        guard !ForkMeetingActivity.isBusy else {
+            waitForMeeting(candidate, install: true)
+            return
+        }
         state = .downloading
         URLSession.shared.downloadTask(with: candidate.zipURL) { [weak self] location, response, _ in
             let status = (response as? HTTPURLResponse)?.statusCode ?? 0
@@ -173,6 +191,12 @@ final class ForkUpdateService: ObservableObject {
                 guard let self else { return }
                 switch result {
                 case .success(let newApp):
+                    // A meeting may have started during the download.
+                    guard !ForkMeetingActivity.isBusy else {
+                        try? FileManager.default.removeItem(at: newApp.deletingLastPathComponent())
+                        self.waitForMeeting(candidate, install: true)
+                        return
+                    }
                     self.state = .installing
                     self.replaceRunningApp(with: newApp)
                 case .failure(let error):
@@ -180,6 +204,40 @@ final class ForkUpdateService: ObservableObject {
                 }
             }
         }.resume()
+    }
+
+    // MARK: - After the meeting
+
+    /// Main thread. Keeps the build for when the meeting is safe: recorded,
+    /// and its final pass done. An install asked for is never downgraded to
+    /// an offer by a later check.
+    private func waitForMeeting(_ candidate: ForkUpdateSupport.Candidate, install: Bool) {
+        let installs = install || afterMeeting?.install == true
+        afterMeeting = (candidate, installs)
+        state = installs ? .waitingForMeeting : .available(candidate)
+        if meetingObserver == nil {
+            meetingObserver = NotificationCenter.default.addObserver(
+                forName: ForkMeetingActivity.didBecomeIdle, object: nil, queue: .main
+            ) { [weak self] _ in
+                self?.meetingEnded()
+            }
+        }
+        // The meeting may have ended between the check and the observer.
+        DispatchQueue.main.async { [weak self] in self?.meetingEnded() }
+    }
+
+    private func meetingEnded() {
+        guard !ForkMeetingActivity.isBusy, let pending = afterMeeting else { return }
+        afterMeeting = nil
+        if let meetingObserver {
+            NotificationCenter.default.removeObserver(meetingObserver)
+            self.meetingObserver = nil
+        }
+        if pending.install {
+            install(pending.candidate)
+        } else if UserDefaults.standard.integer(forKey: ForkDefaultsKey.updatePostponedBuild) != pending.candidate.build {
+            offer(pending.candidate)
+        }
     }
 
     enum InstallError: Error {

@@ -411,6 +411,7 @@ enum SettingsDirectory {
                                        icon: "camera.viewfinder",
                                        featureKeywords: SettingsSearchSupport
                                         .screenCaptureFeatureKeywords(s, language: language)),
+                ForkSettingsPages.item(.meetings, language: language), // FORK(settings4)
                 SettingsDirectoryItem(page: .urlCleaner, title: s.urlCleanerName, icon: "link"),
                 SettingsDirectoryItem(page: .keyDebounce, title: s.keyDebounceName, icon: "keyboard"),
                 SettingsDirectoryItem(page: .superKey,
