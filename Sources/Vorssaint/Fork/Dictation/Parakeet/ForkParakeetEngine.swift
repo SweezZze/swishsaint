@@ -48,13 +48,6 @@ final class ForkParakeetEngine: @unchecked Sendable {
         return loadedDirectory != nil
     }
 
-    /// The four compiled models and the vocabulary are all there.
-    static func hasModel(in directory: URL) -> Bool {
-        let manager = FileManager.default
-        return modelFiles.allSatisfy { manager.fileExists(atPath: directory.appendingPathComponent($0).path) }
-            && ForkParakeetVocabulary.fileURL(in: directory) != nil
-    }
-
     // MARK: Loading
 
     /// Loads the models of `directory`. The first load on a Mac also compiles

@@ -176,9 +176,9 @@ final class ForkDictationPresenter {
         case .transcribing:
             message = text.voiceTranscribing
         case let .pasted(excerpt):
-            message = String(format: text.voicePastedFormat, excerpt)
+            message = text.voicePasted(excerpt)
         case let .copied(excerpt):
-            message = String(format: text.voiceCopiedFormat, excerpt)
+            message = text.voiceCopied(excerpt)
         case .keptInClipboard:
             message = text.voiceKeptInClipboard
         case .inHistoryOnly:
