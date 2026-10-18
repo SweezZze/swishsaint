@@ -41,6 +41,7 @@ struct ForkTests {
             ("fork-meetings-detection", { ForkMeetingDetectionTests.run(suite) }),
             ("fork-meetings-detection-effects", { ForkMeetingDetectionEffectsTests.run(suite) }),
             ("fork-meetings-offer", { ForkMeetingOfferTests.run(suite) }),
+            ("fork-meetings-detection-behavior", { ForkMeetingDetectionBehaviorTests.run(suite) }),
         ]
         var selected = Set<String>()
         var listOnly = false
