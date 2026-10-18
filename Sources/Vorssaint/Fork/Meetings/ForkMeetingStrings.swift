@@ -97,6 +97,34 @@ struct ForkMeetingStrings {
         case .zhHK: return .zhHK
         }
     }
+
+    // MARK: Live
+
+    /// The pill's words beside its time. Like every text of the pill and the
+    /// bubble, 28 characters at most.
+    let pillPaused: String
+    let pillStopping: String
+    let pillFinalizing: String
+    /// The filmed window is minimized: the picture holds its last frame.
+    let pillPictureFrozen: String
+    /// The pill's buttons and meters, read by VoiceOver and shown as tooltips.
+    let pillPause: String
+    let pillResume: String
+    let pillStop: String
+    /// ⧉ while the window is filmed, then while the display is.
+    let pillFilmDisplay: String
+    let pillFilmWindow: String
+    let pillMicrophoneLevel: String
+    let pillMeetingLevel: String
+    let pillMicrophoneOff: String
+    let pillElapsed: String
+    /// The pill as a whole, for VoiceOver.
+    let pillRecording: String
+    /// The buttons of the island's card and of the bubble.
+    let actionShow: String
+    let actionOpenSettings: String
+    let actionOpenMeetings: String
+    let bubbleClose: String
 }
 
 extension ForkMeetingStrings {
@@ -145,7 +173,26 @@ extension ForkMeetingStrings {
         failFinalPass: "Couldn’t finish the file",
         failFinalPassRemedy: "The video stays readable in the meeting’s folder, with the meeting and your microphone on separate tracks.",
         failBuild: "Incomplete local build",
-        failBuildRemedy: "This local build lacks the fork’s permission texts: macOS shows the official ones when it asks. A published build of the fork has the right texts."
+        failBuildRemedy: "This local build lacks the fork’s permission texts: macOS shows the official ones when it asks. A published build of the fork has the right texts.",
+        // MARK: Live
+        pillPaused: "Paused",
+        pillStopping: "Stopping…",
+        pillFinalizing: "Finishing…",
+        pillPictureFrozen: "Window minimized: frozen",
+        pillPause: "Pause recording",
+        pillResume: "Resume recording",
+        pillStop: "Stop recording",
+        pillFilmDisplay: "Film the whole screen",
+        pillFilmWindow: "Film the meeting window",
+        pillMicrophoneLevel: "Your microphone",
+        pillMeetingLevel: "Meeting sound",
+        pillMicrophoneOff: "Microphone not recorded",
+        pillElapsed: "Recorded time",
+        pillRecording: "Meeting recording",
+        actionShow: "Show in Finder",
+        actionOpenSettings: "Open System Settings",
+        actionOpenMeetings: "Meetings settings",
+        bubbleClose: "Close"
     )
 }
 
@@ -195,7 +242,26 @@ extension ForkMeetingStrings {
         failFinalPass: "Arquivo não finalizado",
         failFinalPassRemedy: "O vídeo continua legível na pasta da reunião, com a reunião e o seu microfone em faixas separadas.",
         failBuild: "Versão local incompleta",
-        failBuildRemedy: "Esta versão local não tem os textos de permissão do fork: o macOS mostra os oficiais ao pedir. Uma versão publicada do fork tem os textos certos."
+        failBuildRemedy: "Esta versão local não tem os textos de permissão do fork: o macOS mostra os oficiais ao pedir. Uma versão publicada do fork tem os textos certos.",
+        // MARK: Live
+        pillPaused: "Pausada",
+        pillStopping: "Parando…",
+        pillFinalizing: "Finalizando…",
+        pillPictureFrozen: "Janela minimizada: congelada",
+        pillPause: "Pausar gravação",
+        pillResume: "Retomar gravação",
+        pillStop: "Parar gravação",
+        pillFilmDisplay: "Filmar a tela inteira",
+        pillFilmWindow: "Filmar a janela da reunião",
+        pillMicrophoneLevel: "Seu microfone",
+        pillMeetingLevel: "Som da reunião",
+        pillMicrophoneOff: "Microfone não gravado",
+        pillElapsed: "Tempo gravado",
+        pillRecording: "Gravação de reunião",
+        actionShow: "Mostrar no Finder",
+        actionOpenSettings: "Abrir Ajustes do Sistema",
+        actionOpenMeetings: "Ajustes das reuniões",
+        bubbleClose: "Fechar"
     )
 }
 
@@ -245,7 +311,26 @@ extension ForkMeetingStrings {
         failFinalPass: "Dosya tamamlanamadı",
         failFinalPassRemedy: "Video, toplantı klasöründe oynatılabilir kalır; toplantı ve mikrofonunuz ayrı kanallardadır.",
         failBuild: "Yerel sürüm eksik",
-        failBuildRemedy: "Bu yerel sürümde fork’un izin metinleri yok: macOS izin isterken resmî metinleri gösterir. Fork’un yayımlanmış bir sürümünde doğru metinler vardır."
+        failBuildRemedy: "Bu yerel sürümde fork’un izin metinleri yok: macOS izin isterken resmî metinleri gösterir. Fork’un yayımlanmış bir sürümünde doğru metinler vardır.",
+        // MARK: Live
+        pillPaused: "Duraklatıldı",
+        pillStopping: "Durduruluyor…",
+        pillFinalizing: "Tamamlanıyor…",
+        pillPictureFrozen: "Pencere küçültüldü: donuk",
+        pillPause: "Kaydı duraklat",
+        pillResume: "Kayda devam et",
+        pillStop: "Kaydı durdur",
+        pillFilmDisplay: "Tüm ekranı çek",
+        pillFilmWindow: "Toplantı penceresini çek",
+        pillMicrophoneLevel: "Mikrofonunuz",
+        pillMeetingLevel: "Toplantı sesi",
+        pillMicrophoneOff: "Mikrofon kaydedilmiyor",
+        pillElapsed: "Kaydedilen süre",
+        pillRecording: "Toplantı kaydı",
+        actionShow: "Finder’da göster",
+        actionOpenSettings: "Sistem Ayarları’nı aç",
+        actionOpenMeetings: "Toplantı ayarları",
+        bubbleClose: "Kapat"
     )
 }
 
@@ -295,7 +380,26 @@ extension ForkMeetingStrings {
         failFinalPass: "Файл не завершён",
         failFinalPassRemedy: "Видео по-прежнему воспроизводится из папки встречи, а встреча и ваш микрофон лежат на отдельных дорожках.",
         failBuild: "Неполная локальная сборка",
-        failBuildRemedy: "В этой локальной сборке нет текстов разрешений форка: при запросе macOS показывает официальные. В опубликованной сборке форка тексты правильные."
+        failBuildRemedy: "В этой локальной сборке нет текстов разрешений форка: при запросе macOS показывает официальные. В опубликованной сборке форка тексты правильные.",
+        // MARK: Live
+        pillPaused: "Пауза",
+        pillStopping: "Остановка…",
+        pillFinalizing: "Завершение…",
+        pillPictureFrozen: "Окно свёрнуто: стоп-кадр",
+        pillPause: "Приостановить запись",
+        pillResume: "Продолжить запись",
+        pillStop: "Остановить запись",
+        pillFilmDisplay: "Снимать весь экран",
+        pillFilmWindow: "Снимать окно встречи",
+        pillMicrophoneLevel: "Ваш микрофон",
+        pillMeetingLevel: "Звук встречи",
+        pillMicrophoneOff: "Микрофон не записывается",
+        pillElapsed: "Записанное время",
+        pillRecording: "Запись встречи",
+        actionShow: "Показать в Finder",
+        actionOpenSettings: "Открыть Системные настройки",
+        actionOpenMeetings: "Настройки встреч",
+        bubbleClose: "Закрыть"
     )
 }
 
@@ -345,7 +449,26 @@ extension ForkMeetingStrings {
         failFinalPass: "Archivo no terminado",
         failFinalPassRemedy: "El vídeo sigue siendo legible en la carpeta de la reunión, con la reunión y tu micrófono en pistas separadas.",
         failBuild: "Versión local incompleta",
-        failBuildRemedy: "A esta versión local le faltan los textos de permiso del fork: macOS muestra los oficiales al preguntar. Una versión publicada del fork tiene los textos correctos."
+        failBuildRemedy: "A esta versión local le faltan los textos de permiso del fork: macOS muestra los oficiales al preguntar. Una versión publicada del fork tiene los textos correctos.",
+        // MARK: Live
+        pillPaused: "En pausa",
+        pillStopping: "Deteniendo…",
+        pillFinalizing: "Finalizando…",
+        pillPictureFrozen: "Ventana oculta: imagen fija",
+        pillPause: "Pausar grabación",
+        pillResume: "Reanudar grabación",
+        pillStop: "Detener grabación",
+        pillFilmDisplay: "Grabar toda la pantalla",
+        pillFilmWindow: "Grabar la ventana",
+        pillMicrophoneLevel: "Tu micrófono",
+        pillMeetingLevel: "Sonido de la reunión",
+        pillMicrophoneOff: "Micrófono no grabado",
+        pillElapsed: "Tiempo grabado",
+        pillRecording: "Grabación de reunión",
+        actionShow: "Mostrar en el Finder",
+        actionOpenSettings: "Abrir Ajustes del Sistema",
+        actionOpenMeetings: "Ajustes de reuniones",
+        bubbleClose: "Cerrar"
     )
 }
 
@@ -395,7 +518,26 @@ extension ForkMeetingStrings {
         failFinalPass: "Súbor sa nedokončil",
         failFinalPassRemedy: "Video zostáva prehrateľné v priečinku stretnutia, so stretnutím a vaším mikrofónom na samostatných stopách.",
         failBuild: "Neúplná lokálna verzia",
-        failBuildRemedy: "Tejto lokálnej verzii chýbajú texty povolení forku: macOS pri žiadosti zobrazí oficiálne texty. Zverejnená verzia forku má správne texty."
+        failBuildRemedy: "Tejto lokálnej verzii chýbajú texty povolení forku: macOS pri žiadosti zobrazí oficiálne texty. Zverejnená verzia forku má správne texty.",
+        // MARK: Live
+        pillPaused: "Pozastavené",
+        pillStopping: "Zastavuje sa…",
+        pillFinalizing: "Dokončuje sa…",
+        pillPictureFrozen: "Okno skryté: obraz stojí",
+        pillPause: "Pozastaviť nahrávanie",
+        pillResume: "Pokračovať v nahrávaní",
+        pillStop: "Zastaviť nahrávanie",
+        pillFilmDisplay: "Nahrávať celú obrazovku",
+        pillFilmWindow: "Nahrávať okno stretnutia",
+        pillMicrophoneLevel: "Váš mikrofón",
+        pillMeetingLevel: "Zvuk stretnutia",
+        pillMicrophoneOff: "Mikrofón sa nenahráva",
+        pillElapsed: "Nahraný čas",
+        pillRecording: "Nahrávanie stretnutia",
+        actionShow: "Zobraziť vo Finderi",
+        actionOpenSettings: "Otvoriť Systémové nastavenia",
+        actionOpenMeetings: "Nastavenia stretnutí",
+        bubbleClose: "Zavrieť"
     )
 }
 
@@ -445,7 +587,26 @@ extension ForkMeetingStrings {
         failFinalPass: "Datei nicht fertiggestellt",
         failFinalPassRemedy: "Das Video bleibt im Ordner der Besprechung abspielbar, mit der Besprechung und deinem Mikrofon auf getrennten Spuren.",
         failBuild: "Lokaler Build unvollständig",
-        failBuildRemedy: "Diesem lokalen Build fehlen die Berechtigungstexte des Forks: macOS zeigt bei der Anfrage die offiziellen. Ein veröffentlichter Build des Forks hat die richtigen Texte."
+        failBuildRemedy: "Diesem lokalen Build fehlen die Berechtigungstexte des Forks: macOS zeigt bei der Anfrage die offiziellen. Ein veröffentlichter Build des Forks hat die richtigen Texte.",
+        // MARK: Live
+        pillPaused: "Pausiert",
+        pillStopping: "Wird gestoppt…",
+        pillFinalizing: "Wird abgeschlossen…",
+        pillPictureFrozen: "Fenster minimiert: Standbild",
+        pillPause: "Aufnahme pausieren",
+        pillResume: "Aufnahme fortsetzen",
+        pillStop: "Aufnahme stoppen",
+        pillFilmDisplay: "Ganzen Bildschirm filmen",
+        pillFilmWindow: "Besprechungsfenster filmen",
+        pillMicrophoneLevel: "Dein Mikrofon",
+        pillMeetingLevel: "Ton der Besprechung",
+        pillMicrophoneOff: "Mikrofon nicht aufgenommen",
+        pillElapsed: "Aufgenommene Zeit",
+        pillRecording: "Besprechungsaufnahme",
+        actionShow: "Im Finder zeigen",
+        actionOpenSettings: "Systemeinstellungen öffnen",
+        actionOpenMeetings: "Besprechungseinstellungen",
+        bubbleClose: "Schließen"
     )
 }
 
@@ -495,7 +656,26 @@ extension ForkMeetingStrings {
         failFinalPass: "Finalisation impossible",
         failFinalPassRemedy: "La vidéo reste lisible dans le dossier de la réunion, avec la réunion et votre micro sur des pistes séparées.",
         failBuild: "Version locale incomplète",
-        failBuildRemedy: "Cette version locale n’a pas les textes d’autorisation du fork : macOS affiche les textes officiels quand il demande. Une version publiée du fork a les bons textes."
+        failBuildRemedy: "Cette version locale n’a pas les textes d’autorisation du fork : macOS affiche les textes officiels quand il demande. Une version publiée du fork a les bons textes.",
+        // MARK: Live
+        pillPaused: "En pause",
+        pillStopping: "Arrêt…",
+        pillFinalizing: "Finalisation…",
+        pillPictureFrozen: "Fenêtre réduite, image figée",
+        pillPause: "Mettre en pause",
+        pillResume: "Reprendre l’enregistrement",
+        pillStop: "Arrêter l’enregistrement",
+        pillFilmDisplay: "Filmer tout l’écran",
+        pillFilmWindow: "Filmer la fenêtre",
+        pillMicrophoneLevel: "Votre micro",
+        pillMeetingLevel: "Son de la réunion",
+        pillMicrophoneOff: "Micro non enregistré",
+        pillElapsed: "Durée enregistrée",
+        pillRecording: "Enregistrement de réunion",
+        actionShow: "Afficher dans le Finder",
+        actionOpenSettings: "Ouvrir les Réglages",
+        actionOpenMeetings: "Réglages des réunions",
+        bubbleClose: "Fermer"
     )
 }
 
@@ -545,7 +725,26 @@ extension ForkMeetingStrings {
         failFinalPass: "File non completato",
         failFinalPassRemedy: "Il video resta leggibile nella cartella della riunione, con la riunione e il tuo microfono su tracce separate.",
         failBuild: "Build locale incompleta",
-        failBuildRemedy: "In questa build locale mancano i testi di autorizzazione del fork: macOS mostra quelli ufficiali quando chiede. Una build pubblicata del fork ha i testi giusti."
+        failBuildRemedy: "In questa build locale mancano i testi di autorizzazione del fork: macOS mostra quelli ufficiali quando chiede. Una build pubblicata del fork ha i testi giusti.",
+        // MARK: Live
+        pillPaused: "In pausa",
+        pillStopping: "Interruzione…",
+        pillFinalizing: "Finalizzazione…",
+        pillPictureFrozen: "Finestra ridotta: bloccata",
+        pillPause: "Metti in pausa",
+        pillResume: "Riprendi la registrazione",
+        pillStop: "Ferma la registrazione",
+        pillFilmDisplay: "Registra tutto lo schermo",
+        pillFilmWindow: "Registra la finestra",
+        pillMicrophoneLevel: "Il tuo microfono",
+        pillMeetingLevel: "Audio della riunione",
+        pillMicrophoneOff: "Microfono non registrato",
+        pillElapsed: "Tempo registrato",
+        pillRecording: "Registrazione riunione",
+        actionShow: "Mostra nel Finder",
+        actionOpenSettings: "Apri Impostazioni di Sistema",
+        actionOpenMeetings: "Impostazioni riunioni",
+        bubbleClose: "Chiudi"
     )
 }
 
@@ -595,7 +794,26 @@ extension ForkMeetingStrings {
         failFinalPass: "ファイルを仕上げられません",
         failFinalPassRemedy: "ビデオはミーティングのフォルダ内でそのまま再生でき、ミーティングとあなたのマイクは別々のトラックに入っています。",
         failBuild: "ローカルビルドが不完全",
-        failBuildRemedy: "このローカルビルドにはフォークの許可テキストがありません。macOS は許可を求めるときに公式のテキストを表示します。公開されたフォークのビルドには正しいテキストがあります。"
+        failBuildRemedy: "このローカルビルドにはフォークの許可テキストがありません。macOS は許可を求めるときに公式のテキストを表示します。公開されたフォークのビルドには正しいテキストがあります。",
+        // MARK: Live
+        pillPaused: "一時停止中",
+        pillStopping: "停止中…",
+        pillFinalizing: "仕上げ中…",
+        pillPictureFrozen: "ウインドウ最小化：静止画",
+        pillPause: "録画を一時停止",
+        pillResume: "録画を再開",
+        pillStop: "録画を停止",
+        pillFilmDisplay: "画面全体を録画",
+        pillFilmWindow: "ミーティングのウインドウを録画",
+        pillMicrophoneLevel: "あなたのマイク",
+        pillMeetingLevel: "ミーティングの音声",
+        pillMicrophoneOff: "マイクは録音されません",
+        pillElapsed: "録画時間",
+        pillRecording: "ミーティングの録画",
+        actionShow: "Finderに表示",
+        actionOpenSettings: "システム設定を開く",
+        actionOpenMeetings: "ミーティングの設定",
+        bubbleClose: "閉じる"
     )
 }
 
@@ -645,7 +863,26 @@ extension ForkMeetingStrings {
         failFinalPass: "파일을 마무리하지 못함",
         failFinalPassRemedy: "비디오는 회의 폴더에서 그대로 재생할 수 있으며, 회의와 내 마이크는 별도 트랙에 들어 있습니다.",
         failBuild: "로컬 빌드가 불완전함",
-        failBuildRemedy: "이 로컬 빌드에는 포크의 권한 텍스트가 없어 macOS가 요청할 때 공식 텍스트를 표시합니다. 게시된 포크 빌드에는 올바른 텍스트가 있습니다."
+        failBuildRemedy: "이 로컬 빌드에는 포크의 권한 텍스트가 없어 macOS가 요청할 때 공식 텍스트를 표시합니다. 게시된 포크 빌드에는 올바른 텍스트가 있습니다.",
+        // MARK: Live
+        pillPaused: "일시 정지됨",
+        pillStopping: "중지하는 중…",
+        pillFinalizing: "마무리하는 중…",
+        pillPictureFrozen: "윈도우 최소화: 정지 화면",
+        pillPause: "녹화 일시 정지",
+        pillResume: "녹화 재개",
+        pillStop: "녹화 중지",
+        pillFilmDisplay: "전체 화면 녹화",
+        pillFilmWindow: "회의 윈도우 녹화",
+        pillMicrophoneLevel: "내 마이크",
+        pillMeetingLevel: "회의 소리",
+        pillMicrophoneOff: "마이크 녹음 안 함",
+        pillElapsed: "녹화된 시간",
+        pillRecording: "회의 녹화",
+        actionShow: "Finder에서 보기",
+        actionOpenSettings: "시스템 설정 열기",
+        actionOpenMeetings: "회의 설정",
+        bubbleClose: "닫기"
     )
 }
 
@@ -695,7 +932,26 @@ extension ForkMeetingStrings {
         failFinalPass: "Файл не завершено",
         failFinalPassRemedy: "Відео й далі відтворюється з папки зустрічі, а зустріч і ваш мікрофон записані на окремих доріжках.",
         failBuild: "Неповна локальна збірка",
-        failBuildRemedy: "У цій локальній збірці немає текстів дозволів форку: під час запиту macOS показує офіційні. В опублікованій збірці форку тексти правильні."
+        failBuildRemedy: "У цій локальній збірці немає текстів дозволів форку: під час запиту macOS показує офіційні. В опублікованій збірці форку тексти правильні.",
+        // MARK: Live
+        pillPaused: "Призупинено",
+        pillStopping: "Зупинка…",
+        pillFinalizing: "Завершення…",
+        pillPictureFrozen: "Вікно згорнуто: стоп-кадр",
+        pillPause: "Призупинити запис",
+        pillResume: "Продовжити запис",
+        pillStop: "Зупинити запис",
+        pillFilmDisplay: "Знімати весь екран",
+        pillFilmWindow: "Знімати вікно зустрічі",
+        pillMicrophoneLevel: "Ваш мікрофон",
+        pillMeetingLevel: "Звук зустрічі",
+        pillMicrophoneOff: "Мікрофон не записується",
+        pillElapsed: "Записаний час",
+        pillRecording: "Запис зустрічі",
+        actionShow: "Показати у Finder",
+        actionOpenSettings: "Відкрити Системні параметри",
+        actionOpenMeetings: "Параметри зустрічей",
+        bubbleClose: "Закрити"
     )
 }
 
@@ -745,7 +1001,26 @@ extension ForkMeetingStrings {
         failFinalPass: "无法完成文件",
         failFinalPassRemedy: "视频在会议文件夹中仍可播放，会议声音和你的麦克风位于不同的音轨。",
         failBuild: "本地版本不完整",
-        failBuildRemedy: "此本地版本缺少此分支的权限说明文字：macOS 请求权限时会显示官方文字。此分支的已发布版本包含正确的文字。"
+        failBuildRemedy: "此本地版本缺少此分支的权限说明文字：macOS 请求权限时会显示官方文字。此分支的已发布版本包含正确的文字。",
+        // MARK: Live
+        pillPaused: "已暂停",
+        pillStopping: "正在停止…",
+        pillFinalizing: "正在完成…",
+        pillPictureFrozen: "窗口已最小化：画面静止",
+        pillPause: "暂停录制",
+        pillResume: "继续录制",
+        pillStop: "停止录制",
+        pillFilmDisplay: "录制整个屏幕",
+        pillFilmWindow: "录制会议窗口",
+        pillMicrophoneLevel: "你的麦克风",
+        pillMeetingLevel: "会议声音",
+        pillMicrophoneOff: "未录制麦克风",
+        pillElapsed: "已录制时长",
+        pillRecording: "会议录制",
+        actionShow: "在访达中显示",
+        actionOpenSettings: "打开系统设置",
+        actionOpenMeetings: "会议设置",
+        bubbleClose: "关闭"
     )
 }
 
@@ -795,7 +1070,26 @@ extension ForkMeetingStrings {
         failFinalPass: "無法完成檔案",
         failFinalPassRemedy: "影片在會議檔案夾中仍可播放，會議聲音和你的麥克風位於不同的音軌。",
         failBuild: "本機版本不完整",
-        failBuildRemedy: "此本機版本缺少此分支的權限說明文字：macOS 要求權限時會顯示官方文字。此分支的已發布版本包含正確的文字。"
+        failBuildRemedy: "此本機版本缺少此分支的權限說明文字：macOS 要求權限時會顯示官方文字。此分支的已發布版本包含正確的文字。",
+        // MARK: Live
+        pillPaused: "已暫停",
+        pillStopping: "正在停止…",
+        pillFinalizing: "正在完成…",
+        pillPictureFrozen: "視窗已縮到最小：畫面靜止",
+        pillPause: "暫停錄製",
+        pillResume: "繼續錄製",
+        pillStop: "停止錄製",
+        pillFilmDisplay: "錄製整個螢幕",
+        pillFilmWindow: "錄製會議視窗",
+        pillMicrophoneLevel: "你的麥克風",
+        pillMeetingLevel: "會議聲音",
+        pillMicrophoneOff: "未錄製麥克風",
+        pillElapsed: "已錄製時間",
+        pillRecording: "會議錄製",
+        actionShow: "在 Finder 中顯示",
+        actionOpenSettings: "打開系統設定",
+        actionOpenMeetings: "會議設定",
+        bubbleClose: "關閉"
     )
 }
 
@@ -845,6 +1139,25 @@ extension ForkMeetingStrings {
         failFinalPass: "無法完成檔案",
         failFinalPassRemedy: "影片在會議檔案夾中仍可播放，會議聲音和你的麥克風位於不同的音軌。",
         failBuild: "本機版本不完整",
-        failBuildRemedy: "此本機版本缺少此分支的權限說明文字：macOS 要求權限時會顯示官方文字。此分支的已發布版本包含正確的文字。"
+        failBuildRemedy: "此本機版本缺少此分支的權限說明文字：macOS 要求權限時會顯示官方文字。此分支的已發布版本包含正確的文字。",
+        // MARK: Live
+        pillPaused: "已暫停",
+        pillStopping: "正在停止…",
+        pillFinalizing: "正在完成…",
+        pillPictureFrozen: "視窗已縮到最小：畫面靜止",
+        pillPause: "暫停錄製",
+        pillResume: "繼續錄製",
+        pillStop: "停止錄製",
+        pillFilmDisplay: "錄製整個螢幕",
+        pillFilmWindow: "錄製會議視窗",
+        pillMicrophoneLevel: "你的麥克風",
+        pillMeetingLevel: "會議聲音",
+        pillMicrophoneOff: "未錄製麥克風",
+        pillElapsed: "已錄製時間",
+        pillRecording: "會議錄製",
+        actionShow: "在 Finder 中顯示",
+        actionOpenSettings: "打開系統設定",
+        actionOpenMeetings: "會議設定",
+        bubbleClose: "關閉"
     )
 }
