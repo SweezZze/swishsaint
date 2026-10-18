@@ -31,6 +31,13 @@ enum ForkDictationEngineChoice {
         ForkParakeetLanguages.baseCode(language).isEmpty || ForkParakeetLanguages.isSupported(language)
     }
 
+    /// The language that picks the engine: `language` when one is chosen,
+    /// else the first of the person's own. Parakeet still detects the
+    /// language itself; this only keeps Automatic from handing it Japanese.
+    static func choiceLanguage(_ language: String, preferred: [String]) -> String {
+        language.isEmpty ? (preferred.first ?? "") : language
+    }
+
     /// The engine for one dictation. `language`: the shortcut's own, else
     /// the dictation's, else the system's.
     static func resolve(setting: ForkDictationEngineSetting, parakeetInstalled: Bool,

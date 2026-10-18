@@ -19,6 +19,7 @@ import Speech
 /// Main thread, except `append` (the microphone's queue).
 final class ForkAppleSpeechEngine: ForkDictationEngine {
     let kind = ForkDictationEngineKind.apple
+    var onFailure: ((ForkDictationFailure) -> Void)?
 
     /// How long the recognizer may take to settle once the person stops.
     static let finishTimeout: TimeInterval = 4
@@ -204,8 +205,12 @@ final class ForkAppleSpeechEngine: ForkDictationEngine {
             log.debug("recognition ended early: \(String(describing: error), privacy: .public)")
         }
         // A request that failed without understanding anything (no network,
-        // recognizer gone) would fail again at once.
-        guard restarts < Self.maximumRestarts, understoodSomething || !isReal else { return }
+        // recognizer gone) would fail again at once. With nothing kept so far,
+        // the person hears it now instead of after minutes of talking.
+        guard restarts < Self.maximumRestarts, understoodSomething || !isReal else {
+            if isReal, settled.isEmpty { reportFailure(.transcriptionFailed) }
+            return
+        }
         restarts += 1
         openRequest()
     }
@@ -220,7 +225,7 @@ final class ForkAppleSpeechEngine: ForkDictationEngine {
         guard isActive, let completion else { return }
         settle()
         task?.finish()
-        let text = settled.joined(separator: " ")
+        let text = ForkDictationSupport.joined(settled)
         let failed = failedForReal
         tearDown()
         if text.isEmpty, failed {
@@ -228,6 +233,12 @@ final class ForkAppleSpeechEngine: ForkDictationEngine {
         } else {
             completion(.success(text))
         }
+    }
+
+    private func reportFailure(_ failure: ForkDictationFailure) {
+        let handler = onFailure
+        tearDown()
+        handler?(failure)
     }
 
     private func tearDown() {
@@ -252,10 +263,15 @@ final class ForkAppleSpeechEngine: ForkDictationEngine {
     /// person said nothing, or the request was ended on purpose.
     private static func isSilence(_ error: Error) -> Bool {
         let error = error as NSError
-        guard error.domain == "kAFAssistantErrorDomain" else {
+        switch error.domain {
+        case "kAFAssistantErrorDomain":
+            // 1110: no speech detected; 216, 203, 301: request cancelled or ended.
+            return [1110, 216, 203, 301].contains(error.code)
+        case "kLSRErrorDomain":
+            // On-device recognition: 301, the request was cancelled.
+            return error.code == 301
+        default:
             return error.domain == NSCocoaErrorDomain && error.code == NSUserCancelledError
         }
-        // 1110: no speech detected; 216, 203, 301: request cancelled or ended.
-        return [1110, 216, 203, 301].contains(error.code)
     }
 }

@@ -39,11 +39,13 @@ final class ForkDictationEngines {
     }
 
     /// Which engine a dictation in `language` (BCP 47, empty: automatic)
-    /// would use, for the settings page too.
+    /// would use, for the settings page too. An automatic language is the
+    /// person's own here.
     func kind(for setting: ForkDictationEngineSetting = ForkDictationEngines.setting,
               language: String) -> Result<ForkDictationEngineKind, ForkDictationFailure> {
-        ForkDictationEngineChoice.resolve(setting: setting, parakeetInstalled: isParakeetInstalled,
-                                          language: language)
+        let language = ForkDictationEngineChoice.choiceLanguage(language, preferred: Locale.preferredLanguages)
+        return ForkDictationEngineChoice.resolve(setting: setting, parakeetInstalled: isParakeetInstalled,
+                                                 language: language)
     }
 
     func engine(for setting: ForkDictationEngineSetting = ForkDictationEngines.setting,

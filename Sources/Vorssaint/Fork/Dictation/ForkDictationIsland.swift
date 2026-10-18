@@ -58,6 +58,9 @@ enum ForkDictationIsland {
         case .keptInClipboard:
             return NotchNotice(event: .microphone, title: text.statusKeptInClipboard, detail: "",
                                symbol: "doc.on.clipboard")
+        case .inHistoryOnly:
+            return NotchNotice(event: .microphone, title: text.statusInHistoryOnly, detail: "",
+                               symbol: "clock.arrow.circlepath")
         case let .nothingHeard(afterSilence):
             return NotchNotice(event: .microphone,
                                title: afterSilence ? text.statusNothingHeardSilence : text.statusNothingHeard,

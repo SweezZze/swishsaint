@@ -9,9 +9,14 @@ enum ForkDictationDeliveryOutcome: Equatable {
     case pasted
     /// Left on the clipboard, as the Copy action asks.
     case copied
-    /// The paste could not happen (the app quit, secure input, a stuck
-    /// clipboard): the text waits on the clipboard for ⌘V.
+    /// The paste could not happen (the app quit, secure input): the text
+    /// waits on the clipboard for ⌘V.
     case keptInClipboard
+    /// The clipboard did not answer in time: nothing was written to it, the
+    /// text is only in the clipboard history.
+    case inHistoryOnly
+    /// A newer paste took over before this one could finish: nothing to say.
+    case superseded
 }
 
 /// The only place where the dictation decides anything.
@@ -89,10 +94,12 @@ struct ForkDictationMachine {
     private var text = ""
 
     /// Escape belongs to the dictation only here: everywhere else it goes to
-    /// the app in front.
+    /// the app in front. Before the microphone opens nothing shows, so an
+    /// Escape there is the app's.
     var isCancellable: Bool {
         switch phase {
-        case .listening, .transcribing: return true
+        case .listening: return isCapturing
+        case .transcribing: return true
         case .idle, .arming, .delivering: return false
         }
     }
@@ -193,6 +200,10 @@ struct ForkDictationMachine {
             case .pasted: return [.present(.pasted(excerpt: excerpt))]
             case .copied: return [.present(.copied(excerpt: excerpt))]
             case .keptInClipboard: return [.present(.keptInClipboard)]
+            case .inHistoryOnly: return [.present(.inHistoryOnly)]
+            // The newer paste shows its own outcome; this one only clears
+            // "Transcribing…".
+            case .superseded: return [.present(.hidden)]
             }
 
         // A press while the last dictation is still being written.
@@ -203,11 +214,13 @@ struct ForkDictationMachine {
         case let (_, .failed(failure)):
             let previous = phase
             phase = .idle
+            // Secure input is not a fault of the dictation: said, not beeped.
+            let sound: [Effect] = failure.isSecureInput ? [] : [.play(.failure)]
             switch previous {
             case .listening:
-                return [.discardCapture, .play(.failure), .present(.failure(failure))]
+                return [.discardCapture] + sound + [.present(.failure(failure))]
             case .transcribing, .delivering, .idle, .arming:
-                return [.play(.failure), .present(.failure(failure))]
+                return sound + [.present(.failure(failure))]
             }
 
         default:

@@ -90,6 +90,23 @@ extension ForkDictationFailure {
         }
     }
 
+    var isSecureInput: Bool {
+        if case .secureInput = self { return true }
+        return false
+    }
+
+    /// A cause that stays until the person acts on it, worth a banner on the
+    /// Dictation page. The others belong to one dictation and pass with it.
+    var isLasting: Bool {
+        switch self {
+        case .accessibilityMissing, .microphoneDenied, .microphoneMutedInVorssaint, .speechDenied,
+             .speechUnavailableInBuild, .modelMissing, .modelDamaged:
+            return true
+        case .microphoneSilent, .captureFailed, .secureInput, .languageUnavailable, .transcriptionFailed:
+            return false
+        }
+    }
+
     /// Every case, for the checks that each one explains itself.
     static let all: [ForkDictationFailure] = [
         .accessibilityMissing, .microphoneDenied, .microphoneMutedInVorssaint, .microphoneSilent,

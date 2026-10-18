@@ -20,8 +20,8 @@ import Speech
 final class ForkDictationService: ObservableObject {
     static let shared = ForkDictationService()
 
-    /// The last failure shown, for the settings page's banner. Cleared by the
-    /// next dictation that writes something.
+    /// A lasting failure (`ForkDictationFailure.isLasting`), for the settings
+    /// page's banner. Cleared as soon as its cause is gone.
     @Published private(set) var lastFailure: ForkDictationFailure?
     @Published private(set) var speechAuthorization = SFSpeechRecognizer.authorizationStatus()
     /// Whether the shortcuts are being watched.
@@ -38,6 +38,9 @@ final class ForkDictationService: ObservableObject {
     /// A level (0…1, `ForkDictationSupport.level`) above this is a voice for
     /// the hands-free silence limit: about -38 dB.
     static let voiceLevel: Float = 0.3
+    /// Speaking this long into a held shortcut makes another key part of the
+    /// dictation rather than a keyboard shortcut.
+    static let committedSpeech: TimeInterval = 1
     private static let soundVolume: Float = 0.2
 
     private let log = Logger(subsystem: "fork.dictation", category: "service")
@@ -60,19 +63,34 @@ final class ForkDictationService: ObservableObject {
     private var engine: ForkDictationEngine?
     private var language = ""
     private var target: NSRunningApplication?
-    /// Found at the press, said only once the hold proves the intent: a ⌘C
-    /// never beeps.
+    /// Found at the press, said only once the person clearly meant to
+    /// dictate: held past a tap, or tapped into hands-free. A ⌘C never beeps.
     private var pendingFailure: ForkDictationFailure?
+    private var failureAwaitingIntent: ForkDictationFailure?
+    private var pressedAt: TimeInterval = 0
+    /// When the microphone really opened, on the uptime clock.
+    private var captureStartedAt: TimeInterval?
     /// Kept in memory only, for the Paste last shortcut.
     private var lastDelivered: String?
+    /// A Paste last on a lone modifier waits for its release: pressed with
+    /// another key, it was a shortcut.
+    private var pendingPasteLast: (id: UUID, at: TimeInterval)?
+    /// Bumped by each Paste last, so an older one's answer says nothing.
+    private var pasteLastGeneration = 0
 
     private var armWork: DispatchWorkItem?
     private var timers: [Timer] = []
     private var queue: [ForkDictationMachine.Event] = []
     private var isDraining = false
 
-    private var accessibilityObserver: AnyCancellable?
+    private var observers: [AnyCancellable] = []
     private var followsSession = false
+    /// While the app is in front, recording a shortcut may begin: the tap
+    /// then holds nothing back, so the recorder sees every key.
+    private var captureWatch: Timer?
+    /// The model left the disk (deleted, downloading) since it was found
+    /// damaged.
+    private var modelReplaced = false
     private lazy var sounds: [ForkDictationSound: NSSound] = Self.loadSounds()
 
     private init() {}
@@ -105,6 +123,7 @@ final class ForkDictationService: ObservableObject {
 
     func sync() {
         refreshAuthorization()
+        revalidateFailure()
         let canRun = SessionActivitySupport.tapShouldRun(featureWanted: Self.isWanted,
                                                          accessibilityGranted: AXIsProcessTrusted(),
                                                          sessionIsActive: SessionActivity.shared.isActive)
@@ -112,12 +131,32 @@ final class ForkDictationService: ObservableObject {
     }
 
     private func followPermissions() {
-        guard accessibilityObserver == nil else { return }
-        accessibilityObserver = Permissions.shared.$accessibility
+        guard observers.isEmpty else { return }
+        observers.append(Permissions.shared.$accessibility
             .removeDuplicates()
             .dropFirst()
             .receive(on: DispatchQueue.main)
-            .sink { _ in ForkDictationService.sync() }
+            .sink { _ in ForkDictationService.sync() })
+        observers.append(MicMuteService.shared.$isMuted
+            .removeDuplicates()
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in self?.revalidateFailure() })
+        observers.append(ForkParakeetModelStore.shared.$state
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] state in
+                // A damaged model is fixed once it has been put back.
+                if case .installed = state {} else { self?.modelReplaced = true }
+                self?.revalidateFailure()
+            })
+        let center = NotificationCenter.default
+        observers.append(center.publisher(for: NSApplication.didBecomeActiveNotification)
+            .sink { [weak self] _ in
+                self?.refreshAuthorization()
+                self?.revalidateFailure()
+                self?.watchShortcutCapture(true)
+            })
+        observers.append(center.publisher(for: NSApplication.didResignActiveNotification)
+            .sink { [weak self] _ in self?.watchShortcutCapture(false) })
         guard !followsSession else { return }
         followsSession = true
         SessionActivity.shared.onChange { _ in
@@ -127,7 +166,8 @@ final class ForkDictationService: ObservableObject {
 
     private func start() {
         table = ForkDictationShortcutTable(ForkDictationShortcuts.load())
-        if let owner, table.shortcut(owner.id) == nil { reset() }
+        // A shortcut removed or changed while it drives a session ends it.
+        if let owner, table.shortcut(owner.id) != owner { reset() }
         if tap.isRunning {
             tap.update(table: table)
         } else if tap.start(table: table) {
@@ -136,13 +176,17 @@ final class ForkDictationService: ObservableObject {
             log.error("the key tap could not start")
         }
         updateTapFlags()
+        prepareMicrophone()
+        if captureWatch == nil, NSApp.isActive { watchShortcutCapture(true) }
         if isRunning != tap.isRunning { isRunning = tap.isRunning }
     }
 
     private func stop() {
         reset()
         tap.stop()
+        watchShortcutCapture(false)
         engines.suspend()
+        lastFailure = nil
         if isRunning { isRunning = false }
     }
 
@@ -156,6 +200,7 @@ final class ForkDictationService: ObservableObject {
         owner = nil
         ownerIsDown = false
         gesture = ForkDictationGesture()
+        pendingPasteLast = nil
         queue.removeAll()
         presenter.hideNow()
         updateTapFlags()
@@ -190,6 +235,34 @@ final class ForkDictationService: ObservableObject {
         lastFailure = nil
     }
 
+    /// Drops the banner once its cause is gone: Accessibility granted, the
+    /// microphone unmuted or allowed, speech recognition allowed, the model
+    /// back.
+    private func revalidateFailure() {
+        guard let failure = lastFailure else { return }
+        let stillTrue: Bool
+        switch failure {
+        case .accessibilityMissing:
+            stillTrue = !AXIsProcessTrusted()
+        case .microphoneMutedInVorssaint:
+            stillTrue = MicMuteService.shared.isMuted
+        case .microphoneDenied:
+            let status = AVCaptureDevice.authorizationStatus(for: .audio)
+            stillTrue = status == .denied || status == .restricted
+        case .speechDenied:
+            stillTrue = ForkAppleSpeechEngine.authorization != .authorized
+        case .speechUnavailableInBuild:
+            stillTrue = !ForkAppleSpeechEngine.canAskForSpeechRecognition
+        case .modelMissing:
+            stillTrue = !engines.isParakeetInstalled
+        case .modelDamaged:
+            stillTrue = !(modelReplaced && engines.isParakeetInstalled)
+        default:
+            stillTrue = false
+        }
+        if !stillTrue { lastFailure = nil }
+    }
+
     /// What a failure's button does.
     func perform(_ action: ForkDictationFailureAction) {
         switch action {
@@ -206,8 +279,7 @@ final class ForkDictationService: ObservableObject {
         case .downloadModel:
             ForkParakeetModelStore.shared.install()
         case .redownloadModel:
-            ForkParakeetModelStore.shared.delete()
-            ForkParakeetModelStore.shared.install()
+            ForkParakeetModelStore.shared.reinstall()
         case .openSettingsPage:
             SettingsRouter.shared.page = .extras
             (NSApp.delegate as? AppDelegate)?.openSettingsWindow()
@@ -224,12 +296,25 @@ final class ForkDictationService: ObservableObject {
             guard !ShortcutCapture.isCapturing, let shortcut = table.shortcut(id) else { return }
             press(shortcut, at: now)
         case let .up(id):
+            if let pending = pendingPasteLast, pending.id == id {
+                pendingPasteLast = nil
+                updateTapFlags()
+                if now - pending.at < ForkDictationGesture.tapLimit, let shortcut = table.shortcut(id) {
+                    send(.gesture(.start, shortcut, handsFree: false))
+                }
+                return
+            }
             guard let owner, owner.id == id else { return }
             ownerIsDown = false
             send(.gesture(gesture.triggerUp(at: now), owner, handsFree: gesture.isHandsFree))
         case .otherKey:
+            if pendingPasteLast != nil {
+                pendingPasteLast = nil
+                updateTapFlags()
+            }
             guard let owner else { return }
-            send(.gesture(gesture.otherKey(), owner, handsFree: gesture.isHandsFree))
+            let committed = captureStartedAt.map { now - $0 >= Self.committedSpeech } ?? false
+            send(.gesture(gesture.otherKey(keepsListening: committed), owner, handsFree: gesture.isHandsFree))
         case .escape:
             _ = gesture.escape()
             send(.escape)
@@ -237,21 +322,31 @@ final class ForkDictationService: ObservableObject {
     }
 
     private func press(_ shortcut: ForkDictationShortcut, at now: TimeInterval) {
-        if let owner {
-            // Only the key that opened the session drives it.
-            guard owner.id == shortcut.id else { return }
+        if shortcut.action == .pasteLast {
+            // A lone modifier pastes at its release, if nothing else was
+            // pressed with it; a combination is already deliberate.
+            if case .modifier = shortcut.key {
+                pendingPasteLast = (shortcut.id, now)
+                updateTapFlags()
+            } else {
+                send(.gesture(.start, shortcut, handsFree: false))
+            }
+            return
+        }
+        if let owner, owner.id == shortcut.id {
             ownerIsDown = true
             send(.gesture(gesture.triggerDown(at: now), owner, handsFree: gesture.isHandsFree))
             return
         }
-        // Paste last, or a press while the last dictation is being written:
-        // no gesture to follow.
-        guard shortcut.action != .pasteLast, machine.phase == .idle else {
+        // Another shortcut during a session drives nothing; while the last
+        // dictation is being written, the machine answers "busy".
+        guard owner == nil, machine.phase == .idle else {
             send(.gesture(.start, shortcut, handsFree: false))
             return
         }
         owner = shortcut
         ownerIsDown = true
+        pressedAt = now
         gesture = ForkDictationGesture(mode: shortcut.mode)
         let command = gesture.triggerDown(at: now)
         if command == .start { prepareSession(for: shortcut) }
@@ -266,6 +361,8 @@ final class ForkDictationService: ObservableObject {
         language = shortcut.language
             ?? UserDefaults.standard.string(forKey: ForkDefaultsKey.dictationLocale) ?? ""
         engine = nil
+        captureStartedAt = nil
+        failureAwaitingIntent = nil
         pendingFailure = guardFailure()
         guard pendingFailure == nil else { return }
         switch engines.engine(language: language) {
@@ -300,7 +397,9 @@ final class ForkDictationService: ObservableObject {
             settleGesture()
         }
         isDraining = false
+        if machine.phase == .idle { failureAwaitingIntent = nil }
         updateTapFlags()
+        if failureAwaitingIntent != nil { sayFailureIfMeant() }
     }
 
     /// Once the machine is back at rest, the gesture follows: a key still
@@ -316,7 +415,7 @@ final class ForkDictationService: ObservableObject {
         if case .holding = gesture.state, owner != nil {
             tap.reportsOtherKeys = true
         } else {
-            tap.reportsOtherKeys = false
+            tap.reportsOtherKeys = pendingPasteLast != nil
         }
     }
 
@@ -375,8 +474,12 @@ final class ForkDictationService: ObservableObject {
 
     private func startCapture() {
         if let failure = pendingFailure {
+            // Said once the person clearly meant to dictate, never for a
+            // shortcut that only lingered on its modifier.
             pendingFailure = nil
-            send(.failed(failure))
+            failureAwaitingIntent = failure
+            let wait = max(0, pressedAt + ForkDictationGesture.tapLimit - ProcessInfo.processInfo.systemUptime)
+            schedule(after: wait, token) { $0.sayFailureIfMeant() }
             return
         }
         guard let engine else {
@@ -402,6 +505,21 @@ final class ForkDictationService: ObservableObject {
         openMicrophone(for: engine)
     }
 
+    /// A failure found at the press is said when the shortcut is held past
+    /// a tap, or tapped into hands-free; dropped if it was a shortcut.
+    private func sayFailureIfMeant() {
+        guard let failure = failureAwaitingIntent, case .listening = machine.phase else { return }
+        let heldPastTap: Bool
+        if case .holding = gesture.state, ownerIsDown {
+            heldPastTap = ProcessInfo.processInfo.systemUptime - pressedAt >= ForkDictationGesture.tapLimit
+        } else {
+            heldPastTap = false
+        }
+        guard gesture.isHandsFree || heldPastTap else { return }
+        failureAwaitingIntent = nil
+        send(.failed(failure))
+    }
+
     private func openMicrophone(for engine: ForkDictationEngine) {
         let vocabulary = ForkDictationSupport.vocabulary(
             from: UserDefaults.standard.string(forKey: ForkDefaultsKey.dictationVocabulary) ?? "")
@@ -410,14 +528,19 @@ final class ForkDictationService: ObservableObject {
             return
         }
         let session = token
+        engine.onFailure = { [weak self] failure in
+            self?.ifCurrent(session) { self?.send(.failed(failure)) }
+        }
         let presenter = presenter
         let voice = voice
         voice.reset()
-        let device = UserDefaults.standard.string(forKey: ForkDefaultsKey.dictationMicrophone)
-            ?? ForkDictationAudioDevices.builtInChoice
-        microphone.start(device: device, callbacks: ForkDictationMicrophone.Callbacks(
+        microphone.start(device: microphoneChoice, callbacks: ForkDictationMicrophone.Callbacks(
             started: { [weak self] in
                 self?.ifCurrent(session) {
+                    self?.captureStartedAt = ProcessInfo.processInfo.systemUptime
+                    // Read the clipboard to restore while the person speaks, not
+                    // inside the paste's 500 ms deadline.
+                    self?.paster.prepareSnapshot()
                     self?.startTimers()
                     self?.send(.captureStarted)
                 }
@@ -463,6 +586,7 @@ final class ForkDictationService: ObservableObject {
         timers.forEach { $0.invalidate() }
         timers.removeAll()
         let capture = microphone.stop()
+        prepareMicrophone()
         guard let engine, capture.duration >= Self.shortestCapture, capture.peak > Self.quietPeak else {
             self.engine?.cancel()
             send(.transcribedNothing)
@@ -493,10 +617,43 @@ final class ForkDictationService: ObservableObject {
         invalidateSession()
         microphone.cancel()
         engine?.cancel()
+        prepareMicrophone()
+    }
+
+    /// Builds the next capture session ahead of time, so the next press only
+    /// has to start it: the first word is not lost to the setup.
+    private func prepareMicrophone() {
+        guard tap.isRunning, AVCaptureDevice.authorizationStatus(for: .audio) == .authorized else { return }
+        microphone.prepare(device: microphoneChoice)
+    }
+
+    private var microphoneChoice: String {
+        UserDefaults.standard.string(forKey: ForkDefaultsKey.dictationMicrophone)
+            ?? ForkDictationAudioDevices.builtInChoice
+    }
+
+    /// Polls `ShortcutCapture` while the app is in front (the only time a
+    /// shortcut can be recorded): the tap then lets every key through.
+    private func watchShortcutCapture(_ on: Bool) {
+        captureWatch?.invalidate()
+        captureWatch = nil
+        guard on, tap.isRunning else {
+            tap.isSuspended = false
+            return
+        }
+        let timer = Timer(timeInterval: 0.2, repeats: true) { [weak self] _ in
+            guard let self else { return }
+            let capturing = ShortcutCapture.isCapturing
+            if self.tap.isSuspended != capturing { self.tap.isSuspended = capturing }
+        }
+        timer.tolerance = 0.1
+        RunLoop.main.add(timer, forMode: .common)
+        captureWatch = timer
     }
 
     private func deliver(_ text: String, action: ForkDictationShortcut.Action) {
         lastDelivered = text
+        pasteLastGeneration += 1
         let session = token
         paster.deliver(text, action: action, target: target, addsToHistory: addsToHistory) { [weak self] outcome in
             self?.ifCurrent(session) {
@@ -514,11 +671,16 @@ final class ForkDictationService: ObservableObject {
             return
         }
         let excerpt = ForkDictationPresentation.excerpt(text)
+        pasteLastGeneration += 1
+        let generation = pasteLastGeneration
         paster.deliver(text, action: .paste, target: paster.captureTarget(), addsToHistory: false) { [weak self] outcome in
+            guard let self, self.pasteLastGeneration == generation else { return }
             switch outcome {
-            case .pasted: self?.present(.pasted(excerpt: excerpt))
-            case .copied: self?.present(.copied(excerpt: excerpt))
-            case .keptInClipboard: self?.present(.keptInClipboard)
+            case .pasted: self.present(.pasted(excerpt: excerpt))
+            case .copied: self.present(.copied(excerpt: excerpt))
+            case .keptInClipboard: self.present(.keptInClipboard)
+            case .inHistoryOnly: self.present(.inHistoryOnly)
+            case .superseded: break
             }
         }
     }
@@ -528,7 +690,10 @@ final class ForkDictationService: ObservableObject {
     }
 
     private func present(_ presentation: ForkDictationPresentation) {
-        if case let .failure(failure) = presentation { lastFailure = failure }
+        if case let .failure(failure) = presentation, failure.isLasting {
+            if failure == .modelDamaged { modelReplaced = false }
+            lastFailure = failure
+        }
         presenter.show(presentation)
     }
 

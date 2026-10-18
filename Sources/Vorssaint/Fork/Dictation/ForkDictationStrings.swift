@@ -36,6 +36,8 @@ struct ForkDictationStrings {
     let tryTitle: String
     let tryPlaceholder: String
     let buildCaption: String
+    let readyFormat: String
+    let stateOff: String
 
     // MARK: Vocabulary and replacements
 
@@ -73,6 +75,7 @@ struct ForkDictationStrings {
     let shortcutProblemDuplicate: String
     let shortcutProblemNeedsModifier: String
     let shortcutProblemReserved: String
+    let shortcutProblemConflict: String
     let shortcutConflictSuperKey: String
 
     // MARK: Engine
@@ -96,6 +99,9 @@ struct ForkDictationStrings {
     let parakeetCloneCaption: String
     let parakeetLanguagesCaption: String
     let parakeetAttribution: String
+    let fluidAudioAttribution: String
+    let licenseLink: String
+    let modelPageLink: String
     let vocabularyAppleOnlyCaption: String
     let languageParakeetAuto: String
 
@@ -132,6 +138,7 @@ struct ForkDictationStrings {
     let statusPasted: String
     let statusCopied: String
     let statusKeptInClipboard: String
+    let statusInHistoryOnly: String
     let statusNothingHeard: String
     let statusNothingHeardSilence: String
     let statusCancelled: String
@@ -144,6 +151,8 @@ struct ForkDictationStrings {
     let voiceTranscribing: String
     let voicePastedFormat: String
     let voiceCopiedFormat: String
+    let voiceKeptInClipboard: String
+    let voiceInHistoryOnly: String
     let voiceNothingHeard: String
     let voiceCancelled: String
 
@@ -177,13 +186,15 @@ struct ForkDictationStrings {
     let storeNetworkError: String
     let storeDiskFullFormat: String
     let storeChecksumError: String
+    let storeIOError: String
 
     // MARK: Buttons
 
     let actionOpenSettings: String
-    let actionUnmute: String
     let actionDownload: String
+    let actionInstall: String
     let actionRedownload: String
+    let actionDismiss: String
 
     static var current: ForkDictationStrings { strings(L10n.shared.language) }
 
@@ -196,6 +207,7 @@ struct ForkDictationStrings {
     func voicePasted(_ excerpt: String) -> String { String(format: voicePastedFormat, excerpt) }
     func voiceCopied(_ excerpt: String) -> String { String(format: voiceCopiedFormat, excerpt) }
     func storeDiskFull(_ size: String) -> String { String(format: storeDiskFullFormat, size) }
+    func ready(_ summary: String) -> String { String(format: readyFormat, summary) }
     func unloadMinutes(_ minutes: Int) -> String { String(format: unloadMinutesFormat, minutes) }
     /// The app holding secure input when it is known.
     func failSecureInput(app: String?) -> String {
@@ -259,7 +271,9 @@ extension ForkDictationStrings {
         speechPermissionName: "Speech Recognition",
         tryTitle: "Try it",
         tryPlaceholder: "Click here, then dictate",
-        buildCaption: "This local build cannot ask for speech recognition. Dictation works in the fork’s published versions.",
+        buildCaption: "This local build can’t ask for speech recognition, so Apple’s engine works only in the fork’s published versions. Parakeet works here.",
+        readyFormat: "Ready: %@",
+        stateOff: "Dictation is off. Turn it on above.",
         vocabularyTitle: "Vocabulary",
         vocabularyCaption: "Words dictation should know: names, brands, English terms. They are favored when what you say sounds like them.",
         vocabularyPlaceholder: "Add a word or phrase",
@@ -291,6 +305,7 @@ extension ForkDictationStrings {
         shortcutProblemDuplicate: "Another shortcut already uses this key.",
         shortcutProblemNeedsModifier: "Add ⌘, ⌥ or ⌃ to this combination.",
         shortcutProblemReserved: "This key can’t be used on its own.",
+        shortcutProblemConflict: "This shortcut is already used by macOS or by another feature.",
         shortcutConflictSuperKey: "This key is the Super Key: it no longer acts as a modifier, so dictation can’t see it.",
         recognitionTitle: "Recognition",
         engineTitle: "Engine",
@@ -310,7 +325,10 @@ extension ForkDictationStrings {
         parakeetRetry: "Try Again",
         parakeetCloneCaption: "Another app already has it on this Mac: it installs instantly, with nothing to download.",
         parakeetLanguagesCaption: "25 European languages, detected automatically. For Japanese, Korean, Chinese or Turkish, Apple takes over.",
-        parakeetAttribution: "Parakeet TDT 0.6B v3 by NVIDIA, under CC-BY-4.0. Inference adapted from FluidAudio (Apache-2.0).",
+        parakeetAttribution: "Parakeet TDT 0.6B v3 by NVIDIA, under the CC BY 4.0 license.",
+        fluidAudioAttribution: "Parakeet’s inference is adapted from FluidAudio, under the Apache 2.0 license.",
+        licenseLink: "License",
+        modelPageLink: "Model page",
         vocabularyAppleOnlyCaption: "The vocabulary guides Apple’s engine. With Parakeet, replacements fix what it mishears.",
         languageParakeetAuto: "Detected automatically",
         microphoneTitle: "Microphone",
@@ -337,7 +355,8 @@ extension ForkDictationStrings {
         statusTranscribing: "Transcribing…",
         statusPasted: "Pasted",
         statusCopied: "Copied",
-        statusKeptInClipboard: "⌘V to paste",
+        statusKeptInClipboard: "Not pasted · ⌘V",
+        statusInHistoryOnly: "Kept in clipboard history",
         statusNothingHeard: "Nothing heard",
         statusNothingHeardSilence: "Nothing heard for 1 min",
         statusCancelled: "Cancelled",
@@ -347,6 +366,8 @@ extension ForkDictationStrings {
         voiceTranscribing: "Dictation: transcribing",
         voicePastedFormat: "Dictation pasted: %@",
         voiceCopiedFormat: "Dictation copied: %@",
+        voiceKeptInClipboard: "Dictation not pasted: press Command V to paste it.",
+        voiceInHistoryOnly: "Dictation not pasted: it is in the clipboard history.",
         voiceNothingHeard: "Dictation: nothing heard",
         voiceCancelled: "Dictation cancelled",
         failAccessibility: "Accessibility needed",
@@ -377,10 +398,12 @@ extension ForkDictationStrings {
         storeNetworkError: "The download failed. Check the connection and try again: what was already downloaded is kept.",
         storeDiskFullFormat: "Not enough space: %@ must be free.",
         storeChecksumError: "A downloaded file was damaged. Try again.",
+        storeIOError: "The model couldn’t be written to disk. Check the free space, then try again.",
         actionOpenSettings: "Open Settings",
-        actionUnmute: "Turn Microphone On",
         actionDownload: "Download",
-        actionRedownload: "Download Again"
+        actionInstall: "Install",
+        actionRedownload: "Download Again",
+        actionDismiss: "Dismiss"
     )
 }
 
@@ -406,7 +429,9 @@ extension ForkDictationStrings {
         speechPermissionName: "Reconhecimento de Fala",
         tryTitle: "Teste",
         tryPlaceholder: "Clique aqui e dite",
-        buildCaption: "Esta versão local não pode pedir o reconhecimento de fala. O ditado funciona nas versões publicadas do fork.",
+        buildCaption: "Esta versão local não pode pedir o reconhecimento de fala, então o motor da Apple só funciona nas versões publicadas do fork. O Parakeet funciona aqui.",
+        readyFormat: "Pronto: %@",
+        stateOff: "O ditado está desativado. Ative-o acima.",
         vocabularyTitle: "Vocabulário",
         vocabularyCaption: "Palavras que o ditado deve conhecer: nomes, marcas, termos em inglês. Elas são favorecidas quando o que você diz se parece com elas.",
         vocabularyPlaceholder: "Adicionar palavra ou expressão",
@@ -438,6 +463,7 @@ extension ForkDictationStrings {
         shortcutProblemDuplicate: "Outro atalho já usa esta tecla.",
         shortcutProblemNeedsModifier: "Adicione ⌘, ⌥ ou ⌃ a esta combinação.",
         shortcutProblemReserved: "Esta tecla não pode ser usada sozinha.",
+        shortcutProblemConflict: "Este atalho já é usado pelo macOS ou por outro recurso.",
         shortcutConflictSuperKey: "Esta tecla é a da Super Key: ela não funciona mais como modificadora, então o ditado não a vê.",
         recognitionTitle: "Reconhecimento",
         engineTitle: "Mecanismo",
@@ -457,7 +483,10 @@ extension ForkDictationStrings {
         parakeetRetry: "Tentar de novo",
         parakeetCloneCaption: "Outro app já o tem neste Mac: ele é instalado na hora, sem baixar nada.",
         parakeetLanguagesCaption: "25 idiomas europeus, detectados automaticamente. Para japonês, coreano, chinês ou turco, a Apple assume.",
-        parakeetAttribution: "Parakeet TDT 0.6B v3 da NVIDIA, sob CC-BY-4.0. Inferência adaptada do FluidAudio (Apache-2.0).",
+        parakeetAttribution: "Parakeet TDT 0.6B v3 da NVIDIA, sob a licença CC BY 4.0.",
+        fluidAudioAttribution: "A inferência do Parakeet é adaptada do FluidAudio, sob a licença Apache 2.0.",
+        licenseLink: "Licença",
+        modelPageLink: "Página do modelo",
         vocabularyAppleOnlyCaption: "O vocabulário orienta o mecanismo da Apple. Com o Parakeet, as substituições corrigem.",
         languageParakeetAuto: "Detectado automaticamente",
         microphoneTitle: "Microfone",
@@ -484,7 +513,8 @@ extension ForkDictationStrings {
         statusTranscribing: "Transcrevendo…",
         statusPasted: "Colado",
         statusCopied: "Copiado",
-        statusKeptInClipboard: "⌘V para colar",
+        statusKeptInClipboard: "Não colado · ⌘V",
+        statusInHistoryOnly: "Guardado no histórico",
         statusNothingHeard: "Nada ouvido",
         statusNothingHeardSilence: "Nada ouvido em 1 min",
         statusCancelled: "Cancelado",
@@ -494,6 +524,8 @@ extension ForkDictationStrings {
         voiceTranscribing: "Ditado: transcrevendo",
         voicePastedFormat: "Ditado colado: %@",
         voiceCopiedFormat: "Ditado copiado: %@",
+        voiceKeptInClipboard: "Ditado não colado: pressione Command V para colar.",
+        voiceInHistoryOnly: "Ditado não colado: ele está no histórico da área de transferência.",
         voiceNothingHeard: "Ditado: nada ouvido",
         voiceCancelled: "Ditado cancelado",
         failAccessibility: "Acessibilidade necessária",
@@ -524,10 +556,12 @@ extension ForkDictationStrings {
         storeNetworkError: "O download falhou. Verifique a conexão e tente de novo: o que já foi baixado é mantido.",
         storeDiskFullFormat: "Espaço insuficiente: são necessários %@ livres.",
         storeChecksumError: "Um arquivo baixado estava danificado. Tente de novo.",
+        storeIOError: "Não foi possível gravar o modelo no disco. Verifique o espaço livre e tente novamente.",
         actionOpenSettings: "Abrir Ajustes",
-        actionUnmute: "Ativar o microfone",
         actionDownload: "Baixar",
-        actionRedownload: "Baixar de novo"
+        actionInstall: "Instalar",
+        actionRedownload: "Baixar de novo",
+        actionDismiss: "Fechar"
     )
 }
 
@@ -553,7 +587,9 @@ extension ForkDictationStrings {
         speechPermissionName: "Konuşma Tanıma",
         tryTitle: "Deneyin",
         tryPlaceholder: "Buraya tıklayın, sonra dikte edin",
-        buildCaption: "Bu yerel derleme konuşma tanıma izni isteyemez. Dikte, fork’un yayımlanan sürümlerinde çalışır.",
+        buildCaption: "Bu yerel derleme konuşma tanıma izni isteyemez; Apple motoru yalnızca fork’un yayımlanan sürümlerinde çalışır. Parakeet burada çalışır.",
+        readyFormat: "Hazır: %@",
+        stateOff: "Dikte kapalı. Yukarıdan açın.",
         vocabularyTitle: "Sözcük dağarcığı",
         vocabularyCaption: "Diktenin bilmesi gereken sözcükler: adlar, markalar, İngilizce terimler. Söyledikleriniz onlara benzediğinde öne çıkarılır.",
         vocabularyPlaceholder: "Sözcük veya ifade ekleyin",
@@ -585,6 +621,7 @@ extension ForkDictationStrings {
         shortcutProblemDuplicate: "Bu tuşu başka bir kestirme kullanıyor.",
         shortcutProblemNeedsModifier: "Bu kombinasyona ⌘, ⌥ veya ⌃ ekleyin.",
         shortcutProblemReserved: "Bu tuş tek başına kullanılamaz.",
+        shortcutProblemConflict: "Bu kısayol zaten macOS veya başka bir özellik tarafından kullanılıyor.",
         shortcutConflictSuperKey: "Bu tuş Super Key’e atanmış: artık değiştirici tuş gibi davranmıyor, bu yüzden dikte onu göremiyor.",
         recognitionTitle: "Tanıma",
         engineTitle: "Motor",
@@ -604,7 +641,10 @@ extension ForkDictationStrings {
         parakeetRetry: "Yeniden Dene",
         parakeetCloneCaption: "Başka bir uygulamada bu Mac’te zaten var: hiçbir şey indirmeden anında kurulur.",
         parakeetLanguagesCaption: "25 Avrupa dili, otomatik algılanır. Japonca, Korece, Çince veya Türkçe için Apple devreye girer.",
-        parakeetAttribution: "NVIDIA’nın Parakeet TDT 0.6B v3 modeli, CC-BY-4.0 lisansıyla. Çıkarım FluidAudio’dan (Apache-2.0) uyarlanmıştır.",
+        parakeetAttribution: "NVIDIA’nın Parakeet TDT 0.6B v3 modeli, CC BY 4.0 lisansıyla.",
+        fluidAudioAttribution: "Parakeet çıkarımı, Apache 2.0 lisanslı FluidAudio’dan uyarlanmıştır.",
+        licenseLink: "Lisans",
+        modelPageLink: "Model sayfası",
         vocabularyAppleOnlyCaption: "Sözcük dağarcığı Apple’ın motoruna yol gösterir. Parakeet ile düzeltmeleri değiştirmeler yapar.",
         languageParakeetAuto: "Otomatik algılanır",
         microphoneTitle: "Mikrofon",
@@ -631,7 +671,8 @@ extension ForkDictationStrings {
         statusTranscribing: "Yazıya dökülüyor…",
         statusPasted: "Yapıştırıldı",
         statusCopied: "Kopyalandı",
-        statusKeptInClipboard: "Yapıştırmak için ⌘V",
+        statusKeptInClipboard: "Yapıştırılmadı · ⌘V",
+        statusInHistoryOnly: "Geçmişte saklandı",
         statusNothingHeard: "Hiçbir şey duyulmadı",
         statusNothingHeardSilence: "1 dk’dır ses yok",
         statusCancelled: "İptal edildi",
@@ -641,6 +682,8 @@ extension ForkDictationStrings {
         voiceTranscribing: "Dikte: yazıya dökülüyor",
         voicePastedFormat: "Dikte yapıştırıldı: %@",
         voiceCopiedFormat: "Dikte kopyalandı: %@",
+        voiceKeptInClipboard: "Dikte yapıştırılmadı: yapıştırmak için Command V’ye basın.",
+        voiceInHistoryOnly: "Dikte yapıştırılmadı: pano geçmişinde duruyor.",
         voiceNothingHeard: "Dikte: hiçbir şey duyulmadı",
         voiceCancelled: "Dikte iptal edildi",
         failAccessibility: "Erişilebilirlik gerekli",
@@ -671,10 +714,12 @@ extension ForkDictationStrings {
         storeNetworkError: "İndirme başarısız oldu. Bağlantıyı denetleyip yeniden deneyin: indirilmiş olan korunur.",
         storeDiskFullFormat: "Yeterli alan yok: %@ boş alan gerekli.",
         storeChecksumError: "İndirilen bir dosya bozuktu. Yeniden deneyin.",
+        storeIOError: "Model diske yazılamadı. Boş alanı kontrol edip yeniden deneyin.",
         actionOpenSettings: "Ayarları Aç",
-        actionUnmute: "Mikrofonu Aç",
         actionDownload: "İndir",
-        actionRedownload: "Yeniden İndir"
+        actionInstall: "Yükle",
+        actionRedownload: "Yeniden İndir",
+        actionDismiss: "Kapat"
     )
 }
 
@@ -700,7 +745,9 @@ extension ForkDictationStrings {
         speechPermissionName: "Распознавание речи",
         tryTitle: "Попробуйте",
         tryPlaceholder: "Нажмите сюда и диктуйте",
-        buildCaption: "Эта локальная сборка не может запросить распознавание речи. Диктовка работает в опубликованных версиях форка.",
+        buildCaption: "Эта локальная сборка не может запросить распознавание речи, поэтому движок Apple работает только в опубликованных версиях форка. Parakeet работает здесь.",
+        readyFormat: "Готово: %@",
+        stateOff: "Диктовка выключена. Включите её выше.",
         vocabularyTitle: "Словарь",
         vocabularyCaption: "Слова, которые должна знать диктовка: имена, бренды, английские термины. Им отдаётся предпочтение, когда сказанное на них похоже.",
         vocabularyPlaceholder: "Добавить слово или фразу",
@@ -732,6 +779,7 @@ extension ForkDictationStrings {
         shortcutProblemDuplicate: "Эта клавиша уже занята другим сочетанием.",
         shortcutProblemNeedsModifier: "Добавьте ⌘, ⌥ или ⌃ к этому сочетанию.",
         shortcutProblemReserved: "Эту клавишу нельзя использовать отдельно.",
+        shortcutProblemConflict: "Это сочетание уже занято macOS или другой функцией.",
         shortcutConflictSuperKey: "Эта клавиша назначена Super Key: она больше не работает как модификатор, и диктовка её не видит.",
         recognitionTitle: "Распознавание",
         engineTitle: "Движок",
@@ -751,7 +799,10 @@ extension ForkDictationStrings {
         parakeetRetry: "Повторить",
         parakeetCloneCaption: "Она уже есть на этом Mac у другого приложения: устанавливается мгновенно, без загрузки.",
         parakeetLanguagesCaption: "25 европейских языков, определяются автоматически. Для японского, корейского, китайского и турецкого работает Apple.",
-        parakeetAttribution: "Parakeet TDT 0.6B v3 от NVIDIA, лицензия CC-BY-4.0. Вывод адаптирован из FluidAudio (Apache-2.0).",
+        parakeetAttribution: "Parakeet TDT 0.6B v3 от NVIDIA, лицензия CC BY 4.0.",
+        fluidAudioAttribution: "Вывод Parakeet адаптирован из FluidAudio, лицензия Apache 2.0.",
+        licenseLink: "Лицензия",
+        modelPageLink: "Страница модели",
         vocabularyAppleOnlyCaption: "Словарь помогает движку Apple. С Parakeet ошибки исправляют замены.",
         languageParakeetAuto: "Определяется автоматически",
         microphoneTitle: "Микрофон",
@@ -778,7 +829,8 @@ extension ForkDictationStrings {
         statusTranscribing: "Распознаю…",
         statusPasted: "Вставлено",
         statusCopied: "Скопировано",
-        statusKeptInClipboard: "⌘V, чтобы вставить",
+        statusKeptInClipboard: "Не вставлено · ⌘V",
+        statusInHistoryOnly: "Сохранено в истории",
         statusNothingHeard: "Ничего не слышно",
         statusNothingHeardSilence: "Тишина уже 1 мин",
         statusCancelled: "Отменено",
@@ -788,6 +840,8 @@ extension ForkDictationStrings {
         voiceTranscribing: "Диктовка: распознавание",
         voicePastedFormat: "Диктовка вставлена: %@",
         voiceCopiedFormat: "Диктовка скопирована: %@",
+        voiceKeptInClipboard: "Диктовка не вставлена: нажмите Command V, чтобы вставить её.",
+        voiceInHistoryOnly: "Диктовка не вставлена: она в истории буфера обмена.",
         voiceNothingHeard: "Диктовка: ничего не слышно",
         voiceCancelled: "Диктовка отменена",
         failAccessibility: "Нужен Универсальный доступ",
@@ -818,18 +872,20 @@ extension ForkDictationStrings {
         storeNetworkError: "Загрузка не удалась. Проверьте подключение и повторите: уже загруженное сохраняется.",
         storeDiskFullFormat: "Мало места: нужно %@ свободного места.",
         storeChecksumError: "Загруженный файл повреждён. Повторите попытку.",
+        storeIOError: "Не удалось записать модель на диск. Проверьте свободное место и повторите попытку.",
         actionOpenSettings: "Открыть настройки",
-        actionUnmute: "Включить микрофон",
         actionDownload: "Загрузить",
-        actionRedownload: "Загрузить снова"
+        actionInstall: "Установить",
+        actionRedownload: "Загрузить снова",
+        actionDismiss: "Закрыть"
     )
 }
 
 extension ForkDictationStrings {
     static let es = ForkDictationStrings(
-        triggerRightCommand: "Comando derecha",
+        triggerRightCommand: "Comando derecho",
         triggerRightOption: "Opción derecha",
-        triggerRightControl: "Control derecha",
+        triggerRightControl: "Control derecho",
         triggerRightShift: "Mayúsculas derecha",
         triggerLeftCommand: "Comando izquierdo",
         triggerLeftOption: "Opción izquierda",
@@ -847,7 +903,9 @@ extension ForkDictationStrings {
         speechPermissionName: "Reconocimiento de voz",
         tryTitle: "Prueba",
         tryPlaceholder: "Haz clic aquí y dicta",
-        buildCaption: "Esta versión local no puede pedir el reconocimiento de voz. El dictado funciona en las versiones publicadas del fork.",
+        buildCaption: "Esta versión local no puede pedir el reconocimiento de voz, así que el motor de Apple solo funciona en las versiones publicadas del fork. Parakeet funciona aquí.",
+        readyFormat: "Listo: %@",
+        stateOff: "El dictado está desactivado. Actívalo arriba.",
         vocabularyTitle: "Vocabulario",
         vocabularyCaption: "Palabras que el dictado debe conocer: nombres, marcas, términos en inglés. Se priorizan cuando lo que dices se parece a ellas.",
         vocabularyPlaceholder: "Añadir una palabra o frase",
@@ -879,6 +937,7 @@ extension ForkDictationStrings {
         shortcutProblemDuplicate: "Otro atajo ya usa esta tecla.",
         shortcutProblemNeedsModifier: "Añade ⌘, ⌥ o ⌃ a esta combinación.",
         shortcutProblemReserved: "Esta tecla no puede usarse sola.",
+        shortcutProblemConflict: "Este atajo ya lo usa macOS u otra función.",
         shortcutConflictSuperKey: "Esta tecla es la de la Super Key: ya no actúa como tecla modificadora, así que el dictado no la ve.",
         recognitionTitle: "Reconocimiento",
         engineTitle: "Motor",
@@ -898,7 +957,10 @@ extension ForkDictationStrings {
         parakeetRetry: "Reintentar",
         parakeetCloneCaption: "Otra app ya lo tiene en este Mac: se instala al instante, sin descargar nada.",
         parakeetLanguagesCaption: "25 idiomas europeos, detectados automáticamente. Para japonés, coreano, chino o turco, se encarga Apple.",
-        parakeetAttribution: "Parakeet TDT 0.6B v3 de NVIDIA, con licencia CC-BY-4.0. Inferencia adaptada de FluidAudio (Apache-2.0).",
+        parakeetAttribution: "Parakeet TDT 0.6B v3 de NVIDIA, con licencia CC BY 4.0.",
+        fluidAudioAttribution: "La inferencia de Parakeet está adaptada de FluidAudio, con licencia Apache 2.0.",
+        licenseLink: "Licencia",
+        modelPageLink: "Página del modelo",
         vocabularyAppleOnlyCaption: "El vocabulario guía al motor de Apple. Con Parakeet, corrigen las sustituciones.",
         languageParakeetAuto: "Detectado automáticamente",
         microphoneTitle: "Micrófono",
@@ -912,7 +974,7 @@ extension ForkDictationStrings {
         historyOffCaption: "El historial del portapapeles está desactivado.",
         feedbackTitle: "Mostrar",
         feedbackAuto: "Automático",
-        feedbackIsland: "En la Dynamic Island",
+        feedbackIsland: "En el Dynamic Island",
         feedbackBubble: "En una burbuja",
         stopsOnSilenceTitle: "Detener manos libres tras un minuto de silencio",
         stopsOnSilenceCaption: "Un dictado manos libres olvidado no deja el micrófono abierto.",
@@ -925,7 +987,8 @@ extension ForkDictationStrings {
         statusTranscribing: "Transcribiendo…",
         statusPasted: "Pegado",
         statusCopied: "Copiado",
-        statusKeptInClipboard: "⌘V para pegar",
+        statusKeptInClipboard: "No pegado · ⌘V para pegar",
+        statusInHistoryOnly: "Guardado en el historial",
         statusNothingHeard: "No se oyó nada",
         statusNothingHeardSilence: "Nada en 1 min",
         statusCancelled: "Cancelado",
@@ -935,6 +998,8 @@ extension ForkDictationStrings {
         voiceTranscribing: "Dictado: transcribiendo",
         voicePastedFormat: "Dictado pegado: %@",
         voiceCopiedFormat: "Dictado copiado: %@",
+        voiceKeptInClipboard: "Dictado no pegado: pulsa Comando V para pegarlo.",
+        voiceInHistoryOnly: "Dictado no pegado: está en el historial del portapapeles.",
         voiceNothingHeard: "Dictado: no se oyó nada",
         voiceCancelled: "Dictado cancelado",
         failAccessibility: "Se necesita Accesibilidad",
@@ -965,10 +1030,12 @@ extension ForkDictationStrings {
         storeNetworkError: "La descarga falló. Comprueba la conexión y reinténtalo: lo ya descargado se conserva.",
         storeDiskFullFormat: "No hay espacio suficiente: deben quedar %@ libres.",
         storeChecksumError: "Un archivo descargado estaba dañado. Reinténtalo.",
+        storeIOError: "No se pudo escribir el modelo en el disco. Comprueba el espacio libre y vuelve a intentarlo.",
         actionOpenSettings: "Abrir Ajustes",
-        actionUnmute: "Activar el micrófono",
         actionDownload: "Descargar",
-        actionRedownload: "Volver a descargar"
+        actionInstall: "Instalar",
+        actionRedownload: "Volver a descargar",
+        actionDismiss: "Cerrar"
     )
 }
 
@@ -994,7 +1061,9 @@ extension ForkDictationStrings {
         speechPermissionName: "Rozpoznávanie reči",
         tryTitle: "Vyskúšajte",
         tryPlaceholder: "Kliknite sem a diktujte",
-        buildCaption: "Táto lokálna verzia nemôže požiadať o rozpoznávanie reči. Diktovanie funguje vo zverejnených verziách forku.",
+        buildCaption: "Táto lokálna verzia nemôže požiadať o rozpoznávanie reči, takže modul Apple funguje len vo zverejnených verziách forku. Parakeet tu funguje.",
+        readyFormat: "Pripravené: %@",
+        stateOff: "Diktovanie je vypnuté. Zapnite ho vyššie.",
         vocabularyTitle: "Slovník",
         vocabularyCaption: "Slová, ktoré má diktovanie poznať: mená, značky, anglické výrazy. Uprednostnia sa, keď to, čo poviete, znie podobne.",
         vocabularyPlaceholder: "Pridať slovo alebo frázu",
@@ -1026,6 +1095,7 @@ extension ForkDictationStrings {
         shortcutProblemDuplicate: "Tento kláves už používa iná skratka.",
         shortcutProblemNeedsModifier: "Pridajte k tejto kombinácii ⌘, ⌥ alebo ⌃.",
         shortcutProblemReserved: "Tento kláves sa nedá použiť samostatne.",
+        shortcutProblemConflict: "Túto skratku už používa macOS alebo iná funkcia.",
         shortcutConflictSuperKey: "Tento kláves patrí Super Key: už nefunguje ako modifikátor, takže ho diktovanie nevidí.",
         recognitionTitle: "Rozpoznávanie",
         engineTitle: "Nástroj",
@@ -1045,7 +1115,10 @@ extension ForkDictationStrings {
         parakeetRetry: "Skúsiť znova",
         parakeetCloneCaption: "Iná apka ho už má na tomto Macu: nainštaluje sa okamžite, bez sťahovania.",
         parakeetLanguagesCaption: "25 európskych jazykov, rozpoznaných automaticky. Pre japončinu, kórejčinu, čínštinu či turečtinu nastúpi Apple.",
-        parakeetAttribution: "Parakeet TDT 0.6B v3 od NVIDIA, licencia CC-BY-4.0. Inferencia upravená z FluidAudio (Apache-2.0).",
+        parakeetAttribution: "Parakeet TDT 0.6B v3 od NVIDIA, licencia CC BY 4.0.",
+        fluidAudioAttribution: "Inferencia Parakeetu je upravená z FluidAudio, licencia Apache 2.0.",
+        licenseLink: "Licencia",
+        modelPageLink: "Stránka modelu",
         vocabularyAppleOnlyCaption: "Slovník pomáha nástroju Apple. S Parakeet opravujú chyby nahradenia.",
         languageParakeetAuto: "Rozpoznaný automaticky",
         microphoneTitle: "Mikrofón",
@@ -1072,7 +1145,8 @@ extension ForkDictationStrings {
         statusTranscribing: "Prepisujem…",
         statusPasted: "Vložené",
         statusCopied: "Skopírované",
-        statusKeptInClipboard: "⌘V na vloženie",
+        statusKeptInClipboard: "Nevložené · ⌘V",
+        statusInHistoryOnly: "Uložené v histórii",
         statusNothingHeard: "Nič nepočuť",
         statusNothingHeardSilence: "Už 1 min nič nepočuť",
         statusCancelled: "Zrušené",
@@ -1082,6 +1156,8 @@ extension ForkDictationStrings {
         voiceTranscribing: "Diktovanie: prepis",
         voicePastedFormat: "Diktát vložený: %@",
         voiceCopiedFormat: "Diktát skopírovaný: %@",
+        voiceKeptInClipboard: "Diktát sa nevložil: stlačte Command V a vložte ho.",
+        voiceInHistoryOnly: "Diktát sa nevložil: je v histórii schránky.",
         voiceNothingHeard: "Diktovanie: nič nepočuť",
         voiceCancelled: "Diktovanie zrušené",
         failAccessibility: "Treba Prístupnosť",
@@ -1112,10 +1188,12 @@ extension ForkDictationStrings {
         storeNetworkError: "Sťahovanie zlyhalo. Skontrolujte pripojenie a skúste znova: už stiahnuté zostáva.",
         storeDiskFullFormat: "Málo miesta: musí byť voľných %@.",
         storeChecksumError: "Stiahnutý súbor bol poškodený. Skúste znova.",
+        storeIOError: "Model sa nepodarilo zapísať na disk. Skontrolujte voľné miesto a skúste to znova.",
         actionOpenSettings: "Otvoriť nastavenia",
-        actionUnmute: "Zapnúť mikrofón",
         actionDownload: "Stiahnuť",
-        actionRedownload: "Stiahnuť znova"
+        actionInstall: "Inštalovať",
+        actionRedownload: "Stiahnuť znova",
+        actionDismiss: "Zavrieť"
     )
 }
 
@@ -1141,7 +1219,9 @@ extension ForkDictationStrings {
         speechPermissionName: "Spracherkennung",
         tryTitle: "Ausprobieren",
         tryPlaceholder: "Hier klicken, dann diktieren",
-        buildCaption: "Dieser lokale Build kann die Spracherkennung nicht anfragen. Diktieren funktioniert in den veröffentlichten Versionen des Forks.",
+        buildCaption: "Diese lokale Version kann keine Spracherkennung anfordern, Apples Engine funktioniert daher nur in den veröffentlichten Versionen des Forks. Parakeet funktioniert hier.",
+        readyFormat: "Bereit: %@",
+        stateOff: "Das Diktat ist aus. Schalte es oben ein.",
         vocabularyTitle: "Vokabular",
         vocabularyCaption: "Wörter, die das Diktieren kennen soll: Namen, Marken, englische Begriffe. Sie werden bevorzugt, wenn das Gesagte ähnlich klingt.",
         vocabularyPlaceholder: "Wort oder Ausdruck hinzufügen",
@@ -1173,6 +1253,7 @@ extension ForkDictationStrings {
         shortcutProblemDuplicate: "Ein anderer Kurzbefehl nutzt diese Taste schon.",
         shortcutProblemNeedsModifier: "Füge ⌘, ⌥ oder ⌃ zu dieser Kombination hinzu.",
         shortcutProblemReserved: "Diese Taste geht nicht allein.",
+        shortcutProblemConflict: "Dieser Kurzbefehl wird schon von macOS oder einer anderen Funktion verwendet.",
         shortcutConflictSuperKey: "Diese Taste ist die Super Key: Sie wirkt nicht mehr als Sondertaste, das Diktat sieht sie also nicht.",
         recognitionTitle: "Erkennung",
         engineTitle: "Engine",
@@ -1192,7 +1273,10 @@ extension ForkDictationStrings {
         parakeetRetry: "Erneut versuchen",
         parakeetCloneCaption: "Eine andere App hat es schon auf diesem Mac: Es ist sofort installiert, ohne Download.",
         parakeetLanguagesCaption: "25 europäische Sprachen, automatisch erkannt. Für Japanisch, Koreanisch, Chinesisch oder Türkisch übernimmt Apple.",
-        parakeetAttribution: "Parakeet TDT 0.6B v3 von NVIDIA, unter CC-BY-4.0. Inferenz nach FluidAudio (Apache-2.0).",
+        parakeetAttribution: "Parakeet TDT 0.6B v3 von NVIDIA, unter der Lizenz CC BY 4.0.",
+        fluidAudioAttribution: "Die Inferenz von Parakeet ist an FluidAudio angelehnt, unter der Lizenz Apache 2.0.",
+        licenseLink: "Lizenz",
+        modelPageLink: "Modellseite",
         vocabularyAppleOnlyCaption: "Das Vokabular hilft Apples Engine. Bei Parakeet korrigieren die Ersetzungen.",
         languageParakeetAuto: "Automatisch erkannt",
         microphoneTitle: "Mikrofon",
@@ -1219,7 +1303,8 @@ extension ForkDictationStrings {
         statusTranscribing: "Transkribiert …",
         statusPasted: "Eingesetzt",
         statusCopied: "Kopiert",
-        statusKeptInClipboard: "⌘V zum Einsetzen",
+        statusKeptInClipboard: "Nicht eingesetzt · ⌘V",
+        statusInHistoryOnly: "Im Verlauf gesichert",
         statusNothingHeard: "Nichts gehört",
         statusNothingHeardSilence: "1 Min. nichts gehört",
         statusCancelled: "Abgebrochen",
@@ -1229,6 +1314,8 @@ extension ForkDictationStrings {
         voiceTranscribing: "Diktat: wird transkribiert",
         voicePastedFormat: "Diktat eingesetzt: %@",
         voiceCopiedFormat: "Diktat kopiert: %@",
+        voiceKeptInClipboard: "Diktat nicht eingesetzt: Drücke Befehl-V, um es einzusetzen.",
+        voiceInHistoryOnly: "Diktat nicht eingesetzt: Es ist im Zwischenablageverlauf.",
         voiceNothingHeard: "Diktat: nichts gehört",
         voiceCancelled: "Diktat abgebrochen",
         failAccessibility: "Bedienungshilfen nötig",
@@ -1259,10 +1346,12 @@ extension ForkDictationStrings {
         storeNetworkError: "Der Download ist fehlgeschlagen. Prüfe die Verbindung und versuche es erneut: Bereits Geladenes bleibt erhalten.",
         storeDiskFullFormat: "Zu wenig Platz: %@ müssen frei sein.",
         storeChecksumError: "Eine geladene Datei war beschädigt. Versuche es erneut.",
+        storeIOError: "Das Modell konnte nicht auf die Festplatte geschrieben werden. Prüfe den freien Speicher und versuche es erneut.",
         actionOpenSettings: "Einstellungen öffnen",
-        actionUnmute: "Mikrofon einschalten",
         actionDownload: "Laden",
-        actionRedownload: "Erneut laden"
+        actionInstall: "Installieren",
+        actionRedownload: "Erneut laden",
+        actionDismiss: "Schließen"
     )
 }
 
@@ -1288,13 +1377,15 @@ extension ForkDictationStrings {
         speechPermissionName: "Reconnaissance vocale",
         tryTitle: "Essai",
         tryPlaceholder: "Cliquez ici, puis dictez",
-        buildCaption: "Cette version locale ne peut pas demander la reconnaissance vocale. La dictée marche dans les versions publiées du fork.",
+        buildCaption: "Cette version locale ne peut pas demander la reconnaissance vocale : le moteur d’Apple ne marche que dans les versions publiées du fork. Parakeet marche ici.",
+        readyFormat: "Prête : %@",
+        stateOff: "La dictée est désactivée. Activez-la ci-dessus.",
         vocabularyTitle: "Vocabulaire",
         vocabularyCaption: "Les mots que la dictée doit connaître : noms, marques, termes anglais. Ils sont privilégiés quand ce que vous dites leur ressemble.",
         vocabularyPlaceholder: "Ajouter un mot ou une expression",
         addButton: "Ajouter",
         replacementsTitle: "Remplacements",
-        replacementsCaption: "Quand la dictée entend le premier, elle écrit le second. Pour les mots qu’elle se trompe encore à écrire.",
+        replacementsCaption: "Quand la dictée entend le premier, elle écrit le second. Pour les mots qu’elle écrit encore mal.",
         heardPlaceholder: "Entendu",
         writtenPlaceholder: "Écrit",
         duplicateCaption: "Déjà dans la liste.",
@@ -1306,7 +1397,7 @@ extension ForkDictationStrings {
         shortcutCombination: "Combinaison…",
         shortcutRecordPrompt: "Tapez le raccourci",
         shortcutModeTitle: "Geste",
-        shortcutModeHybrid: "Maintenir ou toucher",
+        shortcutModeHybrid: "Maintenir ou appuyer",
         shortcutModeHold: "Maintenir pour parler",
         shortcutModeToggle: "Un appui démarre, un appui arrête",
         shortcutModeHybridCaption: "Maintenez pour dicter jusqu’au relâchement. Un appui bref passe en mains libres jusqu’au prochain appui.",
@@ -1320,6 +1411,7 @@ extension ForkDictationStrings {
         shortcutProblemDuplicate: "Un autre raccourci utilise déjà cette touche.",
         shortcutProblemNeedsModifier: "Ajoutez ⌘, ⌥ ou ⌃ à cette combinaison.",
         shortcutProblemReserved: "Cette touche ne peut pas servir seule.",
+        shortcutProblemConflict: "Ce raccourci est déjà utilisé par macOS ou par une autre fonction.",
         shortcutConflictSuperKey: "Cette touche est celle de la Super Key : elle n’agit plus comme une touche de modification, la dictée ne la voit donc pas.",
         recognitionTitle: "Reconnaissance",
         engineTitle: "Moteur",
@@ -1339,7 +1431,10 @@ extension ForkDictationStrings {
         parakeetRetry: "Réessayer",
         parakeetCloneCaption: "Une autre app l’a déjà sur ce Mac : il s’installe instantanément, sans rien télécharger.",
         parakeetLanguagesCaption: "25 langues européennes, détectées automatiquement. Pour le japonais, le coréen, le chinois ou le turc, Apple prend le relais.",
-        parakeetAttribution: "Parakeet TDT 0.6B v3 de NVIDIA, sous licence CC-BY-4.0. Inférence adaptée de FluidAudio (Apache-2.0).",
+        parakeetAttribution: "Parakeet TDT 0.6B v3 par NVIDIA, sous licence CC BY 4.0.",
+        fluidAudioAttribution: "L’inférence de Parakeet est adaptée de FluidAudio, sous licence Apache 2.0.",
+        licenseLink: "Licence",
+        modelPageLink: "Page du modèle",
         vocabularyAppleOnlyCaption: "Le vocabulaire guide le moteur d’Apple. Avec Parakeet, ce sont les remplacements qui corrigent.",
         languageParakeetAuto: "Détectée automatiquement",
         microphoneTitle: "Micro",
@@ -1353,7 +1448,7 @@ extension ForkDictationStrings {
         historyOffCaption: "L’historique du presse-papiers est désactivé.",
         feedbackTitle: "Afficher",
         feedbackAuto: "Automatique",
-        feedbackIsland: "Dans la Dynamic Island",
+        feedbackIsland: "Dans le Dynamic Island",
         feedbackBubble: "Dans une bulle",
         stopsOnSilenceTitle: "Arrêter les mains libres après une minute de silence",
         stopsOnSilenceCaption: "Une dictée mains libres oubliée ne laisse pas le micro ouvert.",
@@ -1366,7 +1461,8 @@ extension ForkDictationStrings {
         statusTranscribing: "Transcription…",
         statusPasted: "Collé",
         statusCopied: "Copié",
-        statusKeptInClipboard: "⌘V pour coller",
+        statusKeptInClipboard: "Pas collé · ⌘V pour coller",
+        statusInHistoryOnly: "Gardé dans l’historique",
         statusNothingHeard: "Rien entendu",
         statusNothingHeardSilence: "Rien entendu depuis 1 min",
         statusCancelled: "Annulé",
@@ -1376,6 +1472,8 @@ extension ForkDictationStrings {
         voiceTranscribing: "Dictée : transcription",
         voicePastedFormat: "Dictée collée : %@",
         voiceCopiedFormat: "Dictée copiée : %@",
+        voiceKeptInClipboard: "Dictée non collée : appuyez sur Commande V pour la coller.",
+        voiceInHistoryOnly: "Dictée non collée : elle est dans l’historique du presse-papiers.",
         voiceNothingHeard: "Dictée : rien entendu",
         voiceCancelled: "Dictée annulée",
         failAccessibility: "Accessibilité requise",
@@ -1406,10 +1504,12 @@ extension ForkDictationStrings {
         storeNetworkError: "Le téléchargement a échoué. Vérifiez la connexion et réessayez : ce qui est déjà téléchargé est gardé.",
         storeDiskFullFormat: "Pas assez d’espace : il faut %@ de libre.",
         storeChecksumError: "Un fichier téléchargé était abîmé. Réessayez.",
+        storeIOError: "Impossible d’écrire le modèle sur le disque. Vérifiez l’espace libre, puis réessayez.",
         actionOpenSettings: "Ouvrir les réglages",
-        actionUnmute: "Rallumer le micro",
         actionDownload: "Télécharger",
-        actionRedownload: "Retélécharger"
+        actionInstall: "Installer",
+        actionRedownload: "Retélécharger",
+        actionDismiss: "Fermer"
     )
 }
 
@@ -1424,7 +1524,7 @@ extension ForkDictationStrings {
         triggerLeftControl: "Control sinistro",
         triggerLeftShift: "Maiuscole sinistro",
         triggerFn: "fn (globo)",
-        howTo: "Tieni premuto il tasto e parla, poi rilascia: il testo viene scritto dove si trova il cursore, in qualsiasi app. Un tocco breve passa al vivavoce, una nuova pressione termina. Esc annulla.",
+        howTo: "Tieni premuto il tasto e parla, poi rilascia: il testo viene scritto dove si trova il cursore, in qualsiasi app. Un tocco breve passa alle mani libere, una nuova pressione termina. Esc annulla.",
         fnCaption: "Per il tasto fn, imposta “Premi il tasto 🌐 per” su “Non fare nulla” in Impostazioni di Sistema › Tastiera, altrimenti reagisce anche macOS.",
         openKeyboardSettings: "Impostazioni Tastiera",
         languageTitle: "Lingua",
@@ -1435,7 +1535,9 @@ extension ForkDictationStrings {
         speechPermissionName: "Riconoscimento vocale",
         tryTitle: "Prova",
         tryPlaceholder: "Fai clic qui, poi detta",
-        buildCaption: "Questa build locale non può chiedere il riconoscimento vocale. La dettatura funziona nelle versioni pubblicate del fork.",
+        buildCaption: "Questa versione locale non può chiedere il riconoscimento vocale, quindi il motore di Apple funziona solo nelle versioni pubblicate del fork. Parakeet funziona qui.",
+        readyFormat: "Pronta: %@",
+        stateOff: "La dettatura è disattivata. Attivala qui sopra.",
         vocabularyTitle: "Vocabolario",
         vocabularyCaption: "Parole che la dettatura deve conoscere: nomi, marchi, termini inglesi. Sono favorite quando ciò che dici somiglia a loro.",
         vocabularyPlaceholder: "Aggiungi una parola o frase",
@@ -1456,7 +1558,7 @@ extension ForkDictationStrings {
         shortcutModeHybrid: "Tieni premuto o tocca",
         shortcutModeHold: "Tieni premuto per parlare",
         shortcutModeToggle: "Premi per avviare e fermare",
-        shortcutModeHybridCaption: "Tieni premuto per dettare fino al rilascio. Un tocco breve attiva il vivavoce fino alla pressione successiva.",
+        shortcutModeHybridCaption: "Tieni premuto per dettare fino al rilascio. Un tocco breve attiva le mani libere fino alla pressione successiva.",
         shortcutModeHoldCaption: "Detta finché il tasto è premuto e si ferma al rilascio.",
         shortcutModeToggleCaption: "Una pressione avvia, la successiva ferma.",
         shortcutActionTitle: "Poi",
@@ -1467,6 +1569,7 @@ extension ForkDictationStrings {
         shortcutProblemDuplicate: "Un’altra abbreviazione usa già questo tasto.",
         shortcutProblemNeedsModifier: "Aggiungi ⌘, ⌥ o ⌃ a questa combinazione.",
         shortcutProblemReserved: "Questo tasto non si può usare da solo.",
+        shortcutProblemConflict: "Questa scorciatoia è già usata da macOS o da un’altra funzione.",
         shortcutConflictSuperKey: "Questo tasto è quello del Super Key: non funziona più come modificatore, quindi la dettatura non lo vede.",
         recognitionTitle: "Riconoscimento",
         engineTitle: "Motore",
@@ -1486,7 +1589,10 @@ extension ForkDictationStrings {
         parakeetRetry: "Riprova",
         parakeetCloneCaption: "Un’altra app lo ha già su questo Mac: si installa all’istante, senza scaricare nulla.",
         parakeetLanguagesCaption: "25 lingue europee, rilevate automaticamente. Per giapponese, coreano, cinese o turco subentra Apple.",
-        parakeetAttribution: "Parakeet TDT 0.6B v3 di NVIDIA, con licenza CC-BY-4.0. Inferenza adattata da FluidAudio (Apache-2.0).",
+        parakeetAttribution: "Parakeet TDT 0.6B v3 di NVIDIA, con licenza CC BY 4.0.",
+        fluidAudioAttribution: "L’inferenza di Parakeet è adattata da FluidAudio, con licenza Apache 2.0.",
+        licenseLink: "Licenza",
+        modelPageLink: "Pagina del modello",
         vocabularyAppleOnlyCaption: "Il vocabolario guida il motore di Apple. Con Parakeet correggono le sostituzioni.",
         languageParakeetAuto: "Rilevata automaticamente",
         microphoneTitle: "Microfono",
@@ -1500,29 +1606,32 @@ extension ForkDictationStrings {
         historyOffCaption: "La cronologia degli appunti è disattivata.",
         feedbackTitle: "Mostra",
         feedbackAuto: "Automatico",
-        feedbackIsland: "Nella Dynamic Island",
+        feedbackIsland: "Nel Dynamic Island",
         feedbackBubble: "In una bolla",
-        stopsOnSilenceTitle: "Ferma il vivavoce dopo un minuto di silenzio",
-        stopsOnSilenceCaption: "Una dettatura in vivavoce dimenticata non lascia il microfono aperto.",
+        stopsOnSilenceTitle: "Ferma le mani libere dopo un minuto di silenzio",
+        stopsOnSilenceCaption: "Una dettatura a mani libere dimenticata non lascia il microfono aperto.",
         advancedTitle: "Avanzate",
         unloadMinutesFormat: "Libera la memoria di Parakeet dopo %d min di inattività",
         secureInputTitle: "Finché l’inserimento sicuro è attivo, macOS nasconde la tastiera alla dettatura.",
         permissionsTitle: "Autorizzazioni",
         statusListening: "In ascolto",
-        statusHandsFree: "Vivavoce",
+        statusHandsFree: "Mani libere",
         statusTranscribing: "Trascrizione…",
         statusPasted: "Incollato",
         statusCopied: "Copiato",
-        statusKeptInClipboard: "⌘V per incollare",
+        statusKeptInClipboard: "Non incollato · ⌘V",
+        statusInHistoryOnly: "Salvato nella cronologia",
         statusNothingHeard: "Nulla sentito",
         statusNothingHeardSilence: "Nulla sentito da 1 min",
         statusCancelled: "Annullato",
         statusBusy: "Trascrizione in corso",
         voiceListening: "Dettatura: in ascolto",
-        voiceHandsFree: "Dettatura: vivavoce",
+        voiceHandsFree: "Dettatura: mani libere",
         voiceTranscribing: "Dettatura: trascrizione",
         voicePastedFormat: "Dettatura incollata: %@",
         voiceCopiedFormat: "Dettatura copiata: %@",
+        voiceKeptInClipboard: "Dettatura non incollata: premi Comando V per incollarla.",
+        voiceInHistoryOnly: "Dettatura non incollata: è nella cronologia degli appunti.",
         voiceNothingHeard: "Dettatura: nulla sentito",
         voiceCancelled: "Dettatura annullata",
         failAccessibility: "Serve Accessibilità",
@@ -1553,10 +1662,12 @@ extension ForkDictationStrings {
         storeNetworkError: "Il download non è riuscito. Controlla la connessione e riprova: ciò che è già scaricato viene conservato.",
         storeDiskFullFormat: "Spazio insufficiente: servono %@ liberi.",
         storeChecksumError: "Un file scaricato era danneggiato. Riprova.",
+        storeIOError: "Impossibile scrivere il modello sul disco. Controlla lo spazio libero e riprova.",
         actionOpenSettings: "Apri Impostazioni",
-        actionUnmute: "Riattiva il microfono",
         actionDownload: "Scarica",
-        actionRedownload: "Scarica di nuovo"
+        actionInstall: "Installa",
+        actionRedownload: "Scarica di nuovo",
+        actionDismiss: "Chiudi"
     )
 }
 
@@ -1582,7 +1693,9 @@ extension ForkDictationStrings {
         speechPermissionName: "音声認識",
         tryTitle: "試す",
         tryPlaceholder: "ここをクリックして話す",
-        buildCaption: "このローカルビルドは音声認識の許可を求められません。音声入力はフォークの公開版で動作します。",
+        buildCaption: "このローカルビルドは音声認識の許可を求められないため、Appleのエンジンはフォークの公開版でのみ動作します。Parakeetはここでも動作します。",
+        readyFormat: "準備完了：%@",
+        stateOff: "音声入力はオフです。上でオンにしてください。",
         vocabularyTitle: "語彙",
         vocabularyCaption: "音声入力に覚えさせたい語句：名前、ブランド、英語の用語。話した内容が似ているときに優先されます。",
         vocabularyPlaceholder: "語句を追加",
@@ -1614,6 +1727,7 @@ extension ForkDictationStrings {
         shortcutProblemDuplicate: "このキーは別のショートカットで使われています。",
         shortcutProblemNeedsModifier: "この組み合わせに⌘、⌥、⌃のいずれかを加えてください。",
         shortcutProblemReserved: "このキーは単独では使えません。",
+        shortcutProblemConflict: "このショートカットはmacOSまたは別の機能ですでに使われています。",
         shortcutConflictSuperKey: "このキーはSuper Keyに割り当てられているため修飾キーとして働かず、音声入力が検知できません。",
         recognitionTitle: "認識",
         engineTitle: "エンジン",
@@ -1633,7 +1747,10 @@ extension ForkDictationStrings {
         parakeetRetry: "再試行",
         parakeetCloneCaption: "別のアプリがすでにこのMacに保存しています。ダウンロードなしですぐにインストールされます。",
         parakeetLanguagesCaption: "ヨーロッパの25言語を自動判別します。日本語、韓国語、中国語、トルコ語はAppleが担当します。",
-        parakeetAttribution: "NVIDIAのParakeet TDT 0.6B v3（CC-BY-4.0）。推論はFluidAudio（Apache-2.0）を元にしています。",
+        parakeetAttribution: "NVIDIAのParakeet TDT 0.6B v3（CC BY 4.0ライセンス）。",
+        fluidAudioAttribution: "Parakeetの推論はFluidAudio（Apache 2.0ライセンス）を元にしています。",
+        licenseLink: "ライセンス",
+        modelPageLink: "モデルのページ",
         vocabularyAppleOnlyCaption: "語彙はAppleのエンジンを補助します。Parakeetでは置き換えで修正します。",
         languageParakeetAuto: "自動判別",
         microphoneTitle: "マイク",
@@ -1660,7 +1777,8 @@ extension ForkDictationStrings {
         statusTranscribing: "文字起こし中…",
         statusPasted: "ペーストしました",
         statusCopied: "コピーしました",
-        statusKeptInClipboard: "⌘Vでペースト",
+        statusKeptInClipboard: "未ペースト・⌘Vでペースト",
+        statusInHistoryOnly: "クリップボード履歴に保存",
         statusNothingHeard: "何も聞こえません",
         statusNothingHeardSilence: "1分間何も聞こえません",
         statusCancelled: "キャンセルしました",
@@ -1670,6 +1788,8 @@ extension ForkDictationStrings {
         voiceTranscribing: "音声入力：文字起こし中",
         voicePastedFormat: "音声入力をペースト：%@",
         voiceCopiedFormat: "音声入力をコピー：%@",
+        voiceKeptInClipboard: "音声入力はペーストされませんでした。Command Vでペーストしてください。",
+        voiceInHistoryOnly: "音声入力はペーストされませんでした。クリップボード履歴にあります。",
         voiceNothingHeard: "音声入力：何も聞こえません",
         voiceCancelled: "音声入力をキャンセル",
         failAccessibility: "アクセシビリティが必要",
@@ -1700,10 +1820,12 @@ extension ForkDictationStrings {
         storeNetworkError: "ダウンロードに失敗しました。接続を確認して再試行してください。ダウンロード済みの部分は保持されます。",
         storeDiskFullFormat: "空き容量が足りません：%@の空きが必要です。",
         storeChecksumError: "ダウンロードしたファイルが破損していました。再試行してください。",
+        storeIOError: "モデルをディスクに書き込めませんでした。空き容量を確認して、もう一度お試しください。",
         actionOpenSettings: "設定を開く",
-        actionUnmute: "マイクをオンにする",
         actionDownload: "ダウンロード",
-        actionRedownload: "再ダウンロード"
+        actionInstall: "インストール",
+        actionRedownload: "再ダウンロード",
+        actionDismiss: "閉じる"
     )
 }
 
@@ -1729,7 +1851,9 @@ extension ForkDictationStrings {
         speechPermissionName: "음성 인식",
         tryTitle: "사용해 보기",
         tryPlaceholder: "여기를 클릭한 다음 받아쓰기",
-        buildCaption: "이 로컬 빌드는 음성 인식 권한을 요청할 수 없습니다. 받아쓰기는 포크의 공개 버전에서 작동합니다.",
+        buildCaption: "이 로컬 빌드는 음성 인식 권한을 요청할 수 없으므로 Apple 엔진은 포크의 공개 버전에서만 작동합니다. Parakeet은 여기서도 작동합니다.",
+        readyFormat: "준비됨: %@",
+        stateOff: "받아쓰기가 꺼져 있습니다. 위에서 켜세요.",
         vocabularyTitle: "어휘",
         vocabularyCaption: "받아쓰기가 알아야 할 단어: 이름, 브랜드, 영어 용어. 말한 내용이 비슷하면 우선합니다.",
         vocabularyPlaceholder: "단어 또는 구문 추가",
@@ -1761,6 +1885,7 @@ extension ForkDictationStrings {
         shortcutProblemDuplicate: "다른 단축키가 이미 이 키를 사용합니다.",
         shortcutProblemNeedsModifier: "이 조합에 ⌘, ⌥ 또는 ⌃를 추가하세요.",
         shortcutProblemReserved: "이 키는 단독으로 사용할 수 없습니다.",
+        shortcutProblemConflict: "이 단축키는 이미 macOS 또는 다른 기능에서 사용 중입니다.",
         shortcutConflictSuperKey: "이 키는 Super Key에 지정되어 더 이상 보조 키로 작동하지 않으므로 받아쓰기가 인식하지 못합니다.",
         recognitionTitle: "인식",
         engineTitle: "엔진",
@@ -1780,7 +1905,10 @@ extension ForkDictationStrings {
         parakeetRetry: "다시 시도",
         parakeetCloneCaption: "다른 앱이 이미 이 Mac에 가지고 있습니다. 다운로드 없이 즉시 설치됩니다.",
         parakeetLanguagesCaption: "유럽 25개 언어를 자동으로 감지합니다. 일본어, 한국어, 중국어, 터키어는 Apple이 맡습니다.",
-        parakeetAttribution: "NVIDIA의 Parakeet TDT 0.6B v3, CC-BY-4.0 라이선스. 추론은 FluidAudio(Apache-2.0)를 바탕으로 합니다.",
+        parakeetAttribution: "NVIDIA의 Parakeet TDT 0.6B v3, CC BY 4.0 라이선스.",
+        fluidAudioAttribution: "Parakeet 추론은 Apache 2.0 라이선스의 FluidAudio를 바탕으로 합니다.",
+        licenseLink: "라이선스",
+        modelPageLink: "모델 페이지",
         vocabularyAppleOnlyCaption: "어휘는 Apple 엔진을 돕습니다. Parakeet에서는 대치가 오류를 고칩니다.",
         languageParakeetAuto: "자동 감지",
         microphoneTitle: "마이크",
@@ -1807,7 +1935,8 @@ extension ForkDictationStrings {
         statusTranscribing: "받아쓰는 중…",
         statusPasted: "붙여넣음",
         statusCopied: "복사됨",
-        statusKeptInClipboard: "⌘V로 붙여넣기",
+        statusKeptInClipboard: "붙여넣지 못함 · ⌘V",
+        statusInHistoryOnly: "클립보드 기록에 보관됨",
         statusNothingHeard: "들리지 않음",
         statusNothingHeardSilence: "1분간 들리지 않음",
         statusCancelled: "취소됨",
@@ -1817,6 +1946,8 @@ extension ForkDictationStrings {
         voiceTranscribing: "받아쓰기: 변환 중",
         voicePastedFormat: "받아쓰기 붙여넣음: %@",
         voiceCopiedFormat: "받아쓰기 복사됨: %@",
+        voiceKeptInClipboard: "받아쓰기를 붙여넣지 못했습니다. Command V를 눌러 붙여넣으세요.",
+        voiceInHistoryOnly: "받아쓰기를 붙여넣지 못했습니다. 클립보드 기록에 있습니다.",
         voiceNothingHeard: "받아쓰기: 들리지 않음",
         voiceCancelled: "받아쓰기 취소됨",
         failAccessibility: "손쉬운 사용 권한 필요",
@@ -1847,10 +1978,12 @@ extension ForkDictationStrings {
         storeNetworkError: "다운로드에 실패했습니다. 연결을 확인하고 다시 시도하세요. 이미 받은 부분은 유지됩니다.",
         storeDiskFullFormat: "공간 부족: %@의 여유 공간이 필요합니다.",
         storeChecksumError: "다운로드한 파일이 손상되었습니다. 다시 시도하세요.",
+        storeIOError: "모델을 디스크에 쓸 수 없습니다. 여유 공간을 확인한 후 다시 시도하세요.",
         actionOpenSettings: "설정 열기",
-        actionUnmute: "마이크 켜기",
         actionDownload: "다운로드",
-        actionRedownload: "다시 다운로드"
+        actionInstall: "설치",
+        actionRedownload: "다시 다운로드",
+        actionDismiss: "닫기"
     )
 }
 
@@ -1876,7 +2009,9 @@ extension ForkDictationStrings {
         speechPermissionName: "Розпізнавання мовлення",
         tryTitle: "Спробуйте",
         tryPlaceholder: "Клацніть тут і диктуйте",
-        buildCaption: "Ця локальна збірка не може запитати розпізнавання мовлення. Диктування працює в опублікованих версіях форку.",
+        buildCaption: "Ця локальна збірка не може запитати розпізнавання мовлення, тому рушій Apple працює лише в опублікованих версіях форку. Parakeet працює тут.",
+        readyFormat: "Готово: %@",
+        stateOff: "Диктовку вимкнено. Увімкніть її вище.",
         vocabularyTitle: "Словник",
         vocabularyCaption: "Слова, які має знати диктування: імена, бренди, англійські терміни. Їм надається перевага, коли сказане на них схоже.",
         vocabularyPlaceholder: "Додати слово чи фразу",
@@ -1908,6 +2043,7 @@ extension ForkDictationStrings {
         shortcutProblemDuplicate: "Цю клавішу вже використовує інше сполучення.",
         shortcutProblemNeedsModifier: "Додайте ⌘, ⌥ або ⌃ до цього сполучення.",
         shortcutProblemReserved: "Цю клавішу не можна використати окремо.",
+        shortcutProblemConflict: "Це поєднання клавіш уже використовує macOS або інша функція.",
         shortcutConflictSuperKey: "Ця клавіша призначена Super Key: вона більше не діє як модифікатор, тож диктовка її не бачить.",
         recognitionTitle: "Розпізнавання",
         engineTitle: "Рушій",
@@ -1927,7 +2063,10 @@ extension ForkDictationStrings {
         parakeetRetry: "Повторити",
         parakeetCloneCaption: "Інша програма вже має її на цьому Mac: встановлюється миттєво, без завантаження.",
         parakeetLanguagesCaption: "25 європейських мов, визначаються автоматично. Для японської, корейської, китайської й турецької працює Apple.",
-        parakeetAttribution: "Parakeet TDT 0.6B v3 від NVIDIA, ліцензія CC-BY-4.0. Виведення адаптовано з FluidAudio (Apache-2.0).",
+        parakeetAttribution: "Parakeet TDT 0.6B v3 від NVIDIA, ліцензія CC BY 4.0.",
+        fluidAudioAttribution: "Виведення Parakeet адаптовано з FluidAudio, ліцензія Apache 2.0.",
+        licenseLink: "Ліцензія",
+        modelPageLink: "Сторінка моделі",
         vocabularyAppleOnlyCaption: "Словник допомагає рушію Apple. З Parakeet помилки виправляють заміни.",
         languageParakeetAuto: "Визначається автоматично",
         microphoneTitle: "Мікрофон",
@@ -1954,7 +2093,8 @@ extension ForkDictationStrings {
         statusTranscribing: "Розпізнаю…",
         statusPasted: "Вставлено",
         statusCopied: "Скопійовано",
-        statusKeptInClipboard: "⌘V, щоб вставити",
+        statusKeptInClipboard: "Не вставлено · ⌘V",
+        statusInHistoryOnly: "Збережено в історії",
         statusNothingHeard: "Нічого не чути",
         statusNothingHeardSilence: "Тиша вже 1 хв",
         statusCancelled: "Скасовано",
@@ -1964,6 +2104,8 @@ extension ForkDictationStrings {
         voiceTranscribing: "Диктовка: розпізнавання",
         voicePastedFormat: "Диктовку вставлено: %@",
         voiceCopiedFormat: "Диктовку скопійовано: %@",
+        voiceKeptInClipboard: "Диктовку не вставлено: натисніть Command V, щоб вставити її.",
+        voiceInHistoryOnly: "Диктовку не вставлено: вона в історії буфера обміну.",
         voiceNothingHeard: "Диктовка: нічого не чути",
         voiceCancelled: "Диктовку скасовано",
         failAccessibility: "Потрібна Доступність",
@@ -1994,10 +2136,12 @@ extension ForkDictationStrings {
         storeNetworkError: "Завантаження не вдалося. Перевірте з’єднання й повторіть: уже завантажене зберігається.",
         storeDiskFullFormat: "Замало місця: потрібно %@ вільного місця.",
         storeChecksumError: "Завантажений файл пошкоджено. Повторіть спробу.",
+        storeIOError: "Не вдалося записати модель на диск. Перевірте вільне місце та спробуйте ще раз.",
         actionOpenSettings: "Відкрити параметри",
-        actionUnmute: "Увімкнути мікрофон",
         actionDownload: "Завантажити",
-        actionRedownload: "Завантажити знову"
+        actionInstall: "Встановити",
+        actionRedownload: "Завантажити знову",
+        actionDismiss: "Закрити"
     )
 }
 
@@ -2023,7 +2167,9 @@ extension ForkDictationStrings {
         speechPermissionName: "语音识别",
         tryTitle: "试一试",
         tryPlaceholder: "点按这里，然后听写",
-        buildCaption: "此本地版本无法请求语音识别权限。听写可在分支的发布版本中使用。",
+        buildCaption: "此本地版本无法请求语音识别权限，因此 Apple 引擎只能在分支的已发布版本中使用。Parakeet 可在此使用。",
+        readyFormat: "已就绪：%@",
+        stateOff: "听写已关闭。请在上方打开。",
         vocabularyTitle: "词汇",
         vocabularyCaption: "听写需要认识的词语：人名、品牌、英文术语。当你说的话与它们相似时会优先使用。",
         vocabularyPlaceholder: "添加词语或短语",
@@ -2044,7 +2190,7 @@ extension ForkDictationStrings {
         shortcutModeHybrid: "按住或轻点",
         shortcutModeHold: "按住说话",
         shortcutModeToggle: "按一下开始，再按停止",
-        shortcutModeHybridCaption: "按住听写，松开即结束。轻点一下进入免手持模式，直到再次按下。",
+        shortcutModeHybridCaption: "按住听写，松开即结束。轻点一下进入免提模式，直到再次按下。",
         shortcutModeHoldCaption: "按住按键时听写，松开时停止。",
         shortcutModeToggleCaption: "按一下开始，再按一下停止。",
         shortcutActionTitle: "然后",
@@ -2055,6 +2201,7 @@ extension ForkDictationStrings {
         shortcutProblemDuplicate: "另一个快捷键已使用此按键。",
         shortcutProblemNeedsModifier: "请为此组合键加上 ⌘、⌥ 或 ⌃。",
         shortcutProblemReserved: "此按键不能单独使用。",
+        shortcutProblemConflict: "此快捷键已被 macOS 或其他功能使用。",
         shortcutConflictSuperKey: "此按键已分配给 Super Key：它不再作为修饰键使用，因此听写无法识别它。",
         recognitionTitle: "识别",
         engineTitle: "引擎",
@@ -2074,7 +2221,10 @@ extension ForkDictationStrings {
         parakeetRetry: "重试",
         parakeetCloneCaption: "另一个 App 已在这台 Mac 上保存了它：无需下载，立即安装。",
         parakeetLanguagesCaption: "支持 25 种欧洲语言，自动识别。日语、韩语、中文或土耳其语由 Apple 接手。",
-        parakeetAttribution: "NVIDIA 的 Parakeet TDT 0.6B v3，采用 CC-BY-4.0 许可。推理改编自 FluidAudio（Apache-2.0）。",
+        parakeetAttribution: "NVIDIA 的 Parakeet TDT 0.6B v3，采用 CC BY 4.0 许可。",
+        fluidAudioAttribution: "Parakeet 的推理改编自 FluidAudio，采用 Apache 2.0 许可。",
+        licenseLink: "许可",
+        modelPageLink: "模型页面",
         vocabularyAppleOnlyCaption: "词汇表用于引导 Apple 引擎。使用 Parakeet 时，由替换规则来纠正。",
         languageParakeetAuto: "自动识别",
         microphoneTitle: "麦克风",
@@ -2090,27 +2240,30 @@ extension ForkDictationStrings {
         feedbackAuto: "自动",
         feedbackIsland: "在灵动岛中",
         feedbackBubble: "在气泡中",
-        stopsOnSilenceTitle: "静音一分钟后停止免手持",
-        stopsOnSilenceCaption: "忘记关闭的免手持听写不会让麦克风一直开着。",
+        stopsOnSilenceTitle: "静音一分钟后停止免提",
+        stopsOnSilenceCaption: "忘记关闭的免提听写不会让麦克风一直开着。",
         advancedTitle: "高级",
         unloadMinutesFormat: "闲置 %d 分钟后释放 Parakeet 的内存",
         secureInputTitle: "安全输入开启时，macOS 会对听写隐藏键盘。",
         permissionsTitle: "权限",
         statusListening: "正在聆听",
-        statusHandsFree: "免手持",
+        statusHandsFree: "免提",
         statusTranscribing: "正在转写…",
         statusPasted: "已粘贴",
         statusCopied: "已拷贝",
-        statusKeptInClipboard: "按 ⌘V 粘贴",
+        statusKeptInClipboard: "未粘贴 · 按 ⌘V 粘贴",
+        statusInHistoryOnly: "已保存在剪贴板历史记录",
         statusNothingHeard: "未听到声音",
         statusNothingHeardSilence: "1 分钟未听到声音",
         statusCancelled: "已取消",
         statusBusy: "仍在转写",
         voiceListening: "听写：正在聆听",
-        voiceHandsFree: "听写：免手持",
+        voiceHandsFree: "听写：免提",
         voiceTranscribing: "听写：正在转写",
         voicePastedFormat: "听写已粘贴：%@",
         voiceCopiedFormat: "听写已拷贝：%@",
+        voiceKeptInClipboard: "听写未粘贴：按 Command V 粘贴。",
+        voiceInHistoryOnly: "听写未粘贴：它在剪贴板历史记录中。",
         voiceNothingHeard: "听写：未听到声音",
         voiceCancelled: "听写已取消",
         failAccessibility: "需要辅助功能权限",
@@ -2141,10 +2294,12 @@ extension ForkDictationStrings {
         storeNetworkError: "下载失败。请检查网络连接后重试：已下载的部分会保留。",
         storeDiskFullFormat: "空间不足：需要 %@ 可用空间。",
         storeChecksumError: "下载的文件已损坏。请重试。",
+        storeIOError: "无法将模型写入磁盘。请检查可用空间后重试。",
         actionOpenSettings: "打开设置",
-        actionUnmute: "打开麦克风",
         actionDownload: "下载",
-        actionRedownload: "重新下载"
+        actionInstall: "安装",
+        actionRedownload: "重新下载",
+        actionDismiss: "关闭"
     )
 }
 
@@ -2170,7 +2325,9 @@ extension ForkDictationStrings {
         speechPermissionName: "語音辨識",
         tryTitle: "試試看",
         tryPlaceholder: "按一下這裡，然後聽寫",
-        buildCaption: "此本機版本無法要求語音辨識權限。聽寫可在分支的發佈版本中使用。",
+        buildCaption: "此本機版本無法要求語音辨識權限，因此 Apple 引擎只能在分支的已發佈版本中使用。Parakeet 可在此使用。",
+        readyFormat: "已就緒：%@",
+        stateOff: "聽寫已關閉。請在上方開啟。",
         vocabularyTitle: "詞彙",
         vocabularyCaption: "聽寫需要認識的詞語：人名、品牌、英文術語。當你說的話與它們相似時會優先使用。",
         vocabularyPlaceholder: "加入詞語或片語",
@@ -2202,6 +2359,7 @@ extension ForkDictationStrings {
         shortcutProblemDuplicate: "另一個快速鍵已使用此按鍵。",
         shortcutProblemNeedsModifier: "請為此組合鍵加上 ⌘、⌥ 或 ⌃。",
         shortcutProblemReserved: "此按鍵不能單獨使用。",
+        shortcutProblemConflict: "此快速鍵已被 macOS 或其他功能使用。",
         shortcutConflictSuperKey: "此按鍵已指定給 Super Key：它不再作為輔助鍵使用，因此聽寫無法辨識它。",
         recognitionTitle: "辨識",
         engineTitle: "引擎",
@@ -2221,7 +2379,10 @@ extension ForkDictationStrings {
         parakeetRetry: "再試一次",
         parakeetCloneCaption: "另一個 App 已在這台 Mac 上儲存了它：不用下載，立即安裝。",
         parakeetLanguagesCaption: "支援 25 種歐洲語言，自動偵測。日文、韓文、中文或土耳其文由 Apple 接手。",
-        parakeetAttribution: "NVIDIA 的 Parakeet TDT 0.6B v3，採用 CC-BY-4.0 授權。推論改編自 FluidAudio（Apache-2.0）。",
+        parakeetAttribution: "NVIDIA 的 Parakeet TDT 0.6B v3，採用 CC BY 4.0 授權。",
+        fluidAudioAttribution: "Parakeet 的推論改編自 FluidAudio，採用 Apache 2.0 授權。",
+        licenseLink: "授權",
+        modelPageLink: "模型頁面",
         vocabularyAppleOnlyCaption: "詞彙表用來引導 Apple 引擎。使用 Parakeet 時，由替換規則來修正。",
         languageParakeetAuto: "自動偵測",
         microphoneTitle: "麥克風",
@@ -2248,7 +2409,8 @@ extension ForkDictationStrings {
         statusTranscribing: "正在轉寫⋯",
         statusPasted: "已貼上",
         statusCopied: "已拷貝",
-        statusKeptInClipboard: "按 ⌘V 貼上",
+        statusKeptInClipboard: "未貼上 · 按 ⌘V 貼上",
+        statusInHistoryOnly: "已保留在剪貼簿記錄",
         statusNothingHeard: "沒有聽到聲音",
         statusNothingHeardSilence: "1 分鐘沒有聽到聲音",
         statusCancelled: "已取消",
@@ -2258,6 +2420,8 @@ extension ForkDictationStrings {
         voiceTranscribing: "聽寫：正在轉寫",
         voicePastedFormat: "聽寫已貼上：%@",
         voiceCopiedFormat: "聽寫已拷貝：%@",
+        voiceKeptInClipboard: "聽寫未貼上：按 Command V 貼上。",
+        voiceInHistoryOnly: "聽寫未貼上：內容在剪貼簿記錄中。",
         voiceNothingHeard: "聽寫：沒有聽到聲音",
         voiceCancelled: "聽寫已取消",
         failAccessibility: "需要輔助使用權限",
@@ -2288,10 +2452,12 @@ extension ForkDictationStrings {
         storeNetworkError: "下載失敗。請檢查網路連線後再試一次：已下載的部分會保留。",
         storeDiskFullFormat: "空間不足：需要 %@ 可用空間。",
         storeChecksumError: "下載的檔案已損壞。請再試一次。",
+        storeIOError: "無法將模型寫入磁碟。請檢查可用空間後再試一次。",
         actionOpenSettings: "打開設定",
-        actionUnmute: "開啟麥克風",
         actionDownload: "下載",
-        actionRedownload: "重新下載"
+        actionInstall: "安裝",
+        actionRedownload: "重新下載",
+        actionDismiss: "關閉"
     )
 }
 
@@ -2317,7 +2483,9 @@ extension ForkDictationStrings {
         speechPermissionName: "語音辨識",
         tryTitle: "試試看",
         tryPlaceholder: "按一下這裡，然後聽寫",
-        buildCaption: "此本機版本無法要求語音辨識權限。聽寫可在分支的發佈版本中使用。",
+        buildCaption: "此本機版本無法要求語音辨識權限，因此 Apple 引擎只能在分支的已發佈版本中使用。Parakeet 可在此使用。",
+        readyFormat: "已就緒：%@",
+        stateOff: "聽寫已關閉。請在上方開啟。",
         vocabularyTitle: "詞彙",
         vocabularyCaption: "聽寫需要認識的詞語：人名、品牌、英文術語。當你說的話與它們相似時會優先使用。",
         vocabularyPlaceholder: "加入詞語或片語",
@@ -2349,6 +2517,7 @@ extension ForkDictationStrings {
         shortcutProblemDuplicate: "另一個快速鍵已使用此按鍵。",
         shortcutProblemNeedsModifier: "請為此組合鍵加上 ⌘、⌥ 或 ⌃。",
         shortcutProblemReserved: "此按鍵不能單獨使用。",
+        shortcutProblemConflict: "此快速鍵已被 macOS 或其他功能使用。",
         shortcutConflictSuperKey: "此按鍵已指定給 Super Key：它不再作為輔助鍵使用，因此聽寫無法辨識它。",
         recognitionTitle: "辨識",
         engineTitle: "引擎",
@@ -2368,7 +2537,10 @@ extension ForkDictationStrings {
         parakeetRetry: "再試一次",
         parakeetCloneCaption: "另一個 App 已在這台 Mac 上儲存了它：不用下載，立即安裝。",
         parakeetLanguagesCaption: "支援 25 種歐洲語言，自動偵測。日文、韓文、中文或土耳其文由 Apple 接手。",
-        parakeetAttribution: "NVIDIA 的 Parakeet TDT 0.6B v3，採用 CC-BY-4.0 授權。推論改編自 FluidAudio（Apache-2.0）。",
+        parakeetAttribution: "NVIDIA 的 Parakeet TDT 0.6B v3，採用 CC BY 4.0 授權。",
+        fluidAudioAttribution: "Parakeet 的推論改編自 FluidAudio，採用 Apache 2.0 授權。",
+        licenseLink: "授權",
+        modelPageLink: "模型頁面",
         vocabularyAppleOnlyCaption: "詞彙表用來引導 Apple 引擎。使用 Parakeet 時，由替換規則來修正。",
         languageParakeetAuto: "自動偵測",
         microphoneTitle: "麥克風",
@@ -2395,7 +2567,8 @@ extension ForkDictationStrings {
         statusTranscribing: "正在轉寫⋯",
         statusPasted: "已貼上",
         statusCopied: "已拷貝",
-        statusKeptInClipboard: "按 ⌘V 貼上",
+        statusKeptInClipboard: "未貼上 · 按 ⌘V 貼上",
+        statusInHistoryOnly: "已保留在剪貼簿記錄",
         statusNothingHeard: "沒有聽到聲音",
         statusNothingHeardSilence: "1 分鐘沒有聽到聲音",
         statusCancelled: "已取消",
@@ -2405,6 +2578,8 @@ extension ForkDictationStrings {
         voiceTranscribing: "聽寫：正在轉寫",
         voicePastedFormat: "聽寫已貼上：%@",
         voiceCopiedFormat: "聽寫已拷貝：%@",
+        voiceKeptInClipboard: "聽寫未貼上：按 Command V 貼上。",
+        voiceInHistoryOnly: "聽寫未貼上：內容在剪貼簿記錄中。",
         voiceNothingHeard: "聽寫：沒有聽到聲音",
         voiceCancelled: "聽寫已取消",
         failAccessibility: "需要輔助使用權限",
@@ -2435,9 +2610,11 @@ extension ForkDictationStrings {
         storeNetworkError: "下載失敗。請檢查網絡連線後再試一次：已下載的部分會保留。",
         storeDiskFullFormat: "空間不足：需要 %@ 可用空間。",
         storeChecksumError: "下載的檔案已損壞。請再試一次。",
+        storeIOError: "無法將模型寫入磁碟。請檢查可用空間後再試一次。",
         actionOpenSettings: "打開設定",
-        actionUnmute: "開啟麥克風",
         actionDownload: "下載",
-        actionRedownload: "重新下載"
+        actionInstall: "安裝",
+        actionRedownload: "重新下載",
+        actionDismiss: "關閉"
     )
 }

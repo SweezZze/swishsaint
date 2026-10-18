@@ -67,7 +67,9 @@ enum ForkDictationShortcutTests {
         let space = ForkDictationShortcut(key: .combo(keyCode: 49, modifiers: 0))
         let commandSpace = ForkDictationShortcut(key: .combo(keyCode: 49, modifiers: command))
         let f5 = ForkDictationShortcut(key: .combo(keyCode: 96, modifiers: 0))
-        let problems = ForkDictationShortcuts.problems([first, twin, letter, shiftLetter, escape, space, commandSpace, f5])
+        let free: (GlobalShortcut) -> Bool = { _ in false }
+        let problems = ForkDictationShortcuts.problems([first, twin, letter, shiftLetter, escape, space, commandSpace, f5],
+                                                       isTaken: free)
         suite.expect(problems[first.id] == nil && problems[twin.id] == .duplicate,
                      "the second shortcut on the same key is the duplicate")
         suite.expect(problems[letter.id] == .needsModifier && problems[shiftLetter.id] == .needsModifier,
@@ -76,9 +78,25 @@ enum ForkDictationShortcutTests {
                      "Escape always, Space alone, are reserved")
         suite.expect(problems[commandSpace.id] == nil && problems[f5.id] == nil,
                      "⌘Space and a bare function key are fine")
-        let table = ForkDictationShortcutTable([first, twin, letter])
+        let table = ForkDictationShortcutTable([first, twin, letter], isTaken: free)
         suite.expect(table.shortcut(first.id) != nil && table.shortcut(twin.id) == nil && table.shortcut(letter.id) == nil,
                      "only working shortcuts reach the tap")
+
+        let taken = ForkDictationShortcut(key: .combo(keyCode: 2, modifiers: Int(GlobalShortcutModifiers([.control, .option]).rawValue)))
+        let takenProblems = ForkDictationShortcuts.problems([first, taken], isTaken: { $0.keyCode == 2 })
+        suite.expect(takenProblems[taken.id] == .conflict && takenProblems[first.id] == nil,
+                     "a combination macOS or Vorssaint answers to is a conflict")
+        suite.expect(ForkDictationShortcutTable([taken], isTaken: { _ in true }).isEmpty,
+                     "a conflicting combination never reaches the tap")
+        let menu = ForkDictationShortcuts.isAppMenuShortcut
+        suite.expect(menu(GlobalShortcut(keyCode: 8, modifiers: .command))
+                        && menu(GlobalShortcut(keyCode: 6, modifiers: [.command, .shift]))
+                        && menu(GlobalShortcut(keyCode: 48, modifiers: .command)),
+                     "⌘C, ⇧⌘Z and ⌘Tab belong to the apps")
+        suite.expect(!menu(GlobalShortcut(keyCode: 2, modifiers: [.control, .option]))
+                        && !menu(GlobalShortcut(keyCode: 2, modifiers: [.command, .option]))
+                        && !menu(GlobalShortcut(keyCode: 96, modifiers: .command)),
+                     "⌃⌥D, ⌥⌘D and ⌘F5 are free for the dictation")
     }
 
     private static func table(_ suite: TestSuite) {
@@ -86,7 +104,7 @@ enum ForkDictationShortcutTests {
         let left = ForkDictationShortcut(key: .modifier(.leftCommand))
         let fn = ForkDictationShortcut(key: .modifier(.fn))
         let combo = ForkDictationShortcut(key: .combo(keyCode: 2, modifiers: commandShift))
-        let table = ForkDictationShortcutTable([right, left, fn, combo])
+        let table = ForkDictationShortcutTable([right, left, fn, combo], isTaken: { _ in false })
 
         suite.expect(table.modifierChange(keyCode: 54, flags: 0x100010).map { $0.id == right.id && $0.isDown } == true
                         && table.modifierChange(keyCode: 54, flags: 0x100).map { $0.id == right.id && !$0.isDown } == true,
@@ -127,6 +145,13 @@ enum ForkDictationShortcutTests {
                      "Parakeet chosen: missing model is a failure, never a silent download")
         suite.expect(resolve(.apple, true, "fr") == .success(.apple), "Apple chosen: always Apple")
         suite.expect(ForkDictationEngineChoice.parakeetLanguages.count == 25, "Parakeet knows 25 languages")
+
+        let choice = ForkDictationEngineChoice.choiceLanguage
+        suite.expect(choice("", ["ja-JP", "en-US"]) == "ja-JP" && choice("de", ["ja-JP"]) == "de" && choice("", []) == "",
+                     "no language chosen: the person's own picks the engine")
+        suite.expect(resolve(.auto, true, choice("", ["ja-JP"])) == .success(.apple)
+                        && resolve(.auto, true, choice("", ["fr-FR"])) == .success(.parakeet),
+                     "automatic on a Japanese Mac goes to Apple, on a French one to Parakeet")
     }
 
     private static func presentation(_ suite: TestSuite) {

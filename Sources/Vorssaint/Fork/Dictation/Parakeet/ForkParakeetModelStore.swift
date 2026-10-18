@@ -161,6 +161,11 @@ final class ForkParakeetModelStore: ObservableObject {
                Manifest.missing(files, in: cache, checksum: true).isEmpty,
                self.isCurrent(current),
                Self.clone(files, from: cache, into: staging) {
+                // Cancelled while cloning: the clone goes, nothing is installed.
+                guard self.isCurrent(current) else {
+                    try? FileManager.default.removeItem(at: staging)
+                    return
+                }
                 return self.finish(current, Self.promote(staging, to: directory))
             }
             guard self.isCurrent(current) else { return }
@@ -198,7 +203,12 @@ final class ForkParakeetModelStore: ObservableObject {
             guard let self else { return }
             switch result {
             case .success:
-                self.finish(current, Self.promote(staging, to: directory))
+                // On `work`, like `delete`: a model deleted as its last file
+                // arrives is never put back.
+                self.work.async {
+                    guard self.isCurrent(current) else { return }
+                    self.finish(current, Self.promote(staging, to: directory))
+                }
             case .failure(let error):
                 self.finish(current, .failure(error))
             }
@@ -221,6 +231,16 @@ final class ForkParakeetModelStore: ObservableObject {
 
     /// Removes the model and any partial download.
     func delete() {
+        delete(then: nil)
+    }
+
+    /// Removes the model, then downloads it again: for a model whose files
+    /// no longer load.
+    func reinstall() {
+        delete { [weak self] in self?.install() }
+    }
+
+    private func delete(then next: (() -> Void)?) {
         _ = nextToken()
         download?.cancel()
         download = nil
@@ -233,6 +253,7 @@ final class ForkParakeetModelStore: ObservableObject {
                 self.busy = false
                 self.state = .notInstalled
                 self.refresh()
+                next?()
             }
         }
     }

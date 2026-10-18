@@ -169,10 +169,12 @@ struct ForkDictationGesture {
         }
     }
 
-    /// Another key while the shortcut is held: a keyboard shortcut, not a
-    /// dictation. Hands-free, the person may type and keep talking.
-    mutating func otherKey() -> Command {
-        guard case .holding = state else { return .none }
+    /// Another key (or a click) while the shortcut is held: a keyboard
+    /// shortcut, not a dictation. Once the person has been speaking a while
+    /// (`keepsListening`), it is part of the dictation, not a reason to drop
+    /// it. Hands-free, the person may type and keep talking.
+    mutating func otherKey(keepsListening: Bool = false) -> Command {
+        guard case .holding = state, !keepsListening else { return .none }
         state = .awaitingRelease
         return .abort
     }
@@ -202,6 +204,32 @@ enum ForkDictationSupport {
     static let maximumDuration: TimeInterval = 5 * 60
     /// How long the recognizer may take to settle once the person stops.
     static let finishTimeout: TimeInterval = 4
+
+    /// Pieces of one dictation put back together: a space between words,
+    /// none where Chinese, Japanese or Korean text, or full-width
+    /// punctuation, meets the next piece.
+    static func joined(_ pieces: [String]) -> String {
+        var result = ""
+        for piece in pieces where !piece.isEmpty {
+            if let last = result.unicodeScalars.last, let first = piece.unicodeScalars.first,
+               !isWide(last), !isWide(first) {
+                result += " "
+            }
+            result += piece
+        }
+        return result
+    }
+
+    private static func isWide(_ scalar: Unicode.Scalar) -> Bool {
+        switch scalar.value {
+        case 0x1100...0x11FF, 0x2E80...0x2FDF, 0x3000...0x303F, 0x3040...0x30FF, 0x3130...0x318F,
+             0x31F0...0x31FF, 0x3400...0x4DBF, 0x4E00...0x9FFF, 0xAC00...0xD7AF, 0xF900...0xFAFF,
+             0xFF00...0xFFEF, 0x20000...0x2FA1F:
+            return true
+        default:
+            return false
+        }
+    }
 
     /// What goes into the text field: nothing when nothing was understood.
     static func insertion(_ transcript: String) -> String? {

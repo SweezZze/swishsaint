@@ -15,12 +15,26 @@ struct ForkDictationSettingsSection: View {
 
     @ObservedObject private var l10n = L10n.shared
     @ObservedObject private var service = ForkDictationService.shared
+    @ObservedObject private var permissions = Permissions.shared
+    @ObservedObject private var store = ForkParakeetModelStore.shared
+    @AppStorage(ForkDefaultsKey.dictationEnabled) private var enabled = false
+    @AppStorage(ForkDefaultsKey.dictationEngine) private var engineRaw = ForkDictationEngineSetting.fallback.rawValue
+    @AppStorage(ForkDefaultsKey.dictationLocale) private var chosenLocale = ""
+    @AppStorage(ForkDefaultsKey.dictationShortcuts) private var shortcutsStorage = ""
     @State private var trial = ""
 
     private var text: ForkDictationStrings { ForkDictationStrings.strings(l10n.language) }
 
+    /// The failure worth a banner. A missing Accessibility is already asked
+    /// for at the top of the page.
+    private var bannerFailure: ForkDictationFailure? {
+        guard let failure = service.lastFailure else { return nil }
+        if failure == .accessibilityMissing && !permissions.accessibility { return nil }
+        return failure
+    }
+
     var body: some View {
-        if let failure = service.lastFailure {
+        if let failure = bannerFailure {
             ForkDictationFailureBanner(failure: failure, text: text)
         }
 
@@ -29,20 +43,67 @@ struct ForkDictationSettingsSection: View {
                 .font(.callout)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
+            status
             LabeledContent(text.tryTitle) {
                 TextField("", text: $trial, prompt: Text(text.tryPlaceholder), axis: .vertical)
                     .lineLimit(2...4)
                     .textFieldStyle(.roundedBorder)
             }
+            .disabled(!enabled)
         }
 
+        // Off, what only matters while dictating is greyed out, like the
+        // other Extras pages. The model can still be downloaded beforehand.
         ForkDictationShortcutsSection(text: text)
+            .disabled(!enabled)
         ForkDictationRecognitionSection(text: text)
         ForkDictationMicrophoneSection(text: text)
+            .disabled(!enabled)
         ForkDictationAfterSection(text: text)
+            .disabled(!enabled)
         ForkDictationVocabularySection(text: text)
         ForkDictationPermissionsSection(text: text)
         ForkDictationAdvancedSection(text: text)
+    }
+
+    /// At a glance: off, or ready with the first shortcut and the engine it
+    /// will use. A problem has its own banner above.
+    @ViewBuilder
+    private var status: some View {
+        if !enabled {
+            Label(text.stateOff, systemImage: "pause.circle")
+                .font(.callout)
+                .foregroundStyle(.secondary)
+        } else if bannerFailure == nil, permissions.accessibility, let summary = readySummary {
+            Label(text.ready(summary), systemImage: "checkmark.circle.fill")
+                .font(.callout)
+                .foregroundStyle(.green)
+        }
+    }
+
+    private var readySummary: String? {
+        _ = store.state
+        _ = shortcutsStorage
+        let shortcuts = ForkDictationShortcuts.load()
+        let problems = ForkDictationShortcuts.problems(shortcuts)
+        guard let first = shortcuts.first(where: { $0.action != .pasteLast && problems[$0.id] == nil }) else { return nil }
+        let setting = ForkDictationEngineSetting(rawValue: engineRaw) ?? .fallback
+        let language = ForkDictationLanguages.effective(first.language ?? chosenLocale)
+        guard case let .success(kind) = ForkDictationEngines.shared.kind(for: setting, language: language) else { return nil }
+        let engine = kind == .parakeet ? text.parakeetTitle : text.engineApple
+        return "\(ForkDictationKeyName.name(of: first.key, text: text)) · \(engine)"
+    }
+}
+
+/// How a shortcut's key reads on the page.
+enum ForkDictationKeyName {
+    static func name(of key: ForkDictationShortcut.Key, text: ForkDictationStrings) -> String {
+        switch key {
+        case let .modifier(trigger):
+            return "\(trigger.symbol) \(text.triggerName(trigger))"
+        case let .combo(keyCode, modifiers):
+            return GlobalShortcut(keyCode: keyCode, modifiers: GlobalShortcutModifiers(rawValue: modifiers)).displayString
+        }
     }
 }
 
@@ -53,6 +114,8 @@ struct ForkDictationSettingsSection: View {
 private struct ForkDictationFailureBanner: View {
     let failure: ForkDictationFailure
     let text: ForkDictationStrings
+
+    @ObservedObject private var l10n = L10n.shared
 
     var body: some View {
         Section {
@@ -72,6 +135,15 @@ private struct ForkDictationFailureBanner: View {
                     Button(label) { ForkDictationService.shared.perform(action) }
                         .controlSize(.small)
                 }
+                Button {
+                    ForkDictationService.shared.clearFailure()
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .foregroundStyle(.secondary)
+                }
+                .buttonStyle(.plain)
+                .help(text.actionDismiss)
+                .accessibilityLabel(text.actionDismiss)
             }
         }
     }
@@ -79,7 +151,7 @@ private struct ForkDictationFailureBanner: View {
     private func label(for action: ForkDictationFailureAction) -> String? {
         switch action {
         case .openAccessibility, .openMicrophonePrivacy, .openSpeechPrivacy: return text.actionOpenSettings
-        case .unmuteMicrophone: return text.actionUnmute
+        case .unmuteMicrophone: return l10n.s.micUnmuteName
         case .downloadModel: return text.actionDownload
         case .redownloadModel: return text.actionRedownload
         // Already on the page.
@@ -118,6 +190,7 @@ private struct ForkDictationShortcutsSection: View {
                     isPendingCombination: pendingCombination.contains(shortcut.id),
                     canRemove: shortcuts.count > 1,
                     chooseCombination: { pendingCombination.insert(shortcut.id) },
+                    abandonCombination: { pendingCombination.remove(shortcut.id) },
                     remove: { remove(shortcut.id) })
             }
 
@@ -146,6 +219,15 @@ private struct ForkDictationShortcutsSection: View {
             .disabled(shortcuts.count >= ForkDictationShortcut.maximumCount)
         }
         .onAppear { shortcuts = ForkDictationShortcuts.load() }
+        // A restored backup changes them behind the page's back: show those,
+        // and never save the old ones over them.
+        .onReceive(NotificationCenter.default.publisher(for: UserDefaults.didChangeNotification)) { _ in
+            let stored = ForkDictationShortcuts.load()
+            if ForkDictationShortcuts.encode(stored) != ForkDictationShortcuts.encode(shortcuts) {
+                shortcuts = stored
+                pendingCombination.removeAll()
+            }
+        }
     }
 
     private var usesFn: Bool {
@@ -200,6 +282,7 @@ private struct ForkDictationShortcutRow: View {
     let isPendingCombination: Bool
     let canRemove: Bool
     let chooseCombination: () -> Void
+    let abandonCombination: () -> Void
     let remove: () -> Void
 
     @ObservedObject private var l10n = L10n.shared
@@ -215,12 +298,12 @@ private struct ForkDictationShortcutRow: View {
                 Spacer()
                 keyMenu
                 if let combination {
-                    ShortcutRecorderButton(
+                    ForkDictationComboRecorder(
                         shortcut: combination,
-                        isEnabled: true,
                         waitingTitle: text.shortcutRecordPrompt,
                         emptyTitle: isPendingCombination ? text.shortcutRecordPrompt : nil,
-                        invalidAction: {},
+                        recordsAtOnce: isPendingCombination,
+                        recordingEnded: { if isPendingCombination { abandonCombination() } },
                         captureAction: { captured in
                             shortcut.key = .combo(keyCode: captured.keyCode, modifiers: captured.modifiers.rawValue)
                         })
@@ -274,16 +357,25 @@ private struct ForkDictationShortcutRow: View {
     private var keyMenu: some View {
         Menu {
             ForEach(ForkDictationTrigger.allCases) { trigger in
-                Button("\(trigger.symbol)  \(text.triggerName(trigger))") {
-                    shortcut.key = .modifier(trigger)
+                Toggle(isOn: Binding(
+                    get: { !isPendingCombination && shortcut.key == .modifier(trigger) },
+                    set: { _ in shortcut.key = .modifier(trigger) })) {
+                    Text(verbatim: "\(trigger.symbol)  \(text.triggerName(trigger))")
                 }
             }
             Divider()
-            Button(text.shortcutCombination, action: chooseCombination)
+            Toggle(text.shortcutCombination, isOn: Binding(
+                get: { isPendingCombination || isCombination },
+                set: { _ in chooseCombination() }))
         } label: {
             Text(keyTitle)
         }
         .fixedSize()
+    }
+
+    private var isCombination: Bool {
+        if case .combo = shortcut.key { return true }
+        return false
     }
 
     private var keyTitle: String {
@@ -318,6 +410,7 @@ private struct ForkDictationShortcutRow: View {
         case .duplicate: return text.shortcutProblemDuplicate
         case .needsModifier: return text.shortcutProblemNeedsModifier
         case .reservedKey: return text.shortcutProblemReserved
+        case .conflict: return text.shortcutProblemConflict
         case nil: return conflictsWithSuperKey ? text.shortcutConflictSuperKey : nil
         }
     }
@@ -327,6 +420,62 @@ private struct ForkDictationShortcutRow: View {
             .font(.caption)
             .foregroundStyle(.secondary)
             .fixedSize(horizontal: false, vertical: true)
+    }
+}
+
+/// The app's shortcut field, able to start listening as soon as it appears:
+/// choosing "Combination…" should not take a second click. Ending without a
+/// combination gives the row back its previous key.
+private struct ForkDictationComboRecorder: NSViewRepresentable {
+    let shortcut: GlobalShortcut
+    let waitingTitle: String
+    let emptyTitle: String?
+    let recordsAtOnce: Bool
+    let recordingEnded: () -> Void
+    let captureAction: (GlobalShortcut) -> Void
+
+    func makeNSView(context: Context) -> RecorderButton {
+        let button = RecorderButton()
+        button.bezelStyle = .rounded
+        button.setButtonType(.momentaryPushIn)
+        button.font = .systemFont(ofSize: 13, weight: .medium)
+        button.cell?.lineBreakMode = .byTruncatingTail
+        button.target = button
+        button.action = #selector(RecorderButton.beginRecording)
+        apply(to: button)
+        if recordsAtOnce {
+            // Once the button is in its window: it must become first responder.
+            DispatchQueue.main.async { [weak button] in button?.beginRecording() }
+        }
+        return button
+    }
+
+    func updateNSView(_ nsView: RecorderButton, context: Context) {
+        apply(to: nsView)
+    }
+
+    func sizeThatFits(_ proposal: ProposedViewSize, nsView: RecorderButton, context: Context) -> CGSize? {
+        let intrinsic = nsView.intrinsicContentSize
+        return CGSize(width: proposal.width ?? intrinsic.width, height: intrinsic.height)
+    }
+
+    static func dismantleNSView(_ nsView: RecorderButton, coordinator: ()) {
+        nsView.recordingChanged = nil
+        nsView.stopRecording()
+    }
+
+    private func apply(to button: RecorderButton) {
+        button.requiresModifier = true
+        button.shortcut = shortcut
+        button.waitingTitle = waitingTitle
+        button.emptyTitle = emptyTitle
+        button.recordingChanged = { isRecording in
+            if !isRecording { recordingEnded() }
+        }
+        button.invalidAction = {}
+        button.captureAction = captureAction
+        button.isEnabled = true
+        button.refreshTitle()
     }
 }
 
@@ -350,6 +499,12 @@ private enum ForkDictationLanguages {
     static func name(of identifier: String, in language: AppLanguage) -> String {
         Locale(identifier: language.rawValue).localizedString(forIdentifier: identifier) ?? identifier
     }
+
+    /// The language that picks the engine: the one chosen, else the
+    /// person's first language. Parakeet still detects it by itself.
+    static func effective(_ chosen: String) -> String {
+        chosen.isEmpty ? (Locale.preferredLanguages.first ?? "") : chosen
+    }
 }
 
 // MARK: - Recognition
@@ -370,7 +525,7 @@ private struct ForkDictationRecognitionSection: View {
     /// Re-read on every redraw: the store's state drives it.
     private var engineInUse: Result<ForkDictationEngineKind, ForkDictationFailure> {
         _ = store.state
-        return ForkDictationEngines.shared.kind(for: setting, language: chosenLocale)
+        return ForkDictationEngines.shared.kind(for: setting, language: ForkDictationLanguages.effective(chosenLocale))
     }
 
     var body: some View {
@@ -406,7 +561,7 @@ private struct ForkDictationRecognitionSection: View {
         case .success(.parakeet):
             badge(text.engineInUse(text.parakeetTitle), detail: text.onDevice, symbol: "lock.laptopcomputer")
         case .success(.apple):
-            let onDevice = ForkAppleSpeechEngine.supportsOnDevice(language: chosenLocale)
+            let onDevice = ForkAppleSpeechEngine.supportsOnDevice(language: ForkDictationLanguages.effective(chosenLocale))
             badge(text.engineInUse(text.engineApple), detail: onDevice ? text.onDevice : text.onServer,
                   symbol: onDevice ? "lock.laptopcomputer" : "network")
         case let .failure(failure):
@@ -462,6 +617,14 @@ private struct ForkParakeetCard: View {
             caption(text.parakeetCaption)
             stateDetail
             caption(text.parakeetLanguagesCaption)
+            HStack(alignment: .firstTextBaseline, spacing: 10) {
+                caption(text.parakeetAttribution)
+                Spacer(minLength: 0)
+                Link(text.licenseLink, destination: Self.modelLicense)
+                    .font(.caption)
+                Link(text.modelPageLink, destination: Self.modelPage)
+                    .font(.caption)
+            }
         }
         .padding(.vertical, 2)
     }
@@ -470,7 +633,10 @@ private struct ForkParakeetCard: View {
     private var stateControl: some View {
         switch store.state {
         case .notInstalled:
-            Button(text.parakeetDownload(Self.size(store.totalBytes - store.resumableBytes))) { store.install() }
+            // A copy already on this Mac installs without downloading anything.
+            Button(store.canCloneFromFluidAudioCache
+                   ? text.actionInstall
+                   : text.parakeetDownload(Self.size(store.totalBytes - store.resumableBytes))) { store.install() }
                 .controlSize(.small)
         case .downloading:
             Button(text.parakeetCancel) { store.cancel() }
@@ -520,9 +686,13 @@ private struct ForkParakeetCard: View {
         switch error {
         case .network, .cancelled: return text.storeNetworkError
         case let .diskFull(needed): return text.storeDiskFull(Self.size(needed))
-        case .checksum, .io: return text.storeChecksumError
+        case .checksum: return text.storeChecksumError
+        case .io: return text.storeIOError
         }
     }
+
+    private static let modelLicense = URL(string: "https://creativecommons.org/licenses/by/4.0/")!
+    private static let modelPage = URL(string: "https://huggingface.co/nvidia/parakeet-tdt-0.6b-v3")!
 
     private static func size(_ bytes: Int64) -> String {
         ByteCountFormatter.string(fromByteCount: max(0, bytes), countStyle: .file)
@@ -555,7 +725,8 @@ private struct ForkDictationMicrophoneSection: View {
                     Text(device.name).tag(device.id)
                 }
                 if isMissing {
-                    Text(text.microphoneMissing(microphone)).tag(microphone)
+                    Text(text.microphoneMissing(ForkDictationMicrophoneNames.known[microphone] ?? microphone))
+                        .tag(microphone)
                 }
             }
             Text(text.microphoneCaption)
@@ -578,7 +749,14 @@ private struct ForkDictationMicrophoneSection: View {
 
     private func reload() {
         devices = ForkDictationAudioDevices.inputs()
+        for device in devices { ForkDictationMicrophoneNames.known[device.id] = device.name }
     }
+}
+
+/// The names of the microphones seen since launch: one chosen and then
+/// unplugged keeps its name in the menu rather than a raw identifier.
+private enum ForkDictationMicrophoneNames {
+    static var known: [String: String] = [:]
 }
 
 // MARK: - After dictation
@@ -778,12 +956,27 @@ private struct ForkDictationPermissionsSection: View {
     @ObservedObject private var l10n = L10n.shared
     @ObservedObject private var permissions = Permissions.shared
     @ObservedObject private var secureInput = SecureInputMonitor.shared
+    @ObservedObject private var store = ForkParakeetModelStore.shared
     @AppStorage(ForkDefaultsKey.dictationEngine) private var engineRaw = ForkDictationEngineSetting.fallback.rawValue
+    @AppStorage(ForkDefaultsKey.dictationLocale) private var chosenLocale = ""
+    @AppStorage(ForkDefaultsKey.dictationShortcuts) private var shortcutsStorage = ""
     @State private var speechAuthorization = ForkAppleSpeechEngine.authorization
     @State private var secureInputDemand = UUID()
 
-    /// Apple serves dictation unless Parakeet was chosen alone.
-    private var appleMayServe: Bool { engineRaw != ForkDictationEngineSetting.parakeet.rawValue }
+    /// Apple's permission matters only when Apple will really transcribe:
+    /// chosen, or taking over for a language Parakeet does not know, for
+    /// the dictation's language or any shortcut's own.
+    private var appleMayServe: Bool {
+        _ = store.state
+        _ = shortcutsStorage
+        let setting = ForkDictationEngineSetting(rawValue: engineRaw) ?? .fallback
+        if setting == .apple { return true }
+        let languages = [chosenLocale] + ForkDictationShortcuts.load().compactMap(\.language)
+        return languages.contains { language in
+            let kind = ForkDictationEngines.shared.kind(for: setting, language: ForkDictationLanguages.effective(language))
+            return (try? kind.get()) == .apple
+        }
+    }
 
     var body: some View {
         Section(text.permissionsTitle) {
@@ -860,16 +1053,23 @@ private struct ForkDictationAdvancedSection: View {
     @AppStorage(ForkDefaultsKey.dictationUnloadMinutes) private var unloadMinutes = 5
     @State private var isExpanded = false
 
+    private static let fluidAudioLicense = URL(string: "https://github.com/FluidInference/FluidAudio/blob/main/LICENSE")!
+
     var body: some View {
         Section {
             DisclosureGroup(text.advancedTitle, isExpanded: $isExpanded) {
                 Stepper(value: $unloadMinutes, in: 1...30) {
                     Text(text.unloadMinutes(unloadMinutes))
                 }
-                Text(text.parakeetAttribution)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
+                HStack(alignment: .firstTextBaseline, spacing: 10) {
+                    Text(text.fluidAudioAttribution)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Spacer(minLength: 0)
+                    Link(text.licenseLink, destination: Self.fluidAudioLicense)
+                        .font(.caption)
+                }
             }
         }
     }

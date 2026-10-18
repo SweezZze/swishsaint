@@ -11,6 +11,11 @@ import Foundation
 protocol ForkDictationEngine: AnyObject {
     var kind: ForkDictationEngineKind { get }
 
+    /// A real failure while the person is still speaking (Apple's servers
+    /// gone, say), on the main thread: the dictation stops now rather than
+    /// after minutes of talking into nothing. Never called after `cancel`.
+    var onFailure: ((ForkDictationFailure) -> Void)? { get set }
+
     /// Gets ready without blocking: Parakeet loads its model in the
     /// background, so the load hides behind the first seconds of speech.
     func prepare()

@@ -16,6 +16,8 @@ enum ForkDictationPresentation: Equatable {
     case copied(excerpt: String)
     /// The paste could not happen: the text waits on the clipboard.
     case keptInClipboard
+    /// The clipboard did not answer: the text is only in the history.
+    case inHistoryOnly
     /// `afterSilence`: hands-free stopped after a minute without a voice.
     case nothingHeard(afterSilence: Bool)
     case cancelled
@@ -29,7 +31,7 @@ enum ForkDictationPresentation: Equatable {
         switch self {
         case .hidden, .listening, .transcribing: return nil
         case .pasted: return 1.6
-        case .copied, .keptInClipboard: return 4
+        case .copied, .keptInClipboard, .inHistoryOnly: return 4
         case .nothingHeard: return 1.4
         case .cancelled: return 0.9
         case .busy: return 0.6

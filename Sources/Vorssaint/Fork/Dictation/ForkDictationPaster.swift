@@ -19,11 +19,15 @@ import os
 /// 3. Written for this Mac only (`.currentHostOnly`): a dictation must not
 ///    reach the iPhone through Universal Clipboard.
 /// 4. Every pasteboard access runs on the app's shared lane; the write has
-///    500 ms to start, else it is given up and never lands late.
+///    500 ms to start, else it is given up and never lands late (the text
+///    is then only in the history).
 /// 5. ⌘V carries `ForkDictationKeyTap.syntheticTag`, so dictation's own tap
 ///    lets it through.
 /// 6. The previous clipboard comes back 0.6 s later, only if nobody copied
-///    in between.
+///    in between, for this Mac only too. It is read while the person speaks
+///    (`prepareSnapshot`), not at the paste: a big image or a promised file
+///    can take longer to read than the write may wait. Above 32 MB it is
+///    not kept, and a flavor that cannot be read is left out, not the rest.
 /// 7. The text enters the clipboard history before any of this, so a paste
 ///    that fails loses nothing.
 final class ForkDictationPaster {
@@ -33,14 +37,26 @@ final class ForkDictationPaster {
     private static let writeDeadline: TimeInterval = 0.5
     private static let restoreDelay: TimeInterval = 0.6
     private static let activationWait: TimeInterval = 0.15
+    /// Beyond this the previous clipboard is not kept, so not given back.
+    private static let snapshotBudget = 32 * 1024 * 1024
 
     private struct PendingRestore {
         let snapshot: [NSPasteboardItem]
         let changeCount: Int
     }
 
+    /// The clipboard as it was, read ahead of the paste. Only touched on the
+    /// pasteboard lane, which runs the read before the write that uses it.
+    private final class SnapshotBox: @unchecked Sendable {
+        var changeCount = -1
+        /// Nil: too big to keep, nothing to give back.
+        var items: [NSPasteboardItem]?
+        var isRead = false
+    }
+
     private var pendingRestore: PendingRestore?
     private var restoreWork: DispatchWorkItem?
+    private var snapshotBox: SnapshotBox?
     private var generation = 0
 
     /// The app in front, remembered when the shortcut is pressed.
@@ -48,9 +64,25 @@ final class ForkDictationPaster {
         NSWorkspace.shared.frontmostApplication
     }
 
+    /// Reads the clipboard the next paste gives back, now, off the main
+    /// thread. Called once the microphone is open: a shortcut that never
+    /// becomes a dictation (⌘C) never reads the clipboard.
+    func prepareSnapshot() {
+        precondition(Thread.isMainThread)
+        let box = SnapshotBox()
+        snapshotBox = box
+        GeneralPasteboardAccess.shared.async {
+            let pasteboard = NSPasteboard.general
+            box.changeCount = pasteboard.changeCount
+            box.items = Self.snapshot(of: pasteboard)
+            box.isRead = true
+        }
+    }
+
     func deliver(_ text: String, action: ForkDictationShortcut.Action, target: NSRunningApplication?,
                  addsToHistory: Bool, completion: @escaping (ForkDictationDeliveryOutcome) -> Void) {
         precondition(Thread.isMainThread)
+        let inHistory = addsToHistory && ClipboardHistoryService.shared.isRunning
         if addsToHistory { ClipboardHistoryService.shared.forkRecordText(text) }
 
         generation &+= 1
@@ -64,16 +96,24 @@ final class ForkDictationPaster {
         restoreWork?.cancel()
         restoreWork = nil
         pendingRestore = nil
+        let prepared = snapshotBox
+        snapshotBox = nil
 
         GeneralPasteboardAccess.shared.async(timeout: Self.writeDeadline, { isExpired -> (Int, [NSPasteboardItem]?)? in
             let pasteboard = NSPasteboard.general
             var snapshot: [NSPasteboardItem]?
             if !copyOnly {
-                if let previous, pasteboard.changeCount == previous.changeCount {
+                let changeCount = pasteboard.changeCount
+                if let previous, changeCount == previous.changeCount {
                     snapshot = previous.snapshot
-                } else {
+                } else if let prepared, prepared.isRead, changeCount == prepared.changeCount {
+                    snapshot = prepared.items
+                } else if prepared == nil {
+                    // Nobody read it ahead (a paste of the last dictation).
                     snapshot = Self.snapshot(of: pasteboard)
                 }
+                // Read ahead but copied over since: the copy is small and
+                // recent, but reading it now could cost the deadline. Not given back.
             }
             // Given up at the deadline: never write late.
             guard !isExpired() else { return nil }
@@ -81,15 +121,22 @@ final class ForkDictationPaster {
             guard pasteboard.setString(text, forType: .string) else { return nil }
             return (pasteboard.changeCount, snapshot)
         }, then: { [weak self] written in
-            // Superseded or given up: the caller still hears back once.
-            guard let self, self.generation == generation, let written else {
-                if written == nil { Self.logger.error("paste: the clipboard did not answer in time") }
-                completion(.keptInClipboard)
+            guard let self else { return }
+            guard self.generation == generation else {
+                completion(.superseded)
+                return
+            }
+            guard let written else {
+                Self.logger.error("paste: the clipboard did not answer in time")
+                if inHistory {
+                    completion(.inHistoryOnly)
+                } else {
+                    // Nowhere else to find it: better late on the clipboard than lost.
+                    self.writeLate(text, completion: completion)
+                }
                 return
             }
             let (changeCount, snapshot) = written
-            // Already in the history, or left out of it on purpose.
-            ClipboardHistoryService.shared.ignoreNextChange(upTo: changeCount)
             if copyOnly {
                 completion(.copied)
                 return
@@ -99,21 +146,41 @@ final class ForkDictationPaster {
                 return
             }
             self.bringForward(target, waited: 0) { isFront in
-                guard self.generation == generation, isFront, !Self.isSecureInputActive else {
+                guard self.generation == generation else {
+                    completion(.superseded)
+                    return
+                }
+                guard isFront, !Self.isSecureInputActive else {
                     completion(.keptInClipboard)
                     return
                 }
                 self.pasteWhenModifiersReleased(attempt: 0, changeCount: changeCount,
                                                 generation: generation) { pasted in
                     guard pasted else {
-                        completion(.keptInClipboard)
+                        completion(self.generation == generation ? .keptInClipboard : .superseded)
                         return
                     }
                     if let snapshot { self.scheduleRestore(snapshot, changeCount: changeCount) }
                     completion(.pasted)
                 }
             }
+        }, didFinish: { written in
+            // The write's real outcome, even when the deadline already
+            // answered: the history must not record it again, ever.
+            if let written { ClipboardHistoryService.shared.ignoreNextChange(upTo: written.0) }
         })
+    }
+
+    /// Without a deadline, after one was missed.
+    private func writeLate(_ text: String, completion: @escaping (ForkDictationDeliveryOutcome) -> Void) {
+        GeneralPasteboardAccess.shared.async({ () -> Int? in
+            let pasteboard = NSPasteboard.general
+            pasteboard.prepareForNewContents(with: .currentHostOnly)
+            return pasteboard.setString(text, forType: .string) ? pasteboard.changeCount : nil
+        }) { changeCount in
+            if let changeCount { ClipboardHistoryService.shared.ignoreNextChange(upTo: changeCount) }
+            completion(.keptInClipboard)
+        }
     }
 
     // MARK: - Secure input
@@ -166,7 +233,12 @@ final class ForkDictationPaster {
             completion(true)
             return
         }
-        if waited == 0 { target.activate() }
+        if waited == 0 {
+            // macOS 14 activation is cooperative: the app in front has to
+            // hand over, and a menu bar app is rarely the one in front.
+            ActivationHandoff.yield(to: target)
+            target.activate()
+        }
         guard waited < Self.activationWait else {
             completion(false)
             return
@@ -228,7 +300,9 @@ final class ForkDictationPaster {
                 let pasteboard = NSPasteboard.general
                 // Someone copied since: their copy wins.
                 guard pasteboard.changeCount == changeCount else { return nil }
-                pasteboard.clearContents()
+                // Given back for this Mac only: it already reached the
+                // person's other devices when it was first copied.
+                pasteboard.prepareForNewContents(with: .currentHostOnly)
                 if !pending.snapshot.isEmpty { pasteboard.writeObjects(pending.snapshot) }
                 return pasteboard.changeCount
             }) { restored in
@@ -239,20 +313,23 @@ final class ForkDictationPaster {
         DispatchQueue.main.asyncAfter(deadline: .now() + Self.restoreDelay, execute: work)
     }
 
-    /// Nil when a flavor cannot be read back: nothing is restored then,
-    /// rather than half of what was there.
+    /// What can be read back of the clipboard, flavor by flavor: a file
+    /// promise that cannot be read is left out, the text and images next to
+    /// it are kept. Nil above the budget: nothing is given back then.
     private static func snapshot(of pasteboard: NSPasteboard) -> [NSPasteboardItem]? {
-        guard let items = pasteboard.pasteboardItems else {
-            return pasteboard.types?.isEmpty == false ? nil : []
-        }
+        guard let items = pasteboard.pasteboardItems else { return [] }
         var snapshot: [NSPasteboardItem] = []
+        var bytes = 0
         for item in items {
             let copy = NSPasteboardItem()
+            var kept = false
             for type in item.types {
-                guard let data = item.data(forType: type) else { return nil }
-                copy.setData(data, forType: type)
+                guard let data = item.data(forType: type) else { continue }
+                bytes += data.count
+                guard bytes <= snapshotBudget else { return nil }
+                kept = copy.setData(data, forType: type) || kept
             }
-            snapshot.append(copy)
+            if kept { snapshot.append(copy) }
         }
         return snapshot
     }

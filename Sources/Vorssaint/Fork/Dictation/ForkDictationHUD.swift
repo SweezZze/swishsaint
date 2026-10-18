@@ -245,6 +245,9 @@ private struct ForkDictationBubble: View {
             case .keptInClipboard:
                 mark("doc.on.clipboard.fill", color: .orange)
                 label(text.statusKeptInClipboard)
+            case .inHistoryOnly:
+                mark("clock.arrow.circlepath", color: .orange)
+                label(text.statusInHistoryOnly)
             case let .nothingHeard(afterSilence):
                 mark("waveform.slash", color: .white.opacity(0.75))
                 label(afterSilence ? text.statusNothingHeardSilence : text.statusNothingHeard, secondary: true)

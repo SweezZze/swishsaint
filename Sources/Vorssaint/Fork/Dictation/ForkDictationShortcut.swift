@@ -75,6 +75,9 @@ enum ForkDictationShortcutProblem: Equatable {
     case needsModifier
     /// Escape cancels, and Return, Tab, Space or Delete alone are typing.
     case reservedKey
+    /// macOS, the apps (⌘C, ⌘Tab…) or another Vorssaint feature answer to
+    /// this combination: taking it would break them everywhere.
+    case conflict
 }
 
 enum ForkDictationShortcuts {
@@ -111,12 +114,16 @@ enum ForkDictationShortcuts {
     }
 
     /// What is wrong with each shortcut that cannot be used, by identifier.
-    /// A shortcut absent from the result works.
-    static func problems(_ shortcuts: [ForkDictationShortcut]) -> [UUID: ForkDictationShortcutProblem] {
+    /// A shortcut absent from the result works. `isTaken` says whether
+    /// something else already answers to a combination; the checks inject
+    /// their own.
+    static func problems(_ shortcuts: [ForkDictationShortcut],
+                         isTaken: (GlobalShortcut) -> Bool = isTakenElsewhere)
+        -> [UUID: ForkDictationShortcutProblem] {
         var result: [UUID: ForkDictationShortcutProblem] = [:]
         var seen = Set<ForkDictationShortcut.Key>()
         for shortcut in shortcuts {
-            if let problem = problem(of: shortcut.key) {
+            if let problem = problem(of: shortcut.key, isTaken: isTaken) {
                 result[shortcut.id] = problem
             } else if !seen.insert(normalized(shortcut.key)).inserted {
                 result[shortcut.id] = .duplicate
@@ -125,7 +132,24 @@ enum ForkDictationShortcuts {
         return result
     }
 
-    private static func problem(of key: ForkDictationShortcut.Key) -> ForkDictationShortcutProblem? {
+    /// A combination macOS, the apps or Vorssaint already use: a system
+    /// shortcut, a feature's own, or Command (with or without Shift) and a
+    /// key that types, which every app's menus answer to.
+    static func isTakenElsewhere(_ shortcut: GlobalShortcut) -> Bool {
+        isAppMenuShortcut(shortcut)
+            || shortcut.conflictsWithSystemShortcut(for: nil)
+            || GlobalShortcutRole.conflict(for: shortcut, excluding: nil) != nil
+    }
+
+    static func isAppMenuShortcut(_ shortcut: GlobalShortcut) -> Bool {
+        let modifiers = shortcut.modifiers.intersection(.validMask)
+        return modifiers.contains(.command)
+            && modifiers.subtracting([.command, .shift]).isEmpty
+            && KeyCode.typingKeys.contains(shortcut.keyCode)
+    }
+
+    private static func problem(of key: ForkDictationShortcut.Key,
+                                isTaken: (GlobalShortcut) -> Bool) -> ForkDictationShortcutProblem? {
         guard case let .combo(keyCode, raw) = key else { return nil }
         let modifiers = GlobalShortcutModifiers(rawValue: raw).intersection(.validMask)
         if keyCode == KeyCode.escape || (modifiers.isEmpty && KeyCode.typing.contains(keyCode)) {
@@ -133,6 +157,9 @@ enum ForkDictationShortcuts {
         }
         if !modifiers.hasPrimaryModifier && !KeyCode.functionRow.contains(keyCode) {
             return .needsModifier
+        }
+        if isTaken(GlobalShortcut(keyCode: keyCode, modifiers: modifiers)) {
+            return .conflict
         }
         return nil
     }
@@ -146,6 +173,9 @@ enum ForkDictationShortcuts {
         static let escape: Int64 = 53
         /// Return, Tab, Space, Delete, keypad Enter, forward Delete.
         static let typing: Set<Int64> = [36, 48, 49, 51, 76, 117]
+        /// Letters, digits, punctuation, Return, Tab, Space and the grave
+        /// accent on an ANSI keyboard: the keys app menus pair with Command.
+        static let typingKeys: Set<Int64> = Set(0...50)
         /// F1 to F20: safe without a modifier, typing nothing.
         static let functionRow: Set<Int64> = [
             122, 120, 99, 118, 96, 97, 98, 100, 101, 109,
@@ -161,8 +191,11 @@ struct ForkDictationShortcutTable {
     private let combos: [Int64: [(id: UUID, modifiers: GlobalShortcutModifiers)]]
     private let byID: [UUID: ForkDictationShortcut]
 
-    init(_ shortcuts: [ForkDictationShortcut]) {
-        let problems = ForkDictationShortcuts.problems(shortcuts)
+    /// Shortcuts with a problem are left out: the tap never holds back a
+    /// key that is not truly the dictation's.
+    init(_ shortcuts: [ForkDictationShortcut],
+         isTaken: (GlobalShortcut) -> Bool = ForkDictationShortcuts.isTakenElsewhere) {
+        let problems = ForkDictationShortcuts.problems(shortcuts, isTaken: isTaken)
         var modifiers: [(id: UUID, trigger: ForkDictationTrigger)] = []
         var combos: [Int64: [(id: UUID, modifiers: GlobalShortcutModifiers)]] = [:]
         var byID: [UUID: ForkDictationShortcut] = [:]

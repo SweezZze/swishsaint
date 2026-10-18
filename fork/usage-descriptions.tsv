@@ -1,33 +1,33 @@
 # Textes des demandes d'autorisation propres au fork, appliqués par fork/build-release.sh.
 # Colonnes séparées par une tabulation : dossier .lproj (« base » = Info.plist), clé, texte.
 # « Vorssaint » est ensuite remplacé par le nom de l'app du fork.
-base	NSMicrophoneUsageDescription	Vorssaint uses your microphone only for a screen recording you start, or while you dictate with the key you chose. Dictation is transcribed on your Mac, or by Apple if you pick its engine.
+base	NSMicrophoneUsageDescription	Vorssaint uses your microphone only for a screen recording you start, or while you dictate with the key you chose. Dictation is transcribed on your Mac, or by Apple for languages Parakeet doesn’t know or if you pick Apple’s engine.
 base	NSSpeechRecognitionUsageDescription	Vorssaint turns your voice into text only while you dictate with the key you chose, then types it where your cursor is.
-de	NSMicrophoneUsageDescription	Vorssaint nutzt dein Mikrofon nur für eine Bildschirmaufnahme, die du startest, oder während du mit der gewählten Taste diktierst. Diktate werden auf deinem Mac umgewandelt, oder von Apple, wenn du dessen Engine wählst.
+de	NSMicrophoneUsageDescription	Vorssaint nutzt dein Mikrofon nur für eine Bildschirmaufnahme, die du startest, oder während du mit der gewählten Taste diktierst. Diktate werden auf deinem Mac umgewandelt, oder von Apple für Sprachen, die Parakeet nicht kennt, oder wenn du Apples Engine wählst.
 de	NSSpeechRecognitionUsageDescription	Vorssaint wandelt deine Stimme nur in Text um, während du mit der gewählten Taste diktierst, und tippt ihn dort, wo dein Cursor steht.
-es	NSMicrophoneUsageDescription	Vorssaint usa tu micrófono solo para una grabación de pantalla que inicies o mientras dictas con la tecla que elegiste. El dictado se transcribe en tu Mac, o en Apple si eliges su motor.
+es	NSMicrophoneUsageDescription	Vorssaint usa tu micrófono solo para una grabación de pantalla que inicies o mientras dictas con la tecla que elegiste. El dictado se transcribe en tu Mac, o en Apple para los idiomas que Parakeet no conoce o si eliges su motor.
 es	NSSpeechRecognitionUsageDescription	Vorssaint convierte tu voz en texto solo mientras dictas con la tecla que elegiste y lo escribe donde está el cursor.
-fr	NSMicrophoneUsageDescription	Vorssaint utilise votre micro uniquement pour un enregistrement d’écran que vous lancez, ou pendant que vous dictez avec la touche choisie. La dictée est transcrite sur votre Mac, ou par Apple si vous choisissez son moteur.
+fr	NSMicrophoneUsageDescription	Vorssaint utilise votre micro uniquement pour un enregistrement d’écran que vous lancez, ou pendant que vous dictez avec la touche choisie. La dictée est transcrite sur votre Mac, ou par Apple pour les langues que Parakeet ne connaît pas, ou si vous choisissez son moteur.
 fr	NSSpeechRecognitionUsageDescription	Vorssaint transforme votre voix en texte uniquement pendant que vous dictez avec la touche choisie, puis l’écrit là où se trouve votre curseur.
-it	NSMicrophoneUsageDescription	Vorssaint usa il microfono solo per una registrazione dello schermo che avvii o mentre detti con il tasto scelto. La dettatura viene trascritta sul tuo Mac, oppure da Apple se scegli il suo motore.
+it	NSMicrophoneUsageDescription	Vorssaint usa il microfono solo per una registrazione dello schermo che avvii o mentre detti con il tasto scelto. La dettatura viene trascritta sul tuo Mac, oppure da Apple per le lingue che Parakeet non conosce o se scegli il suo motore.
 it	NSSpeechRecognitionUsageDescription	Vorssaint trasforma la tua voce in testo solo mentre detti con il tasto scelto, poi lo scrive dove si trova il cursore.
-ja	NSMicrophoneUsageDescription	Vorssaintがマイクを使うのは、開始した画面収録のときと、選んだキーで音声入力しているあいだだけです。音声入力はMac上で文字に変換されます（Appleのエンジンを選んだ場合はAppleが変換します）。
+ja	NSMicrophoneUsageDescription	Vorssaintがマイクを使うのは、開始した画面収録のときと、選んだキーで音声入力しているあいだだけです。音声入力はMac上で文字に変換されます（Parakeetが対応していない言語やAppleのエンジンを選んだ場合はAppleが変換します）。
 ja	NSSpeechRecognitionUsageDescription	Vorssaintは、選んだキーで音声入力しているあいだだけ声を文字に変換し、カーソルの位置に入力します。
-ko	NSMicrophoneUsageDescription	Vorssaint는 직접 시작한 화면 녹화나 선택한 키로 받아쓰는 동안에만 마이크를 사용합니다. 받아쓰기는 Mac에서 변환되며, Apple 엔진을 선택한 경우 Apple이 변환합니다.
+ko	NSMicrophoneUsageDescription	Vorssaint는 직접 시작한 화면 녹화나 선택한 키로 받아쓰는 동안에만 마이크를 사용합니다. 받아쓰기는 Mac에서 변환되며, Parakeet이 모르는 언어이거나 Apple 엔진을 선택한 경우 Apple이 변환합니다.
 ko	NSSpeechRecognitionUsageDescription	Vorssaint는 선택한 키로 받아쓰는 동안에만 음성을 텍스트로 변환하고 커서 위치에 입력합니다.
-pt-BR	NSMicrophoneUsageDescription	O Vorssaint usa seu microfone apenas em uma gravação de tela que você inicia ou enquanto você dita com a tecla escolhida. O ditado é transcrito no seu Mac, ou pela Apple se você escolher o motor dela.
+pt-BR	NSMicrophoneUsageDescription	O Vorssaint usa seu microfone apenas em uma gravação de tela que você inicia ou enquanto você dita com a tecla escolhida. O ditado é transcrito no seu Mac, ou pela Apple para idiomas que o Parakeet não conhece ou se você escolher o motor dela.
 pt-BR	NSSpeechRecognitionUsageDescription	O Vorssaint transforma sua voz em texto apenas enquanto você dita com a tecla escolhida e o digita onde está o cursor.
-ru	NSMicrophoneUsageDescription	Vorssaint использует микрофон только для записи экрана, которую вы запускаете, или пока вы диктуете выбранной клавишей. Диктовка распознаётся на вашем Mac или в Apple, если вы выбрали её движок.
+ru	NSMicrophoneUsageDescription	Vorssaint использует микрофон только для записи экрана, которую вы запускаете, или пока вы диктуете выбранной клавишей. Диктовка распознаётся на вашем Mac или в Apple — для языков, которых Parakeet не знает, или если вы выбрали её движок.
 ru	NSSpeechRecognitionUsageDescription	Vorssaint превращает голос в текст, только пока вы диктуете выбранной клавишей, и вводит его там, где стоит курсор.
-sk	NSMicrophoneUsageDescription	Vorssaint používa mikrofón len na nahrávanie obrazovky, ktoré spustíte, alebo keď diktujete zvoleným klávesom. Diktát sa prepisuje na vašom Macu, alebo v Apple, ak zvolíte jeho modul.
+sk	NSMicrophoneUsageDescription	Vorssaint používa mikrofón len na nahrávanie obrazovky, ktoré spustíte, alebo keď diktujete zvoleným klávesom. Diktát sa prepisuje na vašom Macu, alebo v Apple pre jazyky, ktoré Parakeet nepozná, či ak zvolíte jeho modul.
 sk	NSSpeechRecognitionUsageDescription	Vorssaint mení váš hlas na text len počas diktovania zvoleným klávesom a napíše ho tam, kde je kurzor.
-tr	NSMicrophoneUsageDescription	Vorssaint mikrofonunuzu yalnızca başlattığınız bir ekran kaydı için veya seçtiğiniz tuşla dikte ederken kullanır. Dikte Mac'inizde, Apple motorunu seçerseniz Apple tarafından metne dönüştürülür.
+tr	NSMicrophoneUsageDescription	Vorssaint mikrofonunuzu yalnızca başlattığınız bir ekran kaydı için veya seçtiğiniz tuşla dikte ederken kullanır. Dikte Mac'inizde metne dönüştürülür; Parakeet'in bilmediği diller için veya Apple motorunu seçerseniz Apple tarafından dönüştürülür.
 tr	NSSpeechRecognitionUsageDescription	Vorssaint sesinizi yalnızca seçtiğiniz tuşla dikte ederken metne dönüştürür ve imlecin bulunduğu yere yazar.
-uk	NSMicrophoneUsageDescription	Vorssaint використовує мікрофон лише для запису екрана, який ви запускаєте, або поки ви диктуєте вибраною клавішею. Диктування розпізнається на вашому Mac або в Apple, якщо ви обрали її рушій.
+uk	NSMicrophoneUsageDescription	Vorssaint використовує мікрофон лише для запису екрана, який ви запускаєте, або поки ви диктуєте вибраною клавішею. Диктування розпізнається на вашому Mac або в Apple — для мов, яких Parakeet не знає, чи якщо ви обрали її рушій.
 uk	NSSpeechRecognitionUsageDescription	Vorssaint перетворює голос на текст лише поки ви диктуєте вибраною клавішею і вводить його там, де стоїть курсор.
-zh-Hans	NSMicrophoneUsageDescription	Vorssaint 仅在你开始屏幕录制或按所选按键听写时使用麦克风。听写内容在 Mac 上转换为文字；若选择 Apple 引擎，则由 Apple 转换。
+zh-Hans	NSMicrophoneUsageDescription	Vorssaint 仅在你开始屏幕录制或按所选按键听写时使用麦克风。听写内容在 Mac 上转换为文字；对于 Parakeet 不支持的语言或你选择了 Apple 引擎时，由 Apple 转换。
 zh-Hans	NSSpeechRecognitionUsageDescription	Vorssaint 仅在你按所选按键听写时将语音转换为文字，并输入到光标所在位置。
-zh-TW	NSMicrophoneUsageDescription	Vorssaint 只會在你開始螢幕錄製或以所選按鍵聽寫時使用麥克風。聽寫內容會在 Mac 上轉為文字；若選擇 Apple 引擎，則由 Apple 轉換。
+zh-TW	NSMicrophoneUsageDescription	Vorssaint 只會在你開始螢幕錄製或以所選按鍵聽寫時使用麥克風。聽寫內容會在 Mac 上轉為文字；對於 Parakeet 不支援的語言或你選擇 Apple 引擎時，由 Apple 轉換。
 zh-TW	NSSpeechRecognitionUsageDescription	Vorssaint 只會在你以所選按鍵聽寫時將語音轉為文字，並輸入到游標所在位置。
-zh-HK	NSMicrophoneUsageDescription	Vorssaint 只會在你開始螢幕錄製或以所選按鍵聽寫時使用咪高風。聽寫內容會在 Mac 上轉為文字；若選擇 Apple 引擎，則由 Apple 轉換。
+zh-HK	NSMicrophoneUsageDescription	Vorssaint 只會在你開始螢幕錄製或以所選按鍵聽寫時使用咪高風。聽寫內容會在 Mac 上轉為文字；對於 Parakeet 不支援的語言或你選擇 Apple 引擎時，由 Apple 轉換。
 zh-HK	NSSpeechRecognitionUsageDescription	Vorssaint 只會在你以所選按鍵聽寫時將語音轉為文字，並輸入到游標所在位置。

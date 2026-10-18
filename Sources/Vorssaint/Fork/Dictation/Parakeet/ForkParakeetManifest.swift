@@ -113,17 +113,23 @@ enum ForkParakeetManifest {
         guard let handle = try? FileHandle(forReadingFrom: url) else { return nil }
         defer { try? handle.close() }
         var hasher = SHA256()
-        while true {
-            let chunk: Data
-            do {
-                guard let read = try handle.read(upToCount: 4 << 20) else { break }
-                chunk = read
-            } catch {
-                return nil
+        var failed = false
+        var done = false
+        while !done && !failed {
+            // Each 4 MB chunk is freed before the next one is read.
+            autoreleasepool {
+                do {
+                    guard let chunk = try handle.read(upToCount: 4 << 20), !chunk.isEmpty else {
+                        done = true
+                        return
+                    }
+                    hasher.update(data: chunk)
+                } catch {
+                    failed = true
+                }
             }
-            if chunk.isEmpty { break }
-            hasher.update(data: chunk)
         }
+        if failed { return nil }
         return hasher.finalize().map { String(format: "%02x", $0) }.joined()
     }
 

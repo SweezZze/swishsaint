@@ -37,6 +37,17 @@ enum ForkDictationTests {
                         && shortcut.state == .idle,
                      "the key held with another key is a shortcut: nothing is written")
 
+        var speaking = ForkDictationGesture()
+        _ = speaking.triggerDown(at: 10)
+        suite.expect(speaking.otherKey(keepsListening: true) == .none && speaking.triggerUp(at: 15) == .finish,
+                     "another key after a while of speaking keeps the dictation")
+
+        suite.expect(ForkDictationSupport.joined(["Bonjour.", "Ça va ?"]) == "Bonjour. Ça va ?"
+                        && ForkDictationSupport.joined(["你好。", "下一段"]) == "你好。下一段"
+                        && ForkDictationSupport.joined(["こんにちは", "Mac"]) == "こんにちはMac"
+                        && ForkDictationSupport.joined(["", "un", ""]) == "un",
+                     "pieces join with a space, but none against Chinese, Japanese or Korean")
+
         var escaped = ForkDictationGesture()
         _ = escaped.triggerDown(at: 10)
         _ = escaped.triggerUp(at: 10.1)

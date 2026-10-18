@@ -22,8 +22,12 @@ enum ForkDictationKeyEvent: Equatable {
 /// repeats and key up too). A modifier on its own is never taken away: right
 /// Command is half of every two-handed shortcut.
 ///
-/// The callback runs on `PointerTapRunLoop`'s thread and only reads the
-/// event, consults the table under a lock and posts to the main thread, and
+/// A second tap, listen-only, sees clicks, the scroll wheel and the media
+/// keys: ⌘-click in the Finder or fn with the volume key is a shortcut too,
+/// never the start of a dictation.
+///
+/// The callbacks run on `PointerTapRunLoop`'s thread and only read the
+/// event, consult the table under a lock and post to the main thread, and
 /// only when the event matters: a tap that takes too long is switched off by
 /// the system.
 final class ForkDictationKeyTap: @unchecked Sendable {
@@ -37,6 +41,8 @@ final class ForkDictationKeyTap: @unchecked Sendable {
         | CGEventFlags.maskSecondaryFn.rawValue
     private static let significantModifiers: UInt64 = CGEventFlags.maskCommand.rawValue
         | CGEventFlags.maskAlternate.rawValue | CGEventFlags.maskControl.rawValue | CGEventFlags.maskShift.rawValue
+    /// NX_SYSDEFINED: media and brightness keys, fn's own companions.
+    private static let systemDefined = CGEventType(rawValue: 14)
 
     private let handler: (ForkDictationKeyEvent) -> Void
 
@@ -45,8 +51,11 @@ final class ForkDictationKeyTap: @unchecked Sendable {
     private var table = ForkDictationShortcutTable([])
     private var tap: CFMachPort?
     private var source: CFRunLoopSource?
+    private var pointerTap: CFMachPort?
+    private var pointerSource: CFRunLoopSource?
     private var escapeSwallowed = false
     private var otherKeysReported = false
+    private var suspended = false
     private var lastFlags: UInt64 = 0
     /// Shortcuts held down: one press, one signal.
     private var heldModifiers: Set<UUID> = []
@@ -77,6 +86,23 @@ final class ForkDictationKeyTap: @unchecked Sendable {
         set { lock.withLock { otherKeysReported = newValue } }
     }
 
+    /// While true nothing is taken and nothing is reported: the settings are
+    /// recording a shortcut, which must reach the recorder even when it is
+    /// already bound to dictation.
+    var isSuspended: Bool {
+        get { lock.withLock { suspended } }
+        set {
+            lock.withLock {
+                guard suspended != newValue else { return }
+                suspended = newValue
+                // What was held before is forgotten: its release must not
+                // read as the end of a press nobody saw start.
+                heldModifiers = []
+                heldCombos = [:]
+            }
+        }
+    }
+
     var isRunning: Bool { lock.withLock { tap != nil } }
 
     /// False when Accessibility is missing or the system refuses the tap.
@@ -101,17 +127,45 @@ final class ForkDictationKeyTap: @unchecked Sendable {
             userInfo: Unmanaged.passUnretained(self).toOpaque()
         ) else { return false }
         let source = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, port, 0)
+        let pointerPort = makePointerTap()
+        let pointerSource = pointerPort.flatMap { CFMachPortCreateRunLoopSource(kCFAllocatorDefault, $0, 0) }
         lock.withLock {
             tap = port
             self.source = source
+            self.pointerTap = pointerPort
+            self.pointerSource = pointerSource
             // The tap can start with a modifier already down (Accessibility
             // just granted, back with ⌘⇥): without this its release would
             // read as a press.
             lastFlags = CGEventSource.flagsState(.hidSystemState).rawValue
         }
         if let source { PointerTapRunLoop.add(source) }
+        if let pointerSource { PointerTapRunLoop.add(pointerSource) }
         CGEvent.tapEnable(tap: port, enable: true)
+        if let pointerPort { CGEvent.tapEnable(tap: pointerPort, enable: true) }
         return true
+    }
+
+    /// Listen-only: it never holds a click, so the pointer never waits on it.
+    /// Without it dictation still works; ⌘-click would just start one.
+    private func makePointerTap() -> CFMachPort? {
+        var mask = CGEventMask(1 << CGEventType.leftMouseDown.rawValue)
+            | CGEventMask(1 << CGEventType.rightMouseDown.rawValue)
+            | CGEventMask(1 << CGEventType.otherMouseDown.rawValue)
+            | CGEventMask(1 << CGEventType.scrollWheel.rawValue)
+        if let systemDefined = Self.systemDefined { mask |= CGEventMask(1 << systemDefined.rawValue) }
+        return CGEvent.tapCreate(
+            tap: .cgSessionEventTap,
+            place: .tailAppendEventTap,
+            options: .listenOnly,
+            eventsOfInterest: mask,
+            callback: { _, type, event, userInfo in
+                if let userInfo {
+                    Unmanaged<ForkDictationKeyTap>.fromOpaque(userInfo).takeUnretainedValue().pointerEvent(type: type)
+                }
+                return Unmanaged.passUnretained(event)
+            },
+            userInfo: Unmanaged.passUnretained(self).toOpaque())
     }
 
     /// New shortcuts. One that disappears while held is released, so a
@@ -130,10 +184,13 @@ final class ForkDictationKeyTap: @unchecked Sendable {
 
     /// Really stops: the tap is switched off and its port invalidated.
     func stop() {
-        let (port, source) = lock.withLock { () -> (CFMachPort?, CFRunLoopSource?) in
-            let current = (tap, self.source)
+        let (port, source, pointerPort, pointerSource) = lock.withLock {
+            () -> (CFMachPort?, CFRunLoopSource?, CFMachPort?, CFRunLoopSource?) in
+            let current = (tap, self.source, pointerTap, self.pointerSource)
             tap = nil
             self.source = nil
+            pointerTap = nil
+            self.pointerSource = nil
             heldModifiers = []
             heldCombos = [:]
             consumedKeys = []
@@ -143,6 +200,8 @@ final class ForkDictationKeyTap: @unchecked Sendable {
         }
         if let port { CGEvent.tapEnable(tap: port, enable: false) }
         if let source { PointerTapRunLoop.remove(source, invalidating: port) }
+        if let pointerPort { CGEvent.tapEnable(tap: pointerPort, enable: false) }
+        if let pointerSource { PointerTapRunLoop.remove(pointerSource, invalidating: pointerPort) }
     }
 
     // MARK: - Tap thread
@@ -151,6 +210,10 @@ final class ForkDictationKeyTap: @unchecked Sendable {
     private func receive(type: CGEventType, event: CGEvent) -> Bool {
         if type == .tapDisabledByTimeout || type == .tapDisabledByUserInput {
             if let port = lock.withLock({ tap }) { CGEvent.tapEnable(tap: port, enable: true) }
+            // Releases may have gone by while the tap was off (secure input
+            // blinds it too): a shortcut still marked as held would keep a
+            // hold-to-talk dictation open and swallow its next press.
+            resynchronize(flags: CGEventSource.flagsState(.hidSystemState).rawValue, checksCombos: true)
             return false
         }
         // Our own ⌘V comes back through a session tap: let it pass first.
@@ -176,6 +239,8 @@ final class ForkDictationKeyTap: @unchecked Sendable {
         var events: [ForkDictationKeyEvent] = []
         lock.withLock {
             defer { lastFlags = flags }
+            guard !suspended else { return }
+            events += releasedModifiers(flags: flags)
             if let change = table.modifierChange(keyCode: keyCode, flags: flags) {
                 if change.isDown {
                     if heldModifiers.insert(change.id).inserted { events.append(.down(change.id)) }
@@ -192,6 +257,46 @@ final class ForkDictationKeyTap: @unchecked Sendable {
         events.forEach(post)
     }
 
+    /// Lock held. Shortcuts marked as held whose key is no longer down.
+    private func releasedModifiers(flags: UInt64) -> [ForkDictationKeyEvent] {
+        let gone = heldModifiers.filter { id in
+            guard case let .modifier(trigger)? = table.shortcut(id)?.key else { return true }
+            return flags & trigger.downMask == 0
+        }
+        heldModifiers.subtract(gone)
+        return gone.map { .up($0) }
+    }
+
+    /// After the tap was off: modifiers and combinations released meanwhile
+    /// are released here too.
+    private func resynchronize(flags: UInt64, checksCombos: Bool) {
+        let events = lock.withLock { () -> [ForkDictationKeyEvent] in
+            lastFlags = flags
+            var events = releasedModifiers(flags: flags)
+            if checksCombos {
+                for (keyCode, id) in heldCombos
+                where !CGEventSource.keyState(.hidSystemState, key: CGKeyCode(keyCode)) {
+                    heldCombos[keyCode] = nil
+                    consumedKeys.remove(keyCode)
+                    events.append(.up(id))
+                }
+            }
+            return events
+        }
+        events.forEach(post)
+    }
+
+    /// A click, the wheel or a media key while a shortcut is held: the
+    /// shortcut is part of something else.
+    private func pointerEvent(type: CGEventType) {
+        if type == .tapDisabledByTimeout || type == .tapDisabledByUserInput {
+            if let port = lock.withLock({ pointerTap }) { CGEvent.tapEnable(tap: port, enable: true) }
+            return
+        }
+        guard lock.withLock({ otherKeysReported && !suspended }) else { return }
+        post(.otherKey)
+    }
+
     private func keyDown(keyCode: Int64, flags: UInt64, isRepeat: Bool) -> Bool {
         var event: ForkDictationKeyEvent?
         let consumed = lock.withLock { () -> Bool in
@@ -200,7 +305,10 @@ final class ForkDictationKeyTap: @unchecked Sendable {
                 // the app in front must not get one per repeat.
                 return consumedKeys.contains(keyCode)
             }
-            if keyCode == Self.escapeKeyCode, flags & Self.significantModifiers == 0 {
+            guard !suspended else { return false }
+            // While a dictation can be given up, Escape is Escape whatever is
+            // held: in hold-to-talk the trigger itself (⌘, ⌥…) is still down.
+            if keyCode == Self.escapeKeyCode, escapeSwallowed || flags & Self.significantModifiers == 0 {
                 guard escapeSwallowed || otherKeysReported else { return false }
                 event = .escape
                 guard escapeSwallowed else { return false }

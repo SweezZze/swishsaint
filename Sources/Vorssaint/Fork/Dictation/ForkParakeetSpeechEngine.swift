@@ -12,6 +12,9 @@ import os
 /// Main thread only. The model itself runs on `ForkParakeetEngine`'s queue.
 final class ForkParakeetSpeechEngine: ForkDictationEngine {
     let kind = ForkDictationEngineKind.parakeet
+    /// Parakeet only works once the capture is over: nothing fails while the
+    /// person speaks.
+    var onFailure: ((ForkDictationFailure) -> Void)?
 
     private enum Load {
         case idle
@@ -120,7 +123,7 @@ final class ForkParakeetSpeechEngine: ForkDictationEngine {
                     self.answer(.success(transcript.text), completion)
                 case let .failure(error):
                     self.log.error("transcription failed: \(String(describing: error), privacy: .public)")
-                    self.answer(.failure(Self.failure(for: error, loading: false)), completion)
+                    self.answer(.failure(Self.failure(for: error)), completion)
                 }
             }
         }
@@ -148,6 +151,10 @@ final class ForkParakeetSpeechEngine: ForkDictationEngine {
     // MARK: Loading
 
     private func ensureLoaded(_ done: @escaping (ForkDictationFailure?) -> Void) {
+        ensureLoaded(retrying: true, done)
+    }
+
+    private func ensureLoaded(retrying: Bool, _ done: @escaping (ForkDictationFailure?) -> Void) {
         guard let directory = store.installedDirectory else {
             done(.modelMissing)
             return
@@ -172,14 +179,38 @@ final class ForkParakeetSpeechEngine: ForkDictationEngine {
             guard let self, self.loadGeneration == generation else { return }
             if let error {
                 self.log.error("model load failed: \(String(describing: error), privacy: .public)")
-                self.load = .idle
-                self.finishWaiters(Self.failure(for: error, loading: true))
-            } else {
-                self.log.debug("model ready in \(Date().timeIntervalSince(started), format: .fixed(precision: 2)) s")
-                self.load = .loaded(directory)
-                self.finishWaiters(nil)
+                self.loadFailed(error, directory: directory, generation: generation, retrying: retrying)
+                return
             }
+            self.log.debug("model ready in \(Date().timeIntervalSince(started), format: .fixed(precision: 2)) s")
+            self.load = .loaded(directory)
+            self.finishWaiters(nil)
             self.scheduleUnload()
+        }
+    }
+
+    /// A load can fail once for a passing reason (the Neural Engine busy,
+    /// memory short): it is tried again before anything is said. Only files
+    /// that no longer match their checksums make a damaged model, worth
+    /// downloading 461 MB again.
+    private func loadFailed(_ error: Error, directory: URL, generation: Int, retrying: Bool) {
+        load = .idle
+        if case .missingModel = error as? ForkParakeetError {
+            finishWaiters(.modelMissing)
+            return
+        }
+        if retrying {
+            let waiting = waiters
+            waiters = []
+            ensureLoaded(retrying: false) { failure in waiting.forEach { $0(failure) } }
+            return
+        }
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            let damaged = !ForkParakeetManifest.missing(in: directory, checksum: true).isEmpty
+            DispatchQueue.main.async {
+                guard let self, self.loadGeneration == generation else { return }
+                self.finishWaiters(damaged ? .modelDamaged : .transcriptionFailed)
+            }
         }
     }
 
@@ -207,10 +238,10 @@ final class ForkParakeetSpeechEngine: ForkDictationEngine {
         unloadTimer = timer
     }
 
-    /// A missing file is a missing model; anything else while loading means
-    /// the files are there but unusable.
-    private static func failure(for error: Error, loading: Bool) -> ForkDictationFailure {
+    /// A missing file is a missing model; anything else while transcribing
+    /// is a failed transcription.
+    private static func failure(for error: Error) -> ForkDictationFailure {
         if case .missingModel = error as? ForkParakeetError { return .modelMissing }
-        return loading ? .modelDamaged : .transcriptionFailed
+        return .transcriptionFailed
     }
 }

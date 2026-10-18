@@ -180,7 +180,9 @@ final class ForkDictationPresenter {
         case let .copied(excerpt):
             message = String(format: text.voiceCopiedFormat, excerpt)
         case .keptInClipboard:
-            message = text.statusKeptInClipboard
+            message = text.voiceKeptInClipboard
+        case .inHistoryOnly:
+            message = text.voiceInHistoryOnly
         case .nothingHeard:
             message = text.voiceNothingHeard
         case .cancelled:

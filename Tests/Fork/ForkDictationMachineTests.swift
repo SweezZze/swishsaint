@@ -66,10 +66,12 @@ enum ForkDictationMachineTests {
     private static func nominal(_ suite: TestSuite) {
         var machine = ForkDictationMachine()
         machine.handle(press(fn))
-        suite.expect(machine.isCancellable && !machine.isCapturing, "listening, the microphone not open yet")
+        suite.expect(!machine.isCancellable && !machine.isCapturing,
+                     "listening, the microphone not open yet: nothing shows, Escape stays the app's")
         suite.expect(machine.handle(.captureStarted, now: t0)
                         == [.play(.start), .present(.listening(handsFree: false, startedAt: t0, nearLimit: false))],
                      "listening shows, with its sound, only once the microphone really opened")
+        suite.expect(machine.isCancellable, "once it shows, Escape is the dictation's")
         suite.expect(machine.handle(.captureStarted, now: t0.addingTimeInterval(1)).isEmpty,
                      "a second start report does nothing")
         suite.expect(machine.handle(.gesture(.none, fn, handsFree: true))
@@ -188,5 +190,22 @@ enum ForkDictationMachineTests {
         kept.handle(.transcribed("x"))
         suite.expect(kept.handle(.delivered(.keptInClipboard)) == [.present(.keptInClipboard)],
                      "a paste that could not happen says the text waits for ⌘V")
+
+        var stuck = listening()
+        stuck.handle(.gesture(.finish, fn, handsFree: false))
+        stuck.handle(.transcribed("x"))
+        suite.expect(stuck.handle(.delivered(.inHistoryOnly)) == [.present(.inHistoryOnly)] && stuck.phase == .idle,
+                     "a clipboard that never answered says the text is in the history")
+
+        var overtaken = listening()
+        overtaken.handle(.gesture(.finish, fn, handsFree: false))
+        overtaken.handle(.transcribed("x"))
+        suite.expect(overtaken.handle(.delivered(.superseded)) == [.present(.hidden)] && overtaken.phase == .idle,
+                     "a paste overtaken by a newer one says nothing of its own")
+
+        var secure = listening()
+        suite.expect(secure.handle(.failed(.secureInput(app: "Terminal")))
+                        == [.discardCapture, .present(.failure(.secureInput(app: "Terminal")))],
+                     "secure input is said without a beep")
     }
 }
