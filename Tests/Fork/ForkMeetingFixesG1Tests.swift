@@ -9,6 +9,7 @@ enum ForkMeetingFixesG1Tests {
     static func run(_ suite: TestSuite) {
         noAppToHear(suite)
         tapLost(suite)
+        switching(suite)
     }
 
     typealias Machine = ForkMeetingMachine
@@ -135,5 +136,18 @@ enum ForkMeetingFixesG1Tests {
         suite.expect(strings.allSatisfy { ForkMeetingNotice.soundLost.title($0).count <= 28
                                             && ForkMeetingAnnouncement.soundLost.text($0) != ForkMeetingAnnouncement.sourceGone.text($0) },
                      "the notice fits in 28 characters and VoiceOver has its own sentence, in every language")
+    }
+
+    /// ⧉ or a display change while a display is filmed: the stream is left
+    /// alone only when it would film the very same display or window.
+    private static func switching(_ suite: TestSuite) {
+        suite.expect(!ForkMeetingFilmed.switchChangesNothing(current: .display(1), next: .display(2)),
+                     "the window moved to another display: the display filmed changes, though the aim did not")
+        suite.expect(ForkMeetingFilmed.switchChangesNothing(current: .display(1), next: .display(1))
+                        && ForkMeetingFilmed.switchChangesNothing(current: .window(7), next: .window(7)),
+                     "the same display, or the same window wherever it is: nothing to change")
+        suite.expect(!ForkMeetingFilmed.switchChangesNothing(current: nil, next: .display(1))
+                        && !ForkMeetingFilmed.switchChangesNothing(current: .window(7), next: .display(1)),
+                     "a stream that films nothing known yet, or the window, is switched")
     }
 }

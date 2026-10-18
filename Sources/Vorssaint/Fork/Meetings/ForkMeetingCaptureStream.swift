@@ -62,6 +62,8 @@ final class ForkMeetingCaptureStream: @unchecked Sendable {
     private var receiver: Receiver?
     private var generation = 0
     private var aim: Aim?
+    /// The window or the display the running stream films, resolved.
+    private var filmed: ForkMeetingFilmed?
     private var configuration: SCStreamConfiguration?
     /// The window's shape the picture was last centred for.
     private var placedAspect: Double?
@@ -125,6 +127,8 @@ final class ForkMeetingCaptureStream: @unchecked Sendable {
         /// The display's size in pixels, for the output size.
         let displayPixels: ForkMeetingPixelSize
         let isWindow: Bool
+        /// The window, or the display, this filter shows.
+        let filmed: ForkMeetingFilmed
         /// The app of the window aimed at, when there is one: the app whose
         /// sound the meeting track hears.
         let ownerPID: pid_t?
@@ -151,7 +155,7 @@ final class ForkMeetingCaptureStream: @unchecked Sendable {
                         ?? content.displays.first else { return nil }
                 let aspect = window.frame.height > 0 ? Double(window.frame.width / window.frame.height) : nil
                 return Resolved(filter: SCContentFilter(desktopIndependentWindow: window), windowAspect: aspect,
-                                displayPixels: pixels(of: display), isWindow: true,
+                                displayPixels: pixels(of: display), isWindow: true, filmed: .window(id),
                                 ownerPID: window.owningApplication?.processID)
             case let .displayOf(windowID):
                 let window = windowID.flatMap { id in content.windows.first(where: { $0.windowID == id }) }
@@ -173,7 +177,8 @@ final class ForkMeetingCaptureStream: @unchecked Sendable {
                     filter = SCContentFilter(display: display, excludingApplications: own, exceptingWindows: [])
                 }
                 return Resolved(filter: filter, windowAspect: nil, displayPixels: pixels(of: display), isWindow: false,
-                                ownerPID: window?.owningApplication?.processID, excludesOwnApp: !own.isEmpty)
+                                filmed: .display(display.displayID), ownerPID: window?.owningApplication?.processID,
+                                excludesOwnApp: !own.isEmpty)
             }
         }
     }
@@ -202,6 +207,7 @@ final class ForkMeetingCaptureStream: @unchecked Sendable {
             self.stream = stream
             self.receiver = receiver
             self.aim = aim
+            filmed = resolved.filmed
             self.configuration = configuration
             placedAspect = resolved.windowAspect
             // `isFrozen` stays: the new stream's first frame says otherwise.
@@ -236,13 +242,22 @@ final class ForkMeetingCaptureStream: @unchecked Sendable {
         guard let stream = lock.withLock({ stopping ? nil : self.stream }) else { return completion(nil) }
         Self.resolveOrDisplay(aim, excluding: excludedWindows) { [self] result in
             guard case let .success((resolved, used)) = result else { return completion(nil) }
-            // Already what is filmed (⧉ to a window that went, on its display).
-            if lock.withLock({ self.stream === stream && self.aim == used }) { return completion(used) }
+            // Already what is filmed (⧉ to a window that went, on its
+            // display): the display resolved, not the aim, which stays the
+            // same when the window moved to another display.
+            if lock.withLock({
+                self.stream === stream
+                    && ForkMeetingFilmed.switchChangesNothing(current: filmed, next: resolved.filmed)
+            }) {
+                lock.withLock { self.aim = used }
+                return completion(used)
+            }
             stream.updateContentFilter(resolved.filter) { [self] error in
                 guard error == nil else { return completion(nil) }
                 let configuration = lock.withLock { () -> SCStreamConfiguration? in
                     guard self.stream === stream, let configuration = self.configuration else { return nil }
                     self.aim = used
+                    filmed = resolved.filmed
                     placedAspect = resolved.windowAspect
                     place(configuration, aspect: resolved.windowAspect)
                     return configuration

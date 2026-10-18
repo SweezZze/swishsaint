@@ -415,6 +415,20 @@ struct ForkMeetingSoundArbiter: Equatable {
 
 // MARK: Fixes G1
 
+/// What a stream films, as a switch sees it: a window, followed wherever it
+/// goes, or one display. "The display holding the window" is not enough: the
+/// window may have moved to another one since.
+enum ForkMeetingFilmed: Equatable {
+    case window(UInt32)
+    case display(UInt32)
+
+    /// A switch to `next` while `current` is filmed leaves the stream as it
+    /// is only when it would film the very same thing.
+    static func switchChangesNothing(current: ForkMeetingFilmed?, next: ForkMeetingFilmed) -> Bool {
+        current == next
+    }
+}
+
 /// What the meeting track holds, as the start's notice and the pill say it.
 enum ForkMeetingTrackSound: Equatable {
     /// What was asked for (nothing, when the sound is off).
