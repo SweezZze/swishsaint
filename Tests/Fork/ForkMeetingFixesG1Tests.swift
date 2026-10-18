@@ -15,6 +15,7 @@ enum ForkMeetingFixesG1Tests {
         startAttempts(suite)
         recoveryLeavesLiveMeetings(suite)
         bidiNames(suite)
+        sourceGonePill(suite)
     }
 
     typealias Machine = ForkMeetingMachine
@@ -280,5 +281,25 @@ enum ForkMeetingFixesG1Tests {
                      "the direction marks a Hebrew or Arabic title needs stay")
         suite.expect(ForkMeetingFolder.sanitized("👨‍👩‍👧 Famille") == "👨‍👩‍👧 Famille",
                      "the zero-width joiner of an emoji family still stays")
+    }
+
+    /// The filmed app quit: the pill says so, never "window minimized".
+    private static func sourceGonePill(_ suite: TestSuite) {
+        let clock = ForkMeetingClock(recordedBefore: 0, runningSince: t0)
+        var context = ForkMeetingLiveContext()
+        context.pictureFrozen = true
+        context.sourceGone = true
+        let gone = ForkMeetingPillLook(state: .recording(clock, diskMinutesLeft: nil), context: context,
+                                       finalizingProgress: nil, reducesMotion: false)
+        suite.expect(gone?.status == .sourceGone, "the app quit: the pill shows that, not the window minimized")
+        let low = ForkMeetingPillLook(state: .recording(clock, diskMinutesLeft: 9), context: context,
+                                      finalizingProgress: nil, reducesMotion: false)
+        suite.expect(low?.status == .diskLow(minutesLeft: 9), "the disk still outranks it: it ends the meeting")
+        context.sourceGone = false
+        let minimized = ForkMeetingPillLook(state: .recording(clock, diskMinutesLeft: nil), context: context,
+                                            finalizingProgress: nil, reducesMotion: false)
+        suite.expect(minimized?.status == .pictureFrozen, "a window minimized is still said as such")
+        suite.expect(AppLanguage.allCases.map(ForkMeetingStrings.strings).allSatisfy { $0.noticeSourceGone.count <= 28 },
+                     "the pill's words fit in 28 characters in every language")
     }
 }

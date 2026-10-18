@@ -603,6 +603,8 @@ struct ForkMeetingPillView: View {
             label(text.diskMinutes(minutes), color: .orange)
         case .pictureFrozen:
             label(text.pillPictureFrozen, color: .orange)
+        case .sourceGone:
+            label(text.noticeSourceGone, color: .orange)
         case .stopping:
             label(text.pillStopping, color: .white.opacity(0.85))
         case let .finalizing(progress):

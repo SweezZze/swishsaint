@@ -717,8 +717,9 @@ final class ForkMeetingRecorder: @unchecked Sendable {
         if stop == .sourceGone {
             switch aim {
             case .window:
-                // Its app quit: the last frame stays, the sound goes on.
-                send { $0.onPictureFrozen?($0.token, true); $0.onSourceGone?($0.token) }
+                // Its app quit: the last frame stays, the sound goes on. Said
+                // as such, never as a window minimized.
+                send { $0.onSourceGone?($0.token) }
             case .displayOf:
                 // The display went: the one holding the window now.
                 restartStream()

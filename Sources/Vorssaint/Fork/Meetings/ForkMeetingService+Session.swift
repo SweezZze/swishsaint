@@ -361,12 +361,19 @@ extension ForkMeetingService {
             self?.send(.captureFailed(token, failure))
         }
         recorder.onSourceGone = { [weak self] token in
-            self?.send(.sourceGone(token))
+            guard let self else { return }
+            if self.isCurrent(token), !self.context.sourceGone {
+                self.context.sourceGone = true
+                self.presenter.update(self.context)
+            }
+            self.send(.sourceGone(token))
         }
         recorder.onTargetChanged = { [weak self] token, target in
             guard let self, self.isCurrent(token) else { return }
             self.context.target = target
             self.context.noWindowToFilm = false
+            // The display filmed instead of the window that went moves again.
+            self.context.sourceGone = false
             self.filmedDisplay = Self.displayID(of: self.filmedWindow) ?? CGMainDisplayID()
             self.presenter.update(self.context)
             self.send(.targetSwitched(token, target))
@@ -375,8 +382,14 @@ extension ForkMeetingService {
             guard let self, self.isCurrent(token), self.context.pictureFrozen != frozen else { return }
             self.context.pictureFrozen = frozen
             self.presenter.update(self.context)
-            // The pill says it with words VoiceOver cannot see change.
-            if frozen { self.presenter.say(ForkMeetingStrings.current.voicePictureFrozen) }
+            // The pill says it with words VoiceOver cannot see change; a
+            // moment later, so a window whose app quit (its last frames say
+            // "stopped" first) is said as such, never as minimized.
+            guard frozen else { return }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1) { [weak self] in
+                guard let self, self.isCurrent(token), self.context.pictureFrozen, !self.context.sourceGone else { return }
+                self.presenter.say(ForkMeetingStrings.current.voicePictureFrozen)
+            }
         }
         recorder.onMicrophoneSwitch = { [weak self] token, name, gap in
             guard let self, self.isCurrent(token) else { return }

@@ -49,6 +49,9 @@ struct ForkMeetingLiveContext: Equatable {
     /// What the meeting track holds: the pill crosses its meter out and
     /// says why when it is silent.
     var trackSound: ForkMeetingTrackSound = .heard
+    /// The filmed window's app quit: the picture holds its last frame, and
+    /// the pill says why (not "window minimized").
+    var sourceGone = false
 }
 
 /// What the pill shows, decided from the machine's state and the live
@@ -69,6 +72,7 @@ struct ForkMeetingPillLook: Equatable {
         case paused
         case diskLow(minutesLeft: Int)
         case pictureFrozen
+        case sourceGone
         case stopping
         case finalizing(progress: Double?)
     }
@@ -92,6 +96,7 @@ struct ForkMeetingPillLook: Equatable {
             mark = .recording(pulses: !reducesMotion)
             // The disk outranks the frozen picture: it ends the meeting.
             if let diskMinutesLeft { status = .diskLow(minutesLeft: diskMinutesLeft) }
+            else if context.sourceGone { status = .sourceGone }
             else if context.pictureFrozen { status = .pictureFrozen }
             else { status = .meters }
             showsClock = true
