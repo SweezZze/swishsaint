@@ -86,6 +86,9 @@ enum ForkDefaultsKey {
     static let meetingsAutoStop = "fork.meetings.autoStop"
     /// That countdown, in seconds.
     static let meetingsAutoStopSeconds = "fork.meetings.autoStopSeconds"
+    /// A detected Google Meet takes the name of the calendar event that
+    /// links to it (EventKit, full access asked when it is turned on).
+    static let meetingsCalendarNaming = "fork.meetings.calendarNaming"
     /// The meetings folder's path; empty: a folder in Movies, named in the
     /// person's language and saved here at the first recording. Machine
     /// state, like the official recorder's folder: kept out of the backup.
@@ -151,6 +154,7 @@ enum ForkDefaults {
         ForkDefaultsKey.meetingsApps: ForkMeetingPolicies.defaultJSON,
         ForkDefaultsKey.meetingsAutoStop: true,
         ForkDefaultsKey.meetingsAutoStopSeconds: ForkMeetingAutoStop.defaultSeconds,
+        ForkDefaultsKey.meetingsCalendarNaming: false,
     ]
 
     /// Where each setting lived in the test builds made before the fork

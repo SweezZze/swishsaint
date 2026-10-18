@@ -121,6 +121,21 @@ enum ForkMeetingTitleRules {
         return nil
     }
 
+    /// The code of the first Google Meet link in a calendar event's address,
+    /// notes or place (`https://meet.google.com/abc-defg-hij?authuser=0`),
+    /// lowercased; `nil` without one. A code alone, outside a link, is not
+    /// taken: notes are free text.
+    static func meetCode(inLink text: String) -> String? {
+        let lowered = text.lowercased()
+        var searched = lowered.startIndex..<lowered.endIndex
+        while let host = lowered.range(of: "meet.google.com/", range: searched) {
+            let path = lowered[host.upperBound...].prefix { ($0 >= "a" && $0 <= "z") || $0 == "-" }
+            if path.count == 12, let code = meetCode(in: String(path)) { return code }
+            searched = host.upperBound..<lowered.endIndex
+        }
+        return nil
+    }
+
     /// Trimmed, every run of spaces one plain space (Chrome may give a
     /// no-break one), curly apostrophes straight, accents composed: the
     /// case is kept, for the name.
