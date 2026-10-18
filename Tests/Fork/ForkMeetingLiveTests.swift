@@ -74,15 +74,16 @@ enum ForkMeetingLiveTests {
         // A 14-inch MacBook Pro: the camera's right edge at 822.
         let notched = ForkMeetingPillLayout.defaultOrigin(size: size, visibleFrame: visible, cameraRightEdge: 822,
                                                           islandFrame: nil)
-        suite.expect(notched == CGPoint(x: 830, y: 949 - 10 - 32),
-                     "by default the pill sits under the menu bar, 8 pt right of the camera")
+        // The camera ends at 822, the official recorder's pill (centred) at 756 + 75.
+        suite.expect(notched == CGPoint(x: 839, y: 949 - 10 - 32),
+                     "by default the pill sits under the menu bar, 8 pt right of the camera or of the official pill")
         let island = CGRect(x: 640, y: 950, width: 232, height: 32)
         suite.expect(ForkMeetingPillLayout.defaultOrigin(size: size, visibleFrame: visible, cameraRightEdge: 822,
                                                          islandFrame: island).x == 880,
                      "an island wider than the camera pushes it further right")
         suite.expect(ForkMeetingPillLayout.defaultOrigin(size: size, visibleFrame: visible, cameraRightEdge: nil,
-                                                         islandFrame: nil).x == 764,
-                     "without a camera or an island it sits just right of the middle")
+                                                         islandFrame: nil).x == 839,
+                     "without a camera or an island it sits right of the official recorder's pill, never over it")
         let external = CGRect(x: 1512, y: 0, width: 2560, height: 1415)
         suite.expect(ForkMeetingPillLayout.cameraRightEdge(auxiliaryMinX: 822, screenFrame: external) == 2334
                         && ForkMeetingPillLayout.cameraRightEdge(auxiliaryMinX: 2334, screenFrame: external) == 2334

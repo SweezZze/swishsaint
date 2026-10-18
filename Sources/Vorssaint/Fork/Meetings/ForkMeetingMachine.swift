@@ -145,6 +145,9 @@ enum ForkMeetingAnnouncement: Equatable {
     case displayChanged
     case sourceGone
     case failure(ForkMeetingFailure)
+    /// The start, said with the microphone left out because it is not
+    /// allowed: one sentence, not two that would cut each other off.
+    case startedWithoutMicrophone
 
     func text(_ s: ForkMeetingStrings) -> String {
         switch self {
@@ -155,9 +158,10 @@ enum ForkMeetingAnnouncement: Equatable {
         case let .microphone(name): return s.voiceMicrophone(name)
         case .microphoneSilent: return s.voiceMicrophoneSilent
         case let .diskLow(minutes): return s.voiceDiskLow(minutes)
-        case .displayChanged: return s.voiceDisplayChanged
+        case .displayChanged: return s.voiceFilmedDisplayChanged
         case .sourceGone: return s.voiceSourceGone
         case let .failure(failure): return failure.summary(s) + ". " + failure.remedy(s)
+        case .startedWithoutMicrophone: return s.voiceStartedWithoutMicrophone
         }
     }
 }
@@ -363,8 +367,10 @@ struct ForkMeetingMachine {
                                   target: target ?? setting, runningSince: now)
             if locked { session.lockedAt = 0 }
             phase = .recording(session)
-            let notice: ForkMeetingNotice = pending.config.microphoneDenied ? .failure(.microphoneDenied) : .started
-            var effects: [Effect] = [.showPill(pill(session, paused: nil)), .notice(notice), .announce(.started)]
+            let denied = pending.config.microphoneDenied
+            let notice: ForkMeetingNotice = denied ? .failure(.microphoneDenied) : .started
+            var effects: [Effect] = [.showPill(pill(session, paused: nil)), .notice(notice),
+                                     .announce(denied ? .startedWithoutMicrophone : .started)]
             // The first `meeting.json` has the setting; it now says what
             // really records.
             var patch = ForkMeetingSidecarPatch(microphone: microphone)
