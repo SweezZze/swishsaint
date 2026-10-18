@@ -49,7 +49,8 @@ final class ForkMeetingService: ObservableObject {
     /// A start is under way, before its first frame: it can be cancelled.
     @Published var isStarting = false
     /// The last start refused or failed, for the page's banner while the
-    /// page stays open, or until the next start.
+    /// page stays open, until the next start, and never longer than
+    /// `refusalHold`.
     @Published var lastRefusal: ForkMeetingFailure?
 
     // Shared with the service's other files (+Session, +Finalize, +System),
@@ -113,6 +114,8 @@ final class ForkMeetingService: ObservableObject {
     /// The start whose facts are being gathered: those of an older attempt,
     /// answering late, start nothing.
     var startAttempt = ForkMeetingStartAttempt()
+    /// Takes `lastRefusal` away once it is old (`refusalHold`).
+    var refusalExpiry: DispatchWorkItem?
 
     private lazy var hotKey = ForkMeetingHotKey { [weak self] in self?.shortcutPressed() }
     private var observers: [AnyCancellable] = []
@@ -388,7 +391,21 @@ final class ForkMeetingService: ObservableObject {
 
     /// The page closed: a start refused no longer needs saying there.
     func clearRefusal() {
+        refusalExpiry?.cancel()
+        refusalExpiry = nil
         lastRefusal = nil
+    }
+
+    /// A start refused, for the page's banner while it is fresh.
+    func holdRefusal(_ failure: ForkMeetingFailure) {
+        lastRefusal = failure
+        refusalExpiry?.cancel()
+        let expiry = DispatchWorkItem { [weak self] in
+            guard let self, self.lastRefusal == failure else { return }
+            self.clearRefusal()
+        }
+        refusalExpiry = expiry
+        DispatchQueue.main.asyncAfter(deadline: .now() + ForkMeetingServiceSupport.refusalHold, execute: expiry)
     }
 
     /// The other apps' sound was heard through a tap: the permission is

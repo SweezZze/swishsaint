@@ -30,7 +30,7 @@ extension ForkMeetingService {
         prepareSurfaces()
         // A new try says every step again, and the last refusal goes.
         presenter.resetAnnouncements()
-        lastRefusal = nil
+        clearRefusal()
         let attempt = startAttempt.begin()
         preparingStart = true
         refreshState()
@@ -156,7 +156,7 @@ extension ForkMeetingService {
             default: break
             }
             for effect in machine.handle(next, now: Date()) {
-                if starts, case let .notice(.failure(failure)) = effect { lastRefusal = failure }
+                if starts, case let .notice(.failure(failure)) = effect { holdRefusal(failure) }
                 run(effect)
             }
             runsStart = false

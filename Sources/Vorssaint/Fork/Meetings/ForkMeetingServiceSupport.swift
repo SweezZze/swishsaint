@@ -133,6 +133,10 @@ enum ForkMeetingServiceSupport {
         case unknown
     }
 
+    /// How long a start refused stays on the page's banner: the page may
+    /// not be open, and a refusal found there hours later reads as new.
+    static let refusalHold: TimeInterval = 30
+
     static func systemAudioPermission(verified: Bool?, failing: Bool) -> SystemAudioPermission {
         if failing || verified == false { return .missing }
         return verified == true ? .allowed : .unknown
