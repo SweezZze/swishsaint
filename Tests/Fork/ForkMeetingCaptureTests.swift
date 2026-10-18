@@ -244,6 +244,14 @@ enum ForkMeetingCaptureTests {
         for t in stride(from: 3.6, through: 6.6, by: 0.1) { zeros.observe(peak: 0, at: t) }
         suite.expect(zeros.check(at: 6.6), "a new silence is said again")
 
+        var back = ForkMeetingSilenceWatch(at: 0)
+        suite.expect(back.update(at: 1.2) == .began && back.update(at: 1.5) == nil,
+                     "a silence begins once")
+        back.observe(peak: 0.3, at: 1.6)
+        suite.expect(back.update(at: 1.7) == .ended && back.update(at: 2.0) == nil,
+                     "its end is told once, when sound came back")
+        suite.expect(back.update(at: 3.0) == .began, "and the next silence begins again")
+
         var quiet = ForkMeetingSilenceWatch(at: 0)
         for t in stride(from: 0.1, through: 30, by: 0.1) { quiet.observe(peak: 0.001, at: t) }
         suite.expect(!quiet.check(at: 30), "a faint but real signal is never silence")

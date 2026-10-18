@@ -300,6 +300,8 @@ struct ForkMeetingMachine {
         /// The microphone changed; `gap` seconds were lost rebuilding it.
         case microphoneChanged(name: String, gap: TimeInterval)
         case microphoneSilent
+        /// The microphone's silence is over: the next one is said again.
+        case microphoneSoundBack
         /// ⧉: the picture switches between the window and the display.
         case toggleTarget
         /// The engine films something else now: ⧉ took, or the window went
@@ -544,6 +546,12 @@ struct ForkMeetingMachine {
             session.microphoneSilenceSaid = true
             replace(session)
             return [.notice(.microphoneSilent), .announce(.microphoneSilent)]
+
+        case .microphoneSoundBack:
+            guard var session = activeSession, session.microphoneSilenceSaid else { return [] }
+            session.microphoneSilenceSaid = false
+            replace(session)
+            return []
 
         case .appWillTerminate:
             terminating = true

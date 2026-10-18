@@ -18,7 +18,8 @@ import Foundation
 ///   debounced, done in well under two seconds; `switched` then says the
 ///   new device's name and how long the track went without sound.
 /// - **Silence**: no sample for 1.2 s, or nothing but zeros for 3 s, is said
-///   once (`silent`), again only once sound came back.
+///   once (`silent`), and its end too (`soundBack`), so the next one is said
+///   again.
 /// - Samples keep the device's own format: the writer converts every source
 ///   to its format, so a device that changes rate mid-meeting is harmless.
 ///
@@ -35,6 +36,8 @@ final class ForkMeetingMicrophone: NSObject, AVCaptureAudioDataOutputSampleBuffe
         var switched: (_ name: String, _ gap: TimeInterval) -> Void
         /// Session queue: the microphone sends nothing, or only zeros.
         var silent: () -> Void
+        /// Session queue: sound came back after a silence that was said.
+        var soundBack: () -> Void
     }
 
     /// The meeting app's input when known (a CoreAudio device UID, the same
@@ -286,7 +289,11 @@ final class ForkMeetingMicrophone: NSObject, AVCaptureAudioDataOutputSampleBuffe
                 if self.retryTicks % 4 == 0 { self.rebuildIfNeeded(force: true) }
             }
             let now = ForkMeetingWriter.hostSeconds()
-            if self.lock.withLock({ self.silence.check(at: now) }) { self.callbacks.silent() }
+            switch self.lock.withLock({ self.silence.update(at: now) }) {
+            case .began?: self.callbacks.silent()
+            case .ended?: self.callbacks.soundBack()
+            case nil: break
+            }
         }
         timer.resume()
         watchdog = timer

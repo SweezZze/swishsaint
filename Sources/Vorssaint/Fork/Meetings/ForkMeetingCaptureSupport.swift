@@ -334,13 +334,26 @@ struct ForkMeetingSilenceWatch: Equatable {
         if peak > 0 { lastSound = time }
     }
 
-    /// True once, when a silence begins; again only after sound came back.
-    mutating func check(at time: TimeInterval) -> Bool {
+    enum Change: Equatable {
+        /// A silence begins: said once.
+        case began
+        /// Sound came back after a silence that was said.
+        case ended
+    }
+
+    /// What changed since the last check, if anything.
+    mutating func update(at time: TimeInterval) -> Change? {
         let noSample = time - (lastSample ?? armedAt) >= Self.noSampleDeadline
         let zeros = time - (lastSound ?? armedAt) >= Self.silentDeadline
         let silent = noSample || zeros
         defer { isSilent = silent }
-        return silent && !isSilent
+        guard silent != isSilent else { return nil }
+        return silent ? .began : .ended
+    }
+
+    /// True once, when a silence begins; again only after sound came back.
+    mutating func check(at time: TimeInterval) -> Bool {
+        update(at: time) == .began
     }
 }
 

@@ -442,6 +442,14 @@ enum ForkMeetingMachineTests {
         devices.handle(.microphoneChanged(name: "Studio", gap: 0), now: at(230))
         suite.expect(!devices.handle(.microphoneSilent, now: at(240)).isEmpty,
                      "and again for the next microphone")
+        suite.expect(devices.handle(.microphoneSoundBack, now: at(250)).isEmpty
+                        && devices.handle(.microphoneSilent, now: at(300)) == [.notice(.microphoneSilent),
+                                                                              .announce(.microphoneSilent)],
+                     "the same microphone silent again once its sound came back: said again")
+        var neverSilent = recording()
+        suite.expect(neverSilent.handle(.microphoneSoundBack, now: at(5)).isEmpty
+                        && !neverSilent.handle(.microphoneSilent, now: at(6)).isEmpty,
+                     "sound back with no silence said changes nothing")
     }
 
     private static func quitting(_ suite: TestSuite) {
@@ -556,7 +564,7 @@ enum ForkMeetingMachineTests {
             .writerFinished(token1, .finished(recordedSeconds: 1)), .writerFinished(token1, .failed(.writerFailed)),
             .willSleep, .didWake, .locked, .unlocked, .diskLow(freeBytes: 1_000_000_000), .diskLow(freeBytes: 1),
             .diskCritical, .permissionLost(.screenRecording), .permissionLost(.microphone), .permissionLost(.systemAudio),
-            .displayChanged, .microphoneChanged(name: "X", gap: 1), .microphoneSilent, .appWillTerminate, .featureDisabled,
+            .displayChanged, .microphoneChanged(name: "X", gap: 1), .microphoneSilent, .microphoneSoundBack, .appWillTerminate, .featureDisabled,
             .toggleTarget, .targetSwitched(token1, .display), .sourceGone(token1),
         ]
         var throughStopping = true

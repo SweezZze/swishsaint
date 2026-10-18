@@ -94,6 +94,8 @@ final class ForkMeetingRecorder: @unchecked Sendable {
     var onMicrophoneSwitch: ((ForkMeetingToken, String, TimeInterval) -> Void)?
     /// The microphone sends nothing, or only zeros: `microphoneSilent`.
     var onMicrophoneSilent: ((ForkMeetingToken) -> Void)?
+    /// The microphone's silence is over: `microphoneSoundBack`.
+    var onMicrophoneSound: ((ForkMeetingToken) -> Void)?
     /// The witness stayed silent while the Mac played: system audio
     /// recording is not allowed, and the meeting track went to the whole
     /// Mac's sound, `permissionLost(.systemAudio)`.
@@ -501,6 +503,9 @@ final class ForkMeetingRecorder: @unchecked Sendable {
             },
             silent: { [weak self] in
                 self?.send { $0.onMicrophoneSilent?($0.token) }
+            },
+            soundBack: { [weak self] in
+                self?.send { $0.onMicrophoneSound?($0.token) }
             })
     }
 

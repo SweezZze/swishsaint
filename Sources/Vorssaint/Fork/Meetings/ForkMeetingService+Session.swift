@@ -295,6 +295,12 @@ extension ForkMeetingService {
             self.presenter.update(self.context)
             self.send(.microphoneSilent)
         }
+        recorder.onMicrophoneSound = { [weak self] token in
+            guard let self, self.isCurrent(token) else { return }
+            self.context.microphoneSilent = false
+            self.presenter.update(self.context)
+            self.send(.microphoneSoundBack)
+        }
         recorder.onSystemAudioUnavailable = { [weak self] token in
             guard let self, self.isCurrent(token) else { return }
             self.send(.permissionLost(.systemAudio))
