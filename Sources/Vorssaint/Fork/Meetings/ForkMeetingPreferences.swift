@@ -114,6 +114,15 @@ enum ForkMeetingMicrophoneChoice: Equatable, Hashable {
         }
     }
 
+    /// Whether the system's default input decides the device, so a change of
+    /// it (AirPods put on) moves the recording to the new one.
+    var followsSystemInput: Bool {
+        switch self {
+        case .meeting, .system: return true
+        case .builtIn, .device, .off: return false
+        }
+    }
+
     /// What a recording uses on this Mac, given the unique IDs of the
     /// microphones plugged in. A device chosen elsewhere, or unplugged since,
     /// falls back to the meeting's microphone, never to nothing: a meeting
