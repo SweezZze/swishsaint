@@ -53,6 +53,40 @@ enum ForkDefaultsKey {
     static let dictationStopsOnSilence = "fork.dictation.stopsOnSilence"
     /// Minutes before an unused Parakeet model leaves memory.
     static let dictationUnloadMinutes = "fork.dictation.unloadMinutes"
+    /// Meetings: recording a call's window, its sound and the microphone,
+    /// one folder per meeting.
+    static let meetingsEnabled = "fork.meetings.enabled"
+    /// `ForkMeetingCaptureTarget`: window (the meeting's window) or display
+    /// (the display it is on).
+    static let meetingsCaptureTarget = "fork.meetings.captureTarget"
+    /// `ForkMeetingSystemAudio`: app (the meeting app's sound), all (the
+    /// whole Mac's) or off.
+    static let meetingsSystemAudio = "fork.meetings.systemAudio"
+    /// "meeting" (the input the meeting app uses), "system", "builtin", a
+    /// capture device's unique ID, or "off". An ID missing on another Mac
+    /// falls back to "meeting".
+    static let meetingsMicrophone = "fork.meetings.microphone"
+    /// `ForkMeetingQuality`: light, standard or high.
+    static let meetingsQuality = "fork.meetings.quality"
+    /// An M4A of the meeting's sound beside the video.
+    static let meetingsExtractAudio = "fork.meetings.extractAudio"
+    /// The line reminding to tell the other participants.
+    static let meetingsConsentReminder = "fork.meetings.consentReminder"
+    /// The text copied to announce a recording; empty: the default one, in
+    /// the person's language.
+    static let meetingsAnnouncement = "fork.meetings.announcement"
+    /// The shortcut that starts and stops a recording, stored like the
+    /// dictation's; empty: none.
+    static let meetingsShortcut = "fork.meetings.shortcut"
+    /// The meetings folder's path; empty: a folder in Movies, named in the
+    /// person's language and saved here at the first recording. Machine
+    /// state, like the official recorder's folder: kept out of the backup.
+    static let meetingsFolder = "fork.meetings.folder"
+    /// Where the pill was dragged, per display (JSON). Machine state.
+    static let meetingsPillPositions = "fork.meetings.pillPositions"
+    /// The first-use sheet with the consent reminder was confirmed on this
+    /// Mac. Machine state.
+    static let meetingsConsentAcknowledged = "fork.meetings.consentAcknowledged"
     /// The build the person answered "Later" for. Machine state: kept out
     /// of the settings backup.
     static let updatePostponedBuild = "fork.update.postponedBuild"
@@ -93,6 +127,15 @@ enum ForkDefaults {
         ForkDefaultsKey.dictationFeedback: "auto",
         ForkDefaultsKey.dictationStopsOnSilence: true,
         ForkDefaultsKey.dictationUnloadMinutes: 5,
+        ForkDefaultsKey.meetingsEnabled: false,
+        ForkDefaultsKey.meetingsCaptureTarget: ForkMeetingCaptureTarget.fallback.rawValue,
+        ForkDefaultsKey.meetingsSystemAudio: ForkMeetingSystemAudio.fallback.rawValue,
+        ForkDefaultsKey.meetingsMicrophone: "meeting",
+        ForkDefaultsKey.meetingsQuality: ForkMeetingQuality.fallback.rawValue,
+        ForkDefaultsKey.meetingsExtractAudio: true,
+        ForkDefaultsKey.meetingsConsentReminder: true,
+        ForkDefaultsKey.meetingsAnnouncement: "",
+        ForkDefaultsKey.meetingsShortcut: "",
     ]
 
     /// Where each setting lived in the test builds made before the fork

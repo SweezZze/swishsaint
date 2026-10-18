@@ -13,7 +13,9 @@ enum ForkDefaultsTests {
 
     private static func keys(_ suite: TestSuite) {
         suite.expect(ForkDefaults.registered.keys.allSatisfy { $0.hasPrefix("fork.") }
-                        && ForkDefaultsKey.updatePostponedBuild.hasPrefix("fork."),
+                        && ForkDefaultsKey.updatePostponedBuild.hasPrefix("fork.")
+                        && [ForkDefaultsKey.meetingsFolder, ForkDefaultsKey.meetingsPillPositions,
+                            ForkDefaultsKey.meetingsConsentAcknowledged].allSatisfy { $0.hasPrefix("fork.meetings.") },
                      "every fork setting lives under fork., where the official app never writes")
         suite.expect(Set(ForkDefaults.registered.keys).isDisjoint(with: Defaults.registeredDefaults.keys),
                      "no fork setting shadows an official one")
@@ -27,7 +29,12 @@ enum ForkDefaultsTests {
                                            ForkDefaultsKey.dictationShortcuts, ForkDefaultsKey.dictationEngine,
                                            ForkDefaultsKey.dictationMicrophone, ForkDefaultsKey.dictationAddsToHistory,
                                            ForkDefaultsKey.dictationFeedback, ForkDefaultsKey.dictationStopsOnSilence,
-                                           ForkDefaultsKey.dictationUnloadMinutes]
+                                           ForkDefaultsKey.dictationUnloadMinutes,
+                                           ForkDefaultsKey.meetingsEnabled, ForkDefaultsKey.meetingsCaptureTarget,
+                                           ForkDefaultsKey.meetingsSystemAudio, ForkDefaultsKey.meetingsMicrophone,
+                                           ForkDefaultsKey.meetingsQuality, ForkDefaultsKey.meetingsExtractAudio,
+                                           ForkDefaultsKey.meetingsConsentReminder, ForkDefaultsKey.meetingsAnnouncement,
+                                           ForkDefaultsKey.meetingsShortcut]
         suite.expect(Set(ForkDefaults.legacyKeys.values) == Set(ForkDefaults.registered.keys).subtracting(addedSinceFork)
                         && ForkDefaults.legacyKeys.count == ForkDefaults.registered.count - addedSinceFork.count,
                      "every setting of the pre-fork test builds has its new name, and only those")
@@ -38,6 +45,23 @@ enum ForkDefaultsTests {
                      "the postponed update stays on this Mac")
         suite.expect(!ForkDefaults.backupKeys.contains(ForkDefaultsKey.dictationParakeetOffered),
                      "the Parakeet offer already made stays on this Mac")
+        suite.expect(!ForkDefaults.backupKeys.contains(ForkDefaultsKey.meetingsFolder),
+                     "the meetings folder stays on this Mac: its path means nothing on another one")
+        suite.expect(!ForkDefaults.backupKeys.contains(ForkDefaultsKey.meetingsPillPositions),
+                     "where the meeting pill was dragged stays on this Mac, whose displays it describes")
+        suite.expect(!ForkDefaults.backupKeys.contains(ForkDefaultsKey.meetingsConsentAcknowledged),
+                     "the first-use consent sheet already confirmed stays on this Mac")
+        suite.expect(ForkDefaults.backupKeys.isSuperset(of: [ForkDefaultsKey.meetingsEnabled, ForkDefaultsKey.meetingsQuality,
+                                                             ForkDefaultsKey.meetingsShortcut, ForkDefaultsKey.meetingsAnnouncement]),
+                     "the meetings choices go into the backup")
+        suite.expect(ForkDefaults.registered[ForkDefaultsKey.meetingsEnabled] as? Bool == false
+                        && ForkDefaults.registered[ForkDefaultsKey.meetingsCaptureTarget] as? String == "window"
+                        && ForkDefaults.registered[ForkDefaultsKey.meetingsSystemAudio] as? String == "app"
+                        && ForkDefaults.registered[ForkDefaultsKey.meetingsMicrophone] as? String == "meeting"
+                        && ForkDefaults.registered[ForkDefaultsKey.meetingsQuality] as? String == "standard"
+                        && ForkDefaults.registered[ForkDefaultsKey.meetingsExtractAudio] as? Bool == true
+                        && ForkDefaults.registered[ForkDefaultsKey.meetingsConsentReminder] as? Bool == true,
+                     "meetings start off; once on, they film the window with the app's sound and its microphone, in standard quality")
         let key = SettingsBackupSupport.settingsKey
         let payload: [String: Any] = [
             SettingsBackupSupport.formatVersionKey: SettingsBackupSupport.formatVersion,
