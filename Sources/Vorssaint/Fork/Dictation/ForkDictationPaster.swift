@@ -58,6 +58,18 @@ final class ForkDictationPaster {
     private var restoreWork: DispatchWorkItem?
     private var snapshotBox: SnapshotBox?
     private var generation = 0
+    /// The clipboard history entry the last delivery added, if any.
+    private(set) var lastHistoryEntryID: UUID?
+
+    /// Adds the text to the clipboard history (which applies its own
+    /// settings) and finds the entry it now sits in: a text already there
+    /// keeps its entry, moved to the top.
+    private static func recordInHistory(_ text: String) -> UUID? {
+        let history = ClipboardHistoryService.shared
+        history.forkRecordText(text, source: Bundle.main.bundleIdentifier)
+        let kept = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        return history.entries.first { $0.kind == .text && $0.text == kept }?.id
+    }
 
     /// The app in front, remembered when the shortcut is pressed.
     func captureTarget() -> NSRunningApplication? {
@@ -91,7 +103,9 @@ final class ForkDictationPaster {
                  addsToHistory: Bool, completion: @escaping (ForkDictationDeliveryOutcome) -> Void) {
         precondition(Thread.isMainThread)
         let inHistory = addsToHistory && ClipboardHistoryService.shared.isRunning
-        if addsToHistory { ClipboardHistoryService.shared.forkRecordText(text) }
+        // The app is the source shown next to the entry; the dictation
+        // history keeps the entry's id to point back to it.
+        lastHistoryEntryID = addsToHistory ? Self.recordInHistory(text) : nil
 
         generation &+= 1
         let generation = generation

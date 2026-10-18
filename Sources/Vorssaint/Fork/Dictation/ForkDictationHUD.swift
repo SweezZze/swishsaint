@@ -6,8 +6,9 @@ import SwiftUI
 
 /// The bubble shown while dictating when the island cannot take it: a dark
 /// capsule centered under the menu bar of the screen being worked on, where
-/// the recorder's own pill sits. It never takes the focus or a click, so the
-/// text lands where the person was typing.
+/// the recorder's own pill sits. It never takes the focus, so the text lands
+/// where the person was typing. Only its last step, once the words are
+/// written, takes a click: it opens the dictation in the history.
 final class ForkDictationHUD {
     /// The panel is wider than any bubble: the capsule changes its width
     /// inside it, animated, without the window being resized.
@@ -15,6 +16,8 @@ final class ForkDictationHUD {
 
     private let meter: ForkDictationLevelMeter
     private let model = ForkDictationBubbleModel()
+    /// The pointer entering (true) or leaving (false) a clickable bubble.
+    var onHover: ((Bool) -> Void)?
     private var panel: NSPanel?
     private var clock: Timer?
     private var clockStart = Date()
@@ -28,10 +31,18 @@ final class ForkDictationHUD {
 
     private var reducesMotion: Bool { NSWorkspace.shared.accessibilityDisplayShouldReduceMotion }
 
-    func show(_ presentation: ForkDictationPresentation) {
+    /// `onClick` makes this step clickable; nil keeps every click going to
+    /// the windows underneath, as while listening.
+    func show(_ presentation: ForkDictationPresentation, onClick: (() -> Void)? = nil) {
         generation += 1
         let panel = self.panel ?? makePanel()
         self.panel = panel
+        model.onClick = onClick
+        panel.ignoresMouseEvents = onClick == nil
+        if onClick == nil, model.isHovered {
+            endHover()
+            onHover?(false)
+        }
         let appearing = !panel.isVisible || panel.alphaValue < 1
         if appearing {
             // A fresh bubble starts from its new step, without morphing from
@@ -71,6 +82,10 @@ final class ForkDictationHUD {
         guard let panel, panel.isVisible else { return }
         generation += 1
         let hiding = generation
+        // Gone for the pointer at once, even while it fades.
+        panel.ignoresMouseEvents = true
+        model.onClick = nil
+        endHover()
         NSAnimationContext.runAnimationGroup({ context in
             context.duration = 0.18
             panel.animator().alphaValue = 0
@@ -79,6 +94,13 @@ final class ForkDictationHUD {
             panel.orderOut(nil)
             self.model.presentation = .hidden
         })
+    }
+
+    /// The hand cursor pushed on entering goes with the hover.
+    private func endHover() {
+        guard model.isHovered else { return }
+        NSCursor.pop()
+        model.isHovered = false
     }
 
     // MARK: - Clock
@@ -124,7 +146,9 @@ final class ForkDictationHUD {
         panel.hidesOnDeactivate = false
         panel.ignoresMouseEvents = true
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary, .ignoresCycle]
-        let host = NSHostingView(rootView: ForkDictationBubble(model: model))
+        model.hoverChanged = { [weak self] hovering in self?.onHover?(hovering) }
+        let host = ForkDictationBubbleHost(rootView: ForkDictationBubble(model: model))
+        host.model = model
         host.frame = CGRect(origin: .zero, size: Self.panelSize)
         host.autoresizingMask = [.width, .height]
         panel.contentView = host
@@ -173,7 +197,32 @@ final class ForkDictationBubbleModel: ObservableObject {
     @Published var presentation: ForkDictationPresentation = .hidden
     @Published var frame = Frame()
     @Published var shakes = 0
+    /// Set on the steps that open the history.
+    @Published var onClick: (() -> Void)?
+    @Published var isHovered = false
     var text = ForkDictationStrings.strings(L10n.shared.language)
+    /// Where the capsule is drawn, top-left origin: a click beside it, in
+    /// the panel's transparent margin, goes to the window underneath.
+    var capsuleFrame: CGRect = .zero
+    var hoverChanged: ((Bool) -> Void)?
+
+    var isClickable: Bool { onClick != nil }
+}
+
+/// Takes the click on the capsule only, and the first click at that: the
+/// panel never activates the app, so every click is a first one.
+private final class ForkDictationBubbleHost: NSHostingView<ForkDictationBubble> {
+    weak var model: ForkDictationBubbleModel?
+
+    override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
+
+    override func hitTest(_ point: NSPoint) -> NSView? {
+        guard let model, model.isClickable else { return nil }
+        let local = convert(point, from: superview)
+        let y = isFlipped ? local.y : bounds.height - local.y
+        guard model.capsuleFrame.insetBy(dx: -2, dy: -2).contains(CGPoint(x: local.x, y: y)) else { return nil }
+        return super.hitTest(point)
+    }
 }
 
 // MARK: - The bubble
@@ -186,7 +235,16 @@ private struct ForkDictationBubble: View {
     @Namespace private var voice
 
     var body: some View {
-        content
+        HStack(spacing: 6) {
+            content
+            if model.isClickable {
+                // Says the bubble leads somewhere: the dictation, in the history.
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 9, weight: .bold))
+                    .foregroundStyle(Color.white.opacity(model.isHovered ? 0.85 : 0.45))
+                    .transition(.opacity)
+            }
+        }
             .font(.system(size: 12, weight: .medium))
             .foregroundStyle(Color.white)
             .padding(.leading, 12)
@@ -195,15 +253,36 @@ private struct ForkDictationBubble: View {
             .background(
                 Capsule(style: .continuous)
                     .fill(Color.black.opacity(0.94))
-                    .overlay(Capsule(style: .continuous).strokeBorder(Color.white.opacity(0.12), lineWidth: 0.5))
+                    .overlay(Capsule(style: .continuous)
+                        .fill(Color.white.opacity(model.isHovered ? 0.08 : 0)))
+                    .overlay(Capsule(style: .continuous)
+                        .strokeBorder(Color.white.opacity(model.isHovered ? 0.24 : 0.12), lineWidth: 0.5))
                     .shadow(color: .black.opacity(0.28), radius: 10, y: 4)
             )
+            .background(GeometryReader { proxy in
+                Color.clear
+                    .onAppear { model.capsuleFrame = proxy.frame(in: .named(Self.space)) }
+                    .onChange(of: proxy.frame(in: .named(Self.space))) { _, frame in model.capsuleFrame = frame }
+            })
+            .contentShape(Capsule(style: .continuous))
+            .onHover { hovering in
+                // Each push of the hand cursor gets exactly one pop.
+                guard hovering != model.isHovered, model.isClickable || !hovering else { return }
+                withAnimation(.easeOut(duration: 0.12)) { model.isHovered = hovering }
+                if hovering { NSCursor.pointingHand.push() } else { NSCursor.pop() }
+                model.hoverChanged?(hovering)
+            }
+            .onTapGesture { model.onClick?() }
+            .accessibilityAddTraits(model.isClickable ? .isButton : [])
             .modifier(ForkDictationShake(shakes: CGFloat(model.shakes)))
             .environment(\.colorScheme, .dark)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             .padding(.top, 6)
+            .coordinateSpace(name: Self.space)
             .accessibilityElement(children: .combine)
     }
+
+    private static let space = "fork.dictation.bubble"
 
     /// One step at a time: the step leaving fades out quickly before the
     /// next one fades in, so their words never sit on top of each other while

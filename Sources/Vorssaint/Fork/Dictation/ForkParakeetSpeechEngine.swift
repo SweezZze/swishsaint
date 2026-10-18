@@ -43,6 +43,9 @@ final class ForkParakeetSpeechEngine: ForkDictationEngine {
     private var languageCode: String?
     /// A dictation is between `begin` and its answer: the model stays.
     private var isBusy = false
+    /// History transcriptions under way: they share the loaded model but
+    /// not the dictation's session, so neither cancels the other.
+    private var detachedCount = 0
     private var unloadTimer: Timer?
     private var storeObserver: AnyCancellable?
 
@@ -137,11 +140,42 @@ final class ForkParakeetSpeechEngine: ForkDictationEngine {
         scheduleUnload()
     }
 
+    // MARK: Outside a dictation
+
+    /// Transcribes a recording kept in the history with the loaded model,
+    /// apart from any dictation: a dictation that begins or is cancelled
+    /// meanwhile leaves it alone (the model's own queue runs one at a
+    /// time). `completion` on the main thread, always called once.
+    func transcribeDetached(_ samples: [Float], language: String,
+                            completion: @escaping (Result<String, ForkDictationFailure>) -> Void) {
+        let code = ForkParakeetLanguages.baseCode(language)
+        let languageCode = ForkParakeetLanguages.supported.contains(code) ? code : nil
+        detachedCount += 1
+        unloadTimer?.invalidate()
+        let done: (Result<String, ForkDictationFailure>) -> Void = { [weak self] result in
+            if let self {
+                self.detachedCount -= 1
+                self.scheduleUnload()
+            }
+            completion(result)
+        }
+        ensureLoaded { [weak self] failure in
+            guard let self else { return completion(.failure(.transcriptionFailed)) }
+            if let failure { return done(.failure(failure)) }
+            self.core.transcribe(samples, languageCode: languageCode) { result in
+                switch result {
+                case let .success(transcript): done(.success(transcript.text))
+                case let .failure(error): done(.failure(Self.failure(for: error)))
+                }
+            }
+        }
+    }
+
     /// Frees the model now, unless a dictation is using it.
     func unload() {
         unloadTimer?.invalidate()
         unloadTimer = nil
-        guard !isBusy else { return }
+        guard !isBusy, detachedCount == 0 else { return }
         if case .idle = load { return }
         loadGeneration += 1
         load = .idle
@@ -231,7 +265,7 @@ final class ForkParakeetSpeechEngine: ForkDictationEngine {
 
     private func scheduleUnload() {
         unloadTimer?.invalidate()
-        guard !isBusy, isLoaded else { return }
+        guard !isBusy, detachedCount == 0, isLoaded else { return }
         let timer = Timer(timeInterval: unloadDelay(), repeats: false) { [weak self] _ in
             self?.unload()
         }

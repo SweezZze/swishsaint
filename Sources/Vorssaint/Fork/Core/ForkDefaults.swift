@@ -53,6 +53,9 @@ enum ForkDefaultsKey {
     static let dictationStopsOnSilence = "fork.dictation.stopsOnSilence"
     /// Minutes before an unused Parakeet model leaves memory.
     static let dictationUnloadMinutes = "fork.dictation.unloadMinutes"
+    /// Dictations are kept with their audio (a week) in the dictation
+    /// history. The history itself is machine state, outside the backup.
+    static let dictationKeepsHistory = "fork.dictation.keepsHistory"
     /// Meetings: recording a call's window, its sound and the microphone,
     /// one folder per meeting.
     static let meetingsEnabled = "fork.meetings.enabled"
@@ -131,6 +134,7 @@ enum ForkDefaults {
         ForkDefaultsKey.dictationFeedback: "auto",
         ForkDefaultsKey.dictationStopsOnSilence: true,
         ForkDefaultsKey.dictationUnloadMinutes: 5,
+        ForkDefaultsKey.dictationKeepsHistory: true,
         ForkDefaultsKey.meetingsEnabled: false,
         ForkDefaultsKey.meetingsCaptureTarget: ForkMeetingCaptureTarget.fallback.rawValue,
         ForkDefaultsKey.meetingsSystemAudio: ForkMeetingSystemAudio.fallback.rawValue,
