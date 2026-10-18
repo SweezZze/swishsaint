@@ -1,0 +1,375 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 Martial
+
+import AppKit
+import AVFoundation
+
+/// The detection's parts, held by the service while the feature runs.
+struct ForkMeetingDetection {
+    var running = false
+    /// One more at each start: a reading of a run stopped since is dropped.
+    var generation = 0
+    var resolver = ForkMeetingResolver()
+    var windows: ForkMeetingWindowScanner?
+    var microphones: ForkMeetingMicWatcher?
+    var calendar: ForkMeetingCalendar?
+    /// Ticks once a second while an offer, a countdown or "Cancel" waits.
+    var clock: Timer?
+    /// The last microphone reading, for the meeting app's input.
+    var lastMicrophones: [ForkMeetingMicSignal] = []
+    /// The meetings volume's free space, for the offers' requests: read off
+    /// the main thread, trusted 15 s.
+    var freeBytes: Int64?
+    var freeBytesReadAt: Date?
+    var readingFreeBytes = false
+}
+
+/// A meeting found on its own: the windows' titles and the microphones are
+/// read, the resolver says which meetings are on, the machine offers them,
+/// starts them ("Always") and stops them at their end.
+///
+/// ```
+/// window scanner (3 s) ─┐
+/// microphone watcher ───┼─► resolver.resolve ─► endProbable (each end) ─► candidates ─► tick
+/// calendar (60 s) ──────┘                                    clock (1 s, offer, countdown, Cancel) ─► tick
+/// ```
+/// Its effects run here: the offer and the countdown through the
+/// presenter, a meeting set aside in the resolver, a choice per provider in
+/// `fork.meetings.apps`, a cancelled recording's folder to the Trash.
+///
+/// Nothing runs while the feature is off or its first-use sheet not
+/// confirmed; turned off, every reader, listener and timer stops.
+extension ForkMeetingService {
+    // MARK: - Running
+
+    /// From `sync()`, and when a permission it depends on changes.
+    func syncDetection() {
+        let wanted = ForkMeetingDetectionSupport.runs(wanted: isWanted, consentAcknowledged: consentAcknowledged,
+                                                     terminating: terminating)
+        if wanted, !detection.running {
+            startDetection()
+        } else if !wanted, detection.running {
+            stopDetection()
+        }
+        if detection.running { syncCalendar() }
+        syncDetectionClock()
+    }
+
+    private func startDetection() {
+        detection.running = true
+        detection.generation += 1
+        let generation = detection.generation
+        detection.resolver = ForkMeetingResolver(policies: ForkMeetingPolicies.load(defaults))
+        let windows = ForkMeetingWindowScanner { [weak self] signals in
+            self?.take(ForkMeetingReading(at: Date(), windows: signals), generation: generation)
+        }
+        detection.windows = windows
+        windows.start()
+        if ForkMeetingMicWatcher.isSupported {
+            let microphones = ForkMeetingMicWatcher { [weak self] signals in
+                self?.take(ForkMeetingReading(at: Date(), microphones: signals), generation: generation)
+            }
+            detection.microphones = microphones
+            microphones.start()
+        }
+        refreshFreeSpace()
+        log.notice("detection on, microphone signal \(ForkMeetingMicWatcher.isSupported ? "on" : "off", privacy: .public)")
+    }
+
+    private func stopDetection() {
+        detection.running = false
+        detection.generation += 1
+        detection.windows?.stop()
+        detection.microphones?.stop()
+        detection.calendar?.stop()
+        if let windows = detection.windows {
+            let cost = windows.measuredCost
+            log.notice("detection off: \(cost.readings) window readings, \(String(format: "%.2f", cost.meanMilliseconds), privacy: .public) ms each")
+        }
+        detection.windows = nil
+        detection.microphones = nil
+        detection.calendar = nil
+        detection.resolver.reset()
+        detection.lastMicrophones = []
+        detection.freeBytes = nil
+        detection.freeBytesReadAt = nil
+        if detectedMeeting != nil { detectedMeeting = nil }
+        // An offer goes with the feature; a recording is stopped by `sync()`.
+        if case .offering = machine.phase { send(.featureDisabled) }
+    }
+
+    /// "Name with the calendar": read while it is on and the calendar may
+    /// be read; turned off, the names it gave go.
+    private func syncCalendar() {
+        let wanted = ForkMeetingCalendar.isOn(defaults)
+        if wanted, detection.calendar == nil {
+            let generation = detection.generation
+            let calendar = ForkMeetingCalendar { [weak self] hints in
+                self?.take(ForkMeetingReading(at: Date(), calendar: hints), generation: generation)
+            }
+            detection.calendar = calendar
+            calendar.start()
+        } else if !wanted, let calendar = detection.calendar {
+            calendar.stop()
+            detection.calendar = nil
+            take(ForkMeetingReading(at: Date(), calendar: []), generation: detection.generation)
+        }
+    }
+
+    // MARK: - Readings
+
+    /// One reading through the resolver, then the machine: each end first,
+    /// then the meetings on, then the time.
+    private func take(_ reading: ForkMeetingReading, generation: Int) {
+        guard detection.running, generation == detection.generation, !terminating else { return }
+        if let microphones = reading.microphones { detection.lastMicrophones = microphones }
+        // The page may have changed a provider's choice since.
+        detection.resolver.policies = ForkMeetingPolicies.load(defaults)
+        let resolution = detection.resolver.resolve(reading)
+        let countdown = ForkMeetingAutoStop.load(defaults).countdown
+        for identity in resolution.ended {
+            log.notice("meeting probably over: \(identity.value, privacy: .private)")
+            send(.endProbable(identity, countdown: countdown))
+        }
+        let first = resolution.candidates.first
+        if detectedMeeting != first { detectedMeeting = first }
+        send(.candidates(resolution.candidates, detectionRequest()))
+        send(.tick)
+        refreshFreeSpace()
+    }
+
+    /// What a start would be asked with now, for an offer and for "Always":
+    /// like a start by hand, with the free space last read off the main
+    /// thread, and the microphone as it is allowed (never asked: nothing
+    /// may pop up on its own).
+    func detectionRequest() -> ForkMeetingStartRequest {
+        let facts = ForkMeetingStartFacts(freeBytes: detection.freeBytes,
+                                          screenRecordingAllowed: CGPreflightScreenCaptureAccess(),
+                                          microphoneAllowed: AVCaptureDevice.authorizationStatus(for: .audio) == .authorized,
+                                          officialRecorderBusy: officialRecorderBusy())
+        return ForkMeetingStartRequest(settings: captureSettings(), facts: facts, title: nil)
+    }
+
+    /// Reads the free space again once the last reading is old, off the
+    /// main thread: a volume may be slow, or gone.
+    private func refreshFreeSpace() {
+        guard detection.running, !detection.readingFreeBytes,
+              ForkMeetingDetectionSupport.freeSpaceIsStale(readAt: detection.freeBytesReadAt, now: Date()) else { return }
+        detection.readingFreeBytes = true
+        let generation = detection.generation
+        let root = store.root()
+        let freeBytes = self.freeBytes
+        DispatchQueue.global(qos: .utility).async {
+            let free = freeBytes(root)
+            DispatchQueue.main.async { [weak self] in
+                guard let self else { return }
+                self.detection.readingFreeBytes = false
+                guard self.detection.running, generation == self.detection.generation else { return }
+                self.detection.freeBytes = free
+                self.detection.freeBytesReadAt = Date()
+            }
+        }
+    }
+
+    /// The input the meeting's app records from, for "Meeting microphone
+    /// (auto)"; `nil` gives the system's.
+    func meetingMicrophone(for meeting: ForkMeetingCandidate?) -> String? {
+        ForkMeetingDetectionSupport.meetingInput(for: meeting, in: detection.lastMicrophones)
+    }
+
+    // MARK: - Clock
+
+    /// After every run of the machine: the clock ticks only while time
+    /// decides something.
+    func syncDetectionClock() {
+        let wanted = detection.running && ForkMeetingDetectionSupport.clockRuns(phase: machine.phase)
+        if wanted, detection.clock == nil {
+            let timer = Timer(timeInterval: 1, repeats: true) { [weak self] _ in self?.send(.tick) }
+            timer.tolerance = 0.1
+            RunLoop.main.add(timer, forMode: .common)
+            detection.clock = timer
+        } else if !wanted, let timer = detection.clock {
+            timer.invalidate()
+            detection.clock = nil
+        }
+    }
+
+    // MARK: - The person's answers
+
+    /// "Record" in the offer.
+    func acceptOffer() {
+        answerOffer(always: false)
+    }
+
+    /// "Always for Meet": it records now, and on its own from then on.
+    func alwaysForOffer() {
+        answerOffer(always: true)
+    }
+
+    /// "Not now" (`.thisTime`), or "Never for Meet" (`.never`).
+    func dismissOffer(_ scope: ForkMeetingDismissal) {
+        guard case .offering = machine.phase else { return }
+        // A start being prepared from this offer is given up.
+        if preparingStart {
+            preparingStart = false
+            startAttempt.cancel()
+        }
+        send(.dismiss(scope))
+    }
+
+    /// "Cancel" within 5 s of a start "Always" made: the file is thrown away.
+    func cancelAutoStart() {
+        send(.cancelAutoStart)
+    }
+
+    /// "Continue" during "Meeting over? Stopping in 15 s".
+    func continueRecording() {
+        send(.continueRecording)
+    }
+
+    /// "Copy the announcement" in the offer's menu: the person's text, or the
+    /// default one in their language, for the meeting's chat.
+    func copyAnnouncement() {
+        let text = ForkMeetingStrings.current
+        let announcement = ForkMeetingAnnouncementText.text(
+            stored: defaults.string(forKey: ForkDefaultsKey.meetingsAnnouncement) ?? "", strings: text)
+        let pasteboard = NSPasteboard.general
+        pasteboard.clearContents()
+        pasteboard.setString(announcement, forType: .string)
+        presenter.say(text.voiceAnnouncementCopied)
+    }
+
+    /// What the offer will record, "Google Chrome window · Google Chrome
+    /// sound · MacBook Pro Microphone mic", from the page's choices as they
+    /// are now.
+    func offerCapture(for offer: ForkMeetingOffer) -> String {
+        let text = ForkMeetingStrings.current
+        let candidate = offer.candidate
+        let settings = captureSettings()
+        let appName = NSRunningApplication(processIdentifier: candidate.pid)?.localizedName
+            ?? NSRunningApplication.runningApplications(withBundleIdentifier: candidate.appBundle).first?.localizedName
+            ?? candidate.providerName
+        let sound: String?
+        switch settings.systemAudio {
+        case .app: sound = appName
+        case .all: sound = text.offerWholeMac
+        case .off: sound = nil
+        }
+        return ForkMeetingDetectionSupport.offerCapture(window: appName, sound: sound,
+                                                        microphone: microphoneName(settings, meeting: candidate),
+                                                        strings: text)
+    }
+
+    private func microphoneName(_ settings: ForkMeetingCaptureSettings, meeting: ForkMeetingCandidate) -> String? {
+        let device: AVCaptureDevice?
+        switch ForkMeetingMicrophoneChoice(stored: settings.microphone) {
+        case .off:
+            return nil
+        case .meeting:
+            device = meetingMicrophone(for: meeting).flatMap(AVCaptureDevice.init(uniqueID:))
+                ?? ForkDictationAudioDevices.captureDevice(for: ForkDictationAudioDevices.systemChoice)
+        case .system:
+            device = ForkDictationAudioDevices.captureDevice(for: ForkDictationAudioDevices.systemChoice)
+        case .builtIn:
+            device = ForkDictationAudioDevices.captureDevice(for: ForkDictationAudioDevices.builtInChoice)
+        case let .device(uid):
+            device = ForkDictationAudioDevices.captureDevice(for: uid)
+        }
+        return device?.localizedName
+    }
+
+    /// "Record" and "Always" gather what the machine needs like a start by
+    /// hand: the microphone asked if it never was (the person just chose to
+    /// record), the free space read off the main thread. The offer may be
+    /// gone by then: nothing starts.
+    private func answerOffer(always: Bool) {
+        guard case let .offering(offer) = machine.phase, isWanted, !terminating, !preparingStart else { return }
+        guard consentAcknowledged else { return presentConsent() }
+        prepareSurfaces()
+        presenter.resetAnnouncements()
+        clearRefusal()
+        let identity = offer.candidate.identity
+        let attempt = startAttempt.begin()
+        preparingStart = true
+        refreshState()
+        let settings = captureSettings()
+        let root = store.root()
+        let freeBytes = self.freeBytes
+        Self.microphoneAnswer(asking: settings.microphone != ForkMeetingCaptureSettings.microphoneOff) { [weak self] allowed in
+            DispatchQueue.global(qos: .userInitiated).async {
+                let free = freeBytes(root)
+                DispatchQueue.main.async {
+                    guard let self, self.startAttempt.answers(attempt) else { return }
+                    self.preparingStart = false
+                    if self.detection.running {
+                        self.detection.freeBytes = free
+                        self.detection.freeBytesReadAt = Date()
+                    }
+                    guard self.isWanted, !self.terminating, case let .offering(current) = self.machine.phase,
+                          current.candidate.identity == identity else { return self.refreshState() }
+                    let facts = ForkMeetingStartFacts(freeBytes: free,
+                                                      screenRecordingAllowed: CGPreflightScreenCaptureAccess(),
+                                                      microphoneAllowed: allowed,
+                                                      officialRecorderBusy: self.officialRecorderBusy())
+                    let request = ForkMeetingStartRequest(settings: settings, facts: facts, title: nil)
+                    self.send(always ? .always(request) : .accept(request))
+                }
+            }
+        }
+    }
+
+    // MARK: - Effects
+
+    /// The detection's effects, in the machine's order.
+    func runDetection(_ effect: ForkMeetingMachine.Effect) {
+        onDetectionEffect?(effect)
+        switch effect {
+        case let .showOffer(offer):
+            prepareSurfaces()
+            presenter.showOffer(offer)
+        case .collapseOffer:
+            presenter.collapseOffer()
+        case .hideOffer:
+            presenter.hideOffer()
+        case let .showUndo(until):
+            presenter.showUndo(until: until)
+        case .hideUndo:
+            presenter.hideUndo()
+        case let .showEndingSoon(until):
+            presenter.showEndingSoon(until: until)
+        case .hideEndingSoon:
+            presenter.hideEndingSoon()
+        case let .silence(identity):
+            detection.resolver.silence(identity, at: Date())
+        case let .setPolicy(policy, provider):
+            var policies = ForkMeetingPolicies.load(defaults)
+            policies.set(policy, for: provider)
+            policies.save(defaults)
+            detection.resolver.policies = policies
+        case let .discard(folder):
+            discardCancelled(folder)
+        case .startCapture, .pauseCapture, .resumeCapture, .restartStream, .switchTarget, .stopCapture, .showPill,
+             .notice, .announce, .notify, .writeSidecar, .beginFinalize:
+            break
+        }
+    }
+
+    /// "Cancel" after a start "Always" made: once its file is closed, the
+    /// folder goes to the Trash (deleted if the volume has none), off the
+    /// main thread. It was never finalized nor added to the recent captures.
+    private func discardCancelled(_ folder: URL) {
+        DispatchQueue.global(qos: .utility).async { [store, log] in
+            store.release(folder)
+            let manager = FileManager.default
+            do {
+                try manager.trashItem(at: folder, resultingItemURL: nil)
+            } catch {
+                do {
+                    try manager.removeItem(at: folder)
+                } catch {
+                    log.error("a cancelled meeting stays: \(error.localizedDescription, privacy: .private)")
+                }
+            }
+        }
+    }
+}

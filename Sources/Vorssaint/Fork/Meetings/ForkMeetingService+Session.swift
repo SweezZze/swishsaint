@@ -117,7 +117,7 @@ extension ForkMeetingService {
     /// Whether the microphone may record. Never asked yet, macOS asks now:
     /// the person just chose to record; unless no microphone is to record,
     /// which never asks. Main thread.
-    private static func microphoneAnswer(asking: Bool, _ answer: @escaping (Bool) -> Void) {
+    static func microphoneAnswer(asking: Bool, _ answer: @escaping (Bool) -> Void) {
         switch AVCaptureDevice.authorizationStatus(for: .audio) {
         case .authorized:
             answer(true)
@@ -150,7 +150,7 @@ extension ForkMeetingService {
             // stay on the page (`lastRefusal`).
             var starts = false
             switch next {
-            case .manualStart: starts = true
+            case .manualStart, .accept, .always: starts = true
             case let .captureFailed(token, _): starts = isStarting(token)
             case .captureStarted: runsStart = true
             default: break
@@ -210,9 +210,7 @@ extension ForkMeetingService {
             presenter.apply(effect, context: context)
         case .showOffer, .collapseOffer, .hideOffer, .showUndo, .hideUndo, .showEndingSoon, .hideEndingSoon,
              .silence, .setPolicy, .discard:
-            // Nothing sends the detection's events yet: its effects come
-            // with its service and its interface.
-            break
+            runDetection(effect)
         }
     }
 
@@ -246,6 +244,7 @@ extension ForkMeetingService {
         }
         syncSystemEvents()
         systemEvents.hold(ForkMeetingServiceSupport.awake(phase: machine.phase))
+        syncDetectionClock()
     }
 
     /// The engine of the session recording or paused.
@@ -325,7 +324,10 @@ extension ForkMeetingService {
             // Never one of ours to film; in display mode the whole app is
             // left out anyway.
             let excluded = presenter.windowNumbers.compactMap { CGWindowID(exactly: $0) }
-            recorder.start(config: config, folder: folder, excludingWindows: excluded,
+            // A detected meeting is filmed in its own window, and "Meeting
+            // microphone (auto)" records the input its app uses.
+            recorder.start(config: config, folder: folder, meetingWindow: config.meeting?.windowID,
+                           meetingMicrophone: meetingMicrophone(for: config.meeting), excludingWindows: excluded,
                            titles: trackTitles) { [weak self] result in
                 self?.captureAnswered(result, config: config, folder: folder, token: token)
             }

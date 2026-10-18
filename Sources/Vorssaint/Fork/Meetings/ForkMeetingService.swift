@@ -52,6 +52,9 @@ final class ForkMeetingService: ObservableObject {
     /// page stays open, until the next start, and never longer than
     /// `refusalHold`.
     @Published var lastRefusal: ForkMeetingFailure?
+    /// The meeting the detection sees now, the most recent, offered or not:
+    /// the page names it.
+    @Published var detectedMeeting: ForkMeetingCandidate?
 
     // Shared with the service's other files (+Session, +Finalize, +System),
     // hence not private. Nothing outside the service touches them.
@@ -116,6 +119,14 @@ final class ForkMeetingService: ObservableObject {
     var startAttempt = ForkMeetingStartAttempt()
     /// Takes `lastRefusal` away once it is old (`refusalHold`).
     var refusalExpiry: DispatchWorkItem?
+
+    // MARK: Detection
+
+    /// The windows, the microphones and the calendar read while the feature
+    /// runs, and the resolver they feed (`+Detection`).
+    var detection = ForkMeetingDetection()
+    /// Each detection effect as it runs, for the recipe harness.
+    var onDetectionEffect: ((ForkMeetingMachine.Effect) -> Void)?
 
     private lazy var hotKey = ForkMeetingHotKey { [weak self] in self?.shortcutPressed() }
     private var observers: [AnyCancellable] = []
@@ -222,6 +233,7 @@ final class ForkMeetingService: ObservableObject {
             send(.featureDisabled)
         }
         syncSystemEvents()
+        syncDetection()
         // Off and idle: nothing shows, nothing is held. A meeting still
         // finishing keeps its pill until its saved notice.
         if !wanted, !isBusy, presenterReady {
@@ -239,8 +251,15 @@ final class ForkMeetingService: ObservableObject {
             .receive(on: DispatchQueue.main)
             .sink { [weak self] granted in
                 self?.revalidateFailure()
+                // Without it the windows' titles are blank: read again now.
+                self?.detection.windows?.permissionChanged()
                 if !granted { self?.send(.permissionLost(.screenRecording)) }
             }
+            .store(in: &observers)
+        // Given or taken away: the calendar names meetings, or stops.
+        permissions.$calendarAccess.removeDuplicates().dropFirst()
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in self?.syncDetection() }
             .store(in: &observers)
         permissions.$microphone.removeDuplicates().dropFirst()
             .receive(on: DispatchQueue.main)
