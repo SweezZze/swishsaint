@@ -31,7 +31,7 @@ extension ForkMeetingService {
         // A new try says every step again, and the last refusal goes.
         presenter.resetAnnouncements()
         lastRefusal = nil
-        cancelRequested = false
+        let attempt = startAttempt.begin()
         preparingStart = true
         refreshState()
         let settings = captureSettings()
@@ -43,11 +43,11 @@ extension ForkMeetingService {
             DispatchQueue.global(qos: .userInitiated).async {
                 let free = freeBytes(root)
                 DispatchQueue.main.async {
-                    guard let self else { return }
+                    // Cancelled meanwhile (and maybe started again): this
+                    // answer is an older attempt's, it holds nothing.
+                    guard let self, self.startAttempt.answers(attempt) else { return }
                     self.preparingStart = false
-                    let cancelled = self.cancelRequested
-                    self.cancelRequested = false
-                    guard self.isWanted, !self.terminating, !cancelled else { return self.refreshState() }
+                    guard self.isWanted, !self.terminating else { return self.refreshState() }
                     let facts = ForkMeetingStartFacts(freeBytes: free,
                                                       screenRecordingAllowed: CGPreflightScreenCaptureAccess(),
                                                       microphoneAllowed: microphoneAllowed,
@@ -63,10 +63,13 @@ extension ForkMeetingService {
     }
 
     /// The page's Cancel and the shortcut pressed again while a start is
-    /// under way: nothing is recorded, no folder stays.
+    /// under way: nothing is recorded, no folder stays, and a new start may
+    /// be asked at once, whatever the old one's answers still on their way
+    /// (the free space, the microphone, the folder) say when they come.
     func cancelStart() {
         if preparingStart {
-            cancelRequested = true
+            preparingStart = false
+            startAttempt.cancel()
         } else if case .starting = machine.phase {
             send(.stop)
         }
@@ -290,6 +293,14 @@ extension ForkMeetingService {
                             titleSource: config.title == nil ? nil : .user, capture: capture) { [weak self] result in
             self?.folderMade(result, config: config, token: token)
         }
+        // A folder that takes too long (a volume that hangs) fails the start
+        // like a capture that does not answer; the folder, should it come
+        // later, is given up (`folderMade`).
+        DispatchQueue.main.asyncAfter(deadline: .now() + ForkMeetingCaptureSupport.startTimeout) { [weak self] in
+            guard let self, self.isStarting(token), self.folders[token] == nil else { return }
+            self.log.error("no folder for the meeting after \(Int(ForkMeetingCaptureSupport.startTimeout)) s")
+            self.send(.captureFailed(token, .folderUnavailable))
+        }
     }
 
     private func folderMade(_ result: Result<URL, ForkMeetingStore.Failure>, config: ForkMeetingCaptureConfig,
@@ -453,22 +464,31 @@ extension ForkMeetingService {
         if case let .failed(failure) = result {
             log.error("the file did not close: \(String(describing: failure), privacy: .public)")
             // Not finalized: what the fragments hold waits for the next
-            // launch, which needs the folder free.
-            if let folder { store.release(folder) }
+            // launch, which needs the folder free. Quitting, at once.
+            if let folder {
+                if terminating {
+                    store.release(folder)
+                } else {
+                    DispatchQueue.global(qos: .utility).async { [store] in store.release(folder) }
+                }
+            }
         }
         send(.writerFinished(token, result))
     }
 
     /// A start given up before anything was recorded: its folder goes, unless
-    /// something else came into it.
+    /// something else came into it. Off the main thread: the volume may be
+    /// slow, or gone.
     private func discardUnstarted(_ folder: URL) {
-        store.release(folder)
-        let manager = FileManager.default
-        for name in [ForkMeetingFolder.sidecarName, ForkMeetingStore.sidecarDraftName, ForkMeetingFolder.masterName] {
-            try? manager.removeItem(at: folder.appendingPathComponent(name))
-        }
-        if (try? manager.contentsOfDirectory(atPath: folder.path))?.isEmpty == true {
-            try? manager.removeItem(at: folder)
+        DispatchQueue.global(qos: .utility).async { [store] in
+            store.release(folder)
+            let manager = FileManager.default
+            for name in [ForkMeetingFolder.sidecarName, ForkMeetingStore.sidecarDraftName, ForkMeetingFolder.masterName] {
+                try? manager.removeItem(at: folder.appendingPathComponent(name))
+            }
+            if (try? manager.contentsOfDirectory(atPath: folder.path))?.isEmpty == true {
+                try? manager.removeItem(at: folder)
+            }
         }
     }
 

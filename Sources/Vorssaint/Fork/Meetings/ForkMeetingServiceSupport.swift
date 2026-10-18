@@ -139,6 +139,27 @@ enum ForkMeetingServiceSupport {
     }
 }
 
+/// Which start asked the facts now answering. Each start begins an
+/// attempt, and its cancel ends it: the free space, the microphone's answer
+/// or the folder of an attempt cancelled, arriving late, start nothing, and
+/// never hold up the next start.
+struct ForkMeetingStartAttempt: Equatable {
+    private(set) var current = 0
+
+    mutating func begin() -> Int {
+        current += 1
+        return current
+    }
+
+    mutating func cancel() {
+        current += 1
+    }
+
+    func answers(_ attempt: Int) -> Bool {
+        attempt == current
+    }
+}
+
 /// The engine's verdicts on the system audio permission that arrive while
 /// their session is still starting (the witness may settle before the
 /// microphone is up): held by token, and said once the machine records it,

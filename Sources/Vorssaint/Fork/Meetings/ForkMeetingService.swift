@@ -96,9 +96,6 @@ final class ForkMeetingService: ObservableObject {
     /// The last notice the machine or the finalizer gave, for the recipe
     /// harness and the logs.
     var lastNotice: ForkMeetingNotice?
-    /// The start was cancelled while its facts were being gathered: their
-    /// answer starts nothing.
-    var cancelRequested = false
     /// The display the session films, or whose window it follows: a change
     /// of displays is said only when this one changed.
     var filmedDisplay: UInt32?
@@ -113,6 +110,9 @@ final class ForkMeetingService: ObservableObject {
 
     /// The system audio verdicts of sessions still starting.
     var pendingVerdicts = ForkMeetingPendingVerdicts()
+    /// The start whose facts are being gathered: those of an older attempt,
+    /// answering late, start nothing.
+    var startAttempt = ForkMeetingStartAttempt()
 
     private lazy var hotKey = ForkMeetingHotKey { [weak self] in self?.shortcutPressed() }
     private var observers: [AnyCancellable] = []

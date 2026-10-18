@@ -12,6 +12,7 @@ enum ForkMeetingFixesG1Tests {
         switching(suite)
         verdicts(suite)
         failedPassShown(suite)
+        startAttempts(suite)
     }
 
     typealias Machine = ForkMeetingMachine
@@ -224,5 +225,21 @@ enum ForkMeetingFixesG1Tests {
         suite.expect(strings.allSatisfy { $0.failMasterMissing.count <= 28 && $0.failMasterMissing != $0.failFinalPass
                                             && $0.failMasterMissingRemedy != $0.failFinalPassRemedy },
                      "in every language, in 28 characters for the island")
+    }
+
+    /// A start cancelled while its facts are gathered: their late answer
+    /// starts nothing, and the next start does not wait for it.
+    private static func startAttempts(_ suite: TestSuite) {
+        var attempts = ForkMeetingStartAttempt()
+        let first = attempts.begin()
+        suite.expect(attempts.answers(first), "the facts of the start under way are its own")
+        attempts.cancel()
+        suite.expect(!attempts.answers(first), "cancelled: its answer, arriving late, starts nothing")
+        let second = attempts.begin()
+        suite.expect(!attempts.answers(first) && attempts.answers(second),
+                     "a new start right after: only its own answer counts, the old one is dropped when it comes")
+        suite.expect(ForkMeetingServiceSupport.canStart(wanted: true, machineBusy: false, preparingStart: false,
+                                                        terminating: false),
+                     "the cancel leaves nothing being prepared: a start may be asked at once")
     }
 }
