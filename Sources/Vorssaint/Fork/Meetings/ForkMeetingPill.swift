@@ -97,6 +97,9 @@ final class ForkMeetingPill {
         let appearing = !panel.isVisible || model.state == .hidden || panel.alphaValue < 1
         model.text = ForkMeetingStrings.current
         model.reducesMotion = reducesMotion
+        // A new recording's gauge starts from nothing, even when the pill
+        // was still on the last meeting's.
+        if case .recording = state, model.state == .finalizing || model.state == .hidden { model.progress = nil }
         if appearing {
             model.hovering = false
             model.progress = nil
@@ -509,6 +512,28 @@ struct ForkMeetingPillView: View {
             .environment(\.colorScheme, .dark)
             .accessibilityElement(children: .contain)
             .accessibilityLabel(model.text.pillRecording)
+            // The name, what is filmed and ⧉ show under the pointer only:
+            // VoiceOver has them at any time.
+            .accessibilityValue(accessibilityValue)
+            .accessibilityActions {
+                if model.look?.showsControls == true, model.context.canSwitchTarget {
+                    Button(toggleLabel) { actions.toggleTarget() }
+                }
+            }
+    }
+
+    private var filmed: String {
+        ForkMeetingServiceSupport.filmed(target: model.context.target, appName: model.context.appName,
+                                         noWindowToFilm: model.context.noWindowToFilm, strings: model.text)
+    }
+
+    private var accessibilityValue: String {
+        guard model.look?.showsControls == true else { return "" }
+        return (model.context.title ?? model.text.untitledMeeting) + ", " + filmed
+    }
+
+    private var toggleLabel: String {
+        model.context.target == .window ? model.text.pillFilmDisplay : model.text.pillFilmTheWindow
     }
 
     @ViewBuilder
@@ -521,14 +546,21 @@ struct ForkMeetingPillView: View {
                     ForkMeetingPillClock(ticker: ticker, alert: look.clockIsAlert, label: text.pillElapsed)
                 }
                 if model.hovering, look.showsControls {
-                    Text(model.context.title ?? text.untitledMeeting)
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundStyle(Color.white.opacity(0.85))
-                        .lineLimit(1)
-                        .truncationMode(.tail)
-                        .frame(maxWidth: 180, alignment: .leading)
-                        .allowsHitTesting(false)
-                        .transition(.opacity)
+                    VStack(alignment: .leading, spacing: 0) {
+                        Text(model.context.title ?? text.untitledMeeting)
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundStyle(Color.white.opacity(0.85))
+                        // What is filmed: the window of which app, or the screen.
+                        Text(filmed)
+                            .font(.system(size: 10))
+                            .foregroundStyle(Color.white.opacity(0.6))
+                    }
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+                    .frame(maxWidth: 180, alignment: .leading)
+                    .allowsHitTesting(false)
+                    .accessibilityHidden(true)
+                    .transition(.opacity)
                 }
                 status(look.status, text: text)
                     .transition(.opacity)
@@ -586,7 +618,7 @@ struct ForkMeetingPillView: View {
             if model.hovering, model.context.canSwitchTarget {
                 let window = model.context.target == .window
                 pillButton(symbol: window ? "display" : "macwindow", color: .white,
-                           label: window ? text.pillFilmDisplay : text.pillFilmWindow,
+                           label: window ? text.pillFilmDisplay : text.pillFilmTheWindow,
                            action: actions.toggleTarget)
                     .transition(.opacity)
             }

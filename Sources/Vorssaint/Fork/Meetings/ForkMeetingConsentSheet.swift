@@ -107,7 +107,7 @@ private struct ForkMeetingConsentView: View {
                     Text(text.consentTitle)
                         .font(.title3.weight(.semibold))
                         .accessibilityAddTraits(.isHeader)
-                    Text(text.consentIntro)
+                    Text(text.consentIntroFrontWindow)
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
                 }

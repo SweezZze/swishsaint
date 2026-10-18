@@ -35,32 +35,53 @@ extension ForkMeetingService {
                                                 microphone: text.trackMicrophone)
     }
 
-    /// The pill's gauge follows the session's own pass, not a recovery's.
+    /// The pill's gauge follows the session's own pass, not a recovery's,
+    /// and only while it shows one: a next meeting may be recording.
     func finalizerProgressed(_ progress: ForkMeetingFinalizer.Progress?) {
-        if let progress, finalizing.contains(where: { Self.same($0, progress.folder) }) {
+        if let progress, finalizing.contains(where: { Self.same($0, progress.folder) }),
+           presenter.pillState == .finalizing {
             presenter.setFinalizing(progress: progress.fraction)
         }
         refreshState()
     }
 
+    /// The pill goes once no session's pass is left and no session runs
+    /// (`refreshState`): two meetings in a row keep it until the second.
     private func finalized(_ outcome: ForkMeetingFinalizer.Outcome) {
         finalizing.removeAll { Self.same($0, outcome.folder) }
-        log.notice("\(outcome.folder.lastPathComponent, privacy: .public): \(outcome.finalPass.rawValue, privacy: .public) \(outcome.note ?? "", privacy: .public)")
-        if machine.phase == .idle, presenter.pillState == .finalizing {
-            presenter.apply(.showPill(.hidden))
-        }
+        log.notice("\(outcome.folder.lastPathComponent, privacy: .private): \(outcome.finalPass.rawValue, privacy: .public) \(outcome.note ?? "", privacy: .private)")
         if outcome.succeeded {
             saved(outcome, recovered: false)
         } else {
-            // The master stays, readable with its separate tracks; the next
-            // launch tries once more.
-            remember(.finalPassFailed)
-            lastNotice = .failure(.finalPassFailed)
-            presenter.notice(.failure(.finalPassFailed))
-            presenter.apply(.notify(.failure(.finalPassFailed)))
-            presenter.apply(.announce(.failure(.finalPassFailed)))
+            revealAfterFailure(outcome.folder)
         }
         refreshState()
+    }
+
+    /// A final pass that failed: the master, readable with its separate
+    /// tracks, takes the meeting's name so the Finder shows it, and the
+    /// failure says where the recording is.
+    func revealAfterFailure(_ folder: URL) {
+        store.revealMaster(in: folder) { [weak self] revealed in
+            guard let self else { return }
+            let failure: ForkMeetingFailure
+            switch revealed {
+            case let .visible(video):
+                self.lastFailedVideo = video
+                failure = .finalPassFailed
+            case let .hidden(master):
+                self.lastFailedVideo = master
+                failure = .masterHidden
+            case .none:
+                self.lastFailedVideo = nil
+                failure = .finalPassFailed
+            }
+            self.remember(failure)
+            self.lastNotice = .failure(failure)
+            self.presenter.notice(.failure(failure))
+            self.presenter.apply(.notify(.failure(failure)))
+            self.presenter.apply(.announce(.failure(failure)))
+        }
     }
 
     /// "Meeting saved · 52 min · 410 MB [Show in Finder]", in the island or
@@ -92,7 +113,12 @@ extension ForkMeetingService {
 
     private func recovered(_ recoveries: [ForkMeetingStore.Recovery]) {
         for recovery in recoveries {
-            log.notice("launch: \(recovery.folder.lastPathComponent, privacy: .public) \(String(describing: recovery.action), privacy: .public) \(recovery.outcome?.finalPass.rawValue ?? "", privacy: .public)")
+            log.notice("launch: \(recovery.folder.lastPathComponent, privacy: .private) \(String(describing: recovery.action), privacy: .public) \(recovery.outcome?.finalPass.rawValue ?? "", privacy: .public)")
+            // A meeting whose pass failed again at launch is shown too.
+            if let outcome = recovery.outcome, !outcome.succeeded {
+                revealAfterFailure(recovery.folder)
+                continue
+            }
             guard recovery.isRecovered, let outcome = recovery.outcome else { continue }
             saved(outcome, recovered: true)
         }

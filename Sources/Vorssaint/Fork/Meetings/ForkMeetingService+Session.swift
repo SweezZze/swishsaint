@@ -18,26 +18,36 @@ extension ForkMeetingService {
 
     /// From the page's button and the shortcut. Never before the first-use
     /// sheet: it is asked for instead. What the machine needs to decide is
-    /// gathered first, the free space off the main thread.
+    /// gathered first, the free space off the main thread. A meeting still
+    /// being finalized does not stand in the way (§3.2 n° 44).
     func startManually() {
-        guard isWanted, !isBusy, !terminating else { return }
+        guard ForkMeetingServiceSupport.canStart(wanted: isWanted, machineBusy: machine.isBusy,
+                                                 preparingStart: preparingStart, terminating: terminating) else { return }
         guard consentAcknowledged else {
             presentConsent()
             return
         }
         prepareSurfaces()
+        // A new try says every step again, and the last refusal goes.
+        presenter.resetAnnouncements()
+        lastRefusal = nil
+        cancelRequested = false
         preparingStart = true
         refreshState()
         let settings = captureSettings()
         let root = store.root()
         let freeBytes = self.freeBytes
-        Self.microphoneAnswer { [weak self] microphoneAllowed in
+        // A microphone turned off is never asked for.
+        let wantsMicrophone = settings.microphone != ForkMeetingCaptureSettings.microphoneOff
+        Self.microphoneAnswer(asking: wantsMicrophone) { [weak self] microphoneAllowed in
             DispatchQueue.global(qos: .userInitiated).async {
                 let free = freeBytes(root)
                 DispatchQueue.main.async {
                     guard let self else { return }
                     self.preparingStart = false
-                    guard self.isWanted, !self.terminating else { return self.refreshState() }
+                    let cancelled = self.cancelRequested
+                    self.cancelRequested = false
+                    guard self.isWanted, !self.terminating, !cancelled else { return self.refreshState() }
                     let facts = ForkMeetingStartFacts(freeBytes: free,
                                                       screenRecordingAllowed: CGPreflightScreenCaptureAccess(),
                                                       microphoneAllowed: microphoneAllowed,
@@ -52,17 +62,36 @@ extension ForkMeetingService {
         send(.stop)
     }
 
+    /// The page's Cancel and the shortcut pressed again while a start is
+    /// under way: nothing is recorded, no folder stays.
+    func cancelStart() {
+        if preparingStart {
+            cancelRequested = true
+        } else if case .starting = machine.phase {
+            send(.stop)
+        }
+        refreshState()
+    }
+
     func togglePause() {
         send(isPaused ? .resume : .pause)
     }
 
-    /// The shortcut: starts a recording, or stops the one running.
+    /// The shortcut: starts a recording, stops the one running, or cancels
+    /// the one starting.
     func toggleRecording() {
-        if isRecording {
-            stop()
-        } else {
-            startManually()
+        switch ForkMeetingServiceSupport.press(phase: machine.phase, preparingStart: preparingStart, canStart: canStartNow) {
+        case .start: startManually()
+        case .stop: stop()
+        case .cancelStart: cancelStart()
+        case .ignore: break
         }
+    }
+
+    /// `canStart` as it is this instant, not as last published.
+    var canStartNow: Bool {
+        ForkMeetingServiceSupport.canStart(wanted: isWanted, machineBusy: machine.isBusy,
+                                           preparingStart: preparingStart, terminating: terminating)
     }
 
     /// ⧉: the window, or the display that holds it. Not without a window to
@@ -83,11 +112,14 @@ extension ForkMeetingService {
     }
 
     /// Whether the microphone may record. Never asked yet, macOS asks now:
-    /// the person just chose to record. Main thread.
-    private static func microphoneAnswer(_ answer: @escaping (Bool) -> Void) {
+    /// the person just chose to record; unless no microphone is to record,
+    /// which never asks. Main thread.
+    private static func microphoneAnswer(asking: Bool, _ answer: @escaping (Bool) -> Void) {
         switch AVCaptureDevice.authorizationStatus(for: .audio) {
         case .authorized:
             answer(true)
+        case .notDetermined where !asking:
+            answer(false)
         case .notDetermined:
             AVCaptureDevice.requestAccess(for: .audio) { granted in
                 DispatchQueue.main.async { answer(granted) }
@@ -111,9 +143,20 @@ extension ForkMeetingService {
         isDraining = true
         while !queue.isEmpty {
             let next = queue.removeFirst()
+            // A start refused, or failed before its first frame: its words
+            // stay on the page (`lastRefusal`).
+            var starts = false
+            switch next {
+            case .manualStart: starts = true
+            case let .captureFailed(token, _): starts = isStarting(token)
+            case .captureStarted: runsStart = true
+            default: break
+            }
             for effect in machine.handle(next, now: Date()) {
+                if starts, case let .notice(.failure(failure)) = effect { lastRefusal = failure }
                 run(effect)
             }
+            runsStart = false
         }
         isDraining = false
         refreshState()
@@ -133,6 +176,8 @@ extension ForkMeetingService {
             guard let session = machine.activeSession else { return }
             recorders[session.token]?.switchTarget(session.target)
             context.target = session.target
+            context.noWindowToFilm = false
+            filmedDisplay = Self.displayID(of: filmedWindow) ?? CGMainDisplayID()
             presenter.update(context)
         case let .stopCapture(token):
             stopCapture(token)
@@ -148,8 +193,17 @@ extension ForkMeetingService {
         case let .notice(notice):
             lastNotice = notice
             if case let .failure(failure) = notice { remember(failure) }
-            presenter.apply(effect, context: context)
-        case .showPill, .announce, .notify:
+            if runsStart {
+                presenter.showStart(notice, context: context)
+            } else {
+                presenter.apply(effect, context: context)
+            }
+        case let .showPill(state):
+            // A session's final pass still running keeps the pill on its
+            // gauge, whatever the next start does.
+            let shown = ForkMeetingServiceSupport.pill(state, finalizing: !finalizing.isEmpty)
+            presenter.apply(.showPill(shown), context: context)
+        case .announce, .notify:
             presenter.apply(effect, context: context)
         }
     }
@@ -164,7 +218,16 @@ extension ForkMeetingService {
         if isPaused != paused { isPaused = paused }
         let busy = machine.isBusy || preparingStart || !finalizing.isEmpty || finalizer.isBusy
         if isBusy != busy { isBusy = busy }
+        let startable = canStartNow
+        if canStart != startable { canStart = startable }
+        let starting: Bool
+        if case .starting = machine.phase { starting = true } else { starting = preparingStart }
+        if isStarting != starting { isStarting = starting }
         ForkMeetingActivity.setRecording(machine.isBusy || preparingStart)
+        if ForkMeetingServiceSupport.hidesFinishedPill(machineIdle: machine.phase == .idle,
+                                                       finalizingCount: finalizing.count, pill: presenter.pillState) {
+            presenter.apply(.showPill(.hidden))
+        }
         if let session, watchedToken != session.token {
             watchedToken = session.token
             systemEvents.beginRecording(folder: session.folder, quality: session.config.settings.quality)
@@ -173,6 +236,7 @@ extension ForkMeetingService {
             systemEvents.endRecording()
         }
         syncSystemEvents()
+        systemEvents.hold(ForkMeetingServiceSupport.awake(phase: machine.phase))
     }
 
     /// The engine of the session recording or paused.
@@ -207,6 +271,10 @@ extension ForkMeetingService {
         recorders[token] = recorder
         context = ForkMeetingLiveContext(title: config.title, target: config.settings.target,
                                          recordsMicrophone: config.recordsMicrophone)
+        if defaults.bool(forKey: ForkDefaultsKey.meetingsConsentReminder) {
+            context.announcement = ForkMeetingAnnouncementText.text(
+                stored: defaults.string(forKey: ForkDefaultsKey.meetingsAnnouncement) ?? "", strings: .current)
+        }
         let microphone: String?
         if config.recordsMicrophone {
             microphone = nil // named once it records
@@ -231,7 +299,7 @@ extension ForkMeetingService {
         }
         switch result {
         case let .failure(failure):
-            log.error("no folder for the meeting: \(String(describing: failure), privacy: .public)")
+            log.error("no folder for the meeting: \(String(describing: failure), privacy: .private)")
             send(.captureFailed(token, .folderUnavailable))
         case let .success(folder):
             folders[token] = folder
@@ -239,13 +307,13 @@ extension ForkMeetingService {
             // left out anyway.
             let excluded = presenter.windowNumbers.compactMap { CGWindowID(exactly: $0) }
             recorder.start(config: config, folder: folder, excludingWindows: excluded) { [weak self] result in
-                self?.captureAnswered(result, folder: folder, token: token)
+                self?.captureAnswered(result, config: config, folder: folder, token: token)
             }
         }
     }
 
-    private func captureAnswered(_ result: Result<ForkMeetingRecorderStart, ForkMeetingFailure>, folder: URL,
-                                 token: ForkMeetingToken) {
+    private func captureAnswered(_ result: Result<ForkMeetingRecorderStart, ForkMeetingFailure>,
+                                 config: ForkMeetingCaptureConfig, folder: URL, token: ForkMeetingToken) {
         switch result {
         case let .success(start):
             // Stopped meanwhile: the stop cleans up.
@@ -256,6 +324,11 @@ extension ForkMeetingService {
             context.recordsMicrophone = start.microphone != nil
             filmedWindow = start.window
             context.displayID = Self.displayID(of: start.window)
+            context.appName = start.appName
+            // A window was asked for, none could be filmed: said at the start.
+            context.noWindowToFilm = config.settings.target == .window && start.target == .display
+            filmedDisplay = context.displayID ?? CGMainDisplayID()
+            if case .appTap = start.sound { appTapSessions.insert(token) }
             send(.captureStarted(token, folder: folder, target: start.target, microphone: start.microphone))
         case let .failure(failure):
             log.error("the capture did not start: \(String(describing: failure), privacy: .public)")
@@ -276,6 +349,8 @@ extension ForkMeetingService {
             guard let self, self.isCurrent(token), self.context.pictureFrozen != frozen else { return }
             self.context.pictureFrozen = frozen
             self.presenter.update(self.context)
+            // The pill says it with words VoiceOver cannot see change.
+            if frozen { self.presenter.say(ForkMeetingStrings.current.voicePictureFrozen) }
         }
         recorder.onMicrophoneSwitch = { [weak self] token, name, gap in
             guard let self, self.isCurrent(token) else { return }
@@ -292,6 +367,7 @@ extension ForkMeetingService {
         }
         recorder.onSystemAudioUnavailable = { [weak self] token in
             guard let self, self.isCurrent(token) else { return }
+            self.deafTapSessions.insert(token)
             self.send(.permissionLost(.systemAudio))
         }
     }
@@ -319,6 +395,11 @@ extension ForkMeetingService {
     func stopped(_ token: ForkMeetingToken, result: ForkMeetingWriterResult, recorded: Bool) {
         guard recorders.removeValue(forKey: token) != nil else { return }
         let folder = folders.removeValue(forKey: token)
+        // A whole meeting written from the app's own tap, never found deaf:
+        // the "app sound unavailable" banner was about an older one.
+        let wroteAppTap = appTapSessions.remove(token) != nil
+        let foundDeaf = deafTapSessions.remove(token) != nil
+        if recorded, wroteAppTap, !foundDeaf, case .finished = result { systemAudioProven() }
         guard recorded else {
             if let folder { discardUnstarted(folder) }
             return
