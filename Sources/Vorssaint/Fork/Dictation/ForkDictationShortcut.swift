@@ -32,6 +32,13 @@ struct ForkDictationShortcut: Codable, Equatable, Identifiable {
         case copy
         /// Writes the last dictation again, without listening.
         case pasteLast
+        /// Opens or closes the dictation history, without listening.
+        case openHistory
+
+        /// Acts at once, without listening: no arming, no gesture.
+        var isInstant: Bool {
+            self == .pasteLast || self == .openHistory
+        }
     }
 
     var id: UUID
@@ -62,7 +69,7 @@ struct ForkDictationShortcut: Codable, Equatable, Identifiable {
     static let modifierArmingDelay: TimeInterval = 0.15
 
     var armingDelay: TimeInterval {
-        guard action != .pasteLast, case let .modifier(trigger) = key, !trigger.armsImmediately else { return 0 }
+        guard !action.isInstant, case let .modifier(trigger) = key, !trigger.armsImmediately else { return 0 }
         return Self.modifierArmingDelay
     }
 }

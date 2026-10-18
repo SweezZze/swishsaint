@@ -69,6 +69,7 @@ struct ForkDictationSettingsSection: View {
             .disabled(!enabled)
         ForkDictationAfterSection(text: text)
             .disabled(!enabled)
+        ForkDictationHistorySection(text: text)
         ForkDictationVocabularySection(text: text)
         ForkDictationPermissionsSection(text: text)
         ForkDictationAdvancedSection(text: text)
@@ -104,7 +105,7 @@ struct ForkDictationSettingsSection: View {
         _ = shortcutsStorage
         let shortcuts = ForkDictationShortcuts.load()
         let problems = ForkDictationShortcutProblems.of(shortcuts)
-        guard let first = shortcuts.first(where: { $0.action != .pasteLast && problems[$0.id] == nil }) else { return nil }
+        guard let first = shortcuts.first(where: { !$0.action.isInstant && problems[$0.id] == nil }) else { return nil }
         let setting = ForkDictationEngineSetting(rawValue: engineRaw) ?? .fallback
         let language = ForkDictationLanguages.effective(first.language ?? chosenLocale)
         return ForkDictationEngines.shared.kind(for: setting, language: language).map { kind in
@@ -361,7 +362,7 @@ private struct ForkDictationShortcutRow: View {
                 .accessibilityLabel(text.shortcutRemove)
             }
 
-            if shortcut.action != .pasteLast {
+            if !shortcut.action.isInstant {
                 Picker(text.shortcutModeTitle, selection: $shortcut.mode) {
                     Text(text.shortcutModeHybrid).tag(ForkDictationShortcut.Mode.hybrid)
                     Text(text.shortcutModeHold).tag(ForkDictationShortcut.Mode.hold)
@@ -374,9 +375,10 @@ private struct ForkDictationShortcutRow: View {
                 Text(text.shortcutActionPaste).tag(ForkDictationShortcut.Action.paste)
                 Text(text.shortcutActionCopy).tag(ForkDictationShortcut.Action.copy)
                 Text(text.shortcutActionPasteLast).tag(ForkDictationShortcut.Action.pasteLast)
+                Text(text.shortcutActionOpenHistory).tag(ForkDictationShortcut.Action.openHistory)
             }
 
-            if shortcut.action != .pasteLast {
+            if !shortcut.action.isInstant {
                 Picker(text.languageTitle, selection: language) {
                     Text(text.shortcutLanguageDefault).tag("")
                     Divider()
@@ -875,6 +877,61 @@ private struct ForkDictationAfterSection: View {
             .font(.caption)
             .foregroundStyle(.secondary)
             .fixedSize(horizontal: false, vertical: true)
+    }
+}
+
+// MARK: - History
+
+/// The dictation history: whether dictations are kept with their audio,
+/// what they take on disk, and the way to the history panel. Turning it
+/// off offers to delete what is already kept.
+private struct ForkDictationHistorySection: View {
+    let text: ForkDictationStrings
+
+    @AppStorage(ForkDefaultsKey.dictationKeepsHistory) private var keepsHistory = true
+    @ObservedObject private var archive = ForkDictationArchive.shared
+    @State private var confirmsDeleteAll = false
+    @State private var offersDelete = false
+
+    var body: some View {
+        Section(text.historySectionTitle) {
+            VStack(alignment: .leading, spacing: 4) {
+                Toggle(text.keepsHistoryTitle, isOn: $keepsHistory)
+                    .onChange(of: keepsHistory) { _, kept in
+                        if !kept, !archive.records.isEmpty { offersDelete = true }
+                    }
+                Text(text.keepsHistoryCaption)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            if !archive.records.isEmpty {
+                LabeledContent(String(format: text.historyCountFormat, archive.records.count)) {
+                    Text(String(format: text.historyAudioSizeFormat,
+                                ByteCountFormatter.string(fromByteCount: archive.audioBytes, countStyle: .file)))
+                        .foregroundStyle(.secondary)
+                }
+            }
+
+            HStack {
+                Button(text.historyOpen) { ForkDictationHistoryPanel.shared.show() }
+                Spacer()
+                Button(text.historyDeleteAll, role: .destructive) { confirmsDeleteAll = true }
+                    .disabled(archive.records.isEmpty)
+            }
+        }
+        .confirmationDialog(text.historyDeleteAllConfirmTitle, isPresented: $confirmsDeleteAll) {
+            Button(text.historyDeleteAllConfirmButton, role: .destructive) { archive.deleteAll() }
+        } message: {
+            Text(text.historyDeleteAllConfirmMessage)
+        }
+        .confirmationDialog(text.historyTurnOffTitle, isPresented: $offersDelete) {
+            Button(text.historyTurnOffDelete, role: .destructive) { archive.deleteAll() }
+            Button(text.historyTurnOffKeep, role: .cancel) {}
+        } message: {
+            Text(text.historyTurnOffMessage)
+        }
     }
 }
 

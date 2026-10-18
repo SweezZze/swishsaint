@@ -73,11 +73,21 @@ final class ForkDictationService: ObservableObject {
     var captureStartedAt: TimeInterval?
     /// Kept in memory only, for the Paste last shortcut.
     var lastDelivered: String?
-    /// A Paste last on a lone modifier waits for its release: pressed with
-    /// another key, it was a shortcut.
+    /// A Paste last or Open history on a lone modifier waits for its
+    /// release: pressed with another key, it was a shortcut.
     var pendingPasteLast: (id: UUID, at: TimeInterval)?
     /// Bumped by each Paste last, so an older one's answer says nothing.
     var pasteLastGeneration = 0
+    /// The session's audio and raw text, for the dictation history: kept
+    /// from the end of the capture until the record is written.
+    struct KeptCapture {
+        let samples: [Float]
+        let duration: TimeInterval
+        let rawText: String
+    }
+
+    var keptCapture: (samples: [Float], duration: TimeInterval)?
+    var keptRawText: String?
 
     var armWork: DispatchWorkItem?
     var timers: [Timer] = []
@@ -104,6 +114,21 @@ final class ForkDictationService: ObservableObject {
     private init() {}
 
     // MARK: - Lifecycle
+
+    /// A session is under way (arming, listening, transcribing, pasting):
+    /// the engines are busy, the history waits to transcribe again.
+    var isDictating: Bool {
+        machine.phase != .idle
+    }
+
+    /// The text written for a raw transcription: replacements applied, the
+    /// edges trimmed.
+    static func corrected(_ raw: String) -> String {
+        let rules = ForkDictationSupport.replacements(
+            from: UserDefaults.standard.string(forKey: ForkDefaultsKey.dictationReplacements) ?? "")
+        return ForkDictationReplacements.apply(rules, to: raw)
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+    }
 
     static var isWanted: Bool {
         UserDefaults.standard.bool(forKey: ForkDefaultsKey.dictationEnabled)
@@ -211,6 +236,8 @@ final class ForkDictationService: ObservableObject {
         ownerIsDown = false
         gesture = ForkDictationGesture()
         pendingPasteLast = nil
+        keptCapture = nil
+        keptRawText = nil
         queue.removeAll()
         presenter.hideNow()
         updateTapFlags()

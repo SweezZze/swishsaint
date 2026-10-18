@@ -20,7 +20,11 @@ extension ForkDictationService {
                 pendingPasteLast = nil
                 updateTapFlags()
                 if now - pending.at < ForkDictationGesture.tapLimit, let shortcut = table.shortcut(id) {
-                    send(.gesture(.start, shortcut, handsFree: false))
+                    if shortcut.action == .openHistory {
+                        toggleHistory()
+                    } else {
+                        send(.gesture(.start, shortcut, handsFree: false))
+                    }
                 } else {
                     paster.dropSnapshot()
                 }
@@ -45,6 +49,17 @@ extension ForkDictationService {
     }
 
     private func press(_ shortcut: ForkDictationShortcut, at now: TimeInterval) {
+        if shortcut.action == .openHistory {
+            // Like Paste last: a lone modifier opens at its release, if
+            // nothing else was pressed with it.
+            if case .modifier = shortcut.key {
+                pendingPasteLast = (shortcut.id, now)
+                updateTapFlags()
+            } else {
+                toggleHistory()
+            }
+            return
+        }
         if shortcut.action == .pasteLast {
             // The clipboard to give back is read now, outside the paste's
             // deadline. A lone modifier pastes at its release, if nothing
