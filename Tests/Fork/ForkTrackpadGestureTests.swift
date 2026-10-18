@@ -2633,12 +2633,18 @@ enum ForkTrackpadGestureTests {
                         && hero.contains("Text(text.enable)") && hero.contains("Text(text.caption)"),
                      "the gestures' own card switches them, under their title and caption")
         let extras = sourceCode("Sources/Vorssaint/Fork/Core/ForkExtrasSettings.swift")
-        let toggle = extras.components(separatedBy: "private struct ForkFeatureToggle").dropFirst().first ?? ""
+        let pages = sourceCode("Sources/Vorssaint/Fork/Core/ForkSettingsPages.swift")
+        let toggle = pages.components(separatedBy: "struct ForkFeatureToggle").dropFirst().first ?? ""
         suite.expect(extras.contains("ForEach(ForkFeature.allCases) { feature in")
-                        && extras.contains("ForkTrackpadSettingsSections(text: FeatureStrings.forkTrackpadGestures(l10n.language)")
+                        && extras.contains("ForkSettingsPages.open(feature)")
+                        && pages.contains("ForkTrackpadSettingsSections(text: FeatureStrings.forkTrackpadGestures(l10n.language)")
                         && toggle.contains("_isOn = AppStorage(wrappedValue: false, feature.enabledKey)")
                         && toggle.contains(".onChange(of: isOn) { _, _ in feature.sync() }"),
-                     "the Extras page lists every fork feature with its switch, and the gestures' settings")
+                     "the Extras page lists every fork feature with its switch, and each opens its own page")
+        let directory = sourceCode("Sources/Vorssaint/UI/Settings/SettingsDirectory.swift")
+        suite.expect(directory.contains("ForkSettingsPages.item(.trackpadGestures, language: language), // FORK(settings4)")
+                        && directory.contains("ForkSettingsPages.item(.dictation, language: language), // FORK(settings4)"),
+                     "the gestures and dictation pages have their row in the Settings sidebar (seam settings4)")
 
         let gestures = sourceCode("Sources/Vorssaint/Fork/Gestures/ForkGestures.swift")
         let sync = gestures.components(separatedBy: "static func sync()").dropFirst().first?

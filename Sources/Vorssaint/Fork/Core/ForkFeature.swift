@@ -3,10 +3,12 @@
 
 import SwiftUI
 
-/// The fork's features, each with its own switch on the Extras page.
+/// The fork's features, each with its own switch on the Extras page and a
+/// page of its own in the Settings sidebar (`ForkSettingsPages`).
 ///
 /// Never a case of the official `AppFeature`: that would touch a dozen
-/// official files. A feature added here appears on the Extras page alone.
+/// official files. A feature added here appears on the Extras page alone,
+/// and in the sidebar with one more row in `SettingsDirectory`.
 enum ForkFeature: String, CaseIterable, Identifiable {
     case trackpadGestures
     case dictation

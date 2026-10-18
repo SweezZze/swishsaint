@@ -608,6 +608,7 @@ struct SettingsView: View {
         case .releaseNotes: ReleaseNotesSettings()
         case .support: SupportSettings()
         case .extras: ForkExtrasSettings() // FORK(settings2)
+        case .fork(let id): ForkSettingsPages.page(id) // FORK(settings2)
         }
     }
 }

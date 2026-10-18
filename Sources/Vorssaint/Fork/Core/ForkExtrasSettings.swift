@@ -5,31 +5,15 @@ import SwiftUI
 
 /// The fork's page of the Settings (seams `settings`, `settings2`,
 /// `settings3`): the list of fork features, each with its switch, the
-/// fork's updates, and what this version is. Each feature's own settings
-/// open on a page of their own, the way System Settings opens a row, so
-/// the list stays short however many features join it.
+/// fork's updates, and what this version is. Each feature's settings live on
+/// a page of its own in the sidebar (`ForkSettingsPages`); a row here opens
+/// it.
 struct ForkExtrasSettings: View {
     @ObservedObject private var l10n = L10n.shared
-    @State private var openFeature: ForkFeature?
 
     private var text: ForkExtrasStrings { ForkExtrasStrings.strings(l10n.language) }
 
     var body: some View {
-        Group {
-            if let feature = openFeature {
-                ForkFeaturePage(feature: feature, text: text) {
-                    withAnimation(.easeInOut(duration: 0.18)) { openFeature = nil }
-                }
-                .transition(.move(edge: .trailing).combined(with: .opacity))
-            } else {
-                overview
-                    .transition(.move(edge: .leading).combined(with: .opacity))
-            }
-        }
-        .animation(.easeInOut(duration: 0.18), value: openFeature)
-    }
-
-    private var overview: some View {
         Form {
             Section {
                 Text(text.intro)
@@ -41,7 +25,7 @@ struct ForkExtrasSettings: View {
             Section(text.featuresSection) {
                 ForEach(ForkFeature.allCases) { feature in
                     ForkFeatureRow(feature: feature, text: text) {
-                        withAnimation(.easeInOut(duration: 0.18)) { openFeature = feature }
+                        ForkSettingsPages.open(feature)
                     }
                 }
             }
@@ -133,102 +117,6 @@ private struct ForkFeatureIcon: View {
             .foregroundStyle(.white)
             .frame(width: 26, height: 26)
             .background(RoundedRectangle(cornerRadius: 6, style: .continuous).fill(feature.tint.gradient))
-    }
-}
-
-/// One feature's own page: a way back to the list, then its settings.
-private struct ForkFeaturePage: View {
-    let feature: ForkFeature
-    let text: ForkExtrasStrings
-    let back: () -> Void
-
-    @ObservedObject private var l10n = L10n.shared
-    @ObservedObject private var permissions = Permissions.shared
-
-    var body: some View {
-        VStack(spacing: 0) {
-            HStack {
-                Button(action: back) {
-                    Label(text.pageTitle, systemImage: "chevron.left")
-                }
-                .buttonStyle(.borderless)
-                .keyboardShortcut(.cancelAction)
-                Spacer()
-            }
-            .padding(.horizontal, 20)
-            .padding(.top, 14)
-
-            Form {
-                if feature != .trackpadGestures {
-                    Section {
-                        ForkFeatureToggle(feature: feature, text: text)
-                    }
-                }
-
-                if feature.needsAccessibility && !permissions.accessibility {
-                    Section(l10n.s.permissionRequired) {
-                        PermissionRow(kind: .accessibility)
-                    }
-                }
-
-                content
-            }
-            .formStyle(.grouped)
-        }
-    }
-
-    @ViewBuilder
-    private var content: some View {
-        switch feature {
-        case .trackpadGestures:
-            ForkTrackpadSettingsSections(text: FeatureStrings.forkTrackpadGestures(l10n.language),
-                                         layoutText: FeatureStrings.windowLayout(l10n.language))
-            Section {
-                HStack(alignment: .firstTextBaseline) {
-                    Text(text.sharedSettings)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
-                    Spacer()
-                    Button(FeatureStrings.windowLayout(l10n.language).title) {
-                        SettingsRouter.shared.request(FeatureSettingsDestination(.windowLayout))
-                    }
-                    .buttonStyle(.link)
-                    .font(.caption)
-                }
-            }
-        case .dictation:
-            ForkDictationSettingsSection(title: text.dictationTitle)
-        }
-    }
-}
-
-private struct ForkFeatureToggle: View {
-    let feature: ForkFeature
-    let text: ForkExtrasStrings
-    @AppStorage private var isOn: Bool
-
-    init(feature: ForkFeature, text: ForkExtrasStrings) {
-        self.feature = feature
-        self.text = text
-        _isOn = AppStorage(wrappedValue: false, feature.enabledKey)
-    }
-
-    var body: some View {
-        Toggle(isOn: $isOn) {
-            Label {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(feature.title(text))
-                    Text(feature.summary(text))
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-            } icon: {
-                Image(systemName: feature.symbol)
-            }
-        }
-        .onChange(of: isOn) { _, _ in feature.sync() }
     }
 }
 

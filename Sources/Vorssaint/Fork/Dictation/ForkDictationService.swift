@@ -259,7 +259,7 @@ final class ForkDictationService: ObservableObject {
         case .redownloadModel:
             ForkParakeetModelStore.shared.reinstall()
         case .openSettingsPage:
-            SettingsRouter.shared.page = .extras
+            ForkSettingsPages.open(.dictation)
             (NSApp.delegate as? AppDelegate)?.openSettingsWindow()
         }
         if lastFailure?.action == action { lastFailure = nil }
