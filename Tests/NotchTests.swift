@@ -485,9 +485,9 @@ enum NotchTests {
                     } else {
                         // Across the top every level keeps its narrowest after the button.
                         let held = CGFloat(count) * least + CGFloat(count - 1) * NotchLayout.bandLevelSpacing
-                        rows = rows && inRow == count && button + held + NotchLayout.bandLevelSpacing <= band.side
-                            && (NotchLayout.homeReadingWidth(levels: count, side: band.leadingRoom).map {
-                                button + held + NotchLayout.bandLevelSpacing + $0 <= band.side } ?? true)
+                        let used = button + held + NotchLayout.bandLevelSpacing
+                        let reading = NotchLayout.homeReadingWidth(levels: count, side: band.leadingRoom)
+                        rows = rows && inRow == count && used <= band.side && used + (reading ?? 0) <= band.side
                     }
                 }
                 let music = base.page(.music, controls: home, sectionsButton: true)

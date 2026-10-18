@@ -463,7 +463,8 @@ enum RecorderExportRenderingTests {
         // Frames before the first that decodes take it, and one that does
         // not decode repeats the one before it, so the length is kept.
         let phases = String(colours.map(phase))
-        suite.expect(phases == "GGGGGG" + "GGGGGG" + "G" + "BBBBB" + "WWWW" + "WW",
+        let expected = ["GGGGGG", "GGGGGG", "G", "BBBBB", "WWWW", "WW"].joined()
+        suite.expect(phases == expected,
                      "undecodable frames take their nearest earlier frame, or the first one \(phases)")
 
         let previous = Data("previous gif".utf8)

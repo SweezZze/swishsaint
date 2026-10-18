@@ -596,8 +596,9 @@ enum NotchActivityTests {
         }
         func band(_ geometry: NotchGeometry) -> NotchBand { NotchBand(geometry: geometry, contentWidth: geometry.contentWidth) }
         let compact = page(camera: 180, .compact, sectionsButton: false)
+        let wrapped: CGFloat = max(NotchLayout.timerContentWidth, 180 + compact.pageBandSide * 2)
         suite.expect(band(compact).besideCamera && compact.pageContentWidth == NotchLayout.timerContentWidth
-               && compact.contentWidth == max(NotchLayout.timerContentWidth, 180 + compact.pageBandSide * 2)
+               && compact.contentWidth == wrapped
                && band(compact).side == compact.pageBandSide - NotchBand.cameraClearance
                && chevron > 0 && glyph > 0,
                "the timer's row wraps a 180-point camera on a page no wider than its own: \(band(compact).side)")
