@@ -20,12 +20,18 @@ import Speech
 final class ForkAppleSpeechEngine: ForkDictationEngine {
     let kind = ForkDictationEngineKind.apple
     var onFailure: ((ForkDictationFailure) -> Void)?
+    var onStopped: (() -> Void)?
 
     /// How long the recognizer may take to settle once the person stops.
     static let finishTimeout: TimeInterval = 4
     /// Requests reopened in one dictation before giving up on the rest: a
     /// recognizer that fails at once would otherwise loop.
     static let maximumRestarts = 30
+    /// A request that failed for real is tried again after this pause, at
+    /// most this many times in a row, before the dictation ends on what was
+    /// understood: the network may come back, a dead recognizer will not.
+    static let retryDelay: TimeInterval = 0.5
+    static let maximumRetries = 3
 
     private let log = Logger(subsystem: "fork.dictation", category: "apple")
     private let format = AVAudioFormat(commonFormat: .pcmFormatFloat32, sampleRate: 16_000,
@@ -44,6 +50,10 @@ final class ForkAppleSpeechEngine: ForkDictationEngine {
     /// The best guess of the request under way.
     private var current = ""
     private var restarts = 0
+    private var retries = 0
+    /// Bumped by `begin` and `tearDown`: a retry scheduled for an earlier
+    /// dictation finds it gone.
+    private var generation = 0
     /// An error that was not just silence: reported when nothing at all was
     /// understood.
     private var failedForReal = false
@@ -117,6 +127,7 @@ final class ForkAppleSpeechEngine: ForkDictationEngine {
         settled = []
         current = ""
         restarts = 0
+        retries = 0
         failedForReal = false
         isFinishing = false
         isActive = true
@@ -205,14 +216,30 @@ final class ForkAppleSpeechEngine: ForkDictationEngine {
             log.debug("recognition ended early: \(String(describing: error), privacy: .public)")
         }
         // A request that failed without understanding anything (no network,
-        // recognizer gone) would fail again at once. With nothing kept so far,
-        // the person hears it now instead of after minutes of talking.
-        guard restarts < Self.maximumRestarts, understoodSomething || !isReal else {
-            if isReal, settled.isEmpty { reportFailure(.transcriptionFailed) }
+        // recognizer gone) may fail again at once. With nothing kept so far,
+        // the person hears it now instead of after minutes of talking; with
+        // something kept, a few spaced tries, then the dictation ends on it.
+        let failedOutright = isReal && !understoodSomething
+        if failedOutright, settled.isEmpty {
+            reportFailure(.transcriptionFailed)
+            return
+        }
+        retries = failedOutright ? retries + 1 : 0
+        guard restarts < Self.maximumRestarts, retries <= Self.maximumRetries else {
+            onStopped?()
             return
         }
         restarts += 1
-        openRequest()
+        guard failedOutright else {
+            openRequest()
+            return
+        }
+        let current = generation
+        DispatchQueue.main.asyncAfter(deadline: .now() + Self.retryDelay) { [weak self] in
+            guard let self, self.generation == current, self.isActive, !self.isFinishing,
+                  self.request == nil else { return }
+            self.openRequest()
+        }
     }
 
     private func settle() {
@@ -242,6 +269,7 @@ final class ForkAppleSpeechEngine: ForkDictationEngine {
     }
 
     private func tearDown() {
+        generation &+= 1
         finishTimeout?.cancel()
         finishTimeout = nil
         completion = nil

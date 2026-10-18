@@ -205,11 +205,42 @@ private struct ForkDictationBubble: View {
             .accessibilityElement(children: .combine)
     }
 
-    @ViewBuilder
+    /// One step at a time: the step leaving fades out quickly before the
+    /// next one fades in, so their words never sit on top of each other while
+    /// the capsule changes width. The wave still folds into the dots.
     private var content: some View {
+        ZStack {
+            step(model.presentation)
+                .id(Self.stepKey(model.presentation))
+                .transition(.asymmetric(
+                    insertion: .opacity.animation(.easeOut(duration: 0.15).delay(0.1)),
+                    removal: .opacity.animation(.easeOut(duration: 0.1))))
+        }
+    }
+
+    /// Changes only when the step does: the clock ticking or a new excerpt
+    /// redraw a step, they do not replace it.
+    private static func stepKey(_ presentation: ForkDictationPresentation) -> String {
+        switch presentation {
+        case .hidden: return "hidden"
+        case .listening: return "listening"
+        case .transcribing: return "transcribing"
+        case .pasted: return "pasted"
+        case .copied: return "copied"
+        case .keptInClipboard: return "kept"
+        case .inHistoryOnly: return "history"
+        case .nothingHeard: return "nothing"
+        case .cancelled: return "cancelled"
+        case .busy: return "busy"
+        case .failure: return "failure"
+        }
+    }
+
+    @ViewBuilder
+    private func step(_ presentation: ForkDictationPresentation) -> some View {
         let text = model.text
         HStack(spacing: 8) {
-            switch model.presentation {
+            switch presentation {
             case .hidden:
                 EmptyView()
             case let .listening(handsFree, startedAt, nearLimit):
@@ -262,7 +293,6 @@ private struct ForkDictationBubble: View {
                 label(failure.summary(text))
             }
         }
-        .transition(.opacity)
     }
 
     private func mark(_ symbol: String, color: Color) -> some View {

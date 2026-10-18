@@ -16,6 +16,11 @@ protocol ForkDictationEngine: AnyObject {
     /// after minutes of talking into nothing. Never called after `cancel`.
     var onFailure: ((ForkDictationFailure) -> Void)? { get set }
 
+    /// The engine can no longer hear but keeps what it understood (Apple's
+    /// servers gone after the first minute, say), on the main thread: the
+    /// dictation ends now and is transcribed. Never called after `cancel`.
+    var onStopped: (() -> Void)? { get set }
+
     /// Gets ready without blocking: Parakeet loads its model in the
     /// background, so the load hides behind the first seconds of speech.
     func prepare()

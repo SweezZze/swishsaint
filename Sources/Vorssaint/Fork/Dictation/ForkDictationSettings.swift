@@ -66,32 +66,62 @@ struct ForkDictationSettingsSection: View {
         ForkDictationAdvancedSection(text: text)
     }
 
-    /// At a glance: off, or ready with the first shortcut and the engine it
-    /// will use. A problem has its own banner above.
+    /// At a glance: off, ready with the first shortcut and the engine it
+    /// will use, or what keeps that engine from working. A lasting problem
+    /// has its own banner above.
     @ViewBuilder
     private var status: some View {
         if !enabled {
             Label(text.stateOff, systemImage: "pause.circle")
                 .font(.callout)
                 .foregroundStyle(.secondary)
-        } else if bannerFailure == nil, permissions.accessibility, let summary = readySummary {
-            Label(text.ready(summary), systemImage: "checkmark.circle.fill")
-                .font(.callout)
-                .foregroundStyle(.green)
+        } else if bannerFailure == nil, permissions.accessibility {
+            switch readiness {
+            case let .success(summary)?:
+                Label(text.ready(summary), systemImage: "checkmark.circle.fill")
+                    .font(.callout)
+                    .foregroundStyle(.green)
+            case let .failure(failure)?:
+                Label(failure.summary(text), systemImage: "exclamationmark.triangle.fill")
+                    .font(.callout)
+                    .foregroundStyle(.orange)
+            case nil:
+                EmptyView()
+            }
         }
     }
 
-    private var readySummary: String? {
+    private var readiness: Result<String, ForkDictationFailure>? {
         _ = store.state
         _ = shortcutsStorage
         let shortcuts = ForkDictationShortcuts.load()
-        let problems = ForkDictationShortcuts.problems(shortcuts)
+        let problems = ForkDictationShortcutProblems.of(shortcuts)
         guard let first = shortcuts.first(where: { $0.action != .pasteLast && problems[$0.id] == nil }) else { return nil }
         let setting = ForkDictationEngineSetting(rawValue: engineRaw) ?? .fallback
         let language = ForkDictationLanguages.effective(first.language ?? chosenLocale)
-        guard case let .success(kind) = ForkDictationEngines.shared.kind(for: setting, language: language) else { return nil }
-        let engine = kind == .parakeet ? text.parakeetTitle : text.engineApple
-        return "\(ForkDictationKeyName.name(of: first.key, text: text)) · \(engine)"
+        return ForkDictationEngines.shared.kind(for: setting, language: language).map { kind in
+            let engine = kind == .parakeet ? text.parakeetTitle : text.engineApple
+            return "\(ForkDictationKeyName.name(of: first.key, text: text)) · \(engine)"
+        }
+    }
+}
+
+/// `ForkDictationShortcuts.problems`, kept until the shortcuts change: it
+/// asks the window server for the system's shortcuts, and the page redraws
+/// many times a second while the model downloads.
+private enum ForkDictationShortcutProblems {
+    private static var cache: (key: String, problems: [UUID: ForkDictationShortcutProblem])?
+
+    static func of(_ shortcuts: [ForkDictationShortcut]) -> [UUID: ForkDictationShortcutProblem] {
+        let key = ForkDictationShortcuts.encode(shortcuts)
+        if let cache, cache.key == key { return cache.problems }
+        let problems = ForkDictationShortcuts.problems(shortcuts)
+        cache = (key, problems)
+        return problems
+    }
+
+    static func forget() {
+        cache = nil
     }
 }
 
@@ -172,7 +202,7 @@ private struct ForkDictationShortcutsSection: View {
     /// Shortcuts switched to a combination that has not been typed yet.
     @State private var pendingCombination: Set<UUID> = []
 
-    private var problems: [UUID: ForkDictationShortcutProblem] { ForkDictationShortcuts.problems(shortcuts) }
+    private var problems: [UUID: ForkDictationShortcutProblem] { ForkDictationShortcutProblems.of(shortcuts) }
 
     var body: some View {
         Section(text.shortcutsTitle) {
@@ -218,7 +248,11 @@ private struct ForkDictationShortcutsSection: View {
             }
             .disabled(shortcuts.count >= ForkDictationShortcut.maximumCount)
         }
-        .onAppear { shortcuts = ForkDictationShortcuts.load() }
+        .onAppear {
+            // macOS's or Vorssaint's own shortcuts may have changed since.
+            ForkDictationShortcutProblems.forget()
+            shortcuts = ForkDictationShortcuts.load()
+        }
         // A restored backup changes them behind the page's back: show those,
         // and never save the old ones over them.
         .onReceive(NotificationCenter.default.publisher(for: UserDefaults.didChangeNotification)) { _ in
@@ -462,6 +496,7 @@ private struct ForkDictationComboRecorder: NSViewRepresentable {
     static func dismantleNSView(_ nsView: RecorderButton, coordinator: ()) {
         nsView.recordingChanged = nil
         nsView.stopRecording()
+        ForkDictationService.shared.setShortcutRecording(false)
     }
 
     private func apply(to button: RecorderButton) {
@@ -470,6 +505,9 @@ private struct ForkDictationComboRecorder: NSViewRepresentable {
         button.waitingTitle = waitingTitle
         button.emptyTitle = emptyTitle
         button.recordingChanged = { isRecording in
+            // The key tap steps aside at once, so a combination already
+            // bound to dictation reaches the recorder.
+            ForkDictationService.shared.setShortcutRecording(isRecording)
             if !isRecording { recordingEnded() }
         }
         button.invalidAction = {}
@@ -565,9 +603,12 @@ private struct ForkDictationRecognitionSection: View {
             badge(text.engineInUse(text.engineApple), detail: onDevice ? text.onDevice : text.onServer,
                   symbol: onDevice ? "lock.laptopcomputer" : "network")
         case let .failure(failure):
-            Label(failure.summary(text), systemImage: "exclamationmark.triangle.fill")
-                .font(.caption)
-                .foregroundStyle(.orange)
+            VStack(alignment: .leading, spacing: 2) {
+                Label(failure.summary(text), systemImage: "exclamationmark.triangle.fill")
+                    .font(.callout)
+                    .foregroundStyle(.orange)
+                caption(failure.remedy(text))
+            }
         }
     }
 

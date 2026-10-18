@@ -307,3 +307,25 @@ enum ForkDictationSupport {
         return min(1, max(0, (decibels + 50) / 40))
     }
 }
+
+/// Clicks, the wheel and system keys seen while a shortcut is held: which
+/// of them mean the shortcut is part of something else.
+enum ForkDictationOtherInput {
+    /// NX_SUBTYPE_AUX_CONTROL_BUTTONS: the media, volume and brightness keys.
+    static let mediaKeysSubtype = 8
+    private static let keyDownState: UInt32 = 0x0A
+
+    /// The momentum that keeps a flick scrolling for a second or two is not
+    /// the person touching anything.
+    static func scrollCounts(momentumPhase: Int64) -> Bool {
+        momentumPhase == 0
+    }
+
+    /// Only the press of a media key; its release, its repeats and the other
+    /// system events (power, eject, auxiliary buttons) do not count.
+    static func systemKeyCounts(subtype: Int, data1: Int) -> Bool {
+        guard subtype == mediaKeysSubtype else { return false }
+        let raw = UInt32(truncatingIfNeeded: data1)
+        return (raw >> 8) & 0xFF == keyDownState && raw & 0x1 == 0
+    }
+}

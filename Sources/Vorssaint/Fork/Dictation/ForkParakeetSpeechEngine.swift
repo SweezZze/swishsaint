@@ -15,6 +15,8 @@ final class ForkParakeetSpeechEngine: ForkDictationEngine {
     /// Parakeet only works once the capture is over: nothing fails while the
     /// person speaks.
     var onFailure: ((ForkDictationFailure) -> Void)?
+    /// Parakeet hears nothing live, so it never stops on its own.
+    var onStopped: (() -> Void)?
 
     private enum Load {
         case idle

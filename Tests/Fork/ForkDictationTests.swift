@@ -11,6 +11,27 @@ enum ForkDictationTests {
         language(suite)
         text(suite)
         vocabulary(suite)
+        otherInput(suite)
+    }
+
+    private static func otherInput(_ suite: TestSuite) {
+        suite.expect(ForkDictationOtherInput.scrollCounts(momentumPhase: 0),
+                     "the wheel turned by the person while a shortcut is held is another input")
+        suite.expect(!ForkDictationOtherInput.scrollCounts(momentumPhase: 1)
+                        && !ForkDictationOtherInput.scrollCounts(momentumPhase: 2),
+                     "the momentum after a flick is not: dictating right after scrolling works")
+        // data1: key code << 16 | state << 8 | repeat bit. 0x0A down, 0x0B up.
+        let volumeUpDown = (0 << 16) | (0x0A << 8)
+        let volumeUpRelease = (0 << 16) | (0x0B << 8)
+        let volumeUpRepeat = volumeUpDown | 0x1
+        suite.expect(ForkDictationOtherInput.systemKeyCounts(subtype: 8, data1: volumeUpDown),
+                     "a media key pressed with fn is another input")
+        suite.expect(!ForkDictationOtherInput.systemKeyCounts(subtype: 8, data1: volumeUpRelease)
+                        && !ForkDictationOtherInput.systemKeyCounts(subtype: 8, data1: volumeUpRepeat),
+                     "its release and repeats are not new inputs")
+        suite.expect(!ForkDictationOtherInput.systemKeyCounts(subtype: 1, data1: volumeUpDown)
+                        && !ForkDictationOtherInput.systemKeyCounts(subtype: 7, data1: volumeUpDown),
+                     "other system events (power, auxiliary buttons) never end a dictation")
     }
 
     private static func gesture(_ suite: TestSuite) {

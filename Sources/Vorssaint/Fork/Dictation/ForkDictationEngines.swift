@@ -40,12 +40,17 @@ final class ForkDictationEngines {
 
     /// Which engine a dictation in `language` (BCP 47, empty: automatic)
     /// would use, for the settings page too. An automatic language is the
-    /// person's own here.
+    /// person's own here. Apple in a build that cannot ask for speech
+    /// recognition (a local one) is a failure already, not "ready".
     func kind(for setting: ForkDictationEngineSetting = ForkDictationEngines.setting,
               language: String) -> Result<ForkDictationEngineKind, ForkDictationFailure> {
         let language = ForkDictationEngineChoice.choiceLanguage(language, preferred: Locale.preferredLanguages)
-        return ForkDictationEngineChoice.resolve(setting: setting, parakeetInstalled: isParakeetInstalled,
-                                                 language: language)
+        let kind = ForkDictationEngineChoice.resolve(setting: setting, parakeetInstalled: isParakeetInstalled,
+                                                     language: language)
+        if case .success(.apple) = kind, !ForkAppleSpeechEngine.canAskForSpeechRecognition {
+            return .failure(.speechUnavailableInBuild)
+        }
+        return kind
     }
 
     func engine(for setting: ForkDictationEngineSetting = ForkDictationEngines.setting,

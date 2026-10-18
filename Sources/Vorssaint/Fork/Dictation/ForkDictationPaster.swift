@@ -79,6 +79,14 @@ final class ForkDictationPaster {
         }
     }
 
+    /// Forgets a clipboard read for a dictation that ended without a paste
+    /// (cancelled, nothing heard, failed): a later paste must not give back
+    /// a clipboard older than the person's latest copy.
+    func dropSnapshot() {
+        precondition(Thread.isMainThread)
+        snapshotBox = nil
+    }
+
     func deliver(_ text: String, action: ForkDictationShortcut.Action, target: NSRunningApplication?,
                  addsToHistory: Bool, completion: @escaping (ForkDictationDeliveryOutcome) -> Void) {
         precondition(Thread.isMainThread)
@@ -108,12 +116,11 @@ final class ForkDictationPaster {
                     snapshot = previous.snapshot
                 } else if let prepared, prepared.isRead, changeCount == prepared.changeCount {
                     snapshot = prepared.items
-                } else if prepared == nil {
-                    // Nobody read it ahead (a paste of the last dictation).
+                } else {
+                    // Nobody read it ahead, or the person copied something
+                    // while speaking: that copy is the one to give back.
                     snapshot = Self.snapshot(of: pasteboard)
                 }
-                // Read ahead but copied over since: the copy is small and
-                // recent, but reading it now could cost the deadline. Not given back.
             }
             // Given up at the deadline: never write late.
             guard !isExpired() else { return nil }

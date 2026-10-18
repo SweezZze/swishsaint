@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 Martial
 
+import AppKit
 import ApplicationServices
 import Carbon.HIToolbox
 import CoreGraphics
@@ -161,7 +162,8 @@ final class ForkDictationKeyTap: @unchecked Sendable {
             eventsOfInterest: mask,
             callback: { _, type, event, userInfo in
                 if let userInfo {
-                    Unmanaged<ForkDictationKeyTap>.fromOpaque(userInfo).takeUnretainedValue().pointerEvent(type: type)
+                    Unmanaged<ForkDictationKeyTap>.fromOpaque(userInfo).takeUnretainedValue()
+                        .pointerEvent(type: type, event: event)
                 }
                 return Unmanaged.passUnretained(event)
             },
@@ -252,9 +254,16 @@ final class ForkDictationKeyTap: @unchecked Sendable {
             // Another modifier pressed while a shortcut is held: the start of
             // a key combination, not a dictation. Its release means nothing.
             let pressed = (flags & ~lastFlags) & Self.modifierBits
-            if pressed != 0, otherKeysReported { events.append(.otherKey) }
+            if pressed != 0, reportsNow { events.append(.otherKey) }
         }
         events.forEach(post)
+    }
+
+    /// Lock held. Other keys count while the main thread asks for them, and
+    /// also as soon as a shortcut is down: the main thread may not have
+    /// caught up with the press yet, and a quick ⌘C must still read as one.
+    private var reportsNow: Bool {
+        otherKeysReported || !heldModifiers.isEmpty || !heldCombos.isEmpty
     }
 
     /// Lock held. Shortcuts marked as held whose key is no longer down.
@@ -287,13 +296,23 @@ final class ForkDictationKeyTap: @unchecked Sendable {
     }
 
     /// A click, the wheel or a media key while a shortcut is held: the
-    /// shortcut is part of something else.
-    private func pointerEvent(type: CGEventType) {
+    /// shortcut is part of something else. The wheel's momentum after a
+    /// flick and the other system events (power, eject…) are no gesture of
+    /// the person's.
+    private func pointerEvent(type: CGEventType, event: CGEvent) {
         if type == .tapDisabledByTimeout || type == .tapDisabledByUserInput {
             if let port = lock.withLock({ pointerTap }) { CGEvent.tapEnable(tap: port, enable: true) }
             return
         }
-        guard lock.withLock({ otherKeysReported && !suspended }) else { return }
+        guard lock.withLock({ reportsNow && !suspended }) else { return }
+        if type == .scrollWheel {
+            let momentum = event.getIntegerValueField(.scrollWheelEventMomentumPhase)
+            guard ForkDictationOtherInput.scrollCounts(momentumPhase: momentum) else { return }
+        } else if type == Self.systemDefined {
+            guard let system = NSEvent(cgEvent: event),
+                  ForkDictationOtherInput.systemKeyCounts(subtype: Int(system.subtype.rawValue),
+                                                          data1: system.data1) else { return }
+        }
         post(.otherKey)
     }
 
@@ -309,7 +328,7 @@ final class ForkDictationKeyTap: @unchecked Sendable {
             // While a dictation can be given up, Escape is Escape whatever is
             // held: in hold-to-talk the trigger itself (⌘, ⌥…) is still down.
             if keyCode == Self.escapeKeyCode, escapeSwallowed || flags & Self.significantModifiers == 0 {
-                guard escapeSwallowed || otherKeysReported else { return false }
+                guard escapeSwallowed || reportsNow else { return false }
                 event = .escape
                 guard escapeSwallowed else { return false }
                 consumedKeys.insert(keyCode)
@@ -323,7 +342,7 @@ final class ForkDictationKeyTap: @unchecked Sendable {
                 }
                 return true
             }
-            if otherKeysReported { event = .otherKey }
+            if reportsNow { event = .otherKey }
             return false
         }
         if let event { post(event) }
