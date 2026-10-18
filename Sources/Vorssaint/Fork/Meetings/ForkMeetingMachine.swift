@@ -903,7 +903,10 @@ struct ForkMeetingMachine {
             return []
 
         case .unlocked:
+            // A start from the offer may see the stream's late report of
+            // that lock.
             locked = false
+            unlockedAt = now
             return []
 
         // Nothing records: the session's events have nothing to act on.
