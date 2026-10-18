@@ -142,7 +142,7 @@ final class ForkMeetingPresenter {
         }
         let notice: ForkMeetingNotice = recovered ? .recovered : .saved
         let text = self.text
-        announce(notice.title(text) + ". " + detail)
+        announce(ForkMeetingLiveText.sentences(notice.title(text), detail))
         if !NSApp.isActive && Self.canNotify { Notifier.post(title: notice.title(text), body: detail) }
         removeCard()
         func card(dismiss: @escaping () -> Void) -> ForkMeetingCard {
@@ -280,7 +280,8 @@ final class ForkMeetingPresenter {
 
     private static func title(for action: ForkMeetingFailureAction, text: ForkMeetingStrings) -> String {
         switch action {
-        case .openScreenRecordingPrivacy, .openMicrophonePrivacy, .openStorageSettings: return text.actionOpenSettings
+        case .openScreenRecordingPrivacy, .openMicrophonePrivacy: return text.actionOpenSettings
+        case .openStorageSettings: return text.actionOpenStorage
         case .openMeetingsPage: return text.actionOpenMeetings
         case .openMeetingsFolder: return text.actionShow
         }

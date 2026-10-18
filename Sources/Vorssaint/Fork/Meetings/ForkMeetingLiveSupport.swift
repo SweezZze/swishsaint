@@ -223,7 +223,33 @@ enum ForkMeetingLiveText {
         let rounded = (max(60, seconds.isFinite ? seconds : 0) / 60).rounded() * 60
         let length = formatter.string(from: rounded) ?? ""
         guard let bytes, bytes > 0 else { return length }
-        return length + " · " + ByteCountFormatter.string(fromByteCount: bytes, countStyle: .file)
+        return length + " · " + size(bytes, language: language)
+    }
+
+    /// "410 MB", "410 Mo", "410 МБ": in the app's language, like the length
+    /// beside it, never in the system's. `ByteCountFormatter` has no locale.
+    static func size(_ bytes: Int64, language: AppLanguage) -> String {
+        bytes.formatted(.byteCount(style: .file).locale(language.formattingLocale()))
+    }
+
+    /// Two sentences said one after the other by VoiceOver: a full stop and
+    /// a space, or the ideographic full stop alone after Chinese or Japanese
+    /// (an ASCII "." there reads as a stray dot). Nothing is added after a
+    /// text that already ends its sentence.
+    static func sentences(_ first: String, _ second: String) -> String {
+        guard let last = first.unicodeScalars.last else { return second }
+        let ideographic = isIdeographic(last)
+        if ".。!?！？".unicodeScalars.contains(last) { return first + (ideographic ? "" : " ") + second }
+        return first + (ideographic ? "。" : ". ") + second
+    }
+
+    /// Han, kana and the CJK punctuation: Korean, written with spaces and
+    /// full stops, is not.
+    private static func isIdeographic(_ scalar: Unicode.Scalar) -> Bool {
+        switch scalar.value {
+        case 0x3000...0x30FF, 0x3400...0x4DBF, 0x4E00...0x9FFF, 0xF900...0xFAFF, 0xFF01...0xFF60: return true
+        default: return false
+        }
     }
 }
 

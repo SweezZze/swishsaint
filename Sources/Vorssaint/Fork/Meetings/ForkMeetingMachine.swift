@@ -157,7 +157,7 @@ enum ForkMeetingAnnouncement: Equatable {
         case let .diskLow(minutes): return s.voiceDiskLow(minutes)
         case .displayChanged: return s.voiceDisplayChanged
         case .sourceGone: return s.voiceSourceGone
-        case let .failure(failure): return failure.summary(s) + ". " + failure.remedy(s)
+        case let .failure(failure): return ForkMeetingLiveText.sentences(failure.summary(s), failure.remedy(s))
         }
     }
 }
