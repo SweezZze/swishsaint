@@ -29,8 +29,6 @@ enum ForkDefaultsKey {
     /// The preview stands in for the pointer instead of the screen's center.
     static let previewAtPointer = "fork.gestures.previewAtPointer"
     static let previewSizeStep = "fork.gestures.previewSizeStep"
-    /// Claude's plan limits read from the account by Claude Code.
-    static let claudeUsageEnabled = "fork.claudeUsage.enabled"
     /// Dictation: the key held to speak (`ForkDictationTrigger`), the
     /// language (empty: the person's own) and the start and end sounds.
     static let dictationEnabled = "fork.dictation.enabled"
@@ -65,7 +63,6 @@ enum ForkDefaults {
         ForkDefaultsKey.hapticsEnabled: true,
         ForkDefaultsKey.previewAtPointer: false,
         ForkDefaultsKey.previewSizeStep: ForkTrackpadTuning.previewSize.defaultStep,
-        ForkDefaultsKey.claudeUsageEnabled: false,
         ForkDefaultsKey.dictationEnabled: false,
         ForkDefaultsKey.dictationTrigger: ForkDictationTrigger.fallback.rawValue,
         ForkDefaultsKey.dictationLocale: "",

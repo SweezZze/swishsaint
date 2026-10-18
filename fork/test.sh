@@ -13,7 +13,6 @@ set -euo pipefail
 cd "$FORK_ROOT"
 
 FORK_SOURCES=(
-    Sources/Vorssaint/Fork/ClaudeUsage/ForkClaudeCodeUsage.swift
     Sources/Vorssaint/Fork/Core/ForkBackup.swift
     Sources/Vorssaint/Fork/Core/ForkDefaults.swift
     Sources/Vorssaint/Fork/Core/ForkExtrasStrings.swift

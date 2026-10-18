@@ -20,7 +20,7 @@ enum ForkDefaultsTests {
         // Settings added since the fork never had a pre-fork name.
         let addedSinceFork: Set<String> = [ForkDefaultsKey.cancelEnabled, ForkDefaultsKey.gridModifierKeys,
                                            ForkDefaultsKey.strongerModifierKeys, ForkDefaultsKey.previewAtPointer,
-                                           ForkDefaultsKey.claudeUsageEnabled, ForkDefaultsKey.sizeCycleEnabled,
+                                           ForkDefaultsKey.sizeCycleEnabled,
                                            ForkDefaultsKey.dictationEnabled, ForkDefaultsKey.dictationTrigger,
                                            ForkDefaultsKey.dictationLocale, ForkDefaultsKey.dictationSounds,
                                            ForkDefaultsKey.dictationVocabulary, ForkDefaultsKey.dictationReplacements]

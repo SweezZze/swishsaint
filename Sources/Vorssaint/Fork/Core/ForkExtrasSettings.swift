@@ -144,7 +144,6 @@ private struct ForkFeaturePage: View {
 
     @ObservedObject private var l10n = L10n.shared
     @ObservedObject private var permissions = Permissions.shared
-    @AppStorage(ForkDefaultsKey.claudeUsageEnabled) private var claudeUsageEnabled = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -197,10 +196,6 @@ private struct ForkFeaturePage: View {
                     .buttonStyle(.link)
                     .font(.caption)
                 }
-            }
-        case .claudeUsage:
-            if claudeUsageEnabled {
-                ForkClaudeUsageStatus(text: text)
             }
         case .dictation:
             ForkDictationSettingsSection(title: text.dictationTitle)
@@ -322,29 +317,3 @@ private struct ForkUpdatesSection: View {
     }
 }
 
-/// Where the Claude limits read by Claude Code stand.
-private struct ForkClaudeUsageStatus: View {
-    let text: ForkExtrasStrings
-    @ObservedObject private var usage = ForkClaudeUsage.shared
-    @Environment(\.locale) private var locale
-
-    var body: some View {
-        Section(text.claudeUsageTitle) {
-            TimelineView(.periodic(from: .now, by: 30)) { context in
-                HStack(alignment: .top, spacing: 8) {
-                    if let reading = usage.lastReading {
-                        Image(systemName: "checkmark.circle.fill").foregroundStyle(.green)
-                        Text(text.claudeUsageStatus(min(reading, context.date)
-                            .formatted(.relative(presentation: .named).locale(locale))))
-                    } else {
-                        Image(systemName: "clock").foregroundStyle(.secondary)
-                        Text(text.claudeUsageWaiting)
-                    }
-                    Spacer(minLength: 0)
-                }
-                .font(.callout)
-                .fixedSize(horizontal: false, vertical: true)
-            }
-        }
-    }
-}
