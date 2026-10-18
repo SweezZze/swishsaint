@@ -22,6 +22,20 @@ struct ForkTests {
             ("fork-dictation-history-search", { ForkDictationHistorySearchTests.run(suite) }),
             ("fork-parakeet", { ForkParakeetTests.run(suite) }),
             ("fork-parakeet-store", { ForkParakeetStoreTests.run(suite) }),
+            ("fork-meetings-machine", { ForkMeetingMachineTests.run(suite) }),
+            ("fork-meetings-quality", { ForkMeetingQualityTests.run(suite) }),
+            ("fork-meetings-folder", { ForkMeetingFolderTests.run(suite) }),
+            ("fork-meetings-sidecar", { ForkMeetingSidecarTests.run(suite) }),
+            ("fork-meetings-recovery", { ForkMeetingRecoveryTests.run(suite) }),
+            ("fork-meetings-strings", { ForkMeetingStringsTests.run(suite) }),
+            ("fork-meetings-settings", { ForkMeetingSettingsTests.run(suite) }),
+            ("fork-meetings-live", { ForkMeetingLiveTests.run(suite) }),
+            ("fork-meetings-capture", { ForkMeetingCaptureTests.run(suite) }),
+            ("fork-meetings-finalize", { ForkMeetingFinalizeTests.run(suite) }),
+            ("fork-meetings-store", { ForkMeetingStoreTests.run(suite) }),
+            ("fork-meetings-behavior", { ForkMeetingBehaviorTests.run(suite) }),
+            ("fork-meetings-service", { ForkMeetingServiceTests.run(suite) }),
+            ("fork-meetings-fixes-g1", { ForkMeetingFixesG1Tests.run(suite) }),
         ]
         var selected = Set<String>()
         var listOnly = false

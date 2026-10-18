@@ -18,6 +18,7 @@ enum ForkBootstrap {
         DispatchQueue.main.async {
             ForkGestures.sync()
             ForkDictationService.startFollowingPermissions()
+            ForkMeetingService.startFollowingPermissions()
             accessibilityObserver = Permissions.shared.$accessibility
                 .removeDuplicates()
                 .dropFirst()

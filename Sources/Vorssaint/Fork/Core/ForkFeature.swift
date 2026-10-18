@@ -12,6 +12,7 @@ import SwiftUI
 enum ForkFeature: String, CaseIterable, Identifiable {
     case trackpadGestures
     case dictation
+    case meetings
 
     var id: String { rawValue }
 
@@ -20,6 +21,7 @@ enum ForkFeature: String, CaseIterable, Identifiable {
         switch self {
         case .trackpadGestures: return ForkDefaultsKey.gesturesEnabled
         case .dictation: return ForkDefaultsKey.dictationEnabled
+        case .meetings: return ForkDefaultsKey.meetingsEnabled
         }
     }
 
@@ -27,6 +29,7 @@ enum ForkFeature: String, CaseIterable, Identifiable {
         switch self {
         case .trackpadGestures: return "hand.draw"
         case .dictation: return "waveform"
+        case .meetings: return "record.circle"
         }
     }
 
@@ -35,6 +38,7 @@ enum ForkFeature: String, CaseIterable, Identifiable {
         switch self {
         case .trackpadGestures: return .blue
         case .dictation: return .purple
+        case .meetings: return .red
         }
     }
 
@@ -43,6 +47,25 @@ enum ForkFeature: String, CaseIterable, Identifiable {
     var needsAccessibility: Bool {
         switch self {
         case .trackpadGestures, .dictation: return true
+        case .meetings: return false
+        }
+    }
+
+    /// Whether its page asks for Screen Recording at the top while it is
+    /// missing: nothing can be filmed without it.
+    var needsScreenRecording: Bool {
+        switch self {
+        case .meetings: return true
+        case .trackpadGestures, .dictation: return false
+        }
+    }
+
+    /// Whether its page asks for the microphone at the top while it is
+    /// missing. Dictation asks on its own page, among its permissions.
+    var needsMicrophone: Bool {
+        switch self {
+        case .meetings: return true
+        case .trackpadGestures, .dictation: return false
         }
     }
 
@@ -50,6 +73,7 @@ enum ForkFeature: String, CaseIterable, Identifiable {
         switch self {
         case .trackpadGestures: return text.gesturesTitle
         case .dictation: return text.dictationTitle
+        case .meetings: return text.meetingsTitle
         }
     }
 
@@ -57,6 +81,7 @@ enum ForkFeature: String, CaseIterable, Identifiable {
         switch self {
         case .trackpadGestures: return text.gesturesSummary
         case .dictation: return text.dictationSummary
+        case .meetings: return text.meetingsSummary
         }
     }
 
@@ -67,6 +92,7 @@ enum ForkFeature: String, CaseIterable, Identifiable {
         switch self {
         case .trackpadGestures: ForkGestures.sync()
         case .dictation: ForkDictationService.sync()
+        case .meetings: ForkMeetingService.sync()
         }
     }
 }

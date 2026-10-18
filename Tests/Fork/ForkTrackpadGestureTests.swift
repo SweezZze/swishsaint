@@ -2643,8 +2643,9 @@ enum ForkTrackpadGestureTests {
                      "the Extras page lists every fork feature with its switch, and each opens its own page")
         let directory = sourceCode("Sources/Vorssaint/UI/Settings/SettingsDirectory.swift")
         suite.expect(directory.contains("ForkSettingsPages.item(.trackpadGestures, language: language), // FORK(settings4)")
-                        && directory.contains("ForkSettingsPages.item(.dictation, language: language), // FORK(settings4)"),
-                     "the gestures and dictation pages have their row in the Settings sidebar (seam settings4)")
+                        && directory.contains("ForkSettingsPages.item(.dictation, language: language), // FORK(settings4)")
+                        && directory.contains("ForkSettingsPages.item(.meetings, language: language), // FORK(settings4)"),
+                     "the gestures, dictation and meetings pages have their row in the Settings sidebar (seam settings4)")
 
         let gestures = sourceCode("Sources/Vorssaint/Fork/Gestures/ForkGestures.swift")
         let sync = gestures.components(separatedBy: "static func sync()").dropFirst().first?
