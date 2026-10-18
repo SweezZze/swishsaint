@@ -20,7 +20,7 @@ enum ForkMeetingTitleVerdict: Equatable {
 /// names its own; a new provider adds a case and its function.
 enum ForkMeetingTitleRuleSet: Equatable {
     /// Google Meet in a browser or its web app. Only ever applied to a
-    /// browser's windows: elsewhere "Meet – …" means nothing (bran's lesson).
+    /// browser's windows: elsewhere "Meet – …" means nothing.
     case googleMeet
 }
 
@@ -28,7 +28,7 @@ enum ForkMeetingTitleRuleSet: Equatable {
 /// offers a meeting that does not exist and makes the detection look broken;
 /// a missed title still leaves the microphone and the Record button.
 ///
-/// The Google Meet rules come from bran's `MeetTitleMatcher` (a code
+/// The Google Meet rules come from an earlier recorder's matcher (a code
 /// `abc-defg-hij`, "Meet – x", "x – Google Meet"), with what the S2 spike
 /// read from a real Chrome added: the page titles around a meeting are
 /// refused (home, "Untitled" while loading, Google Workspace's page, the

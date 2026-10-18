@@ -160,10 +160,10 @@ enum ForkMeetingOfferTests {
             }
         }
         suite.expect(missing.isEmpty, "every language names the window, the sound and the microphone: \(missing)")
-        let wrapped = line(microphone: .named("AirPods de Martial"))
-        suite.expect(wrapped.hasSuffix("micro\u{00A0}:\u{00A0}AirPods\u{00A0}de\u{00A0}Martial")
+        let wrapped = line(microphone: .named("AirPods d’Alice"))
+        suite.expect(wrapped.hasSuffix("micro\u{00A0}:\u{00A0}AirPods\u{00A0}d’Alice")
                         && wrapped.components(separatedBy: " ").count == 5,
-                     "the line wraps only between its parts: never inside « micro : AirPods de Martial »")
+                     "the line wraps only between its parts: never inside « micro : AirPods d’Alice »")
         let japanese = line(microphone: .named("AirPods"), ForkMeetingStrings.strings(.ja))
         suite.expect(japanese.contains("マ\u{2060}イ\u{2060}ク\u{2060}：\u{2060}AirPods"),
                      "nor after a full-width colon, where Japanese would break before the name")

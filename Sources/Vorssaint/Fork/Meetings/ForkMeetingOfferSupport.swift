@@ -151,7 +151,7 @@ enum ForkMeetingOfferText {
         return label + "\u{2060}" + part[part.index(after: colon)...]
     }
 
-    /// A short name kept on one line ("AirPods de Martial"); a long one may
+    /// A short name kept on one line ("AirPods d’Alice"); a long one may
     /// still wrap rather than overflow.
     private static func unbroken(_ value: String) -> String {
         value.count <= 24 ? value.replacingOccurrences(of: " ", with: "\u{00A0}") : value

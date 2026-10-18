@@ -410,7 +410,7 @@ enum ForkMeetingDetectionTests {
                      "a newer meeting takes the place of the offer: one offer at a time, for the most recent")
         var renamed = offered()
         var titled = candidate(silenced: true)
-        titled.calendarTitle = "Point Opah"
+        titled.calendarTitle = "Point hebdo"
         suite.expect(renamed.handle(.candidates([titled], request()), now: at(3)).first?.isShowOffer == true,
                      "an offer whose meeting changed shows again")
         var off = offered()
