@@ -36,6 +36,10 @@ enum ForkMeetingDetectionTests {
         invariants(suite)
         pipeline(suite)
         texts(suite)
+        countdownOverTheRecording(suite)
+        offerRecordsNothing(suite)
+        alwaysAsRecorded(suite)
+        serviceAroundTheDetection(suite)
     }
 
     private static func at(_ seconds: TimeInterval) -> Date { t0.addingTimeInterval(seconds) }
@@ -601,6 +605,160 @@ enum ForkMeetingDetectionTests {
         suite.expect(ForkMeetingNotice.neverOffered("Meet").detail(french) == "Réglable dans Réunions"
                         && ForkMeetingNotice.neverOffered("Meet").title(french) == "Plus proposé pour Meet",
                      "after Never, the notice says where to change it")
+    }
+
+    // MARK: - With the recorder's events
+
+    /// During the countdown the recording is still a recording: what the
+    /// engine reports acts as it would, and the countdown stays.
+    private static func countdownOverTheRecording(_ suite: TestSuite) {
+        func counting() -> Machine {
+            var machine = recording()
+            machine.handle(.endProbable(meetA, countdown: 15), now: at(600))
+            return machine
+        }
+        var heard = counting()
+        suite.expect(heard.handle(.soundHeard(token1, .all), now: at(601)) == [.writeSidecar(folder, Patch(systemAudio: .all))]
+                        && isEndingSoon(heard),
+                     "during the countdown, the meeting track hearing the whole Mac is still written")
+        suite.expect(heard.handle(.soundHeard(token2, .all), now: at(602)).isEmpty,
+                     "an old session's word still changes nothing")
+
+        var gone = counting()
+        suite.expect(gone.handle(.sourceGone(token1), now: at(601)) == [.notice(.sourceGone), .announce(.sourceGone)]
+                        && isEndingSoon(gone),
+                     "the filmed app quitting during the countdown is said, and stops nothing by itself")
+        suite.expect(gone.handle(.tick, now: at(615)).contains(.stopCapture(token1)),
+                     "the countdown still ends the recording")
+
+        var switched = counting()
+        suite.expect(switched.handle(.toggleTarget, now: at(601)) == [.switchTarget(.display)] && isEndingSoon(switched),
+                     "⧉ during the countdown asks for the display")
+        let took = switched.handle(.targetSwitched(token1, .display), now: at(602))
+        suite.expect(patches(took).map { $0.gap?.kind } == [.targetSwitch] && switched.activeSession?.target == .display
+                        && isEndingSoon(switched),
+                     "and the switch, once it took, is noted without losing the countdown")
+        suite.expect(switched.handle(.displayChanged, now: at(603))
+                        == [.switchTarget(.display), .notice(.displayChanged), .announce(.displayChanged)],
+                     "the display filmed then follows its window like any recording")
+        suite.expect(switched.handle(.tick, now: at(615)).first == .hideEndingSoon,
+                     "and the countdown ends where it was set")
+
+        var lost = counting()
+        let soundLost = lost.handle(.soundLost(token1), now: at(601))
+        suite.expect(patches(soundLost).map { $0.gap?.kind } == [.soundLost] && soundLost.contains(.notice(.soundLost))
+                        && isEndingSoon(lost),
+                     "the meeting sound lost during the countdown is noted and said")
+
+        var silent = counting()
+        suite.expect(silent.handle(.microphoneSilent, now: at(601)) == [.notice(.microphoneSilent), .announce(.microphoneSilent)]
+                        && silent.handle(.microphoneSoundBack, now: at(602)).isEmpty
+                        && silent.handle(.microphoneSilent, now: at(603)) == [.notice(.microphoneSilent),
+                                                                               .announce(.microphoneSilent)]
+                        && isEndingSoon(silent),
+                     "the microphone's silence over, the next one is said again, during the countdown too")
+
+        var unlocked = counting()
+        unlocked.handle(.locked, now: at(601))
+        unlocked.handle(.unlocked, now: at(602))
+        suite.expect(unlocked.handle(.captureFailed(token1, .streamStopped), now: at(603)) == [.restartStream]
+                        && isEndingSoon(unlocked),
+                     "a stream stopped by a lock reported after the unlock restarts, the countdown kept")
+
+        var failed = counting()
+        let stopped = failed.handle(.captureFailed(token1, .streamStopped), now: at(603))
+        suite.expect(stopped.first == .hideEndingSoon && patches(stopped).first?.stopReason == .captureStopped,
+                     "a stream that really died stops the recording, the countdown with it")
+    }
+
+    /// An offer records nothing: the engine's words have no session to act
+    /// on, and change neither the offer nor what it will start.
+    private static func offerRecordsNothing(_ suite: TestSuite) {
+        var machine = offered()
+        let before = machine.phase
+        let events: [Machine.Event] = [.soundHeard(token1, .all), .sourceGone(token1), .toggleTarget,
+                                       .targetSwitched(token1, .display), .soundLost(token1), .microphoneSoundBack,
+                                       .microphoneSilent, .displayChanged, .diskLow(freeBytes: 1)]
+        suite.expect(events.allSatisfy { machine.handle($0, now: at(1)).isEmpty } && machine.phase == before,
+                     "the recorder's events during an offer do nothing")
+
+        var unlocked = offered()
+        unlocked.handle(.locked, now: at(1))
+        unlocked.handle(.unlocked, now: at(2))
+        unlocked.handle(.accept(request()), now: at(2.5))
+        unlocked.handle(.captureStarted(token1, folder: folder), now: at(3))
+        suite.expect(unlocked.handle(.captureFailed(token1, .streamStopped), now: at(3.5)) == [.restartStream]
+                        && isRecording(unlocked),
+                     "an unlock while the offer showed still covers the stream's late report once it records")
+
+        var lockedOffer = offered()
+        lockedOffer.handle(.locked, now: at(1))
+        lockedOffer.handle(.accept(request()), now: at(2))
+        lockedOffer.handle(.captureStarted(token1, folder: folder), now: at(3))
+        suite.expect(lockedOffer.handle(.unlocked, now: at(13)).map { patches([$0]).first?.gap?.kind } == [.screenLocked],
+                     "a lock begun during the offer is a gap of the recording it starts")
+    }
+
+    /// "Always" starts like any recording: what the engine really films,
+    /// the file's real zero, and the microphone refused said in one go.
+    private static func alwaysAsRecorded(_ suite: TestSuite) {
+        var machine = Machine()
+        machine.handle(.candidates([candidate(policy: .always)], request()), now: t0)
+        let effects = machine.handle(.captureStarted(token1, folder: folder, target: .display, microphone: "AirPods",
+                                                     systemAudio: .all, startedAt: at(0.4)), now: at(1))
+        suite.expect(patches(effects) == [Patch(microphone: "AirPods", target: .display, systemAudio: .all)]
+                        && machine.activeSession?.startedAt == at(0.4) && machine.activeSession?.target == .display
+                        && effects.contains(.showUndo(until: at(6))),
+                     "a start Always made notes what really records, from the file's zero, with its Cancel")
+
+        var denied = Machine()
+        let facts = ForkMeetingStartFacts(freeBytes: 50_000_000_000, screenRecordingAllowed: true,
+                                          microphoneAllowed: false, officialRecorderBusy: false)
+        denied.handle(.candidates([candidate(policy: .always)], request(facts)), now: t0)
+        let started = denied.handle(.captureStarted(token1, folder: folder), now: at(1))
+        suite.expect(started.contains(.notice(.failure(.microphoneDenied)))
+                        && started.contains(.announce(.autoStarted(seconds: 5, withoutMicrophone: true)))
+                        && !started.contains(.announce(.startedWithoutMicrophone)),
+                     "without the microphone, Always says so with its Cancel, in one announcement")
+        let languages = AppLanguage.allCases
+        suite.expect(languages.map(ForkMeetingStrings.strings).allSatisfy { s in
+                        let said = ForkMeetingAnnouncement.autoStarted(seconds: 5, withoutMicrophone: true).text(s)
+                        return said.hasPrefix(s.voiceAutoStarted(seconds: 5))
+                            && said.contains(ForkMeetingFailure.microphoneDenied.remedy(s))
+                     },
+                     "that announcement is one text, its sentences joined in each language")
+
+        var gone = recording(.always, candidate(policy: .always))
+        suite.expect(gone.handle(.sourceGone(token1), now: at(30)) == [.notice(.sourceGone), .announce(.sourceGone)]
+                        && isRecording(gone),
+                     "a detected meeting's filmed app quitting stops nothing: its end is the detection's")
+        var manual = recording(.manual)
+        manual.handle(.sourceGone(token1), now: at(30))
+        suite.expect(manual.handle(.endProbable(meetA, countdown: 15), now: at(31)).isEmpty
+                        && manual.handle(.tick, now: at(100)).isEmpty && isRecording(manual),
+                     "nor does a recording by hand of the offered meeting end when its app quits and its meeting ends")
+    }
+
+    /// The service's small decisions know the two new phases.
+    private static func serviceAroundTheDetection(_ suite: TestSuite) {
+        typealias Support = ForkMeetingServiceSupport
+        let offering = offered().phase
+        var counting = recording()
+        counting.handle(.endProbable(meetA, countdown: 15), now: at(600))
+        suite.expect(Support.press(phase: offering, preparingStart: false, canStart: true) == .start
+                        && Support.press(phase: offering, preparingStart: false, canStart: false) == .ignore
+                        && Support.press(phase: counting.phase, preparingStart: false, canStart: false) == .stop,
+                     "the shortcut records the offered meeting by hand, and stops during the countdown")
+        suite.expect(Support.awake(phase: offering) == .free && Support.awake(phase: counting.phase) == .display,
+                     "an offer keeps nothing awake; the countdown, still recording, keeps the display on")
+        suite.expect(ForkMeetingPendingVerdicts.route(token1, phase: counting.phase) == .now
+                        && ForkMeetingPendingVerdicts.route(token2, phase: counting.phase) == .drop
+                        && ForkMeetingPendingVerdicts.route(token1, phase: offering) == .drop,
+                     "the system audio verdict is said during the countdown, and dropped with only an offer")
+        suite.expect(Support.canStart(wanted: true, machineBusy: offered().isBusy, preparingStart: false, terminating: false)
+                        && !Support.canStart(wanted: true, machineBusy: counting.isBusy, preparingStart: false,
+                                             terminating: false),
+                     "a start may be asked over an offer, never over a countdown")
     }
 }
 
