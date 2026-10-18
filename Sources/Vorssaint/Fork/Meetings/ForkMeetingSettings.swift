@@ -253,27 +253,33 @@ private struct ForkMeetingPermissionsSection: View {
 }
 
 /// The permission to record other apps' sound. macOS has no call that reads
-/// it: the row says so, opens the right pane, and turns orange once a
-/// recording found that sound silent.
+/// it: the row says what the last recording found (green once a tap heard
+/// sound, orange once one found it silent, unknown before), and opens the
+/// right pane.
 struct ForkMeetingSystemAudioRow: View {
     let text: ForkMeetingStrings
 
     @ObservedObject private var l10n = L10n.shared
     @ObservedObject private var service = ForkMeetingService.shared
+    /// What the last recording found, absent until one judged.
+    @AppStorage(ForkDefaultsKey.meetingsSystemAudioVerified) private var verified: Bool?
 
-    private var failing: Bool { service.lastFailure == .systemAudioUnavailable }
+    private var permission: ForkMeetingServiceSupport.SystemAudioPermission {
+        ForkMeetingServiceSupport.systemAudioPermission(verified: verified,
+                                                        failing: service.lastFailure == .systemAudioUnavailable)
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 8) {
-                Image(systemName: failing ? "exclamationmark.circle.fill" : "questionmark.circle")
-                    .foregroundStyle(failing ? Color.orange : Color.secondary)
+                Image(systemName: symbol)
+                    .foregroundStyle(tint)
                     .accessibilityHidden(true)
                 Text(text.systemAudioName)
                 Spacer()
-                Text(failing ? l10n.s.permissionMissing : text.systemAudioUnknown)
+                Text(state)
                     .font(.caption)
-                    .foregroundStyle(failing ? Color.orange : Color.secondary)
+                    .foregroundStyle(tint)
             }
             .accessibilityElement(children: .combine)
             Text(text.systemAudioCaption)
@@ -286,6 +292,30 @@ struct ForkMeetingSystemAudioRow: View {
                 .fixedSize(horizontal: false, vertical: true)
             Button(text.systemAudioCheck) { Permissions.shared.openAudioCaptureSettings() }
                 .controlSize(.small)
+        }
+    }
+
+    private var symbol: String {
+        switch permission {
+        case .allowed: return "checkmark.circle.fill"
+        case .missing: return "exclamationmark.circle.fill"
+        case .unknown: return "questionmark.circle"
+        }
+    }
+
+    private var tint: Color {
+        switch permission {
+        case .allowed: return .green
+        case .missing: return .orange
+        case .unknown: return .secondary
+        }
+    }
+
+    private var state: String {
+        switch permission {
+        case .allowed: return l10n.s.permissionGranted
+        case .missing: return l10n.s.permissionMissing
+        case .unknown: return text.systemAudioUnknown
         }
     }
 }
@@ -434,7 +464,8 @@ private struct ForkMeetingCaptureSection: View {
 
     private var soundCaption: String? {
         switch ForkMeetingSystemAudio(stored: sound) {
-        case .app: return text.soundAppCaption
+        // With no app to hear, nothing stands in for it: said here.
+        case .app: return text.soundAppCaption + "\n" + text.soundAppNoAppCaption
         case .all:
             // No tap before macOS 14.4: a filmed window gives its app alone.
             if #available(macOS 14.4, *) { return text.soundAllCaption }

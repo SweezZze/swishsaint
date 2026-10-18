@@ -160,6 +160,9 @@ struct ForkMeetingSidecar: Equatable {
         /// display (`seconds` 0). `capture.target` is the start's; each switch
         /// flips it.
         case targetSwitch
+        /// The meeting app's sound was lost from here on (`seconds` 0): its
+        /// tap lost its reader, and nothing else hears that app alone.
+        case soundLost
     }
 
     /// `at` and every time below are seconds of recording, pauses excluded;

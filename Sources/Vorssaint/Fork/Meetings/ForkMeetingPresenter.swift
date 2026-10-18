@@ -153,10 +153,14 @@ final class ForkMeetingPresenter {
         let filmed = ForkMeetingServiceSupport.filmed(target: context.target, appName: context.appName,
                                                       noWindowToFilm: context.noWindowToFilm, strings: text)
         let announcement = context.announcement
+        // No app to hear: said on the card, never left for the person to find
+        // out from a silent track.
+        let noApp = context.trackSound == .noApp
         let make = { [weak self] (dismiss: @escaping () -> Void) -> ForkMeetingCard in
             var card = self?.card(for: notice, detail: filmed, text: text, dismiss: dismiss)
                 ?? ForkMeetingCard(symbol: ForkMeetingIsland.symbol(for: notice), tint: .accentColor,
                                    title: notice.title(text))
+            if noApp { card.lines.append(text.soundNoAppDetail) }
             if let announcement {
                 card.lines.append(text.consentRemind)
                 card.actions.append(ForkMeetingCard.Action(title: text.copyAnnouncement, prominent: notice == .started) {
@@ -167,11 +171,12 @@ final class ForkMeetingPresenter {
             }
             return card
         }
-        guard announcement != nil || hasButton(notice) else {
+        guard announcement != nil || hasButton(notice) || noApp else {
             lastShown = (notice, show(notice, detail: filmed))
             return
         }
-        lastShown = (notice, present(make, height: Self.cardHeight(make({}).lines), hold: Self.cardHold))
+        lastShown = (notice, present(make, height: ForkMeetingIsland.height(of: make({}), minimum: Self.savedCardHeight),
+                                     hold: Self.cardHold))
     }
 
     /// "Meeting saved · 52 min · 410 MB [Show in Finder]": a card in the
@@ -281,7 +286,8 @@ final class ForkMeetingPresenter {
                     ?? ForkMeetingCard(symbol: ForkMeetingIsland.symbol(for: notice), tint: .orange,
                                        title: notice.title(text))
             }
-            return present(make, height: Self.cardHeight(make({}).lines), hold: Self.hold(for: notice))
+            return present(make, height: ForkMeetingIsland.height(of: make({}), minimum: Self.savedCardHeight),
+                           hold: Self.hold(for: notice))
         }
         if ForkMeetingIsland.show(notice, detail: detail, text: text) {
             // The island has the newest word: an older one in the bubble
@@ -350,12 +356,6 @@ final class ForkMeetingPresenter {
         return bubble.show(card, on: screen, hold: hold)
     }
 
-    /// The island's card height for its lines: a remedy takes about two.
-    private static func cardHeight(_ lines: [String]) -> CGFloat {
-        let rows = lines.reduce(0) { $0 + ($1.count > 70 ? 2 : 1) }
-        return max(savedCardHeight, 50 + CGFloat(rows) * 15)
-    }
-
     /// A transition passes quickly; a failure stays as long as the island
     /// would keep it, so its remedy can be read.
     private static func hold(for notice: ForkMeetingNotice) -> TimeInterval {
@@ -374,7 +374,7 @@ final class ForkMeetingPresenter {
             tint = Color(nsColor: .systemRed)
         case .saved, .recovered:
             tint = .green
-        case .microphoneSilent, .diskLow, .sourceGone:
+        case .microphoneSilent, .diskLow, .sourceGone, .soundLost:
             tint = .orange
         case let .failure(failure):
             tint = .orange

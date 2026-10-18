@@ -86,7 +86,7 @@ enum ForkMeetingStoreTests {
                      "every write of meeting.json goes through the store's one serial queue")
         let scan = store.components(separatedBy: "private func recover(root: URL").dropFirst().first?
             .components(separatedBy: "\n    }\n").first ?? ""
-        let claimed = scan.range(of: "guard claim(folder) else { continue }")
+        let claimed = scan.range(of: "guard claimForRecovery(folder) else { continue }")
         let probed = scan.range(of: "await recover(folder")
         suite.expect(scan.contains("!isMadeHere(folder)") && claimed != nil && probed != nil
                         && claimed!.upperBound < probed!.lowerBound,
@@ -112,8 +112,10 @@ enum ForkMeetingStoreTests {
         suite.expect(swap != nil && recheck != nil && recheck!.lowerBound > guarded!.lowerBound
                         && recheck!.upperBound < swap!.lowerBound,
                      "a meeting started during the download still holds the app from quitting")
+        let extras = ForkMeetingFinalizeTests.source("Sources/Vorssaint/Fork/Core/ForkExtrasSettings.swift")
         suite.expect(service.contains("forName: ForkMeetingActivity.didBecomeIdle")
-                        && service.contains("ForkUpdateStrings.current.afterMeeting"),
-                     "the update waits for the meeting's end, and says so")
+                        && service.contains("state = installs ? .waitingForMeeting : .available(candidate)")
+                        && extras.contains("case .waitingForMeeting:\n            row(text.afterMeeting, system: \"clock\", tint: .secondary)"),
+                     "the update waits for the meeting's end, and says so as a wait, never as a failure")
     }
 }

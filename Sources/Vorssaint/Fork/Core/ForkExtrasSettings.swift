@@ -186,6 +186,8 @@ private struct ForkUpdatesSection: View {
             row(text.installing, system: "gearshape.2.fill", tint: .secondary)
         case let .failed(message):
             row(message, system: "exclamationmark.triangle.fill", tint: .orange)
+        case .waitingForMeeting:
+            row(text.afterMeeting, system: "clock", tint: .secondary)
         }
     }
 

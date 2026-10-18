@@ -221,17 +221,30 @@ enum ForkMeetingSoundSource: Equatable {
     /// the same tracks in the same order.
     case none
 
-    /// `tapAvailable` is false before macOS 14.4: the stream then, which for
-    /// a filmed window is only that window's app. A window of this app, or
-    /// no window, has no app to hear: the stream too.
-    static func choose(_ setting: ForkMeetingSystemAudio, appPID: Int32?, ownPID: Int32,
+    /// `tapAvailable` is false before macOS 14.4. The app's sound asked for
+    /// is never the whole Mac in its place: without its tap, the stream only
+    /// when it carries that app alone (a window of another app filmed);
+    /// otherwise nothing (no window, a display filmed before 14.4, a window
+    /// of this app), and the meeting track stays silent, as said at the start.
+    static func choose(_ setting: ForkMeetingSystemAudio, appPID: Int32?, ownPID: Int32, filmsWindow: Bool,
                        tapAvailable: Bool) -> ForkMeetingSoundSource {
         switch setting {
         case .off: return .none
         case .all: return tapAvailable ? .macTap : .stream
         case .app:
-            guard tapAvailable, let appPID, appPID > 0, appPID != ownPID else { return .stream }
-            return .appTap(pid: appPID)
+            if tapAvailable, let appPID, appPID > 0, appPID != ownPID { return .appTap(pid: appPID) }
+            return filmsWindow && appPID != ownPID ? .stream : .none
+        }
+    }
+
+    /// What `self` becomes when the audio system refused its tap: the same
+    /// rule, the Mac's tap giving way to the stream (the whole Mac too), the
+    /// app's only to a stream that carries that app alone.
+    func refused(filmsWindow: Bool) -> ForkMeetingSoundSource {
+        switch self {
+        case .appTap: return filmsWindow ? .stream : .none
+        case .macTap: return .stream
+        case .stream, .none: return self
         }
     }
 
@@ -283,9 +296,11 @@ extension ForkMeetingSystemAudio {
 ///   stream (the whole Mac) for the rest of the recording, said once;
 /// - no witness could be made: nothing can be judged, the tap keeps the track.
 ///
-/// A tap that loses its reader (a device change) keeps the track too: it
-/// comes back when the tap rebuilds, and the writer fills the hole with
-/// silence meanwhile.
+/// A tap that loses its reader (a device change it could not follow) hears
+/// nothing more for the rest of the recording: the Mac's gives the track to
+/// the stream, the whole Mac too; the app's gives it to the stream only
+/// while that carries the app alone (a window filmed), and leaves it silent
+/// on a display, said once (`tapReaderLost`). The writer fills the silence.
 ///
 /// **The whole Mac's tap** (`tapFirst` false) judges itself: the stream,
 /// which hears the whole Mac or the filmed app, writes the track until the
@@ -308,19 +323,50 @@ struct ForkMeetingSoundArbiter: Equatable {
     private(set) var writesTap: Bool
     private(set) var permission: Permission = .unknown
     private let hasTap: Bool
+    private let tapFirst: Bool
+    /// The tap lost its reader: it will not hear again this recording.
+    private(set) var readerLost = false
     private var hasWitness: Bool
     private var unheard: Double = 0
+    /// The stream stands for the app's sound: it may write the track only
+    /// while it carries that app alone (a window filmed), never the whole
+    /// Mac of a display.
+    private(set) var streamHearsAppOnly: Bool
 
     /// `hasTap`: the tap exists. `hasWitness`: something judges it (a
     /// witness, or the tap itself). `tapFirst`: the tap writes the track
     /// before it is proved (the app's tap), or only after (the Mac's).
-    init(hasTap: Bool, hasWitness: Bool, tapFirst: Bool = true) {
+    /// `appOnly`: the app's sound was asked for and the stream stands for it.
+    init(hasTap: Bool, hasWitness: Bool, tapFirst: Bool = true, appOnly: Bool = false) {
         self.hasTap = hasTap
+        self.tapFirst = tapFirst
         self.hasWitness = hasTap && hasWitness
         writesTap = hasTap && tapFirst
+        streamHearsAppOnly = appOnly
+    }
+
+    /// The tap lost its reader. Nothing is judged any more; the stream
+    /// takes the track, and for the app's tap only while it carries that
+    /// app alone. A tap already let go for a missing permission changes
+    /// nothing. True once, when it was the one writing the track.
+    mutating func tapReaderLost() -> Bool {
+        guard hasTap, !readerLost else { return false }
+        readerLost = true
+        hasWitness = false
+        unheard = 0
+        guard writesTap else { return false }
+        writesTap = false
+        if tapFirst { streamHearsAppOnly = true }
+        return true
     }
 
     var writesStream: Bool { !writesTap }
+
+    /// Whether the stream's sound goes in the track now, the picture
+    /// following a window (`filmsWindow`) or a display.
+    func streamWrites(filmsWindow: Bool) -> Bool {
+        !writesTap && (filmsWindow || !streamHearsAppOnly)
+    }
 
     /// Whether the witness still has something to settle; once false it
     /// can be stopped.
@@ -364,6 +410,55 @@ struct ForkMeetingSoundArbiter: Equatable {
         permission = .allowed
         writesTap = hasTap
         return true
+    }
+}
+
+// MARK: Fixes G1
+
+/// What a stream films, as a switch sees it: a window, followed wherever it
+/// goes, or one display. "The display holding the window" is not enough: the
+/// window may have moved to another one since.
+enum ForkMeetingFilmed: Equatable {
+    case window(UInt32)
+    case display(UInt32)
+
+    /// A switch to `next` while `current` is filmed leaves the stream as it
+    /// is only when it would film the very same thing.
+    static func switchChangesNothing(current: ForkMeetingFilmed?, next: ForkMeetingFilmed) -> Bool {
+        current == next
+    }
+}
+
+extension ForkMeetingCaptureSupport {
+    /// A display filmed while this app was not listed leaves out only the
+    /// windows of ours it knew: it looks again after each of these delays,
+    /// growing to `exclusionRetryCap`, for as long as it films that display,
+    /// never giving up (a window of ours may come at any time).
+    static let exclusionRetryCap: TimeInterval = 10
+
+    static func exclusionRetryDelay(tries: Int) -> TimeInterval {
+        min(exclusionRetryCap, 1 + Double(max(0, tries)))
+    }
+}
+
+/// What the meeting track holds, as the start's notice and the pill say it.
+enum ForkMeetingTrackSound: Equatable {
+    /// What was asked for (nothing, when the sound is off).
+    case heard
+    /// The app's sound was asked for and there is no app to hear (no window
+    /// in front, a display filmed before macOS 14.4): silence, never the
+    /// whole Mac in its place.
+    case noApp
+    /// The app's tap lost its reader and nothing else hears that app alone:
+    /// silence from then on, said once.
+    case lost
+
+    static func of(setting: ForkMeetingSystemAudio, sound: ForkMeetingSoundSource,
+                   arbiter: ForkMeetingSoundArbiter, filmsWindow: Bool) -> ForkMeetingTrackSound {
+        guard setting == .app else { return .heard }
+        if sound == .none { return .noApp }
+        if arbiter.writesTap || arbiter.streamWrites(filmsWindow: filmsWindow) { return .heard }
+        return arbiter.readerLost ? .lost : .noApp
     }
 }
 

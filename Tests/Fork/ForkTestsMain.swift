@@ -33,6 +33,7 @@ struct ForkTests {
             ("fork-meetings-store", { ForkMeetingStoreTests.run(suite) }),
             ("fork-meetings-behavior", { ForkMeetingBehaviorTests.run(suite) }),
             ("fork-meetings-service", { ForkMeetingServiceTests.run(suite) }),
+            ("fork-meetings-fixes-g1", { ForkMeetingFixesG1Tests.run(suite) }),
         ]
         var selected = Set<String>()
         var listOnly = false

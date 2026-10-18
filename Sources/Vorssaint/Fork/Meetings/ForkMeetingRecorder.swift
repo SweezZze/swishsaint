@@ -29,6 +29,11 @@ struct ForkMeetingRecorderStart: Equatable {
     /// What the meeting track hears at the start (`sound`, and for the
     /// stream what the picture follows): what `meeting.json` must say.
     var heard: ForkMeetingSystemAudio
+
+    // MARK: Fixes G1
+
+    /// The app's sound asked for with no app to hear: what the start says.
+    var trackSound: ForkMeetingTrackSound = .heard
 }
 
 /// A process tap, as the recorder uses it: the official
@@ -110,8 +115,12 @@ final class ForkMeetingRecorder: @unchecked Sendable {
     /// warning may go). Also kept in `fork.meetings.systemAudioVerified`.
     var onSystemAudioAllowed: ((ForkMeetingToken) -> Void)?
     /// The meeting track heard more than said so far (the whole Mac after
-    /// the app alone): its widest, for `meeting.json`. Never narrows.
+    /// the app alone): its widest, for `meeting.json`. Never narrows, and
+    /// sent even once a stop is asked: what the file holds must be said.
     var onSoundHeard: ((ForkMeetingToken, ForkMeetingSystemAudio) -> Void)?
+    /// What the meeting track holds changed (`ForkMeetingTrackSound`): the
+    /// app's sound has no app to hear any more, or again.
+    var onTrackSound: ((ForkMeetingToken, ForkMeetingTrackSound) -> Void)?
 
     // MARK: State
 
@@ -131,6 +140,9 @@ final class ForkMeetingRecorder: @unchecked Sendable {
     private var sound: ForkMeetingSoundSource = .none
     /// The widest the meeting track heard so far.
     private var heard: ForkMeetingSystemAudio = .off
+    /// The sound asked for, and what the track holds as last said.
+    private var setting: ForkMeetingSystemAudio = .off
+    private var trackSound: ForkMeetingTrackSound = .heard
     private var microphone: ForkMeetingMicrophone?
     private var arbiter = ForkMeetingSoundArbiter(hasTap: false, hasWitness: false)
     private var window: CGWindowID?
@@ -257,7 +269,7 @@ final class ForkMeetingRecorder: @unchecked Sendable {
         var tapAvailable = false
         if #available(macOS 14.4, *) { tapAvailable = true }
         var sound = ForkMeetingSoundSource.choose(settings.systemAudio, appPID: target.ownerPID, ownPID: ownPID,
-                                                  tapAvailable: tapAvailable)
+                                                  filmsWindow: target.isWindow, tapAvailable: tapAvailable)
         var tap: ForkMeetingAudioTap?
         var witness: ForkMeetingAudioTap?
         switch sound {
@@ -270,18 +282,21 @@ final class ForkMeetingRecorder: @unchecked Sendable {
             break
         }
         // Refused by the audio system: the stream's sound, as `meeting.json`
-        // will say.
-        if tap == nil, sound != .none { sound = .stream }
+        // will say, unless it would be the whole Mac for the app's own.
+        if tap == nil { sound = sound.refused(filmsWindow: target.isWindow) }
         let macTap = sound == .macTap
+        let appOnly = settings.systemAudio == .app && sound == .stream
         lock.withLock {
             self.tap = tap
             self.witness = witness
             self.sound = sound
+            setting = settings.systemAudio
             judge = macTap ? tap : witness
             arbiter = ForkMeetingSoundArbiter(hasTap: tap != nil, hasWitness: macTap || witness != nil,
-                                              tapFirst: !macTap)
+                                              tapFirst: !macTap, appOnly: appOnly)
         }
         tap?.onSample = { [weak self] sample in self?.tapSample(sample) }
+        tap?.onReaderLost = { [weak self] in self?.tapGone() }
         witness?.onSample = { [weak self] sample in self?.witnessSample(sample) }
         witness?.onReaderLost = { [weak self] in self?.witnessGone() }
 
@@ -308,10 +323,9 @@ final class ForkMeetingRecorder: @unchecked Sendable {
         guard gate.isAuthorized else { return cancelled() }
 
         // The taps start before the microphone: the Mac's sound comes up
-        // first, as in the official recorder. An app's tap without a reader
-        // keeps the track all the same: it may come back with the next
-        // device change, and the writer fills its silence.
-        if let tap { _ = await tap.start(synchronizingTo: CMClockGetHostTimeClock()) }
+        // first, as in the official recorder. A tap without a reader is
+        // one that lost it (`tapGone`).
+        if let tap, await tap.start(synchronizingTo: CMClockGetHostTimeClock()) == false { tapGone() }
         if let witness, await witness.start(synchronizingTo: CMClockGetHostTimeClock()) == false {
             witnessGone()
         }
@@ -333,16 +347,17 @@ final class ForkMeetingRecorder: @unchecked Sendable {
         guard gate.isAuthorized else { return cancelled() }
         lock.withLock { running = true }
         let codec = writer.codec == .hevc ? "hvc1" : "avc1"
-        let heardNow = lock.withLock { () -> ForkMeetingSystemAudio in
+        let (heardNow, trackNow) = lock.withLock { () -> (ForkMeetingSystemAudio, ForkMeetingTrackSound) in
             heard = currentHeard()
-            return heard
+            trackSound = currentTrackSound()
+            return (heard, trackSound)
         }
         let startedAt = Date(timeIntervalSinceNow: min(0, (zero.value ?? ForkMeetingWriter.hostSeconds())
                                                           - ForkMeetingWriter.hostSeconds()))
         return .success(ForkMeetingRecorderStart(target: Self.target(of: aim), window: window, sound: sound,
                                                  microphone: microphoneName, outputSize: outputSize, codec: codec,
                                                  startedAt: startedAt, appName: Self.appName(of: window),
-                                                 heard: heardNow))
+                                                 heard: heardNow, trackSound: trackNow))
     }
 
     /// `stop` came during the start: it owns the teardown, and the start's
@@ -434,15 +449,39 @@ final class ForkMeetingRecorder: @unchecked Sendable {
         if changed {
             send { $0.onTargetChanged?($0.token, target) }
             noteHeard()
+            noteTrackSound()
         }
+    }
+
+    /// Under `lock`: the picture follows a window.
+    private var filmsWindow: Bool {
+        if case .window = aim { return true }
+        return false
     }
 
     /// Under `lock`: what the meeting track hears now.
     private func currentHeard() -> ForkMeetingSystemAudio {
         guard sound != .none else { return .off }
-        let filmsWindow: Bool = { if case .window = aim { return true }; return false }()
-        return arbiter.writesTap ? sound.heard(filmsWindow: filmsWindow)
-            : ForkMeetingSoundSource.stream.heard(filmsWindow: filmsWindow)
+        if arbiter.writesTap { return sound.heard(filmsWindow: filmsWindow) }
+        guard arbiter.streamWrites(filmsWindow: filmsWindow) else { return .off }
+        return ForkMeetingSoundSource.stream.heard(filmsWindow: filmsWindow)
+    }
+
+    /// Under `lock`: what the meeting track holds now, as the pill says it.
+    private func currentTrackSound() -> ForkMeetingTrackSound {
+        ForkMeetingTrackSound.of(setting: setting, sound: sound, arbiter: arbiter, filmsWindow: filmsWindow)
+    }
+
+    /// Any thread: says it when what the track holds changed.
+    private func noteTrackSound() {
+        let changed = lock.withLock { () -> ForkMeetingTrackSound? in
+            guard running else { return nil }
+            let now = currentTrackSound()
+            guard now != trackSound else { return nil }
+            trackSound = now
+            return now
+        }
+        if let changed { send { $0.onTrackSound?($0.token, changed) } }
     }
 
     /// Any thread: says it when the track heard more than before.
@@ -454,7 +493,7 @@ final class ForkMeetingRecorder: @unchecked Sendable {
             heard = next
             return next
         }
-        if let widened { send { $0.onSoundHeard?($0.token, widened) } }
+        if let widened { send(evenAfterStop: true) { $0.onSoundHeard?($0.token, widened) } }
     }
 
     /// The pill's meters. Any thread.
@@ -583,8 +622,9 @@ final class ForkMeetingRecorder: @unchecked Sendable {
     }
 
     /// Capture queue. The stream's sound is written only when the meeting
-    /// track hears the whole Mac; while the witness listens, it is weighed
-    /// against what the witness heard.
+    /// track takes it, and never a display's whole Mac in place of the app's
+    /// sound; while the witness listens, it is weighed against what the
+    /// witness heard.
     private func streamSound(_ sample: CMSampleBuffer) {
         let (writer, judge, needsWitness) = lock.withLock { (self.writer, self.judge, arbiter.needsWitness) }
         var missing = false
@@ -598,7 +638,7 @@ final class ForkMeetingRecorder: @unchecked Sendable {
             missing = lock.withLock { arbiter.streamBuffer(heard: true, counts: counts, seconds: seconds) }
         }
         if missing { settled(allowed: false) }
-        if lock.withLock({ arbiter.writesStream }) { writer?.appendAudio(sample, to: .meeting) }
+        if lock.withLock({ arbiter.streamWrites(filmsWindow: filmsWindow) }) { writer?.appendAudio(sample, to: .meeting) }
     }
 
     /// The app's tap's audio thread: always written while it has the track,
@@ -619,6 +659,22 @@ final class ForkMeetingRecorder: @unchecked Sendable {
         if lock.withLock({ arbiter.witnessBuffer(heard: heard) }) { settled(allowed: true) }
     }
 
+    /// The tap's own queue: it lost its reader for good (a device change it
+    /// could not follow). The stream takes the track if it may (the whole
+    /// Mac asked for, or a window filmed); otherwise silence, said once.
+    private func tapGone() {
+        let (changed, witness) = lock.withLock { () -> (Bool, ForkMeetingAudioTap?) in
+            let changed = arbiter.tapReaderLost()
+            judge = nil
+            defer { self.witness = nil }
+            return (changed, self.witness)
+        }
+        if let witness { Task { await witness.stop() } }
+        guard changed else { return }
+        noteHeard()
+        noteTrackSound()
+    }
+
     /// The witness has no reader: nothing can be judged any more.
     private func witnessGone() {
         lock.withLock { arbiter.witnessUnavailable() }
@@ -634,6 +690,7 @@ final class ForkMeetingRecorder: @unchecked Sendable {
         lock.withLock { judge = nil }
         dismissWitness()
         noteHeard()
+        noteTrackSound()
         if allowed {
             send { $0.onSystemAudioAllowed?($0.token) }
         } else {
@@ -661,8 +718,9 @@ final class ForkMeetingRecorder: @unchecked Sendable {
         if stop == .sourceGone {
             switch aim {
             case .window:
-                // Its app quit: the last frame stays, the sound goes on.
-                send { $0.onPictureFrozen?($0.token, true); $0.onSourceGone?($0.token) }
+                // Its app quit: the last frame stays, the sound goes on. Said
+                // as such, never as a window minimized.
+                send { $0.onSourceGone?($0.token) }
             case .displayOf:
                 // The display went: the one holding the window now.
                 restartStream()
@@ -673,10 +731,12 @@ final class ForkMeetingRecorder: @unchecked Sendable {
         send(after: ForkMeetingCaptureSupport.reportDelay(stop)) { $0.onFailure?($0.token, failure) }
     }
 
-    /// On the main thread, unless a stop was asked meanwhile.
-    private func send(after delay: TimeInterval = 0, _ event: @escaping (ForkMeetingRecorder) -> Void) {
+    /// On the main thread, unless a stop was asked meanwhile (and the event
+    /// is not one the file needs said, `evenAfterStop`).
+    private func send(after delay: TimeInterval = 0, evenAfterStop: Bool = false,
+                      _ event: @escaping (ForkMeetingRecorder) -> Void) {
         let deliver = { [self] in
-            guard !lock.withLock({ stopRequested }) else { return }
+            guard evenAfterStop || !lock.withLock({ stopRequested }) else { return }
             event(self)
         }
         if delay > 0 {

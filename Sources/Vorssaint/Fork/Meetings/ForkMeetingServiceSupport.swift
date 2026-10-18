@@ -120,4 +120,84 @@ enum ForkMeetingServiceSupport {
         case .starting, .paused, .stopping: return .app
         }
     }
+
+    // MARK: Fixes G1
+
+    /// What the Meetings page says of the permission to record other apps'
+    /// sound, which macOS has no call to read: what the last recording
+    /// found (`fork.meetings.systemAudioVerified`, absent until one judged),
+    /// or the banner of a recording that found it missing.
+    enum SystemAudioPermission: Equatable {
+        case allowed
+        case missing
+        case unknown
+    }
+
+    /// How long a start refused stays on the page's banner: the page may
+    /// not be open, and a refusal found there hours later reads as new.
+    static let refusalHold: TimeInterval = 30
+
+    static func systemAudioPermission(verified: Bool?, failing: Bool) -> SystemAudioPermission {
+        if failing || verified == false { return .missing }
+        return verified == true ? .allowed : .unknown
+    }
+}
+
+/// Which start asked the facts now answering. Each start begins an
+/// attempt, and its cancel ends it: the free space, the microphone's answer
+/// or the folder of an attempt cancelled, arriving late, start nothing, and
+/// never hold up the next start.
+struct ForkMeetingStartAttempt: Equatable {
+    private(set) var current = 0
+
+    mutating func begin() -> Int {
+        current += 1
+        return current
+    }
+
+    mutating func cancel() {
+        current += 1
+    }
+
+    func answers(_ attempt: Int) -> Bool {
+        attempt == current
+    }
+}
+
+/// The engine's verdicts on the system audio permission that arrive while
+/// their session is still starting (the witness may settle before the
+/// microphone is up): held by token, and said once the machine records it,
+/// never dropped, never said for a start that failed.
+struct ForkMeetingPendingVerdicts: Equatable {
+    enum Verdict: Equatable {
+        case allowed
+        case missing
+    }
+
+    /// Where a verdict goes, from the phase of the machine.
+    enum Route: Equatable {
+        case now
+        case hold
+        case drop
+    }
+
+    static func route(_ token: ForkMeetingToken, phase: ForkMeetingMachine.Phase) -> Route {
+        switch phase {
+        case let .starting(pending): return pending.token == token ? .hold : .drop
+        case let .recording(session), let .paused(session, _): return session.token == token ? .now : .drop
+        case .idle, .stopping: return .drop
+        }
+    }
+
+    private var held: [ForkMeetingToken: Verdict] = [:]
+
+    /// A verdict is final for its recording: the first one stays.
+    mutating func hold(_ verdict: Verdict, for token: ForkMeetingToken) {
+        if held[token] == nil { held[token] = verdict }
+    }
+
+    /// The verdict to say now that the session records, once.
+    mutating func take(_ token: ForkMeetingToken) -> Verdict? {
+        held.removeValue(forKey: token)
+    }
 }

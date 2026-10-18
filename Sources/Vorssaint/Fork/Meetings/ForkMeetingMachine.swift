@@ -104,6 +104,8 @@ enum ForkMeetingNotice: Equatable {
     /// sound goes on.
     case sourceGone
     case failure(ForkMeetingFailure)
+    /// The meeting app's sound was lost for the rest of the recording.
+    case soundLost
 
     /// 28 characters at most.
     func title(_ s: ForkMeetingStrings) -> String {
@@ -118,6 +120,7 @@ enum ForkMeetingNotice: Equatable {
         case .displayChanged: return s.noticeDisplayChanged
         case .sourceGone: return s.noticeSourceGone
         case let .failure(failure): return failure.summary(s)
+        case .soundLost: return s.noticeSoundLost
         }
     }
 
@@ -127,7 +130,8 @@ enum ForkMeetingNotice: Equatable {
         switch self {
         case let .microphone(name): return name
         case let .diskLow(minutes): return s.diskMinutes(minutes)
-        case .started, .resumed, .saved, .recovered, .microphoneSilent, .displayChanged, .sourceGone, .failure:
+        case .started, .resumed, .saved, .recovered, .microphoneSilent, .displayChanged, .sourceGone, .failure,
+             .soundLost:
             return nil
         }
     }
@@ -148,6 +152,7 @@ enum ForkMeetingAnnouncement: Equatable {
     /// The start, said with the microphone left out because it is not
     /// allowed: one sentence, not two that would cut each other off.
     case startedWithoutMicrophone
+    case soundLost
 
     func text(_ s: ForkMeetingStrings) -> String {
         switch self {
@@ -162,6 +167,7 @@ enum ForkMeetingAnnouncement: Equatable {
         case .sourceGone: return s.voiceSourceGone
         case let .failure(failure): return ForkMeetingLiveText.sentences(failure.summary(s), failure.remedy(s))
         case .startedWithoutMicrophone: return s.voiceStartedWithoutMicrophone
+        case .soundLost: return s.voiceSoundLost
         }
     }
 }
@@ -321,6 +327,9 @@ struct ForkMeetingMachine {
         case sourceGone(ForkMeetingToken)
         case appWillTerminate
         case featureDisabled
+        /// The meeting app's sound was lost for the rest of the recording
+        /// (its tap lost its reader on a display): said, and noted as a gap.
+        case soundLost(ForkMeetingToken)
     }
 
     enum Effect: Equatable {
@@ -355,6 +364,9 @@ struct ForkMeetingMachine {
     private var locked = false
     /// The app is quitting: nothing starts any more, nothing is finalized.
     private var terminating = false
+    /// When the screen was last unlocked: a stream stopped by the lock is
+    /// reported `externalStopGrace` late, possibly after the unlock.
+    private var unlockedAt: Date?
 
     var isBusy: Bool { phase != .idle }
 
@@ -409,6 +421,18 @@ struct ForkMeetingMachine {
                 session.streamNeedsRestart = true
                 replace(session)
                 return []
+            }
+            // Locked and unlocked again while the stop's report waited: the
+            // unlock came and went without a stream to restart, so it is
+            // restarted now (or at the resume, when paused).
+            if failure == .streamStopped, let unlockedAt,
+               now.timeIntervalSince(unlockedAt) < ForkMeetingCaptureSupport.externalStopGrace {
+                guard case .recording = phase else {
+                    session.streamNeedsRestart = true
+                    replace(session)
+                    return []
+                }
+                return [.restartStream]
             }
             return stopForFailure(session, failure == .screenRecordingDenied ? .screenRecordingRevoked : failure, now: now)
 
@@ -469,6 +493,7 @@ struct ForkMeetingMachine {
 
         case .unlocked:
             locked = false
+            unlockedAt = now
             guard var session = activeSession else { return [] }
             var effects: [Effect] = []
             if case .recording = phase, session.streamNeedsRestart {
@@ -560,7 +585,11 @@ struct ForkMeetingMachine {
             return [.notice(.microphoneSilent), .announce(.microphoneSilent)]
 
         case let .soundHeard(token, heard):
-            guard let session = activeSession, session.token == token else { return [] }
+            // Stopping too: the track heard it just before the Stop, and the
+            // file holds it.
+            let session: Session?
+            if case let .stopping(stopping, _) = phase { session = stopping } else { session = activeSession }
+            guard let session, session.token == token else { return [] }
             return [.writeSidecar(session.folder, ForkMeetingSidecarPatch(systemAudio: heard))]
 
         case .microphoneSoundBack:
@@ -596,6 +625,12 @@ struct ForkMeetingMachine {
             if case let .starting(pending) = phase { return cancel(pending) }
             guard let session = activeSession else { return [] }
             return stop(session, reason: .featureDisabled, now: now)
+
+        case let .soundLost(token):
+            guard let session = activeSession, session.token == token else { return [] }
+            let gap = ForkMeetingSidecar.Gap(at: session.recorded(at: now), seconds: 0, kind: .soundLost)
+            return [.writeSidecar(session.folder, ForkMeetingSidecarPatch(gap: gap)), .notice(.soundLost),
+                    .announce(.soundLost)]
         }
     }
 

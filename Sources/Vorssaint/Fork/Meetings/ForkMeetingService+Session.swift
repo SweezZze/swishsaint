@@ -30,8 +30,8 @@ extension ForkMeetingService {
         prepareSurfaces()
         // A new try says every step again, and the last refusal goes.
         presenter.resetAnnouncements()
-        lastRefusal = nil
-        cancelRequested = false
+        clearRefusal()
+        let attempt = startAttempt.begin()
         preparingStart = true
         refreshState()
         let settings = captureSettings()
@@ -43,11 +43,11 @@ extension ForkMeetingService {
             DispatchQueue.global(qos: .userInitiated).async {
                 let free = freeBytes(root)
                 DispatchQueue.main.async {
-                    guard let self else { return }
+                    // Cancelled meanwhile (and maybe started again): this
+                    // answer is an older attempt's, it holds nothing.
+                    guard let self, self.startAttempt.answers(attempt) else { return }
                     self.preparingStart = false
-                    let cancelled = self.cancelRequested
-                    self.cancelRequested = false
-                    guard self.isWanted, !self.terminating, !cancelled else { return self.refreshState() }
+                    guard self.isWanted, !self.terminating else { return self.refreshState() }
                     let facts = ForkMeetingStartFacts(freeBytes: free,
                                                       screenRecordingAllowed: CGPreflightScreenCaptureAccess(),
                                                       microphoneAllowed: microphoneAllowed,
@@ -63,10 +63,13 @@ extension ForkMeetingService {
     }
 
     /// The page's Cancel and the shortcut pressed again while a start is
-    /// under way: nothing is recorded, no folder stays.
+    /// under way: nothing is recorded, no folder stays, and a new start may
+    /// be asked at once, whatever the old one's answers still on their way
+    /// (the free space, the microphone, the folder) say when they come.
     func cancelStart() {
         if preparingStart {
-            cancelRequested = true
+            preparingStart = false
+            startAttempt.cancel()
         } else if case .starting = machine.phase {
             send(.stop)
         }
@@ -153,7 +156,7 @@ extension ForkMeetingService {
             default: break
             }
             for effect in machine.handle(next, now: Date()) {
-                if starts, case let .notice(.failure(failure)) = effect { lastRefusal = failure }
+                if starts, case let .notice(.failure(failure)) = effect { holdRefusal(failure) }
                 run(effect)
             }
             runsStart = false
@@ -199,6 +202,10 @@ extension ForkMeetingService {
             // gauge, whatever the next start does.
             let shown = ForkMeetingServiceSupport.pill(state, finalizing: !finalizing.isEmpty)
             presenter.apply(.showPill(shown), context: context)
+        case let .announce(announcement) where runsStart && context.trackSound == .noApp:
+            // One sentence after the other, not two that cut each other off.
+            let text = ForkMeetingStrings.current
+            presenter.say(ForkMeetingLiveText.sentences(announcement.text(text), text.soundNoAppDetail))
         case .announce, .notify:
             presenter.apply(effect, context: context)
         }
@@ -262,7 +269,9 @@ extension ForkMeetingService {
     /// The folder first, with its `meeting.json` saying `recording`, then the
     /// engine: from the first frame on, a crash leaves a meeting to recover.
     private func startCapture(_ config: ForkMeetingCaptureConfig, token: ForkMeetingToken) {
-        let recorder = ForkMeetingRecorder(token: token)
+        let recorder = ForkMeetingRecorder(token: token, defaults: defaults)
+        // "Show in Finder" of an older meeting's failed pass is not this one's.
+        lastFailedVideo = nil
         listen(to: recorder)
         recorders[token] = recorder
         context = ForkMeetingLiveContext(title: config.title, target: config.settings.target,
@@ -283,6 +292,14 @@ extension ForkMeetingService {
         store.createMeeting(id: UUID(), startedAt: Date(), origin: config.origin, title: config.title,
                             titleSource: config.title == nil ? nil : .user, capture: capture) { [weak self] result in
             self?.folderMade(result, config: config, token: token)
+        }
+        // A folder that takes too long (a volume that hangs) fails the start
+        // like a capture that does not answer; the folder, should it come
+        // later, is given up (`folderMade`).
+        DispatchQueue.main.asyncAfter(deadline: .now() + ForkMeetingCaptureSupport.startTimeout) { [weak self] in
+            guard let self, self.isStarting(token), self.folders[token] == nil else { return }
+            self.log.error("no folder for the meeting after \(Int(ForkMeetingCaptureSupport.startTimeout)) s")
+            self.send(.captureFailed(token, .folderUnavailable))
         }
     }
 
@@ -325,9 +342,12 @@ extension ForkMeetingService {
             // A window was asked for, none could be filmed: said at the start.
             context.noWindowToFilm = config.settings.target == .window && start.target == .display
             filmedDisplay = context.displayID ?? CGMainDisplayID()
-            if case .appTap = start.sound { appTapSessions.insert(token) }
+            context.trackSound = start.trackSound
             send(.captureStarted(token, folder: folder, target: start.target, microphone: start.microphone,
                                  systemAudio: start.heard, startedAt: start.startedAt))
+            // Lost, or judged, while the capture came up: said once it records.
+            if start.trackSound == .lost { send(.soundLost(token)) }
+            if let verdict = pendingVerdicts.take(token) { systemAudioJudged(verdict, token: token) }
         case let .failure(failure):
             log.error("the capture did not start: \(String(describing: failure), privacy: .public)")
             send(.captureFailed(token, failure))
@@ -341,12 +361,19 @@ extension ForkMeetingService {
             self?.send(.captureFailed(token, failure))
         }
         recorder.onSourceGone = { [weak self] token in
-            self?.send(.sourceGone(token))
+            guard let self else { return }
+            if self.isCurrent(token), !self.context.sourceGone {
+                self.context.sourceGone = true
+                self.presenter.update(self.context)
+            }
+            self.send(.sourceGone(token))
         }
         recorder.onTargetChanged = { [weak self] token, target in
             guard let self, self.isCurrent(token) else { return }
             self.context.target = target
             self.context.noWindowToFilm = false
+            // The display filmed instead of the window that went moves again.
+            self.context.sourceGone = false
             self.filmedDisplay = Self.displayID(of: self.filmedWindow) ?? CGMainDisplayID()
             self.presenter.update(self.context)
             self.send(.targetSwitched(token, target))
@@ -355,8 +382,14 @@ extension ForkMeetingService {
             guard let self, self.isCurrent(token), self.context.pictureFrozen != frozen else { return }
             self.context.pictureFrozen = frozen
             self.presenter.update(self.context)
-            // The pill says it with words VoiceOver cannot see change.
-            if frozen { self.presenter.say(ForkMeetingStrings.current.voicePictureFrozen) }
+            // The pill says it with words VoiceOver cannot see change; a
+            // moment later, so a window whose app quit (its last frames say
+            // "stopped" first) is said as such, never as minimized.
+            guard frozen else { return }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1) { [weak self] in
+                guard let self, self.isCurrent(token), self.context.pictureFrozen, !self.context.sourceGone else { return }
+                self.presenter.say(ForkMeetingStrings.current.voicePictureFrozen)
+            }
         }
         recorder.onMicrophoneSwitch = { [weak self] token, name, gap in
             guard let self, self.isCurrent(token) else { return }
@@ -378,17 +411,36 @@ extension ForkMeetingService {
             self.send(.microphoneSoundBack)
         }
         recorder.onSystemAudioAllowed = { [weak self] token in
-            guard let self, self.isCurrent(token) else { return }
-            self.systemAudioProven()
+            self?.systemAudioJudged(.allowed, token: token)
         }
         recorder.onSoundHeard = { [weak self] token, heard in
-            guard let self, self.isCurrent(token) else { return }
+            guard let self, self.isCurrent(token) || self.isStopping(token) else { return }
             self.send(.soundHeard(token, heard))
         }
+        recorder.onTrackSound = { [weak self] token, sound in
+            guard let self, self.isCurrent(token), self.context.trackSound != sound else { return }
+            self.context.trackSound = sound
+            self.presenter.update(self.context)
+            if sound == .lost { self.send(.soundLost(token)) }
+        }
         recorder.onSystemAudioUnavailable = { [weak self] token in
-            guard let self, self.isCurrent(token) else { return }
-            self.deafTapSessions.insert(token)
-            self.send(.permissionLost(.systemAudio))
+            self?.systemAudioJudged(.missing, token: token)
+        }
+    }
+
+    /// A tap proved the permission, or the witness found it missing: said
+    /// now, or once the session that judged it records.
+    private func systemAudioJudged(_ verdict: ForkMeetingPendingVerdicts.Verdict, token: ForkMeetingToken) {
+        switch ForkMeetingPendingVerdicts.route(token, phase: machine.phase) {
+        case .now:
+            switch verdict {
+            case .allowed: systemAudioProven()
+            case .missing: send(.permissionLost(.systemAudio))
+            }
+        case .hold:
+            pendingVerdicts.hold(verdict, for: token)
+        case .drop:
+            break
         }
     }
 
@@ -415,11 +467,9 @@ extension ForkMeetingService {
     func stopped(_ token: ForkMeetingToken, result: ForkMeetingWriterResult, recorded: Bool) {
         guard recorders.removeValue(forKey: token) != nil else { return }
         let folder = folders.removeValue(forKey: token)
-        // A whole meeting written from the app's own tap, never found deaf:
-        // the "app sound unavailable" banner was about an older one.
-        let wroteAppTap = appTapSessions.remove(token) != nil
-        let foundDeaf = deafTapSessions.remove(token) != nil
-        if recorded, wroteAppTap, !foundDeaf, case .finished = result { systemAudioProven() }
+        // Only a tap that heard sound clears the banner (`systemAudioProven`):
+        // a silent meeting proves nothing.
+        _ = pendingVerdicts.take(token)
         guard recorded else {
             if let folder { discardUnstarted(folder) }
             return
@@ -427,22 +477,31 @@ extension ForkMeetingService {
         if case let .failed(failure) = result {
             log.error("the file did not close: \(String(describing: failure), privacy: .public)")
             // Not finalized: what the fragments hold waits for the next
-            // launch, which needs the folder free.
-            if let folder { store.release(folder) }
+            // launch, which needs the folder free. Quitting, at once.
+            if let folder {
+                if terminating {
+                    store.release(folder)
+                } else {
+                    DispatchQueue.global(qos: .utility).async { [store] in store.release(folder) }
+                }
+            }
         }
         send(.writerFinished(token, result))
     }
 
     /// A start given up before anything was recorded: its folder goes, unless
-    /// something else came into it.
+    /// something else came into it. Off the main thread: the volume may be
+    /// slow, or gone.
     private func discardUnstarted(_ folder: URL) {
-        store.release(folder)
-        let manager = FileManager.default
-        for name in [ForkMeetingFolder.sidecarName, ForkMeetingStore.sidecarDraftName, ForkMeetingFolder.masterName] {
-            try? manager.removeItem(at: folder.appendingPathComponent(name))
-        }
-        if (try? manager.contentsOfDirectory(atPath: folder.path))?.isEmpty == true {
-            try? manager.removeItem(at: folder)
+        DispatchQueue.global(qos: .utility).async { [store] in
+            store.release(folder)
+            let manager = FileManager.default
+            for name in [ForkMeetingFolder.sidecarName, ForkMeetingStore.sidecarDraftName, ForkMeetingFolder.masterName] {
+                try? manager.removeItem(at: folder.appendingPathComponent(name))
+            }
+            if (try? manager.contentsOfDirectory(atPath: folder.path))?.isEmpty == true {
+                try? manager.removeItem(at: folder)
+            }
         }
     }
 

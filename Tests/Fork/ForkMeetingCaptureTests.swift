@@ -116,17 +116,20 @@ enum ForkMeetingCaptureTests {
 
     private static func sound(_ suite: TestSuite) {
         let own: Int32 = 100
-        suite.expect(ForkMeetingSoundSource.choose(.app, appPID: 200, ownPID: own, tapAvailable: true) == .appTap(pid: 200),
+        suite.expect(ForkMeetingSoundSource.choose(.app, appPID: 200, ownPID: own, filmsWindow: false,
+                                                   tapAvailable: true) == .appTap(pid: 200),
                      "the meeting app's own sound, from its tap")
-        suite.expect(ForkMeetingSoundSource.choose(.app, appPID: 200, ownPID: own, tapAvailable: false) == .stream
-                        && ForkMeetingSoundSource.choose(.app, appPID: nil, ownPID: own, tapAvailable: true) == .stream
-                        && ForkMeetingSoundSource.choose(.app, appPID: own, ownPID: own, tapAvailable: true) == .stream,
-                     "before macOS 14.4, without a window, or for a window of ours: the screen stream's sound")
-        suite.expect(ForkMeetingSoundSource.choose(.all, appPID: 200, ownPID: own, tapAvailable: true) == .macTap
-                        && ForkMeetingSoundSource.choose(.all, appPID: nil, ownPID: own, tapAvailable: true) == .macTap,
+        suite.expect(ForkMeetingSoundSource.choose(.app, appPID: 200, ownPID: own, filmsWindow: true,
+                                                   tapAvailable: false) == .stream,
+                     "before macOS 14.4, a window of another app filmed: its stream, which is that app alone")
+        suite.expect(ForkMeetingSoundSource.choose(.all, appPID: 200, ownPID: own, filmsWindow: true, tapAvailable: true) == .macTap
+                        && ForkMeetingSoundSource.choose(.all, appPID: nil, ownPID: own, filmsWindow: false,
+                                                         tapAvailable: true) == .macTap,
                      "the whole Mac from a tap of every app but this one, a window filmed or a display")
-        suite.expect(ForkMeetingSoundSource.choose(.all, appPID: 200, ownPID: own, tapAvailable: false) == .stream
-                        && ForkMeetingSoundSource.choose(.off, appPID: 200, ownPID: own, tapAvailable: true) == .none,
+        suite.expect(ForkMeetingSoundSource.choose(.all, appPID: 200, ownPID: own, filmsWindow: false,
+                                                   tapAvailable: false) == .stream
+                        && ForkMeetingSoundSource.choose(.off, appPID: 200, ownPID: own, filmsWindow: true,
+                                                         tapAvailable: true) == .none,
                      "before macOS 14.4 the whole Mac comes from the stream; off, from nothing")
         suite.expect(ForkMeetingSoundSource.stream.heard(filmsWindow: true) == .app
                         && ForkMeetingSoundSource.stream.heard(filmsWindow: false) == .all,

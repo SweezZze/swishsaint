@@ -42,6 +42,12 @@ enum ForkMeetingFailure: Error, Equatable {
     /// meeting's name: the recording is there, under its hidden name, which
     /// the remedy says.
     case masterHidden
+
+    // MARK: Fixes G1
+
+    /// The final pass failed and no video of the recording was found: the
+    /// remedy must not say it is readable.
+    case masterMissing
 }
 
 /// The button offered next to a failure.
@@ -76,6 +82,7 @@ extension ForkMeetingFailure {
         case .finalPassFailed: return s.failFinalPass
         case .localBuild: return s.failBuild
         case .masterHidden: return s.failMasterHidden
+        case .masterMissing: return s.failMasterMissing
         }
     }
 
@@ -97,6 +104,7 @@ extension ForkMeetingFailure {
         case .finalPassFailed: return s.failFinalPassRemedy
         case .localBuild: return s.failBuildRemedy
         case .masterHidden: return s.failMasterHiddenRemedy
+        case .masterMissing: return s.failMasterMissingRemedy
         }
     }
 
@@ -107,7 +115,7 @@ extension ForkMeetingFailure {
         case .microphoneDenied: return .openMicrophonePrivacy
         case .diskFullAtStart, .diskFull: return .openStorageSettings
         case .folderUnavailable, .captureFailed: return .openMeetingsPage
-        case .writerFailed, .finalPassFailed, .masterHidden: return .openMeetingsFolder
+        case .writerFailed, .finalPassFailed, .masterHidden, .masterMissing: return .openMeetingsFolder
         case .streamStopped, .officialRecorderBusy, .localBuild: return nil
         }
     }
@@ -121,7 +129,7 @@ extension ForkMeetingFailure {
              .folderUnavailable, .localBuild:
             return true
         case .diskFullAtStart, .diskFull, .streamStopped, .officialRecorderBusy, .captureFailed,
-             .writerFailed, .finalPassFailed, .masterHidden:
+             .writerFailed, .finalPassFailed, .masterHidden, .masterMissing:
             return false
         }
     }
@@ -137,5 +145,6 @@ extension ForkMeetingFailure {
         .screenRecordingDenied, .screenRecordingRevoked, .microphoneDenied, .systemAudioUnavailable,
         .diskFullAtStart(requiredBytes: 2_000_000_000), .diskFull, .streamStopped, .officialRecorderBusy,
         .folderUnavailable, .captureFailed, .writerFailed, .finalPassFailed, .localBuild, .masterHidden,
+        .masterMissing,
     ]
 }

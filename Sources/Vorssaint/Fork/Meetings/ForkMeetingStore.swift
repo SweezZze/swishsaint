@@ -147,11 +147,11 @@ final class ForkMeetingStore: @unchecked Sendable {
         let started = ForkMeetingSidecar.started(id: id, startedAt: startedAt, origin: origin, title: title,
                                                  titleSource: titleSource, capture: capture)
         queue.async { [self] in
-            let result = makeFolder(in: root, for: started, name: ForkMeetingFolder.name(startedAt: startedAt,
-                                                                                         title: title))
+            let result = makeFolder(in: root, for: started, id: id,
+                                    name: ForkMeetingFolder.name(startedAt: startedAt, title: title))
             lock.lock()
             opening = false
-            if case let .success(folder) = result { made[id] = folder }
+            if case let .success(folder) = result { made[id] = folder } else { made[id] = nil }
             lock.unlock()
             if case let .success(folder) = result {
                 _ = self.root(storing: true)
@@ -161,8 +161,10 @@ final class ForkMeetingStore: @unchecked Sendable {
         }
     }
 
-    /// Store queue.
-    private func makeFolder(in root: URL, for sidecar: ForkMeetingSidecar,
+    /// Store queue. The folder is this process's (`made`) before it exists:
+    /// a recovery scanning meanwhile never takes a meeting about to record
+    /// for one a crash left.
+    private func makeFolder(in root: URL, for sidecar: ForkMeetingSidecar, id: UUID,
                             name base: String) -> Result<URL, Failure> {
         let manager = FileManager.default
         // The meetings folder itself, never its parents: a folder chosen on
@@ -176,9 +178,11 @@ final class ForkMeetingStore: @unchecked Sendable {
                 return .failure(.folderUnavailable(error.localizedDescription))
             }
         }
-        let id = sidecar.id
         func occupant(_ name: String) -> ForkMeetingFolder.Occupant {
             Self.occupant(of: root.appendingPathComponent(name, isDirectory: true), id: id)
+        }
+        func reserve(_ folder: URL) {
+            lock.withLock { made[id] = folder }
         }
         let folder: URL
         var createdHere = false
@@ -187,12 +191,14 @@ final class ForkMeetingStore: @unchecked Sendable {
             return .failure(.namesExhausted)
         case let .adopt(name):
             folder = root.appendingPathComponent(name, isDirectory: true)
+            reserve(folder)
             // Ours already, sidecar included: nothing to write again.
             if occupant(name) == .sameMeeting { return .success(folder) }
             // An empty folder of ours left behind: closed to the others too.
             try? manager.setAttributes([.posixPermissions: Self.folderPermissions], ofItemAtPath: folder.path)
         case let .create(name):
             folder = root.appendingPathComponent(name, isDirectory: true)
+            reserve(folder)
             do {
                 try manager.createDirectory(at: folder, withIntermediateDirectories: false,
                                             attributes: [.posixPermissions: Self.folderPermissions])
@@ -318,10 +324,16 @@ final class ForkMeetingStore: @unchecked Sendable {
     /// Any thread.
     @discardableResult
     func claim(_ folder: URL) -> Bool {
+        claim(folder, sharedHere: true)
+    }
+
+    /// `sharedHere` false: refused too when this process holds it already
+    /// (the recovery never takes a lock a meeting of this process holds).
+    private func claim(_ folder: URL, sharedHere: Bool) -> Bool {
         let path = folder.standardizedFileURL.path
         lock.lock()
         defer { lock.unlock() }
-        if claims[path] != nil { return true }
+        if claims[path] != nil { return sharedHere }
         let descriptor = open(path + "/" + Self.lockName, O_RDWR | O_CREAT | O_CLOEXEC, 0o600)
         guard descriptor >= 0 else { return true }
         guard flock(descriptor, LOCK_EX | LOCK_NB) == 0 else {
@@ -343,6 +355,19 @@ final class ForkMeetingStore: @unchecked Sendable {
         unlink(path + "/" + Self.lockName)
         flock(descriptor, LOCK_UN)
         close(descriptor)
+    }
+
+    /// This process holds the folder's lock: a meeting of its own records
+    /// or finishes there.
+    private func isClaimedHere(_ folder: URL) -> Bool {
+        let path = folder.standardizedFileURL.path
+        return lock.withLock { claims[path] != nil }
+    }
+
+    /// The lock for the recovery alone: refused when this process already
+    /// holds it, not only when another one does.
+    private func claimForRecovery(_ folder: URL) -> Bool {
+        claim(folder, sharedHere: false)
     }
 
     private func isMadeHere(_ folder: URL) -> Bool {
@@ -382,15 +407,21 @@ final class ForkMeetingStore: @unchecked Sendable {
             let folder = root.appendingPathComponent(name, isDirectory: true)
             var isDirectory: ObjCBool = false
             guard manager.fileExists(atPath: folder.path, isDirectory: &isDirectory), isDirectory.boolValue,
-                  !isMadeHere(folder),
+                  !isMadeHere(folder), !isClaimedHere(folder),
                   let entries = try? manager.contentsOfDirectory(atPath: folder.path) else { continue }
             let contents = ForkMeetingFolder.contents(of: entries, folderName: name)
             guard contents.hasSidecar else { continue }
             let sidecar = self.sidecar(in: folder)
             guard ForkMeetingRecoveryPlan.needsInspection(sidecar, contents: contents) else { continue }
             // Before probing anything: a master another copy of the app is
-            // still writing must not even be opened.
-            guard claim(folder) else { continue }
+            // still writing must not even be opened, nor one this process
+            // claimed in the meantime (its claim is never shared, nor let go
+            // by the recovery).
+            guard claimForRecovery(folder) else { continue }
+            guard !isMadeHere(folder) else {
+                release(folder)
+                continue
+            }
             if let recovery = await recover(folder, contents: contents, sidecar: sidecar, finalizer: finalizer,
                                             extractAudio: extractAudio, titles: titles) {
                 found.append(recovery)
@@ -414,6 +445,7 @@ final class ForkMeetingStore: @unchecked Sendable {
         }
         if let video {
             facts.final = ForkMeetingRecoveryPlan.Media(duration: await ForkMeetingFinalizer.playableSeconds(at: video))
+            facts.finalIsMaster = contents.hasMaster && Self.isSameFile(video, master)
         }
         let action = ForkMeetingRecoveryPlan.plan(facts)
         let patch = ForkMeetingRecoveryPlan.patch(for: action, facts: facts)
@@ -458,45 +490,73 @@ final class ForkMeetingStore: @unchecked Sendable {
     enum Revealed: Equatable {
         /// Under the meeting's name, where a final file would be.
         case visible(URL)
-        /// Still under its hidden name: it could not be renamed.
+        /// Still under its hidden name: it does not play, or could not be
+        /// given the name.
         case hidden(URL)
-        /// No master to show, or another copy of the app holds the folder.
+        /// No master at all.
         case none
+        /// Another copy of the app holds the folder.
+        case elsewhere
     }
 
-    /// Gives the master of a meeting whose final pass failed the meeting's
-    /// name, so the Finder shows it: its tracks stay separate, as when the
-    /// pass is skipped for room, and `meeting.json` says `complete`, its
-    /// pass `failed`. Never over a final file already there, never in a
-    /// folder another copy of the app holds. Any thread; `completion` on
-    /// the callback queue.
-    func revealMaster(in folder: URL, completion: @escaping (Revealed) -> Void) {
+    /// Shows the master of a meeting whose final pass failed under the
+    /// meeting's name, when it plays (`readable`): a second name for the
+    /// same file (a hard link), so its tracks stay separate, as when the
+    /// pass is skipped for room, and the master stays where the next launch
+    /// looks for it. `meeting.json` keeps `finalizing` and its pass `failed`:
+    /// the next launch makes the pass's last try, and a file there it is
+    /// the master's own (`ForkMeetingRecoveryPlan.Facts.finalIsMaster`). On
+    /// a volume without hard links the master takes the name instead and
+    /// the meeting is `complete`, as before. Never over a final file already
+    /// there, never in a folder another copy of the app holds. Any thread;
+    /// `completion` on the callback queue.
+    func revealMaster(in folder: URL, readable: Bool, completion: @escaping (Revealed) -> Void) {
         queue.async { [self] in
-            let revealed = reveal(folder)
+            let revealed = reveal(folder, readable: readable)
             callbackQueue.async { completion(revealed) }
         }
     }
 
     /// Store queue.
-    private func reveal(_ folder: URL) -> Revealed {
+    private func reveal(_ folder: URL, readable: Bool) -> Revealed {
         let manager = FileManager.default
         let master = folder.appendingPathComponent(ForkMeetingFolder.masterName)
         guard manager.fileExists(atPath: master.path) else { return .none }
         let path = folder.standardizedFileURL.path
         let held = lock.withLock { claims[path] != nil }
-        guard claim(folder) else { return .none }
+        guard claim(folder) else { return .elsewhere }
         defer { if !held { release(folder) } }
+        // A master that does not play is never shown as the meeting.
+        guard readable else { return .hidden(master) }
         let final = folder.appendingPathComponent("\(folder.lastPathComponent).\(ForkMeetingFolder.videoExtension)")
-        guard !manager.fileExists(atPath: final.path) else { return .hidden(master) }
-        do {
-            try Self.replace(final, with: master)
-        } catch {
-            Self.log.error("master left hidden in \(folder.lastPathComponent, privacy: .private): \(error.localizedDescription, privacy: .private)")
-            return .hidden(master)
+        if manager.fileExists(atPath: final.path) {
+            // Shown already (its pass's last try failed too), or a real
+            // final file, never written over.
+            return Self.isSameFile(final, master) ? .visible(final) : .hidden(master)
         }
-        _ = apply(ForkMeetingSidecarPatch(state: .complete), in: folder)
+        do {
+            try manager.linkItem(at: master, to: final)
+        } catch {
+            do {
+                try Self.replace(final, with: master)
+            } catch {
+                Self.log.error("master left hidden in \(folder.lastPathComponent, privacy: .private): \(error.localizedDescription, privacy: .private)")
+                return .hidden(master)
+            }
+            _ = apply(ForkMeetingSidecarPatch(state: .complete), in: folder)
+        }
         addToRecentCaptures(final)
         return .visible(final)
+    }
+
+    /// Two names of one file (a hard link): same volume, same file number.
+    static func isSameFile(_ one: URL, _ other: URL) -> Bool {
+        let manager = FileManager.default
+        guard let a = try? manager.attributesOfItem(atPath: one.path),
+              let b = try? manager.attributesOfItem(atPath: other.path),
+              let fileA = a[.systemFileNumber] as? NSNumber, let fileB = b[.systemFileNumber] as? NSNumber,
+              let volumeA = a[.systemNumber] as? NSNumber, let volumeB = b[.systemNumber] as? NSNumber else { return false }
+        return fileA == fileB && volumeA == volumeB
     }
 
     // MARK: - Recent captures

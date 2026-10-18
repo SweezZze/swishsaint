@@ -53,16 +53,17 @@ extension ForkMeetingService {
         if outcome.succeeded {
             saved(outcome, recovered: false)
         } else {
-            revealAfterFailure(outcome.folder)
+            revealAfterFailure(outcome.folder, readable: outcome.seconds != nil)
         }
         refreshState()
     }
 
-    /// A final pass that failed: the master, readable with its separate
-    /// tracks, takes the meeting's name so the Finder shows it, and the
-    /// failure says where the recording is.
-    func revealAfterFailure(_ folder: URL) {
-        store.revealMaster(in: folder) { [weak self] revealed in
+    /// A final pass that failed: the master, when it plays (`readable`),
+    /// with its separate tracks, is shown under the meeting's name, and the
+    /// failure says where the recording is. The pass is tried once more at
+    /// the next launch (`ForkMeetingStore.revealMaster`).
+    func revealAfterFailure(_ folder: URL, readable: Bool) {
+        store.revealMaster(in: folder, readable: readable) { [weak self] revealed in
             guard let self else { return }
             let failure: ForkMeetingFailure
             switch revealed {
@@ -73,6 +74,10 @@ extension ForkMeetingService {
                 self.lastFailedVideo = master
                 failure = .masterHidden
             case .none:
+                // Nothing playable: never "the video stays readable".
+                self.lastFailedVideo = nil
+                failure = .masterMissing
+            case .elsewhere:
                 self.lastFailedVideo = nil
                 failure = .finalPassFailed
             }
@@ -116,7 +121,7 @@ extension ForkMeetingService {
             log.notice("launch: \(recovery.folder.lastPathComponent, privacy: .private) \(String(describing: recovery.action), privacy: .public) \(recovery.outcome?.finalPass.rawValue ?? "", privacy: .public)")
             // A meeting whose pass failed again at launch is shown too.
             if let outcome = recovery.outcome, !outcome.succeeded {
-                revealAfterFailure(recovery.folder)
+                revealAfterFailure(recovery.folder, readable: outcome.seconds != nil)
                 continue
             }
             guard recovery.isRecovered, let outcome = recovery.outcome else { continue }

@@ -319,7 +319,13 @@ final class ForkMeetingFinalizer: ObservableObject, @unchecked Sendable {
     private func promote(_ job: Job, paths: Paths, masterSeconds: Double, note: String?) async -> Outcome {
         store.write(ForkMeetingSidecarPatch(finalPass: .skippedDisk), in: job.folder)
         do {
-            try ForkMeetingStore.replace(paths.final, with: paths.master)
+            if ForkMeetingStore.isSameFile(paths.final, paths.master) {
+                // The master already has the meeting's name (a pass that
+                // failed, shown): only its hidden name goes.
+                try FileManager.default.removeItem(at: paths.master)
+            } else {
+                try ForkMeetingStore.replace(paths.final, with: paths.master)
+            }
         } catch {
             return failed(job, note: "the master could not become the final file: \(error.localizedDescription)",
                           seconds: masterSeconds)

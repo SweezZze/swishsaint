@@ -141,6 +141,11 @@ enum ForkMeetingFolder {
     /// library cut it in the middle anyway.
     static let titleLimit = 60
 
+    /// The bidi embeddings and overrides (U+202A–202E) and isolates
+    /// (U+2066–2069): they reorder what follows them, so a name could show
+    /// an extension it does not have.
+    static let bidiControls = Set<UInt32>(0x202A...0x202E).union(0x2066...0x2069)
+
     /// Spaces, dashes of every length (one already separates the stamp from
     /// the title) and dots, which the Finder reads as an extension.
     private static let trailingNoise = CharacterSet(charactersIn: " .-–—_")
@@ -155,13 +160,18 @@ enum ForkMeetingFolder {
     /// apostrophes and ampersands stay: "Closing L'Étoile & Fils" is the name
     /// the person wrote. So do format characters (Cf), which
     /// `CharacterSet.controlCharacters` also holds: the zero-width joiner
-    /// inside an emoji family or a rainbow flag, the soft hyphen.
+    /// inside an emoji family or a rainbow flag, the soft hyphen, and the
+    /// direction marks a Hebrew or Arabic title needs (U+200E, U+200F,
+    /// U+061C). Not the bidi embeddings, overrides and isolates
+    /// (`bidiControls`): "Budget \u{202E}xslx.4pm" would show as
+    /// "Budget mp4.xlsx", a name that lies about the file.
     static func sanitized(_ title: String) -> String? {
         var cleaned = ""
         var lastWasSpace = false
         for character in title {
             let forbidden = character == "/" || character == ":"
                 || character.unicodeScalars.contains { $0.properties.generalCategory == .control }
+                || character.unicodeScalars.contains { bidiControls.contains($0.value) }
             if forbidden || character.isWhitespace {
                 if !lastWasSpace, !cleaned.isEmpty { cleaned.append(" ") }
                 lastWasSpace = true
