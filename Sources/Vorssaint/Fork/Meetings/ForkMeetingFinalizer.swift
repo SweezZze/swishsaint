@@ -310,7 +310,14 @@ final class ForkMeetingFinalizer: ObservableObject, @unchecked Sendable {
     /// The master becomes the final file: a rename, no copy, its tracks as
     /// the writer left them. No M4A: there is no mixed track to copy, and
     /// no room to make one.
+    ///
+    /// `skipped-disk` is written **before** the rename: the app may end right
+    /// after it, and the next launch then finds a final file without its
+    /// master, which it can only take for a final pass that went well. Ended
+    /// before the rename instead, the master is still there and the next
+    /// launch runs the pass again, which writes its own outcome.
     private func promote(_ job: Job, paths: Paths, masterSeconds: Double, note: String?) async -> Outcome {
+        store.write(ForkMeetingSidecarPatch(finalPass: .skippedDisk), in: job.folder)
         do {
             try ForkMeetingStore.replace(paths.final, with: paths.master)
         } catch {

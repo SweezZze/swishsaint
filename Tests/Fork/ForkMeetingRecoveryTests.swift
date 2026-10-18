@@ -54,6 +54,22 @@ enum ForkMeetingRecoveryTests {
     }
 
     private static func finalPassCut(_ suite: TestSuite) {
+        // The master promoted for lack of room, the app ended right after the
+        // rename: `skipped-disk` was written first, and stays.
+        var promoted = ForkMeetingSidecar()
+        promoted.schema = 1
+        promoted.state = .finalizing
+        promoted.finalPass = .skippedDisk
+        let cut = Plan.Facts(sidecar: .success(promoted), master: nil, final: Media(duration: 3000))
+        let action = Plan.plan(cut)
+        suite.expect(action == .complete(removeMaster: false, discardDrafts: false)
+                        && Plan.patch(for: action, facts: cut).map { $0.applied(to: promoted).finalPass } == .skippedDisk
+                        && Plan.patch(for: action, facts: cut)?.state == .complete,
+                     "a promotion cut right after the rename is completed as skipped-disk, never as a final pass done")
+        let before = Plan.Facts(sidecar: .success(promoted), master: Media(duration: 3000), final: nil)
+        suite.expect(Plan.plan(before) == .finalize(stopReason: .crash, recovered: false, discardDrafts: false)
+                        && Plan.patch(for: Plan.plan(before), facts: before)?.state == .finalizing,
+                     "cut before the rename, the master is still there: the pass runs again, not as a last try")
         suite.expect(Plan.plan(facts(.finalizing, stopReason: .user, master: Media(duration: 3000), drafts: true))
                         == .finalize(stopReason: .user, recovered: false, discardDrafts: true),
                      "finalizing with a draft: the draft goes, the final pass runs again; the meeting itself had ended well")
