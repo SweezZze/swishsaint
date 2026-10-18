@@ -55,6 +55,7 @@ enum ForkMeetingIsland {
         case .diskLow: return "externaldrive.badge.exclamationmark"
         case .displayChanged: return "display"
         case .failure: return "exclamationmark.triangle.fill"
+        case .neverOffered: return "bell.slash"
         }
     }
 

@@ -501,8 +501,8 @@ enum ForkMeetingMachineTests {
                 if start == "sleeping" { machine.handle(.willSleep, now: at(5)) }
                 machine.handle(event, now: at(10))
                 switch machine.phase {
-                case .recording, .paused, .stopping: break
-                case .idle, .starting: throughStopping = false
+                case .recording, .paused, .stopping, .endingSoon: break
+                case .idle, .offering, .starting: throughStopping = false
                 }
             }
         }

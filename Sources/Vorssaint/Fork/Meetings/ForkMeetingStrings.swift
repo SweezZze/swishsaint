@@ -225,6 +225,55 @@ struct ForkMeetingStrings {
     let actionOpenSettings: String
     let actionOpenMeetings: String
     let bubbleClose: String
+
+    // MARK: Detection
+
+    /// The offer's buttons and menu. %@ is the provider's short name ("Meet").
+    let offerRecord: String
+    let offerNotNow: String
+    let offerAlwaysFormat: String
+    let offerNeverFormat: String
+    /// The ⋯ button, for VoiceOver and as its tooltip.
+    let offerMore: String
+    /// The consent line under the meeting's name.
+    let offerConsent: String
+    /// What will be recorded: the window's app, the sound's (an app, or
+    /// `offerWholeMac`) and the microphone's name, in that order.
+    let offerCaptureFormat: String
+    let offerWholeMac: String
+    /// The offer greyed out while the official recorder runs.
+    let offerRecorderBusy: String
+    /// The folded offer, for VoiceOver and as its tooltip; %@ is the meeting.
+    let offerReminderFormat: String
+    /// "Meeting over? Stopping in 15 s [Continue]", in two short parts.
+    let endingSoonTitle: String
+    let endingSoonFormat: String
+    let endingSoonContinue: String
+    /// The button that cancels a recording "Always" started; %d is seconds.
+    let undoFormat: String
+    /// After "Never for Meet": the notice and its detail.
+    let noticeNeverFormat: String
+    let noticeNeverDetail: String
+    let voiceOfferFormat: String
+    let voiceAutoStartedFormat: String
+    let voiceEndingSoonFormat: String
+    let voiceContinued: String
+    let voiceDiscarded: String
+    let voiceNeverFormat: String
+
+    func offerAlways(_ provider: String) -> String { String(format: offerAlwaysFormat, provider) }
+    func offerNever(_ provider: String) -> String { String(format: offerNeverFormat, provider) }
+    func offerCapture(window: String, sound: String, microphone: String) -> String {
+        String(format: offerCaptureFormat, window, sound, microphone)
+    }
+    func offerReminder(_ meeting: String) -> String { String(format: offerReminderFormat, meeting) }
+    func endingSoon(seconds: Int) -> String { String(format: endingSoonFormat, seconds) }
+    func undo(seconds: Int) -> String { String(format: undoFormat, seconds) }
+    func noticeNever(_ provider: String) -> String { String(format: noticeNeverFormat, provider) }
+    func voiceOffer(_ meeting: String) -> String { String(format: voiceOfferFormat, meeting) }
+    func voiceAutoStarted(seconds: Int) -> String { String(format: voiceAutoStartedFormat, seconds) }
+    func voiceEndingSoon(seconds: Int) -> String { String(format: voiceEndingSoonFormat, seconds) }
+    func voiceNever(_ provider: String) -> String { String(format: voiceNeverFormat, provider) }
 }
 
 extension ForkMeetingStrings {
@@ -381,7 +430,30 @@ extension ForkMeetingStrings {
         actionShow: "Show in Finder",
         actionOpenSettings: "Open System Settings",
         actionOpenMeetings: "Meetings settings",
-        bubbleClose: "Close"
+        bubbleClose: "Close",
+        // MARK: Detection
+        offerRecord: "Record",
+        offerNotNow: "Not Now",
+        offerAlwaysFormat: "Always for %@",
+        offerNeverFormat: "Never for %@",
+        offerMore: "More options",
+        offerConsent: "Remember to tell the participants.",
+        offerCaptureFormat: "%1$@ window · %2$@ sound · %3$@ mic",
+        offerWholeMac: "whole Mac",
+        offerRecorderBusy: "A screen recording is in progress.",
+        offerReminderFormat: "Offer to record %@",
+        endingSoonTitle: "Meeting over?",
+        endingSoonFormat: "Stopping in %d s",
+        endingSoonContinue: "Continue",
+        undoFormat: "Cancel (%d s)",
+        noticeNeverFormat: "No more offers for %@",
+        noticeNeverDetail: "Change it in Meetings",
+        voiceOfferFormat: "Meeting detected: %@. Do you want to record it?",
+        voiceAutoStartedFormat: "Meeting recording started on its own. To cancel it and delete the file, choose Cancel within %d seconds.",
+        voiceEndingSoonFormat: "The meeting seems over. The recording stops in %d seconds unless you choose Continue.",
+        voiceContinued: "The recording goes on.",
+        voiceDiscarded: "Recording cancelled. Its file is deleted.",
+        voiceNeverFormat: "Meetings from %@ will no longer be offered."
     )
 }
 
@@ -539,7 +611,30 @@ extension ForkMeetingStrings {
         actionShow: "Mostrar no Finder",
         actionOpenSettings: "Abrir Ajustes do Sistema",
         actionOpenMeetings: "Ajustes das reuniões",
-        bubbleClose: "Fechar"
+        bubbleClose: "Fechar",
+        // MARK: Detection
+        offerRecord: "Gravar",
+        offerNotNow: "Agora não",
+        offerAlwaysFormat: "Sempre para %@",
+        offerNeverFormat: "Nunca para %@",
+        offerMore: "Mais opções",
+        offerConsent: "Lembre-se de avisar os participantes.",
+        offerCaptureFormat: "Janela do %1$@ · som do %2$@ · microfone %3$@",
+        offerWholeMac: "Mac inteiro",
+        offerRecorderBusy: "Uma gravação de tela está em curso.",
+        offerReminderFormat: "Proposta de gravar %@",
+        endingSoonTitle: "A reunião terminou?",
+        endingSoonFormat: "Parando em %d s",
+        endingSoonContinue: "Continuar",
+        undoFormat: "Cancelar (%d s)",
+        noticeNeverFormat: "Nunca mais para %@",
+        noticeNeverDetail: "Ajuste em Reuniões",
+        voiceOfferFormat: "Reunião detectada: %@. Quer gravá-la?",
+        voiceAutoStartedFormat: "Gravação da reunião iniciada automaticamente. Para cancelá-la e apagar o arquivo, escolha Cancelar em até %d segundos.",
+        voiceEndingSoonFormat: "A reunião parece ter terminado. A gravação para em %d segundos, a menos que você escolha Continuar.",
+        voiceContinued: "A gravação continua.",
+        voiceDiscarded: "Gravação cancelada. O arquivo foi apagado.",
+        voiceNeverFormat: "As reuniões do %@ não serão mais oferecidas."
     )
 }
 
@@ -697,7 +792,30 @@ extension ForkMeetingStrings {
         actionShow: "Finder’da göster",
         actionOpenSettings: "Sistem Ayarları’nı aç",
         actionOpenMeetings: "Toplantı ayarları",
-        bubbleClose: "Kapat"
+        bubbleClose: "Kapat",
+        // MARK: Detection
+        offerRecord: "Kaydet",
+        offerNotNow: "Bu sefer değil",
+        offerAlwaysFormat: "%@ için her zaman",
+        offerNeverFormat: "%@ için asla",
+        offerMore: "Diğer seçenekler",
+        offerConsent: "Katılımcıları bilgilendirmeyi unutmayın.",
+        offerCaptureFormat: "%1$@ penceresi · %2$@ sesi · %3$@ mikrofonu",
+        offerWholeMac: "tüm Mac",
+        offerRecorderBusy: "Bir ekran kaydı sürüyor.",
+        offerReminderFormat: "%@ kayıt önerisi",
+        endingSoonTitle: "Toplantı bitti mi?",
+        endingSoonFormat: "%d sn içinde duruyor",
+        endingSoonContinue: "Devam et",
+        undoFormat: "Vazgeç (%d sn)",
+        noticeNeverFormat: "%@ artık önerilmez",
+        noticeNeverDetail: "Toplantılar'dan değiştirin",
+        voiceOfferFormat: "Toplantı algılandı: %@. Kaydetmek ister misiniz?",
+        voiceAutoStartedFormat: "Toplantı kaydı kendiliğinden başladı. İptal edip dosyayı silmek için %d saniye içinde Vazgeç'i seçin.",
+        voiceEndingSoonFormat: "Toplantı bitmiş görünüyor. Devam et'i seçmezseniz kayıt %d saniye içinde duracak.",
+        voiceContinued: "Kayıt devam ediyor.",
+        voiceDiscarded: "Kayıt iptal edildi. Dosyası silindi.",
+        voiceNeverFormat: "%@ toplantıları artık önerilmeyecek."
     )
 }
 
@@ -855,7 +973,30 @@ extension ForkMeetingStrings {
         actionShow: "Показать в Finder",
         actionOpenSettings: "Открыть Системные настройки",
         actionOpenMeetings: "Настройки встреч",
-        bubbleClose: "Закрыть"
+        bubbleClose: "Закрыть",
+        // MARK: Detection
+        offerRecord: "Записать",
+        offerNotNow: "Не сейчас",
+        offerAlwaysFormat: "Всегда для %@",
+        offerNeverFormat: "Никогда для %@",
+        offerMore: "Другие действия",
+        offerConsent: "Не забудьте предупредить участников.",
+        offerCaptureFormat: "Окно %1$@ · звук %2$@ · микрофон %3$@",
+        offerWholeMac: "всего Mac",
+        offerRecorderBusy: "Идёт запись экрана.",
+        offerReminderFormat: "Предложение записать %@",
+        endingSoonTitle: "Встреча окончена?",
+        endingSoonFormat: "Остановка через %d с",
+        endingSoonContinue: "Продолжить",
+        undoFormat: "Отменить (%d с)",
+        noticeNeverFormat: "Не предлагать для %@",
+        noticeNeverDetail: "Изменить в настройках встреч",
+        voiceOfferFormat: "Обнаружена встреча: %@. Записать её?",
+        voiceAutoStartedFormat: "Запись встречи началась автоматически. Чтобы отменить её и удалить файл, выберите «Отменить» в течение %d секунд.",
+        voiceEndingSoonFormat: "Похоже, встреча закончилась. Запись остановится через %d секунд, если не выбрать «Продолжить».",
+        voiceContinued: "Запись продолжается.",
+        voiceDiscarded: "Запись отменена. Её файл удалён.",
+        voiceNeverFormat: "Встречи %@ больше не будут предлагаться."
     )
 }
 
@@ -1013,7 +1154,30 @@ extension ForkMeetingStrings {
         actionShow: "Mostrar en el Finder",
         actionOpenSettings: "Abrir Ajustes del Sistema",
         actionOpenMeetings: "Ajustes de reuniones",
-        bubbleClose: "Cerrar"
+        bubbleClose: "Cerrar",
+        // MARK: Detection
+        offerRecord: "Grabar",
+        offerNotNow: "Ahora no",
+        offerAlwaysFormat: "Siempre para %@",
+        offerNeverFormat: "Nunca para %@",
+        offerMore: "Más opciones",
+        offerConsent: "Recuerda avisar a los participantes.",
+        offerCaptureFormat: "Ventana de %1$@ · sonido de %2$@ · micro %3$@",
+        offerWholeMac: "todo el Mac",
+        offerRecorderBusy: "Hay una grabación de pantalla en curso.",
+        offerReminderFormat: "Propuesta de grabar %@",
+        endingSoonTitle: "¿Terminó la reunión?",
+        endingSoonFormat: "Se detiene en %d s",
+        endingSoonContinue: "Continuar",
+        undoFormat: "Cancelar (%d s)",
+        noticeNeverFormat: "Nunca más para %@",
+        noticeNeverDetail: "Cámbialo en Reuniones",
+        voiceOfferFormat: "Reunión detectada: %@. ¿Quieres grabarla?",
+        voiceAutoStartedFormat: "La grabación de la reunión empezó sola. Para cancelarla y borrar el archivo, elige Cancelar antes de %d segundos.",
+        voiceEndingSoonFormat: "La reunión parece terminada. La grabación se detiene en %d segundos, salvo que elijas Continuar.",
+        voiceContinued: "La grabación continúa.",
+        voiceDiscarded: "Grabación cancelada. Su archivo se ha borrado.",
+        voiceNeverFormat: "Las reuniones de %@ ya no se propondrán."
     )
 }
 
@@ -1171,7 +1335,30 @@ extension ForkMeetingStrings {
         actionShow: "Zobraziť vo Finderi",
         actionOpenSettings: "Otvoriť Systémové nastavenia",
         actionOpenMeetings: "Nastavenia stretnutí",
-        bubbleClose: "Zavrieť"
+        bubbleClose: "Zavrieť",
+        // MARK: Detection
+        offerRecord: "Nahrávať",
+        offerNotNow: "Teraz nie",
+        offerAlwaysFormat: "Vždy pre %@",
+        offerNeverFormat: "Nikdy pre %@",
+        offerMore: "Ďalšie možnosti",
+        offerConsent: "Nezabudnite upozorniť účastníkov.",
+        offerCaptureFormat: "Okno %1$@ · zvuk %2$@ · mikrofón %3$@",
+        offerWholeMac: "celého Macu",
+        offerRecorderBusy: "Prebieha nahrávanie obrazovky.",
+        offerReminderFormat: "Ponuka nahrať %@",
+        endingSoonTitle: "Stretnutie skončilo?",
+        endingSoonFormat: "Zastavenie o %d s",
+        endingSoonContinue: "Pokračovať",
+        undoFormat: "Zrušiť (%d s)",
+        noticeNeverFormat: "Už neponúkať pre %@",
+        noticeNeverDetail: "Zmeníte v Stretnutiach",
+        voiceOfferFormat: "Zistené stretnutie: %@. Chcete ho nahrať?",
+        voiceAutoStartedFormat: "Nahrávanie stretnutia sa spustilo automaticky. Ak ho chcete zrušiť a vymazať súbor, do %d sekúnd vyberte Zrušiť.",
+        voiceEndingSoonFormat: "Stretnutie sa zdá skončené. Nahrávanie sa zastaví o %d sekúnd, ak nevyberiete Pokračovať.",
+        voiceContinued: "Nahrávanie pokračuje.",
+        voiceDiscarded: "Nahrávanie zrušené. Jeho súbor je vymazaný.",
+        voiceNeverFormat: "Stretnutia %@ sa už nebudú ponúkať."
     )
 }
 
@@ -1329,7 +1516,30 @@ extension ForkMeetingStrings {
         actionShow: "Im Finder zeigen",
         actionOpenSettings: "Systemeinstellungen öffnen",
         actionOpenMeetings: "Besprechungseinstellungen",
-        bubbleClose: "Schließen"
+        bubbleClose: "Schließen",
+        // MARK: Detection
+        offerRecord: "Aufnehmen",
+        offerNotNow: "Diesmal nicht",
+        offerAlwaysFormat: "Immer für %@",
+        offerNeverFormat: "Nie für %@",
+        offerMore: "Weitere Optionen",
+        offerConsent: "Denk daran, die Teilnehmenden zu informieren.",
+        offerCaptureFormat: "Fenster: %1$@ · Ton: %2$@ · Mikro: %3$@",
+        offerWholeMac: "ganzer Mac",
+        offerRecorderBusy: "Eine Bildschirmaufnahme läuft.",
+        offerReminderFormat: "Angebot, %@ aufzunehmen",
+        endingSoonTitle: "Besprechung beendet?",
+        endingSoonFormat: "Stopp in %d s",
+        endingSoonContinue: "Fortsetzen",
+        undoFormat: "Abbrechen (%d s)",
+        noticeNeverFormat: "Nie mehr für %@",
+        noticeNeverDetail: "Änderbar unter Besprechungen",
+        voiceOfferFormat: "Besprechung erkannt: %@. Möchtest du sie aufnehmen?",
+        voiceAutoStartedFormat: "Die Aufnahme der Besprechung hat von selbst begonnen. Um sie abzubrechen und die Datei zu löschen, wähle innerhalb von %d Sekunden Abbrechen.",
+        voiceEndingSoonFormat: "Die Besprechung scheint vorbei. Die Aufnahme stoppt in %d Sekunden, außer du wählst Fortsetzen.",
+        voiceContinued: "Die Aufnahme läuft weiter.",
+        voiceDiscarded: "Aufnahme abgebrochen. Ihre Datei wurde gelöscht.",
+        voiceNeverFormat: "Besprechungen von %@ werden nicht mehr angeboten."
     )
 }
 
@@ -1487,7 +1697,30 @@ extension ForkMeetingStrings {
         actionShow: "Afficher dans le Finder",
         actionOpenSettings: "Ouvrir les Réglages",
         actionOpenMeetings: "Réglages des réunions",
-        bubbleClose: "Fermer"
+        bubbleClose: "Fermer",
+        // MARK: Detection
+        offerRecord: "Enregistrer",
+        offerNotNow: "Pas cette fois",
+        offerAlwaysFormat: "Toujours pour %@",
+        offerNeverFormat: "Jamais pour %@",
+        offerMore: "Plus d’options",
+        offerConsent: "Pensez à prévenir les participants.",
+        offerCaptureFormat: "Fenêtre de %1$@ · son de %2$@ · micro %3$@",
+        offerWholeMac: "tout le Mac",
+        offerRecorderBusy: "Un enregistrement d’écran est en cours.",
+        offerReminderFormat: "Proposition d’enregistrer %@",
+        endingSoonTitle: "Réunion terminée ?",
+        endingSoonFormat: "Arrêt dans %d s",
+        endingSoonContinue: "Continuer",
+        undoFormat: "Annuler (%d s)",
+        noticeNeverFormat: "Plus proposé pour %@",
+        noticeNeverDetail: "Réglable dans Réunions",
+        voiceOfferFormat: "Réunion détectée : %@. Voulez-vous l’enregistrer ?",
+        voiceAutoStartedFormat: "Enregistrement de la réunion démarré automatiquement. Pour l’annuler et supprimer le fichier, choisissez Annuler dans les %d secondes.",
+        voiceEndingSoonFormat: "La réunion semble terminée. L’enregistrement s’arrête dans %d secondes, sauf si vous choisissez Continuer.",
+        voiceContinued: "L’enregistrement continue.",
+        voiceDiscarded: "Enregistrement annulé. Son fichier est supprimé.",
+        voiceNeverFormat: "Les réunions %@ ne seront plus proposées."
     )
 }
 
@@ -1645,7 +1878,30 @@ extension ForkMeetingStrings {
         actionShow: "Mostra nel Finder",
         actionOpenSettings: "Apri Impostazioni di Sistema",
         actionOpenMeetings: "Impostazioni riunioni",
-        bubbleClose: "Chiudi"
+        bubbleClose: "Chiudi",
+        // MARK: Detection
+        offerRecord: "Registra",
+        offerNotNow: "Non ora",
+        offerAlwaysFormat: "Sempre per %@",
+        offerNeverFormat: "Mai per %@",
+        offerMore: "Altre opzioni",
+        offerConsent: "Ricorda di avvisare i partecipanti.",
+        offerCaptureFormat: "Finestra di %1$@ · audio di %2$@ · microfono %3$@",
+        offerWholeMac: "tutto il Mac",
+        offerRecorderBusy: "È in corso una registrazione dello schermo.",
+        offerReminderFormat: "Proposta di registrare %@",
+        endingSoonTitle: "Riunione finita?",
+        endingSoonFormat: "Stop tra %d s",
+        endingSoonContinue: "Continua",
+        undoFormat: "Annulla (%d s)",
+        noticeNeverFormat: "Mai più per %@",
+        noticeNeverDetail: "Modificabile in Riunioni",
+        voiceOfferFormat: "Riunione rilevata: %@. Vuoi registrarla?",
+        voiceAutoStartedFormat: "La registrazione della riunione è partita da sola. Per annullarla ed eliminare il file, scegli Annulla entro %d secondi.",
+        voiceEndingSoonFormat: "La riunione sembra finita. La registrazione si ferma tra %d secondi, a meno che tu non scelga Continua.",
+        voiceContinued: "La registrazione continua.",
+        voiceDiscarded: "Registrazione annullata. Il file è stato eliminato.",
+        voiceNeverFormat: "Le riunioni di %@ non saranno più proposte."
     )
 }
 
@@ -1803,7 +2059,30 @@ extension ForkMeetingStrings {
         actionShow: "Finderに表示",
         actionOpenSettings: "システム設定を開く",
         actionOpenMeetings: "ミーティングの設定",
-        bubbleClose: "閉じる"
+        bubbleClose: "閉じる",
+        // MARK: Detection
+        offerRecord: "録画",
+        offerNotNow: "今回はしない",
+        offerAlwaysFormat: "%@ では常に録画",
+        offerNeverFormat: "%@ では録画しない",
+        offerMore: "その他のオプション",
+        offerConsent: "参加者に知らせることを忘れずに。",
+        offerCaptureFormat: "%1$@ のウインドウ · %2$@ の音声 · マイク %3$@",
+        offerWholeMac: "Mac 全体",
+        offerRecorderBusy: "画面収録が進行中です。",
+        offerReminderFormat: "%@ の録画の提案",
+        endingSoonTitle: "ミーティングは終了？",
+        endingSoonFormat: "%d 秒後に停止",
+        endingSoonContinue: "続ける",
+        undoFormat: "キャンセル（%d 秒）",
+        noticeNeverFormat: "%@ はもう提案しません",
+        noticeNeverDetail: "「ミーティング」で変更できます",
+        voiceOfferFormat: "ミーティングを検出しました：%@。録画しますか？",
+        voiceAutoStartedFormat: "ミーティングの録画が自動的に開始されました。取り消してファイルを削除するには、%d 秒以内に「キャンセル」を選んでください。",
+        voiceEndingSoonFormat: "ミーティングが終了したようです。「続ける」を選ばない場合、%d 秒後に録画を停止します。",
+        voiceContinued: "録画を続けます。",
+        voiceDiscarded: "録画を取り消しました。ファイルは削除されました。",
+        voiceNeverFormat: "%@ のミーティングは今後提案されません。"
     )
 }
 
@@ -1961,7 +2240,30 @@ extension ForkMeetingStrings {
         actionShow: "Finder에서 보기",
         actionOpenSettings: "시스템 설정 열기",
         actionOpenMeetings: "회의 설정",
-        bubbleClose: "닫기"
+        bubbleClose: "닫기",
+        // MARK: Detection
+        offerRecord: "녹화",
+        offerNotNow: "이번에는 안 함",
+        offerAlwaysFormat: "%@에서 항상 녹화",
+        offerNeverFormat: "%@에서 녹화 안 함",
+        offerMore: "기타 옵션",
+        offerConsent: "참가자에게 알리는 것을 잊지 마세요.",
+        offerCaptureFormat: "%1$@ 윈도우 · %2$@ 사운드 · 마이크 %3$@",
+        offerWholeMac: "Mac 전체",
+        offerRecorderBusy: "화면 녹화가 진행 중입니다.",
+        offerReminderFormat: "%@ 녹화 제안",
+        endingSoonTitle: "회의가 끝났나요?",
+        endingSoonFormat: "%d초 후 중지",
+        endingSoonContinue: "계속",
+        undoFormat: "취소(%d초)",
+        noticeNeverFormat: "%@ 더 이상 제안 안 함",
+        noticeNeverDetail: "회의 설정에서 변경 가능",
+        voiceOfferFormat: "회의가 감지되었습니다: %@. 녹화하시겠습니까?",
+        voiceAutoStartedFormat: "회의 녹화가 자동으로 시작되었습니다. 취소하고 파일을 삭제하려면 %d초 안에 취소를 선택하세요.",
+        voiceEndingSoonFormat: "회의가 끝난 것 같습니다. 계속을 선택하지 않으면 %d초 후 녹화가 중지됩니다.",
+        voiceContinued: "녹화를 계속합니다.",
+        voiceDiscarded: "녹화가 취소되었습니다. 파일이 삭제되었습니다.",
+        voiceNeverFormat: "%@ 회의는 더 이상 제안되지 않습니다."
     )
 }
 
@@ -2119,7 +2421,30 @@ extension ForkMeetingStrings {
         actionShow: "Показати у Finder",
         actionOpenSettings: "Відкрити Системні параметри",
         actionOpenMeetings: "Параметри зустрічей",
-        bubbleClose: "Закрити"
+        bubbleClose: "Закрити",
+        // MARK: Detection
+        offerRecord: "Записати",
+        offerNotNow: "Не зараз",
+        offerAlwaysFormat: "Завжди для %@",
+        offerNeverFormat: "Ніколи для %@",
+        offerMore: "Інші дії",
+        offerConsent: "Не забудьте попередити учасників.",
+        offerCaptureFormat: "Вікно %1$@ · звук %2$@ · мікрофон %3$@",
+        offerWholeMac: "усього Mac",
+        offerRecorderBusy: "Триває запис екрана.",
+        offerReminderFormat: "Пропозиція записати %@",
+        endingSoonTitle: "Зустріч завершено?",
+        endingSoonFormat: "Зупинка через %d с",
+        endingSoonContinue: "Продовжити",
+        undoFormat: "Скасувати (%d с)",
+        noticeNeverFormat: "Не пропонувати для %@",
+        noticeNeverDetail: "Можна змінити в «Зустрічах»",
+        voiceOfferFormat: "Виявлено зустріч: %@. Записати її?",
+        voiceAutoStartedFormat: "Запис зустрічі почався автоматично. Щоб скасувати його й видалити файл, виберіть «Скасувати» протягом %d секунд.",
+        voiceEndingSoonFormat: "Схоже, зустріч завершилася. Запис зупиниться через %d секунд, якщо не вибрати «Продовжити».",
+        voiceContinued: "Запис триває.",
+        voiceDiscarded: "Запис скасовано. Його файл видалено.",
+        voiceNeverFormat: "Зустрічі %@ більше не пропонуватимуться."
     )
 }
 
@@ -2277,7 +2602,30 @@ extension ForkMeetingStrings {
         actionShow: "在访达中显示",
         actionOpenSettings: "打开系统设置",
         actionOpenMeetings: "会议设置",
-        bubbleClose: "关闭"
+        bubbleClose: "关闭",
+        // MARK: Detection
+        offerRecord: "录制",
+        offerNotNow: "这次不要",
+        offerAlwaysFormat: "%@ 总是录制",
+        offerNeverFormat: "%@ 永不录制",
+        offerMore: "更多选项",
+        offerConsent: "记得告知参与者。",
+        offerCaptureFormat: "%1$@ 的窗口 · %2$@ 的声音 · 麦克风 %3$@",
+        offerWholeMac: "整台 Mac",
+        offerRecorderBusy: "正在进行屏幕录制。",
+        offerReminderFormat: "录制 %@ 的提议",
+        endingSoonTitle: "会议结束了？",
+        endingSoonFormat: "%d 秒后停止",
+        endingSoonContinue: "继续",
+        undoFormat: "取消（%d 秒）",
+        noticeNeverFormat: "不再为 %@ 提议",
+        noticeNeverDetail: "可在“会议”设置中更改",
+        voiceOfferFormat: "检测到会议：%@。要录制吗？",
+        voiceAutoStartedFormat: "会议录制已自动开始。如需取消并删除文件，请在 %d 秒内选择“取消”。",
+        voiceEndingSoonFormat: "会议似乎已结束。除非你选择“继续”，录制将在 %d 秒后停止。",
+        voiceContinued: "录制继续。",
+        voiceDiscarded: "录制已取消，文件已删除。",
+        voiceNeverFormat: "将不再提议录制 %@ 会议。"
     )
 }
 
@@ -2435,7 +2783,30 @@ extension ForkMeetingStrings {
         actionShow: "在 Finder 中顯示",
         actionOpenSettings: "打開系統設定",
         actionOpenMeetings: "會議設定",
-        bubbleClose: "關閉"
+        bubbleClose: "關閉",
+        // MARK: Detection
+        offerRecord: "錄製",
+        offerNotNow: "這次不要",
+        offerAlwaysFormat: "%@ 一律錄製",
+        offerNeverFormat: "%@ 永不錄製",
+        offerMore: "更多選項",
+        offerConsent: "記得告知與會者。",
+        offerCaptureFormat: "%1$@ 的視窗 · %2$@ 的聲音 · 麥克風 %3$@",
+        offerWholeMac: "整台 Mac",
+        offerRecorderBusy: "正在進行螢幕錄製。",
+        offerReminderFormat: "錄製 %@ 的提議",
+        endingSoonTitle: "會議結束了？",
+        endingSoonFormat: "%d 秒後停止",
+        endingSoonContinue: "繼續",
+        undoFormat: "取消（%d 秒）",
+        noticeNeverFormat: "不再為 %@ 提議",
+        noticeNeverDetail: "可在「會議」設定中更改",
+        voiceOfferFormat: "偵測到會議：%@。要錄製嗎？",
+        voiceAutoStartedFormat: "會議錄製已自動開始。如要取消並刪除檔案，請在 %d 秒內選擇「取消」。",
+        voiceEndingSoonFormat: "會議似乎已結束。除非你選擇「繼續」，錄製將在 %d 秒後停止。",
+        voiceContinued: "錄製繼續。",
+        voiceDiscarded: "錄製已取消，檔案已刪除。",
+        voiceNeverFormat: "將不再提議錄製 %@ 會議。"
     )
 }
 
@@ -2593,6 +2964,29 @@ extension ForkMeetingStrings {
         actionShow: "在 Finder 中顯示",
         actionOpenSettings: "打開系統設定",
         actionOpenMeetings: "會議設定",
-        bubbleClose: "關閉"
+        bubbleClose: "關閉",
+        // MARK: Detection
+        offerRecord: "錄製",
+        offerNotNow: "今次唔使",
+        offerAlwaysFormat: "%@ 一律錄製",
+        offerNeverFormat: "%@ 永不錄製",
+        offerMore: "更多選項",
+        offerConsent: "記得通知與會者。",
+        offerCaptureFormat: "%1$@ 的視窗 · %2$@ 的聲音 · 咪高風 %3$@",
+        offerWholeMac: "整部 Mac",
+        offerRecorderBusy: "正在進行螢幕錄製。",
+        offerReminderFormat: "錄製 %@ 的提議",
+        endingSoonTitle: "會議完結了？",
+        endingSoonFormat: "%d 秒後停止",
+        endingSoonContinue: "繼續",
+        undoFormat: "取消（%d 秒）",
+        noticeNeverFormat: "不再為 %@ 提議",
+        noticeNeverDetail: "可在「會議」設定中更改",
+        voiceOfferFormat: "偵測到會議：%@。要錄製嗎？",
+        voiceAutoStartedFormat: "會議錄製已自動開始。如要取消並刪除檔案，請在 %d 秒內選擇「取消」。",
+        voiceEndingSoonFormat: "會議似乎已完結。除非你選擇「繼續」，錄製將在 %d 秒後停止。",
+        voiceContinued: "錄製繼續。",
+        voiceDiscarded: "錄製已取消，檔案已刪除。",
+        voiceNeverFormat: "將不再提議錄製 %@ 會議。"
     )
 }

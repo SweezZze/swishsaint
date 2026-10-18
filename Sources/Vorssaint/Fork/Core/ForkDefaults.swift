@@ -78,6 +78,14 @@ enum ForkDefaultsKey {
     /// The shortcut that starts and stops a recording, stored like the
     /// official shortcuts (`GlobalShortcut.storageValue`); empty: none.
     static let meetingsShortcut = "fork.meetings.shortcut"
+    /// What a detected meeting does per provider (`ForkMeetingPolicies`
+    /// JSON): ask, always (starts on its own) or never.
+    static let meetingsApps = "fork.meetings.apps"
+    /// A recording the detection started stops after a countdown once its
+    /// meeting probably ended; off: it goes on until it is stopped.
+    static let meetingsAutoStop = "fork.meetings.autoStop"
+    /// That countdown, in seconds.
+    static let meetingsAutoStopSeconds = "fork.meetings.autoStopSeconds"
     /// The meetings folder's path; empty: a folder in Movies, named in the
     /// person's language and saved here at the first recording. Machine
     /// state, like the official recorder's folder: kept out of the backup.
@@ -136,6 +144,9 @@ enum ForkDefaults {
         ForkDefaultsKey.meetingsConsentReminder: true,
         ForkDefaultsKey.meetingsAnnouncement: "",
         ForkDefaultsKey.meetingsShortcut: "",
+        ForkDefaultsKey.meetingsApps: ForkMeetingPolicies.defaultJSON,
+        ForkDefaultsKey.meetingsAutoStop: true,
+        ForkDefaultsKey.meetingsAutoStopSeconds: ForkMeetingAutoStop.defaultSeconds,
     ]
 
     /// Where each setting lived in the test builds made before the fork
