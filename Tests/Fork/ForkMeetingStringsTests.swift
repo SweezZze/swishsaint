@@ -9,6 +9,7 @@ enum ForkMeetingStringsTests {
         shortTexts(suite)
         formats(suite)
         failures(suite)
+        liveTexts(suite)
     }
 
     private static let languages = AppLanguage.allCases
@@ -131,5 +132,26 @@ enum ForkMeetingStringsTests {
                         keepsFile.contains { $0.remedy(english).contains(word) }
                      },
                      "a failure that ends a meeting says what happened to its file")
+    }
+
+    /// Every text of the pill, the bubble and their buttons is short,
+    /// written for that room in each language.
+    private static func liveTexts(_ suite: TestSuite) {
+        let live: [KeyPath<ForkMeetingStrings, String>] = [
+            \.pillPaused, \.pillStopping, \.pillFinalizing, \.pillPictureFrozen, \.pillPause, \.pillResume,
+            \.pillStop, \.pillFilmDisplay, \.pillFilmWindow, \.pillMicrophoneLevel, \.pillMeetingLevel,
+            \.pillMicrophoneOff, \.pillElapsed, \.pillRecording, \.actionShow, \.actionOpenSettings,
+            \.actionOpenMeetings, \.bubbleClose,
+        ]
+        var tooLong: [String] = []
+        for (language, strings) in zip(languages, allStrings) {
+            for path in live where strings[keyPath: path].count > 28 {
+                tooLong.append("\(language.rawValue): \(strings[keyPath: path])")
+            }
+        }
+        suite.expect(tooLong.isEmpty, "every text of the pill and the bubble fits in 28 characters: \(tooLong)")
+        suite.expect(allStrings.allSatisfy { $0.pillPause != $0.pillResume && $0.pillFilmDisplay != $0.pillFilmWindow
+                                                && $0.pillMicrophoneLevel != $0.pillMeetingLevel },
+                     "the buttons and meters VoiceOver reads are told apart in every language")
     }
 }
