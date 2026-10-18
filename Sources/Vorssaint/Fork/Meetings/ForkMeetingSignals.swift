@@ -31,12 +31,17 @@ struct ForkMeetingMicSignal: Equatable {
     /// The process itself, and its bundle as CoreAudio reports it.
     var pid: Int32
     var processBundle: String?
+    /// The input it records from (a CoreAudio device UID, the capture
+    /// device's unique ID), for "Meeting microphone (auto)".
+    var inputDevice: String?
 
-    init(appBundle: String?, appPID: Int32? = nil, pid: Int32, processBundle: String? = nil) {
+    init(appBundle: String?, appPID: Int32? = nil, pid: Int32, processBundle: String? = nil,
+         inputDevice: String? = nil) {
         self.appBundle = appBundle
         self.appPID = appPID
         self.pid = pid
         self.processBundle = processBundle
+        self.inputDevice = inputDevice
     }
 }
 
