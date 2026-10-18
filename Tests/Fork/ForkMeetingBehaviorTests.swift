@@ -86,6 +86,8 @@ enum ForkMeetingBehaviorTests {
         case .recording: return "recording"
         case let .paused(_, reason): return "paused(\(reason))"
         case let .stopping(_, reason): return "stopping(\(reason))"
+        case .offering: return "offering"
+        case .endingSoon: return "endingSoon"
         }
     }
 

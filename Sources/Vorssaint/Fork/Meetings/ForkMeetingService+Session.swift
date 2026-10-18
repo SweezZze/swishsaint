@@ -208,6 +208,11 @@ extension ForkMeetingService {
             presenter.say(ForkMeetingLiveText.sentences(announcement.text(text), text.soundNoAppDetail))
         case .announce, .notify:
             presenter.apply(effect, context: context)
+        case .showOffer, .collapseOffer, .hideOffer, .showUndo, .hideUndo, .showEndingSoon, .hideEndingSoon,
+             .silence, .setPolicy, .discard:
+            // Nothing sends the detection's events yet: its effects come
+            // with its service and its interface.
+            break
         }
     }
 

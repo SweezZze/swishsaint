@@ -103,7 +103,10 @@ final class ForkMeetingPresenter {
         case let .notify(notice):
             notify(notice, detail: nil)
         case .startCapture, .pauseCapture, .resumeCapture, .restartStream, .switchTarget, .stopCapture,
-             .writeSidecar, .beginFinalize:
+             .writeSidecar, .beginFinalize, .silence, .setPolicy, .discard:
+            break
+        case .showOffer, .collapseOffer, .hideOffer, .showUndo, .hideUndo, .showEndingSoon, .hideEndingSoon:
+            // The offer and the countdown come with the detection's interface.
             break
         }
     }
@@ -385,7 +388,7 @@ final class ForkMeetingPresenter {
                     dismiss()
                 })
             }
-        case .resumed, .microphone, .displayChanged:
+        case .resumed, .microphone, .displayChanged, .neverOffered:
             tint = .accentColor
         }
         return ForkMeetingCard(symbol: ForkMeetingIsland.symbol(for: notice), tint: tint, title: notice.title(text),
