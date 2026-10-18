@@ -295,7 +295,9 @@ extension ForkMeetingService {
         let capture = ForkMeetingSidecar.Capture(target: config.settings.target, systemAudio: config.settings.systemAudio,
                                                  microphone: microphone, quality: config.settings.quality)
         store.createMeeting(id: UUID(), startedAt: Date(), origin: config.origin, title: config.title,
-                            titleSource: config.title == nil ? nil : .user, capture: capture) { [weak self] result in
+                            titleSource: ForkMeetingDetectionSupport.titleSource(title: config.title,
+                                                                                meeting: config.meeting),
+                            capture: capture, meeting: config.meeting) { [weak self] result in
             self?.folderMade(result, config: config, token: token)
         }
         // A folder that takes too long (a volume that hangs) fails the start

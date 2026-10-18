@@ -24,6 +24,17 @@ enum ForkMeetingDetectionSupport {
         }
     }
 
+    /// Where the name a recording starts with came from: the meeting's
+    /// window title, its calendar event, or its provider and code ("Google
+    /// Meet · abc-defg-hij"); a name given otherwise is the person's.
+    static func titleSource(title: String?, meeting: ForkMeetingCandidate?) -> ForkMeetingSidecar.TitleSource? {
+        guard let title else { return nil }
+        guard let meeting, title == meeting.name else { return .user }
+        if let name = meeting.titleName, !name.isEmpty { return .window }
+        if let name = meeting.calendarTitle, !name.isEmpty { return .calendar }
+        return .provider
+    }
+
     /// "Meeting microphone (auto)": the input the meeting's app records
     /// from, its audio helper's included (Chrome's microphone is its
     /// AudioService's), the app itself first; `nil` when it records none, and

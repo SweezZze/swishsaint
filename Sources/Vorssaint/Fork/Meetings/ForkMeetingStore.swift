@@ -128,6 +128,7 @@ final class ForkMeetingStore: @unchecked Sendable {
     /// refused (`alreadyOpening`). The folder comes back claimed.
     func createMeeting(id: UUID, startedAt: Date, origin: ForkMeetingOrigin, title: String?,
                        titleSource: ForkMeetingSidecar.TitleSource?, capture: ForkMeetingSidecar.Capture,
+                       meeting: ForkMeetingCandidate? = nil,
                        completion: @escaping (Result<URL, Failure>) -> Void) {
         lock.lock()
         if let known = made[id] {
@@ -145,7 +146,9 @@ final class ForkMeetingStore: @unchecked Sendable {
 
         let root = self.root()
         let started = ForkMeetingSidecar.started(id: id, startedAt: startedAt, origin: origin, title: title,
-                                                 titleSource: titleSource, capture: capture)
+                                                 titleSource: titleSource, capture: capture,
+                                                 provider: meeting?.provider, meetCode: meeting?.meetCode,
+                                                 app: meeting?.appBundle)
         queue.async { [self] in
             let result = makeFolder(in: root, for: started, id: id,
                                     name: ForkMeetingFolder.name(startedAt: startedAt, title: title))

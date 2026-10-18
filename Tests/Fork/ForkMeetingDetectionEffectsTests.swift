@@ -25,6 +25,7 @@ enum ForkMeetingDetectionEffectsTests {
         freeSpace(suite)
         calendarLinks(suite)
         pageTexts(suite)
+        sidecar(suite)
     }
 
     private static func at(_ seconds: TimeInterval) -> Date { t0.addingTimeInterval(seconds) }
@@ -165,5 +166,33 @@ enum ForkMeetingDetectionEffectsTests {
         suite.expect(all.allSatisfy { !$0.microphoneMeetingCaption.isEmpty }
                         && !french.microphoneMeetingCaption.contains("Pour l’instant"),
                      "Meeting microphone (auto) no longer says it is the system's for now")
+    }
+
+    private static func sidecar(_ suite: TestSuite) {
+        var meeting = candidate()
+        suite.expect(Support.titleSource(title: meeting.name, meeting: meeting) == .window
+                        && Support.titleSource(title: "Mon nom", meeting: meeting) == .user
+                        && Support.titleSource(title: "Mon nom", meeting: nil) == .user
+                        && Support.titleSource(title: nil, meeting: meeting) == nil,
+                     "a name from the meeting's title says so; one given otherwise is the person's")
+        meeting.titleName = nil
+        meeting.calendarTitle = "Point hebdo équipe"
+        suite.expect(Support.titleSource(title: meeting.name, meeting: meeting) == .calendar,
+                     "a name from the calendar event says so")
+        meeting.calendarTitle = nil
+        suite.expect(meeting.name == "Google Meet · abc-defg-hij"
+                        && Support.titleSource(title: meeting.name, meeting: meeting) == .provider,
+                     "with neither, the provider and the code name it")
+        let started = ForkMeetingSidecar.started(id: UUID(), startedAt: at(0), origin: .offered, title: meeting.name,
+                                                 titleSource: .provider, capture: ForkMeetingSidecar.Capture(),
+                                                 provider: meeting.provider, meetCode: meeting.meetCode,
+                                                 app: meeting.appBundle)
+        suite.expect(started.origin == .offered && started.provider == "meet" && started.meetCode == "abc-defg-hij"
+                        && started.app == "com.google.Chrome" && started.titleSource == .provider,
+                     "a detected meeting's first meeting.json names its provider, its code and its app")
+        let manual = ForkMeetingSidecar.started(id: UUID(), startedAt: at(0), origin: .manual, title: nil,
+                                                titleSource: nil, capture: ForkMeetingSidecar.Capture())
+        suite.expect(manual.provider == nil && manual.meetCode == nil && manual.app == nil,
+                     "a recording by hand with no meeting names none")
     }
 }
