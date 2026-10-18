@@ -102,16 +102,17 @@ final class ForkMeetingService: ObservableObject {
     /// The display the session films, or whose window it follows: a change
     /// of displays is said only when this one changed.
     var filmedDisplay: UInt32?
-    /// The sessions that wrote the meeting app's own sound, and those of
-    /// them whose tap was found deaf.
-    var appTapSessions: Set<ForkMeetingToken> = []
-    var deafTapSessions: Set<ForkMeetingToken> = []
     /// The effects of `captureStarted` are being run: the notice is the
     /// start's, with what is filmed and the consent reminder.
     var runsStart = false
     /// The video of the last meeting whose final pass failed, for its
     /// "Show in Finder".
     var lastFailedVideo: URL?
+
+    // MARK: Fixes G1
+
+    /// The system audio verdicts of sessions still starting.
+    var pendingVerdicts = ForkMeetingPendingVerdicts()
 
     private lazy var hotKey = ForkMeetingHotKey { [weak self] in self?.shortcutPressed() }
     private var observers: [AnyCancellable] = []
@@ -363,10 +364,8 @@ final class ForkMeetingService: ObservableObject {
         case .localBuild:
             stillTrue = !Self.hasForkPermissionTexts
         case .systemAudioUnavailable:
-            // macOS offers no way to read it: it stays until a recording
-            // that wrote the app's own sound ends without finding it deaf
-            // (`stopped`), the witness tap proves it (`systemAudioProven`),
-            // or the person dismisses it.
+            // macOS offers no way to read it: it stays until a tap proves
+            // it (`systemAudioProven`), or the person dismisses it.
             stillTrue = true
         case .diskFullAtStart, .diskFull, .streamStopped, .officialRecorderBusy, .captureFailed,
              .writerFailed, .finalPassFailed, .masterHidden:

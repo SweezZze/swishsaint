@@ -266,7 +266,7 @@ extension ForkMeetingService {
     /// The folder first, with its `meeting.json` saying `recording`, then the
     /// engine: from the first frame on, a crash leaves a meeting to recover.
     private func startCapture(_ config: ForkMeetingCaptureConfig, token: ForkMeetingToken) {
-        let recorder = ForkMeetingRecorder(token: token)
+        let recorder = ForkMeetingRecorder(token: token, defaults: defaults)
         listen(to: recorder)
         recorders[token] = recorder
         context = ForkMeetingLiveContext(title: config.title, target: config.settings.target,
@@ -330,11 +330,11 @@ extension ForkMeetingService {
             context.noWindowToFilm = config.settings.target == .window && start.target == .display
             filmedDisplay = context.displayID ?? CGMainDisplayID()
             context.trackSound = start.trackSound
-            if case .appTap = start.sound { appTapSessions.insert(token) }
             send(.captureStarted(token, folder: folder, target: start.target, microphone: start.microphone,
                                  systemAudio: start.heard, startedAt: start.startedAt))
-            // Lost while the capture came up: said once it records.
+            // Lost, or judged, while the capture came up: said once it records.
             if start.trackSound == .lost { send(.soundLost(token)) }
+            if let verdict = pendingVerdicts.take(token) { systemAudioJudged(verdict, token: token) }
         case let .failure(failure):
             log.error("the capture did not start: \(String(describing: failure), privacy: .public)")
             send(.captureFailed(token, failure))
@@ -385,8 +385,7 @@ extension ForkMeetingService {
             self.send(.microphoneSoundBack)
         }
         recorder.onSystemAudioAllowed = { [weak self] token in
-            guard let self, self.isCurrent(token) else { return }
-            self.systemAudioProven()
+            self?.systemAudioJudged(.allowed, token: token)
         }
         recorder.onSoundHeard = { [weak self] token, heard in
             guard let self, self.isCurrent(token) else { return }
@@ -399,9 +398,23 @@ extension ForkMeetingService {
             if sound == .lost { self.send(.soundLost(token)) }
         }
         recorder.onSystemAudioUnavailable = { [weak self] token in
-            guard let self, self.isCurrent(token) else { return }
-            self.deafTapSessions.insert(token)
-            self.send(.permissionLost(.systemAudio))
+            self?.systemAudioJudged(.missing, token: token)
+        }
+    }
+
+    /// A tap proved the permission, or the witness found it missing: said
+    /// now, or once the session that judged it records.
+    private func systemAudioJudged(_ verdict: ForkMeetingPendingVerdicts.Verdict, token: ForkMeetingToken) {
+        switch ForkMeetingPendingVerdicts.route(token, phase: machine.phase) {
+        case .now:
+            switch verdict {
+            case .allowed: systemAudioProven()
+            case .missing: send(.permissionLost(.systemAudio))
+            }
+        case .hold:
+            pendingVerdicts.hold(verdict, for: token)
+        case .drop:
+            break
         }
     }
 
@@ -428,11 +441,9 @@ extension ForkMeetingService {
     func stopped(_ token: ForkMeetingToken, result: ForkMeetingWriterResult, recorded: Bool) {
         guard recorders.removeValue(forKey: token) != nil else { return }
         let folder = folders.removeValue(forKey: token)
-        // A whole meeting written from the app's own tap, never found deaf:
-        // the "app sound unavailable" banner was about an older one.
-        let wroteAppTap = appTapSessions.remove(token) != nil
-        let foundDeaf = deafTapSessions.remove(token) != nil
-        if recorded, wroteAppTap, !foundDeaf, case .finished = result { systemAudioProven() }
+        // Only a tap that heard sound clears the banner (`systemAudioProven`):
+        // a silent meeting proves nothing.
+        _ = pendingVerdicts.take(token)
         guard recorded else {
             if let folder { discardUnstarted(folder) }
             return

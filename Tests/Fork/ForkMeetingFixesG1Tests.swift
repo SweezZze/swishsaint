@@ -10,6 +10,7 @@ enum ForkMeetingFixesG1Tests {
         noAppToHear(suite)
         tapLost(suite)
         switching(suite)
+        verdicts(suite)
     }
 
     typealias Machine = ForkMeetingMachine
@@ -149,5 +150,43 @@ enum ForkMeetingFixesG1Tests {
         suite.expect(!ForkMeetingFilmed.switchChangesNothing(current: nil, next: .display(1))
                         && !ForkMeetingFilmed.switchChangesNothing(current: .window(7), next: .display(1)),
                      "a stream that films nothing known yet, or the window, is switched")
+    }
+
+    /// The system audio verdict: kept while its session starts, said once
+    /// it records; only a tap that heard sound clears the page's warning.
+    private static func verdicts(_ suite: TestSuite) {
+        let other = ForkMeetingToken(value: 9)
+        let starting = starting()
+        suite.expect(ForkMeetingPendingVerdicts.route(token1, phase: starting.phase) == .hold
+                        && ForkMeetingPendingVerdicts.route(other, phase: starting.phase) == .drop,
+                     "a verdict of the session starting is held for it; another session's is dropped")
+        let recording = recording()
+        suite.expect(ForkMeetingPendingVerdicts.route(token1, phase: recording.phase) == .now
+                        && ForkMeetingPendingVerdicts.route(other, phase: recording.phase) == .drop,
+                     "once it records, its verdict is said at once")
+        var stopping = recording
+        stopping.handle(.stop, now: at(5))
+        suite.expect(ForkMeetingPendingVerdicts.route(token1, phase: stopping.phase) == .drop
+                        && ForkMeetingPendingVerdicts.route(token1, phase: Machine().phase) == .drop,
+                     "a verdict after the stop has no meeting left to warn about")
+
+        var held = ForkMeetingPendingVerdicts()
+        held.hold(.missing, for: token1)
+        held.hold(.allowed, for: token1)
+        suite.expect(held.take(token1) == .missing && held.take(token1) == nil,
+                     "the first verdict is the recording's, replayed once at the start")
+        var replayed = starting
+        replayed.handle(.captureStarted(token1, folder: folder), now: at(1))
+        let effects = replayed.handle(.permissionLost(.systemAudio), now: at(1))
+        suite.expect(effects.contains(.notice(.failure(.systemAudioUnavailable))),
+                     "replayed after captureStarted, the missing permission is said like any other")
+
+        typealias Support = ForkMeetingServiceSupport
+        suite.expect(Support.systemAudioPermission(verified: true, failing: false) == .allowed
+                        && Support.systemAudioPermission(verified: false, failing: false) == .missing
+                        && Support.systemAudioPermission(verified: nil, failing: false) == .unknown
+                        && Support.systemAudioPermission(verified: true, failing: true) == .missing
+                        && Support.systemAudioPermission(verified: nil, failing: true) == .missing,
+                     "the page shows what the last recording found: allowed in green, missing in orange, else unknown")
     }
 }
