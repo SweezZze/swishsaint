@@ -38,6 +38,10 @@ enum ForkMeetingFailure: Error, Equatable {
     /// A local build without the fork's permission texts: macOS shows the
     /// official ones.
     case localBuild
+    /// The final pass failed and its master could not be given the
+    /// meeting's name: the recording is there, under its hidden name, which
+    /// the remedy says.
+    case masterHidden
 }
 
 /// The button offered next to a failure.
@@ -71,6 +75,7 @@ extension ForkMeetingFailure {
         case .writerFailed: return s.failWriter
         case .finalPassFailed: return s.failFinalPass
         case .localBuild: return s.failBuild
+        case .masterHidden: return s.failMasterHidden
         }
     }
 
@@ -91,6 +96,7 @@ extension ForkMeetingFailure {
         case .writerFailed: return s.failWriterRemedy
         case .finalPassFailed: return s.failFinalPassRemedy
         case .localBuild: return s.failBuildRemedy
+        case .masterHidden: return s.failMasterHiddenRemedy
         }
     }
 
@@ -101,7 +107,7 @@ extension ForkMeetingFailure {
         case .microphoneDenied: return .openMicrophonePrivacy
         case .diskFullAtStart, .diskFull: return .openStorageSettings
         case .folderUnavailable, .captureFailed: return .openMeetingsPage
-        case .writerFailed, .finalPassFailed: return .openMeetingsFolder
+        case .writerFailed, .finalPassFailed, .masterHidden: return .openMeetingsFolder
         case .streamStopped, .officialRecorderBusy, .localBuild: return nil
         }
     }
@@ -115,7 +121,7 @@ extension ForkMeetingFailure {
              .folderUnavailable, .localBuild:
             return true
         case .diskFullAtStart, .diskFull, .streamStopped, .officialRecorderBusy, .captureFailed,
-             .writerFailed, .finalPassFailed:
+             .writerFailed, .finalPassFailed, .masterHidden:
             return false
         }
     }
@@ -130,6 +136,6 @@ extension ForkMeetingFailure {
     static let all: [ForkMeetingFailure] = [
         .screenRecordingDenied, .screenRecordingRevoked, .microphoneDenied, .systemAudioUnavailable,
         .diskFullAtStart(requiredBytes: 2_000_000_000), .diskFull, .streamStopped, .officialRecorderBusy,
-        .folderUnavailable, .captureFailed, .writerFailed, .finalPassFailed, .localBuild,
+        .folderUnavailable, .captureFailed, .writerFailed, .finalPassFailed, .localBuild, .masterHidden,
     ]
 }

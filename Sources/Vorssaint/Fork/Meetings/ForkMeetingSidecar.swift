@@ -163,20 +163,24 @@ struct ForkMeetingSidecar: Equatable {
     }
 
     /// `at` and every time below are seconds of recording, pauses excluded;
-    /// `seconds` of a pause is time on the clock.
-    struct Pause: Codable, Equatable {
+    /// `seconds` of a pause is time on the clock. Like the sidecar, each
+    /// object below keeps the keys it does not know (`preserved`), written
+    /// back as they were.
+    struct Pause: Equatable {
         var at: Double?
         var seconds: Double?
         var reason: ForkMeetingPauseReason?
+        var preserved: [String: ForkMeetingJSON] = [:]
     }
 
-    struct Gap: Codable, Equatable {
+    struct Gap: Equatable {
         var at: Double?
         var seconds: Double?
         var kind: GapKind?
+        var preserved: [String: ForkMeetingJSON] = [:]
     }
 
-    struct Capture: Codable, Equatable {
+    struct Capture: Equatable {
         /// Wanted, not allowed: the meeting was recorded without it.
         static let microphoneDenied = "denied"
 
@@ -185,14 +189,16 @@ struct ForkMeetingSidecar: Equatable {
         /// The microphone's name as recorded, or "off", or "denied".
         var microphone: String?
         var quality: ForkMeetingQuality?
+        var preserved: [String: ForkMeetingJSON] = [:]
     }
 
     /// One attempt to send the meeting somewhere. Always empty until the
     /// exports exist.
-    struct Export: Codable, Equatable {
+    struct Export: Equatable {
         var exporter: String?
         var at: Date?
         var status: String?
+        var preserved: [String: ForkMeetingJSON] = [:]
     }
 
     var schema: Int?
@@ -427,6 +433,143 @@ extension ForkMeetingSidecar: Codable {
         for (key, value) in preserved where !written.contains(key) {
             try container.encode(value, forKey: Key(key))
         }
+    }
+}
+
+// MARK: - The objects inside
+
+/// The keys of one object of `meeting.json`.
+private struct ForkMeetingSidecarObjectKey: CodingKey {
+    let stringValue: String
+    var intValue: Int? { nil }
+    init(_ string: String) { stringValue = string }
+    init?(stringValue: String) { self.stringValue = stringValue }
+    init?(intValue: Int) { nil }
+}
+
+/// Reads a pause, a gap, the capture or an export as strictly as Swift's
+/// synthesized decoding: a value this version cannot read fails the whole
+/// object, which the sidecar then keeps as written rather than cut down to a
+/// partial one. What it adds is the keys this version does not know, kept in
+/// `unknown` for the object's `preserved`: a later version's `capture.fps`
+/// survives a patch of this one.
+private struct ForkMeetingSidecarObjectReader {
+    let container: KeyedDecodingContainer<ForkMeetingSidecarObjectKey>
+    let unknown: [String: ForkMeetingJSON]
+
+    init<Field: RawRepresentable & CaseIterable>(_ decoder: Decoder, fields: Field.Type) throws
+    where Field.RawValue == String {
+        container = try decoder.container(keyedBy: ForkMeetingSidecarObjectKey.self)
+        let known = Set(fields.allCases.map(\.rawValue))
+        var kept: [String: ForkMeetingJSON] = [:]
+        for key in container.allKeys where !known.contains(key.stringValue) {
+            kept[key.stringValue] = try? container.decode(ForkMeetingJSON.self, forKey: key)
+        }
+        unknown = kept
+    }
+
+    func field<Value: Decodable, Field: RawRepresentable>(_ field: Field) throws -> Value?
+    where Field.RawValue == String {
+        try container.decodeIfPresent(Value.self, forKey: ForkMeetingSidecarObjectKey(field.rawValue))
+    }
+}
+
+/// Writes one of those objects: its own fields, then what it kept.
+private struct ForkMeetingSidecarObjectWriter {
+    private var container: KeyedEncodingContainer<ForkMeetingSidecarObjectKey>
+
+    init(_ encoder: Encoder) {
+        container = encoder.container(keyedBy: ForkMeetingSidecarObjectKey.self)
+    }
+
+    mutating func put<Value: Encodable, Field: RawRepresentable>(_ value: Value?, _ field: Field) throws
+    where Field.RawValue == String {
+        try container.encodeIfPresent(value, forKey: ForkMeetingSidecarObjectKey(field.rawValue))
+    }
+
+    /// A kept key that this version now knows is never written twice: its
+    /// own field wins.
+    mutating func keep<Field: RawRepresentable & CaseIterable>(_ preserved: [String: ForkMeetingJSON],
+                                                               besides fields: Field.Type) throws
+    where Field.RawValue == String {
+        let known = Set(fields.allCases.map(\.rawValue))
+        for (key, value) in preserved where !known.contains(key) {
+            try container.encode(value, forKey: ForkMeetingSidecarObjectKey(key))
+        }
+    }
+}
+
+extension ForkMeetingSidecar.Pause: Codable {
+    private enum Field: String, CaseIterable { case at, seconds, reason }
+
+    init(from decoder: Decoder) throws {
+        let object = try ForkMeetingSidecarObjectReader(decoder, fields: Field.self)
+        self.init(at: try object.field(Field.at), seconds: try object.field(Field.seconds),
+                  reason: try object.field(Field.reason), preserved: object.unknown)
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var object = ForkMeetingSidecarObjectWriter(encoder)
+        try object.put(at, Field.at)
+        try object.put(seconds, Field.seconds)
+        try object.put(reason, Field.reason)
+        try object.keep(preserved, besides: Field.self)
+    }
+}
+
+extension ForkMeetingSidecar.Gap: Codable {
+    private enum Field: String, CaseIterable { case at, seconds, kind }
+
+    init(from decoder: Decoder) throws {
+        let object = try ForkMeetingSidecarObjectReader(decoder, fields: Field.self)
+        self.init(at: try object.field(Field.at), seconds: try object.field(Field.seconds),
+                  kind: try object.field(Field.kind), preserved: object.unknown)
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var object = ForkMeetingSidecarObjectWriter(encoder)
+        try object.put(at, Field.at)
+        try object.put(seconds, Field.seconds)
+        try object.put(kind, Field.kind)
+        try object.keep(preserved, besides: Field.self)
+    }
+}
+
+extension ForkMeetingSidecar.Capture: Codable {
+    private enum Field: String, CaseIterable { case target, systemAudio, microphone, quality }
+
+    init(from decoder: Decoder) throws {
+        let object = try ForkMeetingSidecarObjectReader(decoder, fields: Field.self)
+        self.init(target: try object.field(Field.target), systemAudio: try object.field(Field.systemAudio),
+                  microphone: try object.field(Field.microphone), quality: try object.field(Field.quality),
+                  preserved: object.unknown)
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var object = ForkMeetingSidecarObjectWriter(encoder)
+        try object.put(target, Field.target)
+        try object.put(systemAudio, Field.systemAudio)
+        try object.put(microphone, Field.microphone)
+        try object.put(quality, Field.quality)
+        try object.keep(preserved, besides: Field.self)
+    }
+}
+
+extension ForkMeetingSidecar.Export: Codable {
+    private enum Field: String, CaseIterable { case exporter, at, status }
+
+    init(from decoder: Decoder) throws {
+        let object = try ForkMeetingSidecarObjectReader(decoder, fields: Field.self)
+        self.init(exporter: try object.field(Field.exporter), at: try object.field(Field.at),
+                  status: try object.field(Field.status), preserved: object.unknown)
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var object = ForkMeetingSidecarObjectWriter(encoder)
+        try object.put(exporter, Field.exporter)
+        try object.put(at, Field.at)
+        try object.put(status, Field.status)
+        try object.keep(preserved, besides: Field.self)
     }
 }
 

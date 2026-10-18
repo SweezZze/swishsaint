@@ -42,6 +42,15 @@ final class ForkMeetingService: ObservableObject {
     @Published private(set) var shortcutRefused = false
     /// The last meeting saved, or recovered at launch.
     @Published var lastSaved: ForkMeetingSaved?
+    /// A meeting may be asked to start now, from the page, the shortcut or
+    /// later the offer: none is starting or recording. A meeting still being
+    /// finalized does not count (`ForkMeetingServiceSupport.canStart`).
+    @Published var canStart = false
+    /// A start is under way, before its first frame: it can be cancelled.
+    @Published var isStarting = false
+    /// The last start refused or failed, for the page's banner while the
+    /// page stays open, or until the next start.
+    @Published var lastRefusal: ForkMeetingFailure?
 
     // Shared with the service's other files (+Session, +Finalize, +System),
     // hence not private. Nothing outside the service touches them.
@@ -87,6 +96,22 @@ final class ForkMeetingService: ObservableObject {
     /// The last notice the machine or the finalizer gave, for the recipe
     /// harness and the logs.
     var lastNotice: ForkMeetingNotice?
+    /// The start was cancelled while its facts were being gathered: their
+    /// answer starts nothing.
+    var cancelRequested = false
+    /// The display the session films, or whose window it follows: a change
+    /// of displays is said only when this one changed.
+    var filmedDisplay: UInt32?
+    /// The sessions that wrote the meeting app's own sound, and those of
+    /// them whose tap was found deaf.
+    var appTapSessions: Set<ForkMeetingToken> = []
+    var deafTapSessions: Set<ForkMeetingToken> = []
+    /// The effects of `captureStarted` are being run: the notice is the
+    /// start's, with what is filmed and the consent reminder.
+    var runsStart = false
+    /// The video of the last meeting whose final pass failed, for its
+    /// "Show in Finder".
+    var lastFailedVideo: URL?
 
     private lazy var hotKey = ForkMeetingHotKey { [weak self] in self?.shortcutPressed() }
     private var observers: [AnyCancellable] = []
@@ -181,6 +206,12 @@ final class ForkMeetingService: ObservableObject {
         wasWanted = wanted
         revalidateFailure()
         syncHotKey()
+        // Off, nothing polls; on, the watch starts with the app in front.
+        if !wanted {
+            watchShortcutCapture(false)
+        } else if captureWatch == nil, NSApp.isActive {
+            watchShortcutCapture(true)
+        }
         if wanted {
             prepareSurfaces()
         } else if machine.isBusy {
@@ -193,6 +224,7 @@ final class ForkMeetingService: ObservableObject {
             presenter.reset()
             presenterReady = false
         }
+        refreshState()
     }
 
     private func followPermissions() {
@@ -271,7 +303,7 @@ final class ForkMeetingService: ObservableObject {
 
     private func shortcutPressed() {
         // A field elsewhere in the app is listening: the press is for it.
-        guard !ShortcutCapture.isCapturing, !recordsShortcutInPage else { return }
+        guard !ShortcutCapture.isCapturing, !recordsShortcutInPage, isWanted else { return }
         toggleRecording()
     }
 
@@ -302,7 +334,8 @@ final class ForkMeetingService: ObservableObject {
             shortcutStepsAside = false
             syncHotKey()
         }
-        guard on else { return }
+        // The feature off has no shortcut to step aside.
+        guard on, isWanted else { return }
         let timer = Timer(timeInterval: 0.2, repeats: true) { [weak self] _ in
             guard let self, self.shortcutStepsAside != ShortcutCapture.isCapturing else { return }
             self.shortcutStepsAside = ShortcutCapture.isCapturing
@@ -330,11 +363,13 @@ final class ForkMeetingService: ObservableObject {
         case .localBuild:
             stillTrue = !Self.hasForkPermissionTexts
         case .systemAudioUnavailable:
-            // macOS offers no way to read it: it stays until the next
-            // recording says otherwise, or the person dismisses it.
+            // macOS offers no way to read it: it stays until a recording
+            // that wrote the app's own sound ends without finding it deaf
+            // (`stopped`), the witness tap proves it (`systemAudioProven`),
+            // or the person dismisses it.
             stillTrue = true
         case .diskFullAtStart, .diskFull, .streamStopped, .officialRecorderBusy, .captureFailed,
-             .writerFailed, .finalPassFailed:
+             .writerFailed, .finalPassFailed, .masterHidden:
             stillTrue = false
         }
         if !stillTrue { lastFailure = nil }
@@ -343,12 +378,23 @@ final class ForkMeetingService: ObservableObject {
     /// Kept for the page: a failure that lasts, or a final pass that failed.
     /// One that passes with its meeting is only said, in the island.
     func remember(_ failure: ForkMeetingFailure) {
-        guard failure.isLasting || failure == .finalPassFailed else { return }
+        guard failure.isLasting || failure == .finalPassFailed || failure == .masterHidden else { return }
         lastFailure = failure
     }
 
     func clearFailure() {
         lastFailure = nil
+    }
+
+    /// The page closed: a start refused no longer needs saying there.
+    func clearRefusal() {
+        lastRefusal = nil
+    }
+
+    /// The other apps' sound was heard through a tap: the permission is
+    /// there, the banner that said otherwise goes.
+    func systemAudioProven() {
+        if lastFailure == .systemAudioUnavailable { lastFailure = nil }
     }
 
     /// What a failure's button does.
@@ -364,7 +410,12 @@ final class ForkMeetingService: ObservableObject {
             ForkSettingsPages.open(.meetings)
             (NSApp.delegate as? AppDelegate)?.openSettingsWindow()
         case .openMeetingsFolder:
-            openFolder()
+            // A final pass that failed shows its own video, else the folder.
+            if let video = lastFailedVideo, FileManager.default.fileExists(atPath: video.path) {
+                NSWorkspace.shared.activateFileViewerSelecting([video])
+            } else {
+                openFolder()
+            }
         }
         if lastFailure?.action == action { lastFailure = nil }
     }
@@ -409,7 +460,8 @@ final class ForkMeetingService: ObservableObject {
     func openFolder() {
         let root = store.root()
         do {
-            try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+            try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true,
+                                                    attributes: [.posixPermissions: ForkMeetingStore.folderPermissions])
         } catch {
             lastFailure = .folderUnavailable
             return

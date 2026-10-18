@@ -17,7 +17,8 @@ enum ForkMeetingFolderTests {
     }
 
     /// Built from components, never from an ISO string: the stamp reads the
-    /// Mac's calendar, and 9:57 must be 9:57 wherever the tests run.
+    /// Mac's time zone, and 9:57 must be 9:57 wherever the tests run. In the
+    /// Gregorian calendar, as the stamp is, whatever the Mac's calendar.
     private static func date(_ year: Int, _ month: Int, _ day: Int, _ hour: Int, _ minute: Int) -> Date {
         var parts = DateComponents()
         parts.year = year
@@ -25,7 +26,7 @@ enum ForkMeetingFolderTests {
         parts.day = day
         parts.hour = hour
         parts.minute = minute
-        return Calendar.current.date(from: parts) ?? Date(timeIntervalSinceReferenceDate: 0)
+        return Calendar(identifier: .gregorian).date(from: parts) ?? Date(timeIntervalSinceReferenceDate: 0)
     }
 
     private static func stamps(_ suite: TestSuite) {
@@ -47,11 +48,19 @@ enum ForkMeetingFolderTests {
         let instant = Date(timeIntervalSince1970: 1_792_310_520) // 2026-10-18 08:02 UTC
         suite.expect(ForkMeetingFolder.stamp(instant, calendar: tokyo) == "2026-10-18 17h02",
                      "the stamp is the time of whoever held the meeting, in their time zone")
+        var japanese = Calendar(identifier: .japanese)
+        japanese.timeZone = tokyo.timeZone
+        var buddhist = Calendar(identifier: .buddhist)
+        buddhist.timeZone = tokyo.timeZone
+        suite.expect(ForkMeetingFolder.stamp(instant, calendar: japanese) == "2026-10-18 17h02"
+                        && ForkMeetingFolder.stamp(instant, calendar: buddhist) == "2026-10-18 17h02"
+                        && ForkMeetingFolder.name(startedAt: instant, title: "Point", calendar: japanese) == "2026-10-18 17h02 — Point",
+                     "a Mac set to the Japanese or Buddhist calendar still writes the Gregorian year, so names keep sorting by date")
     }
 
     private static func names(_ suite: TestSuite) {
         let start = date(2026, 8, 11, 9, 57)
-        suite.expect(ForkMeetingFolder.name(startedAt: start, title: "SA SERMATEC") == "2026-08-11 09h57 — SA SERMATEC",
+        suite.expect(ForkMeetingFolder.name(startedAt: start, title: "SA ACME") == "2026-08-11 09h57 — SA ACME",
                      "with a title, the stamp still leads")
         let blank: [String?] = [nil, "", "     ", "..."]
         suite.expect(blank.allSatisfy { ForkMeetingFolder.name(startedAt: start, title: $0) == "2026-08-11 09h57" },
@@ -92,14 +101,17 @@ enum ForkMeetingFolderTests {
         }
         suite.expect(created == hostile.count,
                      "a title the file system would refuse is brought down to a name that is created, with its media")
+        suite.expect(hostile.allSatisfy { ForkMeetingFolder.bytes(ForkMeetingFolder.name(startedAt: start, title: $0))
+                                            <= ForkMeetingFolder.byteLimit },
+                     "and two such names, the folder and its media, never make a path longer than macOS takes")
         suite.expect(ForkMeetingFolder.units("é") == 2 && ForkMeetingFolder.units("e\u{0301}") == 2
                         && ForkMeetingFolder.units("a") == 1,
                      "a precomposed é weighs two units on the disk")
     }
 
     private static func sanitizing(_ suite: TestSuite) {
-        suite.expect(ForkMeetingFolder.sanitized("Castral/Orpheo") == "Castral Orpheo"
-                        && ForkMeetingFolder.sanitized("Castral:Orpheo") == "Castral Orpheo"
+        suite.expect(ForkMeetingFolder.sanitized("Acme/Globex") == "Acme Globex"
+                        && ForkMeetingFolder.sanitized("Acme:Globex") == "Acme Globex"
                         && ForkMeetingFolder.sanitized("A/B:C") == "A B C",
                      "a path separator becomes a space, so two words stay two words")
         suite.expect(ForkMeetingFolder.sanitized("Point    hebdo") == "Point hebdo"
@@ -164,10 +176,10 @@ enum ForkMeetingFolderTests {
     private static func renaming(_ suite: TestSuite) {
         let start = date(2026, 10, 18, 10, 2)
         let current = "2026-10-18 10h02 — Meeting"
-        suite.expect(ForkMeetingFolder.renamedFolder(current: current, startedAt: start, title: "Point hebdo Opah")
-                        == "2026-10-18 10h02 — Point hebdo Opah",
+        suite.expect(ForkMeetingFolder.renamedFolder(current: current, startedAt: start, title: "Point hebdo Acme")
+                        == "2026-10-18 10h02 — Point hebdo Acme",
                      "a new title renames the folder, the stamp kept")
-        suite.expect(ForkMeetingFolder.renamedFolder(current: "Opah — archive", startedAt: start, title: "Point hebdo") == nil,
+        suite.expect(ForkMeetingFolder.renamedFolder(current: "Acme — archive", startedAt: start, title: "Point hebdo") == nil,
                      "a folder renamed by hand in the Finder is left as the person filed it")
         suite.expect(ForkMeetingFolder.renamedFolder(current: current, startedAt: start, title: nil) == nil
                         && ForkMeetingFolder.renamedFolder(current: current, startedAt: start, title: "  ") == nil,
@@ -176,7 +188,7 @@ enum ForkMeetingFolderTests {
                                                      title: "Point hebdo") == nil,
                      "a folder already right, numbered or not, is not renamed again")
 
-        let folder = "2026-10-18 10h02 — Point hebdo Opah"
+        let folder = "2026-10-18 10h02 — Point hebdo Acme"
         let renames = ForkMeetingFolder.mediaRenames(folderName: folder,
                                                      names: ["2026-10-18 10h02 — Meeting.mp4", "2026-10-18 10h02 — Meeting.m4a",
                                                              "meeting.json", ".recording.mp4", "slides.pdf"])

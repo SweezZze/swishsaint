@@ -251,7 +251,7 @@ extension ForkUpdateStrings {
         untrusted: "Ce téléchargement n’est pas signé comme votre copie, il n’a donc pas été installé.",
         cannotReplace: "L’app ne peut pas se remplacer là où elle est. Placez-la dans le dossier Applications, ou téléchargez la nouvelle version depuis sa page.",
         localBuild: "Cette copie a été compilée sur ce Mac : elle ne se met pas à jour toute seule.",
-        afterMeeting: "Mise à jour après la réunion : elle s'installera dès que l'enregistrement sera sauvegardé."
+        afterMeeting: "Mise à jour après la réunion\u{00A0}: elle s’installera dès que l’enregistrement sera sauvegardé."
     )
 
     static let it = ForkUpdateStrings(

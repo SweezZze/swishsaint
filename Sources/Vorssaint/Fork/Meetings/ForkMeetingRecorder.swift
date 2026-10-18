@@ -22,6 +22,9 @@ struct ForkMeetingRecorderStart: Equatable {
     /// The file's zero: the instant the writer's session began, before the
     /// stream came up. Every time `meeting.json` keeps counts from here.
     var startedAt: Date
+    /// The app of the window filmed, or whose display is filmed, by name:
+    /// what the start's notice and the pill say. `nil` without a window.
+    var appName: String? = nil
 
     /// The meeting track hears the whole Mac (the setting, or no app's tap
     /// could be made): what `meeting.json` must say.
@@ -218,7 +221,8 @@ final class ForkMeetingRecorder: @unchecked Sendable {
         let url = request.folder.appendingPathComponent(ForkMeetingFolder.masterName)
         // A master already there belongs to another recording: it is never
         // written over (each meeting has a folder of its own).
-        guard (try? FileManager.default.createDirectory(at: request.folder, withIntermediateDirectories: true)) != nil,
+        guard (try? FileManager.default.createDirectory(at: request.folder, withIntermediateDirectories: true,
+                                                        attributes: [.posixPermissions: ForkMeetingStore.folderPermissions])) != nil,
               FileManager.default.isWritableFile(atPath: request.folder.path),
               !FileManager.default.fileExists(atPath: url.path) else {
             _ = gate.claimStartFailure()
@@ -317,7 +321,7 @@ final class ForkMeetingRecorder: @unchecked Sendable {
                                                           - ForkMeetingWriter.hostSeconds()))
         return .success(ForkMeetingRecorderStart(target: Self.target(of: aim), window: window, sound: sound,
                                                  microphone: microphoneName, outputSize: outputSize, codec: codec,
-                                                 startedAt: startedAt))
+                                                 startedAt: startedAt, appName: Self.appName(of: window)))
     }
 
     /// `stop` came during the start: it owns the teardown, and the start's
@@ -669,6 +673,15 @@ final class ForkMeetingRecorder: @unchecked Sendable {
             ForkMeetingWriter.prepare(url: url, outputSize: size, quality: quality, pauseClock: clock, titles: titles,
                                       completionQueue: queue) { continuation.resume(returning: $0) }
         }
+    }
+
+    /// The name of the app that owns `window`, as the Dock shows it.
+    static func appName(of window: CGWindowID?) -> String? {
+        guard let window,
+              let info = (CGWindowListCopyWindowInfo([.optionIncludingWindow], window) as? [[String: Any]])?.first,
+              let pid = info[kCGWindowOwnerPID as String] as? pid_t else { return nil }
+        return NSRunningApplication(processIdentifier: pid)?.localizedName
+            ?? info[kCGWindowOwnerName as String] as? String
     }
 
     /// The frontmost ordinary window of another regular app, front to back

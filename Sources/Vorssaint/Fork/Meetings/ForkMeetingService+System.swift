@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 Martial
 
+import CoreGraphics
 import Foundation
 
 /// The Mac's events, turned into the machine's: sleep and wake, the screen
@@ -26,16 +27,39 @@ extension ForkMeetingService {
         case .locked: send(.locked)
         case .unlocked: send(.unlocked)
         case .displaysChanged:
-            // The pill and the bubble follow the meeting's display.
-            if machine.activeSession != nil, let display = Self.displayID(of: filmedWindow), context.displayID != display {
-                context.displayID = display
-                presenter.update(context)
-            }
-            send(.displayChanged)
+            displaysChanged()
         case let .diskLow(freeBytes), let .diskEnough(freeBytes): send(.diskLow(freeBytes: freeBytes))
         case .diskCritical: send(.diskCritical)
         case .willTerminate: terminate()
         }
+    }
+
+    /// The pill and the bubble follow the filmed window's display. The
+    /// capture is told only when the display it films went, or the window
+    /// it follows moved to another: a display plugged in elsewhere changes
+    /// nothing in the picture, and says nothing.
+    private func displaysChanged() {
+        guard let session = machine.activeSession else { return }
+        let holding = Self.displayID(of: filmedWindow)
+        if let holding, context.displayID != holding {
+            context.displayID = holding
+            presenter.update(context)
+        }
+        guard session.target == .display else { return }
+        // Without a window, the main display is filmed.
+        let holdingNow = filmedWindow == nil ? CGMainDisplayID() : holding
+        guard ForkMeetingServiceSupport.filmedDisplayChanged(filmed: filmedDisplay, holdingNow: holdingNow,
+                                                              active: Self.activeDisplays()) else { return }
+        filmedDisplay = holdingNow ?? CGMainDisplayID()
+        send(.displayChanged)
+    }
+
+    static func activeDisplays() -> [UInt32] {
+        var count: UInt32 = 0
+        guard CGGetActiveDisplayList(0, nil, &count) == .success, count > 0 else { return [] }
+        var displays = [CGDirectDisplayID](repeating: 0, count: Int(count))
+        guard CGGetActiveDisplayList(count, &displays, &count) == .success else { return [] }
+        return Array(displays.prefix(Int(count)))
     }
 
     /// `willTerminate`, on the main thread, the app ending right after. The

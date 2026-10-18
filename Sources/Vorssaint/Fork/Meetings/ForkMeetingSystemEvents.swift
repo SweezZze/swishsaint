@@ -11,7 +11,7 @@ import Foundation
 /// - **Sleep**: nothing can keep a closed lid on battery awake
 ///   (`IOPMLib.h:1013-1023`), so the recording pauses at `willSleep` and
 ///   resumes or stops at `didWake`. Idle sleep, the display's included, is
-///   held off while a meeting records (`beginRecording`): a meeting listened
+///   held off while a meeting records, not paused (`hold`): a meeting listened
 ///   to without touching the Mac would otherwise turn the display off, then
 ///   lock the session, in a couple of minutes (decision "locked screen").
 /// - **Lock**: `com.apple.screenIsLocked` and `…Unlocked`, undocumented but
@@ -65,6 +65,8 @@ final class ForkMeetingSystemEvents {
     /// This recording's readings. Disk queue only.
     private var diskWatch = ForkMeetingDiskWatch()
     private var activity: NSObjectProtocol?
+    /// What `activity` holds.
+    private var held = ForkMeetingServiceSupport.Awake.free
 
     /// - Parameters:
     ///   - onEvent: main thread, for every event.
@@ -174,15 +176,11 @@ final class ForkMeetingSystemEvents {
 
     // MARK: - While a meeting records
 
-    /// Main thread. Holds off idle sleep, the display's included, and reads
-    /// the free space of `folder`'s volume every 15 s. Called again, it
-    /// follows the new folder and quality; the activity is held once.
+    /// Main thread. Reads the free space of `folder`'s volume every 15 s.
+    /// Called again, it follows the new folder and quality. How awake the
+    /// Mac stays meanwhile is `hold`'s.
     func beginRecording(folder: URL, quality: ForkMeetingQuality) {
         dispatchPrecondition(condition: .onQueue(.main))
-        if activity == nil {
-            activity = ProcessInfo.processInfo.beginActivity(
-                options: [.userInitiated, .idleDisplaySleepDisabled], reason: "Recording a meeting")
-        }
         diskTimer?.cancel()
         diskGeneration += 1
         let generation = diskGeneration
@@ -218,7 +216,32 @@ final class ForkMeetingSystemEvents {
             ProcessInfo.processInfo.endActivity(activity)
             self.activity = nil
         }
+        held = .free
     }
 
     var isRecording: Bool { diskTimer != nil }
+
+    /// Main thread. Holds off idle sleep, the display's included, only
+    /// while a meeting really records (`ForkMeetingServiceSupport.awake`):
+    /// paused by the person, the Mac may turn its display off and lock,
+    /// however long the pause.
+    func hold(_ awake: ForkMeetingServiceSupport.Awake) {
+        dispatchPrecondition(condition: .onQueue(.main))
+        guard awake != held else { return }
+        if let activity {
+            ProcessInfo.processInfo.endActivity(activity)
+            self.activity = nil
+        }
+        held = awake
+        let options: ProcessInfo.ActivityOptions
+        switch awake {
+        case .free: return
+        case .app: options = [.userInitiatedAllowingIdleSystemSleep]
+        case .display: options = [.userInitiated, .idleDisplaySleepDisabled]
+        }
+        activity = ProcessInfo.processInfo.beginActivity(options: options, reason: "Recording a meeting")
+    }
+
+    /// What is held now, for the recipe harness.
+    var awake: ForkMeetingServiceSupport.Awake { held }
 }

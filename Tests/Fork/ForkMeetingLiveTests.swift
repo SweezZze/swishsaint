@@ -10,6 +10,7 @@ enum ForkMeetingLiveTests {
         placement(suite)
         positions(suite)
         savedDetail(suite)
+        sentences(suite)
     }
 
     private static let running = ForkMeetingClock(recordedBefore: 30, runningSince: nil)
@@ -74,15 +75,16 @@ enum ForkMeetingLiveTests {
         // A 14-inch MacBook Pro: the camera's right edge at 822.
         let notched = ForkMeetingPillLayout.defaultOrigin(size: size, visibleFrame: visible, cameraRightEdge: 822,
                                                           islandFrame: nil)
-        suite.expect(notched == CGPoint(x: 830, y: 949 - 10 - 32),
-                     "by default the pill sits under the menu bar, 8 pt right of the camera")
+        // The camera ends at 822, the official recorder's pill (centred) at 756 + 75.
+        suite.expect(notched == CGPoint(x: 839, y: 949 - 10 - 32),
+                     "by default the pill sits under the menu bar, 8 pt right of the camera or of the official pill")
         let island = CGRect(x: 640, y: 950, width: 232, height: 32)
         suite.expect(ForkMeetingPillLayout.defaultOrigin(size: size, visibleFrame: visible, cameraRightEdge: 822,
                                                          islandFrame: island).x == 880,
                      "an island wider than the camera pushes it further right")
         suite.expect(ForkMeetingPillLayout.defaultOrigin(size: size, visibleFrame: visible, cameraRightEdge: nil,
-                                                         islandFrame: nil).x == 764,
-                     "without a camera or an island it sits just right of the middle")
+                                                         islandFrame: nil).x == 839,
+                     "without a camera or an island it sits right of the official recorder's pill, never over it")
         let external = CGRect(x: 1512, y: 0, width: 2560, height: 1415)
         suite.expect(ForkMeetingPillLayout.cameraRightEdge(auxiliaryMinX: 822, screenFrame: external) == 2334
                         && ForkMeetingPillLayout.cameraRightEdge(auxiliaryMinX: 2334, screenFrame: external) == 2334
@@ -146,5 +148,30 @@ enum ForkMeetingLiveTests {
         }
         suite.expect(long.allSatisfy { $0.count <= 28 && $0.contains("3") && $0.contains("12") },
                      "three hours and twelve minutes, with the size, fit in 28 characters in every language: \(long)")
+        let french = ForkMeetingLiveText.size(410_000_000, language: .fr)
+        let russian = ForkMeetingLiveText.size(410_000_000, language: .ru)
+        suite.expect(french.contains("Mo") && !french.contains("MB") && russian.contains("МБ")
+                        && ForkMeetingLiveText.size(410_000_000, language: .enUS).contains("MB"),
+                     "the size is written in the app's language, not the system's: \(french), \(russian)")
+        suite.expect(ForkMeetingLiveText.savedDetail(seconds: 600, bytes: 410_000_000, language: .fr).hasSuffix(french),
+                     "and the saved notice uses it")
+    }
+
+    private static func sentences(_ suite: TestSuite) {
+        suite.expect(ForkMeetingLiveText.sentences("Meeting saved", "52 min · 410 MB") == "Meeting saved. 52 min · 410 MB",
+                     "two sentences are joined by a full stop and a space")
+        suite.expect(ForkMeetingLiveText.sentences("会议已保存", "52 分钟") == "会议已保存。52 分钟"
+                        && ForkMeetingLiveText.sentences("ミーティングを保存しました", "52分") == "ミーティングを保存しました。52分",
+                     "after Chinese or Japanese, by the ideographic full stop, never an ASCII dot")
+        suite.expect(ForkMeetingLiveText.sentences("회의 저장됨", "52분") == "회의 저장됨. 52분",
+                     "Korean keeps the full stop and the space")
+        suite.expect(ForkMeetingLiveText.sentences("Done.", "Next") == "Done. Next"
+                        && ForkMeetingLiveText.sentences("完成。", "下一个") == "完成。下一个"
+                        && ForkMeetingLiveText.sentences("", "Only") == "Only",
+                     "a text that already ends its sentence gets no second stop")
+        let chinese = ForkMeetingStrings.strings(.zhHans)
+        let spoken = ForkMeetingAnnouncement.failure(.screenRecordingDenied).text(chinese)
+        suite.expect(spoken.contains("。") && !spoken.contains(". "),
+                     "a failure said by VoiceOver in Chinese has no ASCII dot between its summary and its remedy: \(spoken)")
     }
 }

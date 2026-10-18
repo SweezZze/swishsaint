@@ -97,8 +97,8 @@ enum ForkMeetingSettingsTests {
         let chosen = ForkMeetingMicrophoneChoice.device(uid)
         suite.expect(chosen.effective(available: [uid, "other"]) == chosen,
                      "a chosen microphone that is plugged in is the one recorded")
-        suite.expect(chosen.effective(available: ["other"]) == .meeting && chosen.effective(available: []) == .meeting,
-                     "a chosen microphone missing on this Mac falls back to the meeting's, never to none")
+        suite.expect(chosen.effective(available: ["other"]) == .builtIn && chosen.effective(available: []) == .builtIn,
+                     "a chosen microphone missing on this Mac falls back to the built-in one, as the recording opens it, never to none")
         suite.expect([ForkMeetingMicrophoneChoice.meeting, .system, .builtIn, .off].allSatisfy { $0.effective(available: []) == $0 },
                      "the other choices do not depend on what is plugged in, and none stays none")
     }
@@ -111,7 +111,7 @@ enum ForkMeetingSettingsTests {
                          "an empty announcement is the default one, in the person's language")
         }
         let french = ForkMeetingStrings.strings(.fr)
-        suite.expect(ForkMeetingAnnouncementText.text(stored: "  Enregistré pour Opah.\n", strings: french) == "Enregistré pour Opah.",
+        suite.expect(ForkMeetingAnnouncementText.text(stored: "  Enregistré pour Acme.\n", strings: french) == "Enregistré pour Acme.",
                      "the person's own announcement is copied as they wrote it")
         suite.expect(ForkMeetingAnnouncementText.stored(edited: french.announcementDefault, strings: french) == ""
                         && ForkMeetingAnnouncementText.stored(edited: "   ", strings: french) == "",

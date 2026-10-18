@@ -81,7 +81,9 @@ enum ForkMeetingShortcutProblem: Equatable {
 
 /// Which microphone a meeting records (`fork.meetings.microphone`).
 enum ForkMeetingMicrophoneChoice: Equatable, Hashable {
-    /// The input the meeting app uses, else the system's.
+    /// The input the meeting app uses, else the system's. A recording
+    /// started by hand knows no meeting app: the system's, which the page
+    /// says ("Automatic").
     case meeting
     /// The system's input at the time.
     case system
@@ -125,12 +127,15 @@ enum ForkMeetingMicrophoneChoice: Equatable, Hashable {
 
     /// What a recording uses on this Mac, given the unique IDs of the
     /// microphones plugged in. A device chosen elsewhere, or unplugged since,
-    /// falls back to the meeting's microphone, never to nothing: a meeting
-    /// recorded without a voice is lost. The choice itself stays stored, so
-    /// the device is used again once it is back.
+    /// falls back to the built-in microphone (the system's on a Mac without
+    /// one), as `ForkMeetingMicrophone` opens it, never to nothing: a meeting
+    /// recorded without a voice is lost. Not the system's input: with a
+    /// headset on, that is the one most likely to drop to call mode. The
+    /// choice itself stays stored, so the device is used again once it is
+    /// back.
     func effective(available: [String]) -> ForkMeetingMicrophoneChoice {
         guard case let .device(uid) = self, !available.contains(uid) else { return self }
-        return .fallback
+        return .builtIn
     }
 }
 

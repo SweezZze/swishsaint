@@ -18,11 +18,12 @@ struct ForkMeetingSettings: View {
 
     private var text: ForkMeetingStrings { ForkMeetingStrings.strings(l10n.language) }
 
-    /// The failure worth a banner. A missing Screen Recording or microphone
-    /// is already asked for at the top of the page, and a local build has
-    /// its own note.
+    /// The failure worth a banner: a lasting one, else the last start
+    /// refused, which stays while the page is open. A missing Screen
+    /// Recording or microphone is already asked for at the top of the page,
+    /// and a local build has its own note.
     private var bannerFailure: ForkMeetingFailure? {
-        guard let failure = service.lastFailure else { return nil }
+        guard let failure = service.lastFailure ?? service.lastRefusal else { return nil }
         switch failure {
         case .screenRecordingDenied where !permissions.screenRecording: return nil
         case .microphoneDenied where permissions.microphone != .granted: return nil
@@ -107,6 +108,7 @@ private struct ForkMeetingFailureBanner: View {
                 }
                 Button {
                     ForkMeetingService.shared.clearFailure()
+                    ForkMeetingService.shared.clearRefusal()
                 } label: {
                     Image(systemName: "xmark.circle.fill")
                         .foregroundStyle(.secondary)
@@ -163,15 +165,14 @@ private struct ForkMeetingRecordSection: View {
                 }
             }
         }
+        // A start refused is said while the page stays open.
+        .onDisappear { service.clearRefusal() }
     }
 
+    /// A meeting still finishing says so, the feature turned off or not.
     @ViewBuilder
     private var status: some View {
-        if !enabled {
-            Label(text.stateOff, systemImage: "pause.circle")
-                .font(.callout)
-                .foregroundStyle(.secondary)
-        } else if service.isRecording && service.isPaused {
+        if service.isRecording && service.isPaused {
             Label(text.statePaused, systemImage: "pause.circle.fill")
                 .font(.callout)
                 .foregroundStyle(.orange)
@@ -179,8 +180,16 @@ private struct ForkMeetingRecordSection: View {
             Label(text.stateRecording, systemImage: "record.circle")
                 .font(.callout)
                 .foregroundStyle(.red)
+        } else if service.isStarting {
+            Label(text.stateStarting, systemImage: "record.circle")
+                .font(.callout)
+                .foregroundStyle(.secondary)
         } else if service.isBusy {
             Label(text.stateFinishing, systemImage: "hourglass")
+                .font(.callout)
+                .foregroundStyle(.secondary)
+        } else if !enabled {
+            Label(text.stateOff, systemImage: "pause.circle")
                 .font(.callout)
                 .foregroundStyle(.secondary)
         } else {
@@ -202,14 +211,17 @@ private struct ForkMeetingRecordSection: View {
             Button(service.isPaused ? text.resumeRecording : text.pauseRecording) { service.togglePause() }
             Button(text.stopRecording) { service.stop() }
                 .buttonStyle(.borderedProminent)
+        } else if service.isStarting {
+            Button(text.cancel) { service.cancelStart() }
         } else {
+            // A meeting still being finalized does not stand in the way.
             Button {
                 service.startManually()
             } label: {
                 Label(text.recordNow, systemImage: "record.circle")
             }
             .buttonStyle(.borderedProminent)
-            .disabled(!enabled || service.isBusy)
+            .disabled(!enabled || !service.canStart)
         }
     }
 }
@@ -366,8 +378,8 @@ private struct ForkMeetingShortcutSection: View {
 
 // MARK: - Capture
 
-/// The meeting's window or its whole display, with what each means for a
-/// recording started by hand.
+/// The window in front or its whole display, with what each means for a
+/// recording started by hand (no meeting is detected yet).
 struct ForkMeetingPicturePicker: View {
     let text: ForkMeetingStrings
     @Binding var target: String
@@ -375,11 +387,12 @@ struct ForkMeetingPicturePicker: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             Picker(text.pictureTitle, selection: $target) {
-                Text(text.pictureWindow).tag(ForkMeetingCaptureTarget.window.rawValue)
-                Text(text.pictureDisplay).tag(ForkMeetingCaptureTarget.display.rawValue)
+                Text(text.pictureFrontWindow).tag(ForkMeetingCaptureTarget.window.rawValue)
+                Text(text.pictureFrontDisplay).tag(ForkMeetingCaptureTarget.display.rawValue)
             }
             .pickerStyle(.radioGroup)
-            Text(ForkMeetingCaptureTarget(stored: target) == .window ? text.pictureWindowCaption : text.pictureDisplayCaption)
+            Text(ForkMeetingCaptureTarget(stored: target) == .window ? text.pictureFrontWindowCaption
+                    : text.pictureDisplayCaption)
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
