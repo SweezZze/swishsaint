@@ -315,6 +315,21 @@ struct ForkMeetingPolicyRow: Equatable {
     var offersRelayedCalls: Bool {
         providers.contains { !$0.processBundles.isEmpty }
     }
+
+    // MARK: Fixes K
+
+    /// Whether the page shows "Always": not on a Mac that cannot say which
+    /// app uses the microphone (before macOS 14.4), where it never starts
+    /// anything (it needs the microphone), Meet and Zoom included.
+    func showsAlways(microphoneSignal: Bool) -> Bool {
+        allowsAlways && microphoneSignal
+    }
+
+    /// The choice the row shows: an "Always" it does not show reads as
+    /// "Offer", as it acts.
+    func shown(_ policy: ForkMeetingPolicy, microphoneSignal: Bool) -> ForkMeetingPolicy {
+        policy == .always && !showsAlways(microphoneSignal: microphoneSignal) ? .ask : policy
+    }
 }
 
 /// The person's choice per provider, kept in `fork.meetings.apps` as a JSON

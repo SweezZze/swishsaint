@@ -442,6 +442,9 @@ struct ForkMeetingStrings {
     /// After it: the notice (28 characters at most) and what VoiceOver says.
     let noticeNeverWebCalls: String
     let voiceNeverWebCalls: String
+    /// A Mac that cannot say which app uses the microphone (before macOS
+    /// 14.4): "Always", which needs it, is not offered on the page.
+    let detectionAlwaysUnavailable: String
 
     func noticeAskAgain(_ provider: String) -> String { String(format: noticeAskAgainFormat, provider) }
     func voiceAskAgain(_ provider: String) -> String { String(format: voiceAskAgainFormat, provider) }
@@ -723,7 +726,8 @@ extension ForkMeetingStrings {
         detectionFaceTimeRelayed: "A phone call relayed from your iPhone may be offered too.",
         offerNeverWebCalls: "Never for other web calls",
         noticeNeverWebCalls: "Other web calls: Never",
-        voiceNeverWebCalls: "Calls in a browser other than Google Meet will no longer be offered."
+        voiceNeverWebCalls: "Calls in a browser other than Google Meet will no longer be offered.",
+        detectionAlwaysUnavailable: "Always is not available on this Mac: meetings are offered, never recorded on their own."
     )
 }
 
@@ -984,7 +988,8 @@ extension ForkMeetingStrings {
         detectionFaceTimeRelayed: "Uma ligação telefônica retransmitida pelo iPhone também pode ser oferecida.",
         offerNeverWebCalls: "Nunca para outras chamadas na web",
         noticeNeverWebCalls: "Outras chamadas web: Nunca",
-        voiceNeverWebCalls: "As chamadas no navegador que não sejam do Google Meet não serão mais oferecidas."
+        voiceNeverWebCalls: "As chamadas no navegador que não sejam do Google Meet não serão mais oferecidas.",
+        detectionAlwaysUnavailable: "“Sempre” não está disponível neste Mac: as reuniões são oferecidas, nunca gravadas sozinhas."
     )
 }
 
@@ -1245,7 +1250,8 @@ extension ForkMeetingStrings {
         detectionFaceTimeRelayed: "iPhone’unuzdan aktarılan bir telefon araması da önerilebilir.",
         offerNeverWebCalls: "Diğer web görüşmeleri için asla",
         noticeNeverWebCalls: "Diğer web görüşmeleri: Asla",
-        voiceNeverWebCalls: "Google Meet dışındaki tarayıcı görüşmeleri artık önerilmeyecek."
+        voiceNeverWebCalls: "Google Meet dışındaki tarayıcı görüşmeleri artık önerilmeyecek.",
+        detectionAlwaysUnavailable: "“Her zaman” bu Mac’te kullanılamaz: toplantılar önerilir, hiçbir zaman kendiliğinden kaydedilmez."
     )
 }
 
@@ -1506,7 +1512,8 @@ extension ForkMeetingStrings {
         detectionFaceTimeRelayed: "Телефонный звонок, переданный с iPhone, тоже может быть предложен.",
         offerNeverWebCalls: "Никогда для других звонков в браузере",
         noticeNeverWebCalls: "Другие веб-звонки: Никогда",
-        voiceNeverWebCalls: "Звонки в браузере, кроме Google Meet, больше не будут предлагаться."
+        voiceNeverWebCalls: "Звонки в браузере, кроме Google Meet, больше не будут предлагаться.",
+        detectionAlwaysUnavailable: "«Всегда» недоступно на этом Mac: встречи предлагаются, но никогда не записываются сами."
     )
 }
 
@@ -1767,7 +1774,8 @@ extension ForkMeetingStrings {
         detectionFaceTimeRelayed: "Una llamada telefónica retransmitida desde tu iPhone también puede ofrecerse.",
         offerNeverWebCalls: "Nunca para otras llamadas web",
         noticeNeverWebCalls: "Otras llamadas web: Nunca",
-        voiceNeverWebCalls: "Las llamadas en el navegador que no sean de Google Meet ya no se ofrecerán."
+        voiceNeverWebCalls: "Las llamadas en el navegador que no sean de Google Meet ya no se ofrecerán.",
+        detectionAlwaysUnavailable: "«Siempre» no está disponible en este Mac: las reuniones se ofrecen, nunca se graban solas."
     )
 }
 
@@ -2028,7 +2036,8 @@ extension ForkMeetingStrings {
         detectionFaceTimeRelayed: "Ponúknuť sa môže aj telefonický hovor presmerovaný z iPhonu.",
         offerNeverWebCalls: "Nikdy pre iné hovory na webe",
         noticeNeverWebCalls: "Iné hovory na webe: Nikdy",
-        voiceNeverWebCalls: "Hovory v prehliadači okrem Google Meet sa už nebudú ponúkať."
+        voiceNeverWebCalls: "Hovory v prehliadači okrem Google Meet sa už nebudú ponúkať.",
+        detectionAlwaysUnavailable: "Možnosť „Vždy“ nie je na tomto Macu k dispozícii: stretnutia sa ponúknu, nikdy sa nenahrajú samy."
     )
 }
 
@@ -2289,7 +2298,8 @@ extension ForkMeetingStrings {
         detectionFaceTimeRelayed: "Auch ein vom iPhone weitergeleiteter Telefonanruf kann angeboten werden.",
         offerNeverWebCalls: "Nie für andere Anrufe im Web",
         noticeNeverWebCalls: "Andere Web-Anrufe: Nie",
-        voiceNeverWebCalls: "Anrufe im Browser außer Google Meet werden nicht mehr angeboten."
+        voiceNeverWebCalls: "Anrufe im Browser außer Google Meet werden nicht mehr angeboten.",
+        detectionAlwaysUnavailable: "„Immer“ ist auf diesem Mac nicht verfügbar: Besprechungen werden angeboten, nie von selbst aufgenommen."
     )
 }
 
@@ -2550,7 +2560,8 @@ extension ForkMeetingStrings {
         detectionFaceTimeRelayed: "Un appel téléphonique relayé par l’iPhone peut aussi être proposé.",
         offerNeverWebCalls: "Jamais pour les autres visios web",
         noticeNeverWebCalls: "Autres visios web\u{00A0}: Jamais",
-        voiceNeverWebCalls: "Les visios dans un navigateur autres que Google Meet ne seront plus proposées."
+        voiceNeverWebCalls: "Les visios dans un navigateur autres que Google Meet ne seront plus proposées.",
+        detectionAlwaysUnavailable: "«\u{00A0}Toujours\u{00A0}» n’est pas disponible sur ce Mac\u{00A0}: les réunions sont proposées, jamais enregistrées d’elles-mêmes."
     )
 }
 
@@ -2811,7 +2822,8 @@ extension ForkMeetingStrings {
         detectionFaceTimeRelayed: "Anche una telefonata inoltrata dall’iPhone può essere proposta.",
         offerNeverWebCalls: "Mai per le altre chiamate sul web",
         noticeNeverWebCalls: "Altre chiamate web: Mai",
-        voiceNeverWebCalls: "Le chiamate nel browser diverse da Google Meet non saranno più proposte."
+        voiceNeverWebCalls: "Le chiamate nel browser diverse da Google Meet non saranno più proposte.",
+        detectionAlwaysUnavailable: "«Sempre» non è disponibile su questo Mac: le riunioni vengono proposte, mai registrate da sole."
     )
 }
 
@@ -3072,7 +3084,8 @@ extension ForkMeetingStrings {
         detectionFaceTimeRelayed: "iPhone から中継された電話も提案されることがあります。",
         offerNeverWebCalls: "その他の Web 通話では録画しない",
         noticeNeverWebCalls: "その他の Web 通話：提案しない",
-        voiceNeverWebCalls: "Google Meet 以外のブラウザの通話は今後提案されません。"
+        voiceNeverWebCalls: "Google Meet 以外のブラウザの通話は今後提案されません。",
+        detectionAlwaysUnavailable: "この Mac では「常に録画」は使えません。会議は提案されるだけで、自動では録画されません。"
     )
 }
 
@@ -3333,7 +3346,8 @@ extension ForkMeetingStrings {
         detectionFaceTimeRelayed: "iPhone에서 중계된 전화 통화도 제안될 수 있습니다.",
         offerNeverWebCalls: "기타 웹 통화에서 녹화 안 함",
         noticeNeverWebCalls: "기타 웹 통화: 안 함",
-        voiceNeverWebCalls: "Google Meet 외의 브라우저 통화는 더 이상 제안되지 않습니다."
+        voiceNeverWebCalls: "Google Meet 외의 브라우저 통화는 더 이상 제안되지 않습니다.",
+        detectionAlwaysUnavailable: "이 Mac에서는 ‘항상’을 사용할 수 없습니다. 회의는 제안만 되고 자동으로 녹화되지 않습니다."
     )
 }
 
@@ -3594,7 +3608,8 @@ extension ForkMeetingStrings {
         detectionFaceTimeRelayed: "Телефонний дзвінок, переданий з iPhone, теж може бути запропонований.",
         offerNeverWebCalls: "Ніколи для інших дзвінків у браузері",
         noticeNeverWebCalls: "Інші веб-дзвінки: Ніколи",
-        voiceNeverWebCalls: "Дзвінки в браузері, крім Google Meet, більше не пропонуватимуться."
+        voiceNeverWebCalls: "Дзвінки в браузері, крім Google Meet, більше не пропонуватимуться.",
+        detectionAlwaysUnavailable: "«Завжди» недоступне на цьому Mac: зустрічі пропонуються, але ніколи не записуються самі."
     )
 }
 
@@ -3855,7 +3870,8 @@ extension ForkMeetingStrings {
         detectionFaceTimeRelayed: "通过 iPhone 转接的电话也可能会被提议录制。",
         offerNeverWebCalls: "其他网页通话永不录制",
         noticeNeverWebCalls: "其他网页通话：从不",
-        voiceNeverWebCalls: "将不再提议录制浏览器中除 Google Meet 以外的通话。"
+        voiceNeverWebCalls: "将不再提议录制浏览器中除 Google Meet 以外的通话。",
+        detectionAlwaysUnavailable: "此 Mac 上无法使用“总是”：会议只会被提议，不会自动录制。"
     )
 }
 
@@ -4116,7 +4132,8 @@ extension ForkMeetingStrings {
         detectionFaceTimeRelayed: "透過 iPhone 轉接的電話也可能會被提議錄製。",
         offerNeverWebCalls: "其他網頁通話永不錄製",
         noticeNeverWebCalls: "其他網頁通話：永不",
-        voiceNeverWebCalls: "將不再提議錄製瀏覽器中 Google Meet 以外的通話。"
+        voiceNeverWebCalls: "將不再提議錄製瀏覽器中 Google Meet 以外的通話。",
+        detectionAlwaysUnavailable: "此 Mac 無法使用「一律」：會議只會被提議，不會自動錄製。"
     )
 }
 
@@ -4377,6 +4394,7 @@ extension ForkMeetingStrings {
         detectionFaceTimeRelayed: "透過 iPhone 轉駁的電話也可能會被提議錄製。",
         offerNeverWebCalls: "其他網頁通話永不錄製",
         noticeNeverWebCalls: "其他網頁通話：永不",
-        voiceNeverWebCalls: "將不再提議錄製瀏覽器中 Google Meet 以外的通話。"
+        voiceNeverWebCalls: "將不再提議錄製瀏覽器中 Google Meet 以外的通話。",
+        detectionAlwaysUnavailable: "此 Mac 無法使用「一律」：會議只會被提議，不會自動錄製。"
     )
 }

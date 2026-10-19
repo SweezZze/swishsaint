@@ -25,6 +25,7 @@ enum ForkMeetingFixesKTests {
         theAppsOwnWindow(suite)
         neverForTheOtherWebCalls(suite)
         anAppByItsName(suite)
+        noAlwaysBeforeMacOS14_4(suite)
     }
 
     // MARK: - Fixtures
@@ -478,5 +479,29 @@ enum ForkMeetingFixesKTests {
         let filmed = ForkMeetingServiceSupport.filmed(target: .window, appName: ForkMeetingAppsSupport.appName(for: app),
                                                       noWindowToFilm: false, strings: english)
         suite.expect(filmed.contains("Zoom") && !filmed.contains("zoom.us"), "the pill too: « \(filmed) »")
+    }
+
+    // MARK: - K.I9: no "Always" before macOS 14.4
+
+    private static func noAlwaysBeforeMacOS14_4(_ suite: TestSuite) {
+        let rows = ForkMeetingProviderTable.current.policyRows
+        suite.expect(rows.filter { $0.showsAlways(microphoneSignal: true) }.map(\.id)
+                        == ["meet", "zoom", "teams", "slack", "webex", "discord"]
+                        && rows.allSatisfy { !$0.showsAlways(microphoneSignal: false) },
+                     "Always on every row but FaceTime and the web calls; before macOS 14.4 on none, Meet and Zoom included")
+        let meet = rows.first { $0.id == "meet" }
+        suite.expect(meet?.shown(.always, microphoneSignal: false) == .ask && meet?.shown(.always, microphoneSignal: true) == .always
+                        && meet?.shown(.never, microphoneSignal: false) == .never,
+                     "an Always stored shows as Offer there, as it acts: it never starts without the microphone")
+        var noSignal = Live(#"{"zoom":"always"}"#)
+        noSignal.read(0, windows: [zoomWindow("Zoom Meeting")])
+        noSignal.read(3, windows: [zoomWindow("Zoom Meeting")])
+        noSignal.read(30, windows: [zoomWindow("Zoom Meeting")])
+        suite.expect(noSignal.starts.isEmpty && noSignal.offers.count == 1,
+                     "a Zoom meeting window with no microphone signal: offered, never started")
+        let french = ForkMeetingStrings.strings(.fr)
+        suite.expect(french.detectionAlwaysUnavailable.hasPrefix("«\u{00A0}Toujours\u{00A0}» n’est pas disponible")
+                        && AppLanguage.allCases.allSatisfy { !ForkMeetingStrings.strings($0).detectionAlwaysUnavailable.isEmpty },
+                     "and the page says so, in every language")
     }
 }
