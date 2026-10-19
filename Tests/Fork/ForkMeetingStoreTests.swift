@@ -77,7 +77,7 @@ enum ForkMeetingStoreTests {
                         && apply.contains("guard let next = ForkMeetingSidecar.rewriting(read, with: patch) else {")
                         && apply.contains("return false"),
                      "every write reads the file first and leaves a corrupt or later one as it is")
-        let write = store.components(separatedBy: "private func writeSidecar(").dropFirst().first?
+        let write = store.components(separatedBy: "func writeSidecar(").dropFirst().first?
             .components(separatedBy: "\n    }\n").first ?? ""
         suite.expect(write.contains("try data.write(to: draft)") && write.contains("try Self.replace(target, with: draft)")
                         && !write.contains("removeItem(at: target)"),

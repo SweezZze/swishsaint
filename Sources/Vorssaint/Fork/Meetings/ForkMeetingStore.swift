@@ -20,8 +20,7 @@ import os
 ///   the installed one) never takes a live recording for a crashed one.
 /// - Nothing here removes a file the recovery plan did not allow to remove.
 ///
-/// The library itself (listing, search, renaming, the bin) comes with its
-/// own part of the feature.
+/// The library (listing, renaming, notes, the Trash) is in `+Library`.
 final class ForkMeetingStore: @unchecked Sendable {
     static let shared = ForkMeetingStore()
 
@@ -68,12 +67,13 @@ final class ForkMeetingStore: @unchecked Sendable {
 
     private let defaults: UserDefaults
     private let strings: () -> ForkMeetingStrings
-    private let callbackQueue: DispatchQueue
+    let callbackQueue: DispatchQueue
     /// Where a finished meeting is listed; the official Recent captures in
     /// the app.
     private let recentCaptures: (URL) -> Void
-    /// Every write of a `meeting.json`, and the making of a folder.
-    private let queue = DispatchQueue(label: "fork.meetings.store", qos: .utility)
+    /// Every write of a `meeting.json`, and the making of a folder; the
+    /// library's renames and moves to the Trash too (`+Library`).
+    let queue = DispatchQueue(label: "fork.meetings.store", qos: .utility)
     private let lock = NSLock()
     /// Under `lock`: a folder is being made.
     private var opening = false
@@ -221,7 +221,7 @@ final class ForkMeetingStore: @unchecked Sendable {
         return .success(folder)
     }
 
-    private static func occupant(of folder: URL, id: UUID?) -> ForkMeetingFolder.Occupant {
+    static func occupant(of folder: URL, id: UUID?) -> ForkMeetingFolder.Occupant {
         var isDirectory: ObjCBool = false
         guard FileManager.default.fileExists(atPath: folder.path, isDirectory: &isDirectory) else { return .free }
         guard isDirectory.boolValue else { return .taken }
@@ -287,7 +287,7 @@ final class ForkMeetingStore: @unchecked Sendable {
     /// Store queue. Through a draft, then `replaceItemAt`: never a removal
     /// followed by a write, which a crash in between would leave with no
     /// sidecar at all. `nil` when written, else why not.
-    private func writeSidecar(_ sidecar: ForkMeetingSidecar, in folder: URL) -> String? {
+    func writeSidecar(_ sidecar: ForkMeetingSidecar, in folder: URL) -> String? {
         let manager = FileManager.default
         let target = folder.appendingPathComponent(ForkMeetingFolder.sidecarName)
         let draft = folder.appendingPathComponent(Self.sidecarDraftName)
@@ -362,7 +362,7 @@ final class ForkMeetingStore: @unchecked Sendable {
 
     /// This process holds the folder's lock: a meeting of its own records
     /// or finishes there.
-    private func isClaimedHere(_ folder: URL) -> Bool {
+    func isClaimedHere(_ folder: URL) -> Bool {
         let path = folder.standardizedFileURL.path
         return lock.withLock { claims[path] != nil }
     }
