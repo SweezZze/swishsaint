@@ -113,6 +113,8 @@ enum ForkMeetingNotice: Equatable {
     case neverOffered(String)
     /// After "Cancel", once the folder is gone (or not).
     case discarded(ForkMeetingDiscardOutcome)
+    /// "Copy Announcement": it is in the pasteboard.
+    case announcementCopied
 
     /// 28 characters at most.
     func title(_ s: ForkMeetingStrings) -> String {
@@ -132,6 +134,7 @@ enum ForkMeetingNotice: Equatable {
         case .discarded(.trashed): return s.noticeDiscardedTrash
         case .discarded(.deleted): return s.noticeDiscardedDeleted
         case .discarded(.kept): return s.noticeDiscardKept
+        case .announcementCopied: return s.noticeAnnouncementCopied
         }
     }
 
@@ -143,6 +146,7 @@ enum ForkMeetingNotice: Equatable {
         case let .diskLow(minutes): return s.diskMinutes(minutes)
         case .neverOffered: return s.noticeNeverDetail
         case .discarded(.kept): return s.noticeDiscardKeptDetail
+        case .announcementCopied: return s.noticeAnnouncementCopiedDetail
         case .started, .resumed, .saved, .recovered, .microphoneSilent, .displayChanged, .sourceGone, .failure,
              .soundLost, .discarded:
             return nil

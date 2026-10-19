@@ -428,7 +428,7 @@ final class ForkMeetingPresenter {
                     dismiss()
                 })
             }
-        case .resumed, .microphone, .displayChanged, .neverOffered:
+        case .resumed, .microphone, .displayChanged, .neverOffered, .announcementCopied:
             tint = .accentColor
         case let .discarded(outcome):
             tint = outcome == .kept ? .orange : .secondary
@@ -508,12 +508,26 @@ final class ForkMeetingPresenter {
     /// one.
     private static var canNotify: Bool { Bundle.main.bundleIdentifier != nil }
 
-    /// The announcement, in the pasteboard for the meeting's chat.
+    /// The announcement, in the pasteboard for the meeting's chat, said on
+    /// the screen and to VoiceOver.
     func copy(_ announcement: String) {
+        guard Thread.isMainThread else {
+            DispatchQueue.main.async { self.copy(announcement) }
+            return
+        }
+        Self.write(announcement)
+        notice(.announcementCopied)
+        announce(text.voiceAnnouncementCopied)
+    }
+
+    /// The one way every "Copy Announcement" writes the pasteboard. Signed
+    /// as Vorssaint's, so the clipboard history does not credit the call's
+    /// app, in front, with it.
+    static func write(_ announcement: String) {
         let pasteboard = NSPasteboard.general
         pasteboard.clearContents()
+        pasteboard.declareVorssaintSource()
         pasteboard.setString(announcement, forType: .string)
-        announce(text.voiceAnnouncementCopied)
     }
 
     /// High priority, so it is not lost behind what VoiceOver is reading;

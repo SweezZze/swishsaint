@@ -309,6 +309,12 @@ enum ForkMeetingOfferText {
         return (candidate.providerName, s.offerNameHidden)
     }
 
+    /// "Always for Meet" records now: a greyed offer, which cannot, offers
+    /// it greyed too. "Never" stays.
+    static func allowsAlways(_ offer: ForkMeetingOffer) -> Bool {
+        offer.blocked == nil
+    }
+
     /// Why a greyed offer cannot record now, in a few words.
     static func blocked(_ failure: ForkMeetingFailure, strings s: ForkMeetingStrings) -> String {
         failure == .officialRecorderBusy ? s.offerRecorderBusy : failure.summary(s)

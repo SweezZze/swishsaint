@@ -245,10 +245,7 @@ extension ForkMeetingService {
         let text = ForkMeetingStrings.current
         let announcement = ForkMeetingAnnouncementText.text(
             stored: defaults.string(forKey: ForkDefaultsKey.meetingsAnnouncement) ?? "", strings: text)
-        let pasteboard = NSPasteboard.general
-        pasteboard.clearContents()
-        pasteboard.setString(announcement, forType: .string)
-        presenter.say(text.voiceAnnouncementCopied)
+        presenter.copy(announcement)
     }
 
     /// What the offer will record, "Google Chrome window · Google Chrome

@@ -14,6 +14,7 @@ enum ForkMeetingOfferH2Tests {
         undoWindow(suite)
         voiceOver(suite)
         discarded(suite)
+        menu(suite)
     }
 
     private static let zero = Date(timeIntervalSinceReferenceDate: 800_000_000)
@@ -207,5 +208,23 @@ enum ForkMeetingOfferH2Tests {
                             && (titles + [s.noticeDiscardKeptDetail]).allSatisfy { !$0.isEmpty && $0.count <= 28 }
                      },
                      "three outcomes, three notices of 28 characters at most, three sentences, in every language")
+    }
+
+    // MARK: - H2.10 The ⋯ menu
+
+    private static func menu(_ suite: TestSuite) {
+        let open = ForkMeetingOffer(candidate: meet(), collapsesAt: at(20))
+        var greyed = open
+        greyed.blocked = .officialRecorderBusy
+        suite.expect(ForkMeetingOfferText.allowsAlways(open) && !ForkMeetingOfferText.allowsAlways(greyed),
+                     "« Toujours pour Meet » records now: greyed with the offer")
+        let copied = ForkMeetingNotice.announcementCopied
+        suite.expect(copied.title(french) == "Annonce copiée" && copied.detail(french) == "À coller dans la discussion",
+                     "« Copier l’annonce » shows a short notice, not only VoiceOver")
+        let languages = AppLanguage.allCases.map(ForkMeetingStrings.strings)
+        suite.expect(languages.allSatisfy { s in
+                        [copied.title(s), copied.detail(s) ?? ""].allSatisfy { !$0.isEmpty && $0.count <= 28 }
+                     },
+                     "its two lines fit in 28 characters in every language")
     }
 }
