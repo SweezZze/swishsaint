@@ -448,7 +448,9 @@ final class ForkMeetingStore: @unchecked Sendable {
                          titles: ForkMeetingFinalizer.TrackTitles) async -> Recovery? {
         let manager = FileManager.default
         let master = folder.appendingPathComponent(ForkMeetingFolder.masterName)
-        let video = contents.video.map { folder.appendingPathComponent($0) }
+        // The final file: the video, or the `.m4a` of a meeting without picture.
+        let audioOnly = (try? sidecar.get())?.isAudioOnly == true
+        let video = contents.media(audioOnly: audioOnly).map { folder.appendingPathComponent($0) }
         var facts = ForkMeetingRecoveryPlan.Facts(sidecar: sidecar,
                                                   hasDrafts: contents.hasVideoDraft || contents.hasAudioDraft)
         if contents.hasMaster {
@@ -480,11 +482,12 @@ final class ForkMeetingStore: @unchecked Sendable {
             if removeMaster { try? manager.removeItem(at: master) }
             if discardDrafts { discardDraftFiles(in: folder) }
             // The app died between the final file and its M4A: made again,
-            // from the final file's mix.
-            if extractAudio, contents.audio == nil, let video {
+            // from the final file's mix. Without picture the final file is
+            // the M4A, and Recent captures lists only what was filmed.
+            if extractAudio, !audioOnly, contents.audio == nil, let video {
                 await finalizer.remakeAudio(from: video)
             }
-            if let video { addToRecentCaptures(video) }
+            if let video, !audioOnly { addToRecentCaptures(video) }
             return Recovery(folder: folder, action: action, outcome: nil, seconds: facts.final?.duration)
         case .finalize:
             // The finalizer drops the stale drafts itself before it writes.
@@ -546,7 +549,12 @@ final class ForkMeetingStore: @unchecked Sendable {
         defer { if !held { release(folder) } }
         // A master that does not play is never shown as the meeting.
         guard readable else { return .hidden(master) }
-        let final = folder.appendingPathComponent("\(folder.lastPathComponent).\(ForkMeetingFolder.videoExtension)")
+        // Without picture, under the `.m4a`'s name: an MP4 and an M4A are
+        // the same container.
+        let audioOnly = (try? ForkMeetingSidecar.read(at: folder.appendingPathComponent(ForkMeetingFolder.sidecarName))
+            .get())?.isAudioOnly == true
+        let final = folder.appendingPathComponent(
+            "\(folder.lastPathComponent).\(ForkMeetingFolder.finalExtension(audioOnly: audioOnly))")
         if manager.fileExists(atPath: final.path) {
             // Shown already (its pass's last try failed too), or a real
             // final file, never written over.
@@ -563,7 +571,7 @@ final class ForkMeetingStore: @unchecked Sendable {
             }
             _ = apply(ForkMeetingSidecarPatch(state: .complete), in: folder)
         }
-        addToRecentCaptures(final)
+        if !audioOnly { addToRecentCaptures(final) }
         return .visible(final)
     }
 

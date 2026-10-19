@@ -13,6 +13,7 @@ struct ForkTests {
             ("fork-defaults", { ForkDefaultsTests.run(suite) }),
             ("window-trackpad", { ForkTrackpadGestureTests.run(suite) }),
             ("fork-update", { ForkUpdateTests.run(suite) }),
+            ("fork-update-notes", { ForkUpdateNotesTests.run(suite) }),
             ("fork-dictation", { ForkDictationTests.run(suite) }),
             ("fork-dictation-machine", { ForkDictationMachineTests.run(suite) }),
             ("fork-dictation-replacements", { ForkDictationReplacementsTests.run(suite) }),
@@ -57,6 +58,11 @@ struct ForkTests {
             ("fork-meetings-fixes-o", { ForkMeetingFixesOTests.run(suite) }),
             ("fork-meetings-export", { ForkMeetingExportTests.run(suite) }),
             ("fork-meetings-fixes-n", { ForkMeetingFixesNTests.run(suite) }),
+            ("fork-meetings-island", { ForkMeetingIslandTests.run(suite) }),
+            ("fork-meetings-audio-only", { ForkMeetingAudioOnlyTests.run(suite) }),
+            ("fork-meetings-finish-b", { ForkMeetingFinishBTests.run(suite) }),
+            ("fork-meetings-finish-e", { ForkMeetingFinishETests.run(suite) }),
+            ("fork-meetings-finish", { ForkMeetingFinishTests.run(suite) }),
             ("fork-immich", { ForkImmichTests.run(suite) }),
         ]
         var selected = Set<String>()

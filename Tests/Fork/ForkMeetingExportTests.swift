@@ -382,7 +382,7 @@ enum ForkMeetingExportTests {
                      "an exporter's settings have no field for a secret: \(labels)")
         let stored = ForkMeetingExporterList.encode([config])
         let keys = (try? JSONSerialization.jsonObject(with: Data(stored.utf8)) as? [[String: Any]])?.first.map { Set($0.keys) }
-        suite.expect(keys == ["id", "kind", "mode", "includesMeetCode", "includesNotes", "address", "origin"],
+        suite.expect(keys == ["id", "kind", "mode", "includesMeetCode", "includesNotes", "includesSummary", "address", "origin"],
                      "the setting written holds the address and its origin, nothing else: \(keys ?? [])")
         suite.expect(ForkDefaultsKey.meetingsExporters == "fork.meetings.exporters"
                         && !ForkDefaults.backupKeys.contains(ForkDefaultsKey.meetingsExporters)

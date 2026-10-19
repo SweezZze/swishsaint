@@ -503,6 +503,7 @@ final class NotchService: ObservableObject {
     }
 
     var compactActivities: [NotchCompactActivity] {
+        NotchCompactActivity.meetingHooks.activities() + // FORK(notch-meeting3)
         NotchSupport.compactActivities(timer: hasTimerActivity, watch: hasWatchActivity, downloads: hasDownloadActivity,
                                       agents: hasAgentActivity, calendar: hasCalendarActivity,
                                       music: hasMusicActivity, keepAwake: hasKeepAwakeActivity)
@@ -631,6 +632,7 @@ final class NotchService: ObservableObject {
                                                     paired: companion != nil)
         // Its reading is a countdown like the timer's, so it takes the timer's wings.
         case .keepAwake: return geometry.compactTimerGeometry(showsDownloads: false, wing: keepAwakeStripWing(in: geometry))
+        case .meeting: return geometry.compactTimerGeometry(showsDownloads: false, wing: NotchCompactActivity.meetingHooks.wing(geometry)) // FORK(notch-meeting3)
         default: return geometry
         }
     }
@@ -1038,6 +1040,7 @@ final class NotchService: ObservableObject {
                 NotchKeepAwakeSupport.compactText(until: $0, now: Date(), locale: Locale(identifier: language.rawValue))
             }
             return layout.keepAwakeSurface(reading: reading, geometry: geometry)
+        case .meeting: return ForkMeetingIslandStrip.capsuleSize(geometry: geometry) // FORK(notch-meeting3)
         }
     }
 
@@ -1829,6 +1832,7 @@ final class NotchService: ObservableObject {
         case .control(let item):
             switch item {
             case .dictation: ForkNotchDictations.activateQuickAction() // FORK(notch-dictation4)
+            case .meeting: ForkMeetingIslandTile.activate() // FORK(notch-meeting-tile4)
             case .keepAwake: KeepAwakeManager.shared.toggle()
             case .microphone: MicMuteService.shared.toggle()
             case .screenshot: perform { ScreenshotService.shared.capture() }

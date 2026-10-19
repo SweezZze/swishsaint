@@ -275,9 +275,10 @@ extension ForkMeetingPresenter {
             seenInShares: seenInShares, hasWindow: filmed != nil)
         facts.mainWindow = ForkMeetingAppsSupport.filmsMainWindow(candidate, found: filmed)
         facts.microphoneSignal = ForkMeetingMicWatcher.isSupported
-        let actions = OfferActions(record: { service.acceptOffer() }, notNow: { service.dismissOffer(.thisTime) },
+        var actions = OfferActions(record: { service.acceptOffer() }, notNow: { service.dismissOffer(.thisTime) },
                                    always: { service.alwaysForOffer() }, never: { service.dismissOffer(.never) },
                                    copyAnnouncement: { service.copyAnnouncement() }, fix: failureAction)
+        actions.recordOtherwise = { service.acceptOffer(target: settings.target.alternative) }
         return Self.offerCard(offer, facts: facts, actions: actions, text: text)
     }
 
@@ -309,6 +310,9 @@ extension ForkMeetingPresenter {
         var never: () -> Void = {}
         var copyAnnouncement: () -> Void = {}
         var fix: ((ForkMeetingFailureAction) -> Void)?
+        /// Records this one meeting otherwise than the setting: sound only,
+        /// or with its picture when the setting is sound only.
+        var recordOtherwise: (() -> Void)?
     }
 
     /// The offer's card, the same in the island and the bubble, but for its
@@ -317,7 +321,7 @@ extension ForkMeetingPresenter {
     /// ```
     /// [icon] Point hebdo                              (⋯ in the island's top row)
     ///        Google Meet · abc-defg-hij
-    ///        Fenêtre : Chrome · son : Chrome · micro : AirPods
+    ///        Fenêtre : Chrome · son : Chrome · micro : AirPods  (⋯: « Son seulement »)
     ///        ⓘ Pensez à prévenir les participants.
     ///        ⚠ Un enregistrement d'écran est en cours.     (greyed)
     ///                             [Pas cette fois] [● Enregistrer]
@@ -358,6 +362,13 @@ extension ForkMeetingPresenter {
             ? [NotchMenuItem(title: text.offerAlways(provider), enabled: ForkMeetingOfferText.allowsAlways(offer),
                              action: actions.always)]
             : []
+        if let recordOtherwise = actions.recordOtherwise {
+            let other = settings.target.alternative
+            card.menu.insert(NotchMenuItem(title: other.filmsPicture ? text.offerRecordWithPicture : text.offerRecordSoundOnly,
+                                           symbol: other.filmsPicture ? "video" : "waveform",
+                                           enabled: ForkMeetingOfferText.recordsOtherwise(offer, as: other),
+                                           action: recordOtherwise), at: 0)
+        }
         card.menu += [
             NotchMenuItem(title: ForkMeetingOfferText.neverTitle(candidate, strings: text), action: actions.never),
             .separator,

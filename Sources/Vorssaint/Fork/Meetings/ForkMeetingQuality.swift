@@ -25,9 +25,10 @@ enum ForkMeetingQuality: String, CaseIterable, Codable {
         self = ForkMeetingQuality(rawValue: stored ?? "") ?? .fallback
     }
 
-    /// Every rate in one place. **Provisional**: spike S1 measures them on
-    /// real meetings (readable slides, size per hour, CPU), and the numbers
-    /// below are the plan's starting point, to change here and nowhere else.
+    /// Every rate in one place, as spike S1 settled them on October 18, 2026,
+    /// from real meetings (slides readable at Balanced, size per hour, CPU).
+    /// Changed here and nowhere else: the settings page reads its figures
+    /// from these (`specification`).
     enum Rates {
         static let lightVideo = 600_000
         static let standardVideo = 1_200_000
@@ -85,6 +86,22 @@ enum ForkMeetingQuality: String, CaseIterable, Codable {
     /// For the settings page: "~0.6 GB/h". Decimal gigabytes, as the Finder
     /// counts them.
     var estimatedGigabytesPerHour: Double { Double(estimatedBytesPerHour) / 1_000_000_000 }
+
+    /// "1080p · 30 fps · HEVC · 1.2 Mbit/s · ~0.6 GB/h", under the page's
+    /// picker: every figure read from the rates above, never written twice.
+    /// `codec` is the one this Mac's encoder takes at this size (HEVC, else
+    /// H.264), which the writer decides in the same way; the decimals follow
+    /// `locale`.
+    /// The frame rate says its unit as the official recorder does
+    /// (`recorder`), so the two pages never disagree.
+    func specification(codec: String, strings: ForkMeetingStrings, recorder: RecorderFeatureStrings,
+                       locale: Locale) -> String {
+        let decimal = FloatingPointFormatStyle<Double>.number.precision(.fractionLength(1)).locale(locale)
+        let megabits = (Double(videoBitRate) / 1_000_000).formatted(decimal)
+        let perHour = strings.perHour(estimatedGigabytesPerHour.formatted(decimal))
+        let frames = String(format: recorder.frameRateFormat, Rates.frameRate)
+        return String(format: strings.qualitySpecFormat, "\(maximumLines)p", frames, codec, megabits, perHour)
+    }
 
     /// The size the writer encodes for a source of `source` pixels: the
     /// source's own shape, scaled down to fit `maximumBox` and never up,

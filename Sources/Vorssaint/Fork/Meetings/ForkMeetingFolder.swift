@@ -59,6 +59,19 @@ enum ForkMeetingFolder {
         return Root(url: movies.appendingPathComponent(strings.folderName, isDirectory: true), needsStoring: true)
     }
 
+    /// Whether the folder in use is the default one: none chosen, or the
+    /// folder in Movies named in one of the app's languages, which the first
+    /// recording saves (`Root.needsStoring`). Only a folder the person chose
+    /// gets the page's ✕ back to the default.
+    static func isDefault(stored: String, movies: URL, names: [String]) -> Bool {
+        let path = stored.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !path.isEmpty else { return true }
+        let chosen = URL(fileURLWithPath: (path as NSString).expandingTildeInPath, isDirectory: true).standardizedFileURL
+        return names.contains { name in
+            movies.appendingPathComponent(name, isDirectory: true).standardizedFileURL.path == chosen.path
+        }
+    }
+
     /// The title shown for a meeting: its own, or the default name of one
     /// recorded by hand. `nil` stays `nil` in the sidecar, so the default
     /// follows the language of whoever looks.
@@ -344,12 +357,22 @@ enum ForkMeetingFolder {
     /// files are the ones named after the **old** folder: a clip the person
     /// saved beside them under another name never takes the meeting's. Each
     /// keeps its own extension: renaming never changes what a file holds.
+    /// The summary this app wrote (`summaryFiles`, "<old> summary.md")
+    /// follows as "<new> summary.md".
     static func mediaRenames(from old: String, to new: String, names: [String], alsoNamed: String? = nil,
-                             transcriptFiles: [String] = []) -> MediaRenames {
+                             transcriptFiles: [String] = [], summaryFiles: [String] = []) -> MediaRenames {
         let found = contents(of: names, folderName: old, alsoNamed: alsoNamed, transcriptFiles: transcriptFiles)
         var result = MediaRenames()
+        var planned: [(from: String, to: String)] = []
         for media in [found.video, found.audio, found.transcript, found.subtitles].compactMap({ $0 }) {
-            let target = "\(new).\((media as NSString).pathExtension)"
+            planned.append((media, "\(new).\((media as NSString).pathExtension)"))
+        }
+        let stems = [old, alsoNamed].compactMap { $0 }
+        for summary in summaryFiles where names.contains(summary) {
+            guard let stem = stems.first(where: { summary.hasPrefix($0 + " ") }) else { continue }
+            planned.append((summary, new + summary.dropFirst(stem.count)))
+        }
+        for (media, target) in planned {
             guard media != target else { continue }
             // APFS ignores case: "F.mp4" and "f.MP4" are the same file. The
             // medium itself is not in the way of a change of case of its

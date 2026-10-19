@@ -11,14 +11,15 @@ struct ForkMeetingRecorderStart: Equatable {
     /// "window" recording with no window to film films the main display.
     var target: ForkMeetingCaptureTarget
     /// The window filmed, or whose display is filmed; `nil` for the main
-    /// display alone.
+    /// display alone, and without picture (nothing to switch ⧉ to).
     var window: CGWindowID?
     var sound: ForkMeetingSoundSource
     /// The microphone's name, `nil` when none records.
     var microphone: String?
-    var outputSize: ForkMeetingPixelSize
-    /// "hvc1" or "avc1".
-    var codec: String
+    /// `nil` without picture.
+    var outputSize: ForkMeetingPixelSize?
+    /// "hvc1" or "avc1"; `nil` without picture.
+    var codec: String?
     /// The file's zero: the instant the writer's session began, before the
     /// stream came up. Every time `meeting.json` keeps counts from here.
     var startedAt: Date
@@ -148,6 +149,9 @@ final class ForkMeetingRecorder: @unchecked Sendable {
     private var window: CGWindowID?
     /// What the stream films (or filmed last, while none runs).
     private var aim: ForkMeetingCaptureStream.Aim?
+    /// Recorded without picture: no stream ever runs, so none stands in
+    /// for a tap.
+    private var soundOnly = false
     /// ⧉ during a sleep: the restart at the wake takes it.
     private var pendingAim: ForkMeetingCaptureStream.Aim?
     private var running = false
@@ -238,28 +242,36 @@ final class ForkMeetingRecorder: @unchecked Sendable {
         guard gate.begin() else { return .failure(.captureFailed) }
         defer { gate.finish() }
         let settings = request.config.settings
+        // Without picture nothing is filmed: no stream, and no Screen
+        // Recording to ask for.
+        let soundOnly = !settings.target.filmsPicture
 
         // What to film: a detected meeting's window, else its display; a
-        // start by hand, the window in front.
+        // start by hand, the window in front. Without picture, that window
+        // only names the app whose sound is heard.
         let window = request.window ?? (request.meeting == nil ? Self.frontWindow(excluding: request.excluded) : nil)
-        var aim = Self.aim(for: settings.target, window: window)
-        var resolved = await Self.resolve(aim, excluding: request.excluded)
-        if case .failure(.sourceGone) = resolved, case .window = aim {
-            // The window went in the meantime: its display, or the main one.
-            aim = .displayOf(nil)
-            resolved = await Self.resolve(aim, excluding: request.excluded)
-        }
-        let target: ForkMeetingCaptureStream.Resolved
-        switch resolved {
-        case let .success(value): target = value
-        case let .failure(stop):
-            _ = gate.claimStartFailure()
-            return .failure(ForkMeetingCaptureSupport.startFailure(stop))
+        var aim: ForkMeetingCaptureStream.Aim?
+        var target: ForkMeetingCaptureStream.Resolved?
+        if !soundOnly {
+            var wanted = Self.aim(for: settings.target, window: window)
+            var resolved = await Self.resolve(wanted, excluding: request.excluded)
+            if case .failure(.sourceGone) = resolved, case .window = wanted {
+                // The window went in the meantime: its display, or the main one.
+                wanted = .displayOf(nil)
+                resolved = await Self.resolve(wanted, excluding: request.excluded)
+            }
+            switch resolved {
+            case let .success(value): target = value
+            case let .failure(stop):
+                _ = gate.claimStartFailure()
+                return .failure(ForkMeetingCaptureSupport.startFailure(stop))
+            }
+            aim = wanted
         }
         guard gate.isAuthorized else { return cancelled() }
 
         // The file.
-        let outputSize = settings.quality.outputSize(source: target.displayPixels)
+        let outputSize = target.map { settings.quality.outputSize(source: $0.displayPixels) }
         let url = request.folder.appendingPathComponent(ForkMeetingFolder.masterName)
         // A master already there belongs to another recording: it is never
         // written over (each meeting has a folder of its own).
@@ -278,20 +290,23 @@ final class ForkMeetingRecorder: @unchecked Sendable {
         writer.onFailure = { [weak self] failure in self?.send { $0.onFailure?($0.token, failure) } }
         lock.withLock {
             self.writer = writer
-            self.window = window
+            self.window = soundOnly ? nil : window
             self.aim = aim
+            self.soundOnly = soundOnly
         }
         guard gate.isAuthorized else { return cancelled() }
 
         // The meeting's sound: the app's tap with a witness that tells a
         // silent app from a missing permission, or the Mac's tap, its own
-        // judge.
+        // judge. Without picture, a tap or nothing: no stream stands in.
         let ownPID = ProcessInfo.processInfo.processIdentifier
         var tapAvailable = false
         if #available(macOS 14.4, *) { tapAvailable = true }
-        let appPID = request.meeting?.appPID ?? target.ownerPID
+        let appPID = request.meeting?.appPID ?? (soundOnly ? Self.ownerPID(of: window) : target?.ownerPID)
+        let filmsWindow = target?.isWindow ?? false
         var sound = ForkMeetingSoundSource.choose(settings.systemAudio, appPID: appPID, ownPID: ownPID,
-                                                  filmsWindow: target.isWindow, tapAvailable: tapAvailable)
+                                                  filmsWindow: filmsWindow, tapAvailable: tapAvailable)
+        if soundOnly { sound = ForkMeetingAudioOnly.sound(sound) }
         var tap: ForkMeetingAudioTap?
         var witness: ForkMeetingAudioTap?
         var hears: pid_t?
@@ -307,7 +322,10 @@ final class ForkMeetingRecorder: @unchecked Sendable {
         }
         // Refused by the audio system: the stream's sound, as `meeting.json`
         // will say, unless it would be the whole Mac for the app's own.
-        if tap == nil { sound = sound.refused(filmsWindow: target.isWindow) }
+        if tap == nil {
+            sound = sound.refused(filmsWindow: filmsWindow)
+            if soundOnly { sound = ForkMeetingAudioOnly.sound(sound) }
+        }
         let macTap = sound == .macTap
         let appOnly = settings.systemAudio == .app && sound == .stream
         // A call no app plays (FaceTime): the Mac's tap writes it from the
@@ -320,8 +338,10 @@ final class ForkMeetingRecorder: @unchecked Sendable {
             tapHears = hears
             setting = settings.systemAudio
             judge = macTap ? tap : witness
+            // Without picture the Mac's tap writes from the start too: no
+            // stream writes the track while it proves itself.
             arbiter = ForkMeetingSoundArbiter(hasTap: tap != nil, hasWitness: macTap || witness != nil,
-                                              tapFirst: !macTap || callOutsideApp, appOnly: appOnly,
+                                              tapFirst: !macTap || callOutsideApp || soundOnly, appOnly: appOnly,
                                               macOnly: callOutsideApp)
         }
         tap?.onSample = { [weak self] sample in self?.tapSample(sample) }
@@ -329,25 +349,33 @@ final class ForkMeetingRecorder: @unchecked Sendable {
         witness?.onSample = { [weak self] sample in self?.witnessSample(sample) }
         witness?.onReaderLost = { [weak self] in self?.witnessGone() }
 
-        // The picture, and the stream's sound.
-        let stream = ForkMeetingCaptureStream(outputSize: outputSize, capturesAudio: sound.streamListens,
-                                              excludedWindows: request.excluded,
-                                              callbacks: streamCallbacks())
-        lock.withLock { self.stream = stream }
+        // The picture, and the stream's sound; without picture, the file's
+        // zero is now.
         let zero = ZeroBox()
-        let failure = await withCheckedContinuation { (continuation: CheckedContinuation<ForkMeetingCaptureSupport.StreamStop?, Never>) in
-            stream.start(target, aim: aim, willStart: { time in
-                zero.set(time)
-                writer.beginSession(atHostTime: time)
-            }) {
-                continuation.resume(returning: $0)
+        if let target, let aim {
+            let stream = ForkMeetingCaptureStream(outputSize: outputSize ?? target.displayPixels,
+                                                  capturesAudio: sound.streamListens,
+                                                  excludedWindows: request.excluded,
+                                                  callbacks: streamCallbacks())
+            lock.withLock { self.stream = stream }
+            let failure = await withCheckedContinuation { (continuation: CheckedContinuation<ForkMeetingCaptureSupport.StreamStop?, Never>) in
+                stream.start(target, aim: aim, willStart: { time in
+                    zero.set(time)
+                    writer.beginSession(atHostTime: time)
+                }) {
+                    continuation.resume(returning: $0)
+                }
             }
-        }
-        if let failure {
-            if gate.claimStartFailure() { writer.cancel() }
-            await tap?.stop()
-            await witness?.stop()
-            return .failure(ForkMeetingCaptureSupport.startFailure(failure))
+            if let failure {
+                if gate.claimStartFailure() { writer.cancel() }
+                await tap?.stop()
+                await witness?.stop()
+                return .failure(ForkMeetingCaptureSupport.startFailure(failure))
+            }
+        } else {
+            let time = ForkMeetingWriter.hostSeconds()
+            zero.set(time)
+            writer.beginSession(atHostTime: time)
         }
         guard gate.isAuthorized else { return cancelled() }
 
@@ -375,7 +403,7 @@ final class ForkMeetingRecorder: @unchecked Sendable {
 
         guard gate.isAuthorized else { return cancelled() }
         lock.withLock { running = true }
-        let codec = writer.codec == .hevc ? "hvc1" : "avc1"
+        let codec = writer.codec.map { $0 == .hevc ? "hvc1" : "avc1" }
         let (heardNow, trackNow) = lock.withLock { () -> (ForkMeetingSystemAudio, ForkMeetingTrackSound) in
             heard = currentHeard()
             trackSound = currentTrackSound()
@@ -383,7 +411,8 @@ final class ForkMeetingRecorder: @unchecked Sendable {
         }
         let startedAt = Date(timeIntervalSinceNow: min(0, (zero.value ?? ForkMeetingWriter.hostSeconds())
                                                           - ForkMeetingWriter.hostSeconds()))
-        return .success(ForkMeetingRecorderStart(target: Self.target(of: aim), window: window, sound: sound,
+        return .success(ForkMeetingRecorderStart(target: aim.map(Self.target(of:)) ?? .audioOnly,
+                                                 window: soundOnly ? nil : window, sound: sound,
                                                  microphone: microphoneName, outputSize: outputSize, codec: codec,
                                                  startedAt: startedAt, appName: Self.appName(of: window),
                                                  heard: heardNow, trackSound: trackNow))
@@ -492,13 +521,14 @@ final class ForkMeetingRecorder: @unchecked Sendable {
     private func currentHeard() -> ForkMeetingSystemAudio {
         guard sound != .none else { return .off }
         if arbiter.writesTap { return sound.heard(filmsWindow: filmsWindow) }
-        guard arbiter.streamWrites(filmsWindow: filmsWindow) else { return .off }
+        guard !soundOnly, arbiter.streamWrites(filmsWindow: filmsWindow) else { return .off }
         return ForkMeetingSoundSource.stream.heard(filmsWindow: filmsWindow)
     }
 
     /// Under `lock`: what the meeting track holds now, as the pill says it.
     private func currentTrackSound() -> ForkMeetingTrackSound {
-        ForkMeetingTrackSound.of(setting: setting, sound: sound, arbiter: arbiter, filmsWindow: filmsWindow)
+        ForkMeetingTrackSound.of(setting: setting, sound: sound, arbiter: arbiter, filmsWindow: filmsWindow,
+                                 hasStream: !soundOnly)
     }
 
     /// Any thread: says it when what the track holds changed.
@@ -831,7 +861,7 @@ final class ForkMeetingRecorder: @unchecked Sendable {
         }
     }
 
-    private static func prepareWriter(url: URL, size: ForkMeetingPixelSize, quality: ForkMeetingQuality,
+    private static func prepareWriter(url: URL, size: ForkMeetingPixelSize?, quality: ForkMeetingQuality,
                                       clock: RecorderPauseClock,
                                       titles: ForkMeetingFinalizer.TrackTitles) async -> ForkMeetingWriter? {
         let queue = DispatchQueue(label: "fork.meetings.recorder.prepared")
@@ -839,6 +869,15 @@ final class ForkMeetingRecorder: @unchecked Sendable {
             ForkMeetingWriter.prepare(url: url, outputSize: size, quality: quality, pauseClock: clock, titles: titles,
                                       completionQueue: queue) { continuation.resume(returning: $0) }
         }
+    }
+
+    /// The app that owns `window`: whose sound a meeting without picture
+    /// hears, when no detected meeting names it.
+    static func ownerPID(of window: CGWindowID?) -> pid_t? {
+        guard let window,
+              let info = (CGWindowListCopyWindowInfo([.optionIncludingWindow], window) as? [[String: Any]])?.first
+        else { return nil }
+        return info[kCGWindowOwnerPID as String] as? pid_t
     }
 
     /// The name of the app that owns `window`, as the Dock shows it.

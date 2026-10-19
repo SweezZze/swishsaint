@@ -59,6 +59,9 @@ enum ForkMeetingFixesNTests {
         sidecar.transcript = .object(["state": .string("done"), "engine": .string("parakeet"), "words": .number(812),
                                       "at": .string("2026-10-19T10:55:00Z"), "file": .string("/Users/martial/x.txt"),
                                       "device": .object(["name": .string("AirPods de Martial")])])
+        sidecar.markers = [.init(at: 754.2, preserved: ["label": .string("Budget secret")])]
+        sidecar.summary = .object(["state": .string("done"), "engine": .string("apple"),
+                                   "files": .array([.string("/Users/martial/summary.md")])])
         sidecar.preserved = ["future": .string("a later version's field"), "path": .string("/Users/martial/Movies")]
         return sidecar
     }
@@ -74,7 +77,7 @@ enum ForkMeetingFixesNTests {
         let plain = try? Document.json(everything(), includesMeetCode: false, includesNotes: false)
         let text = plain.map { String(decoding: $0, as: UTF8.self) } ?? ""
         let keys = Set(object(plain).keys)
-        let allowed = Set(Document.fields).subtracting(["notes", "meetCode"])
+        let allowed = Set(Document.fields).subtracting(["notes", "meetCode", "summary"])
         suite.expect(!keys.isEmpty && keys.isSubset(of: allowed),
                      "no field outside the list leaves: \(keys.subtracting(allowed).sorted())")
         suite.expect(keys == allowed, "every field of the list leaves when the meeting has it: \(keys.sorted())")
@@ -85,14 +88,15 @@ enum ForkMeetingFixesNTests {
         suite.expect(pauses.count == 1 && Set(pauses[0].keys).isSubset(of: Set(Document.pauseFields))
                         && pauses[0]["reason"] as? String == "user",
                      "a pause leaves with its time, its length and its reason only")
-        let both = object(try? Document.json(everything(), includesMeetCode: true, includesNotes: true))
+        let both = object(try? Document.json(everything(), includesMeetCode: true, includesNotes: true,
+                                             includesSummary: true, summary: "# Point\n- Budget validé"))
         suite.expect(Set(both.keys) == Set(Document.fields) && both["notes"] as? String == "Budget validé"
                         && both["meetCode"] as? String == code && both["title"] as? String == "Google Meet · \(code)",
                      "the notes and the Meet code leave only when asked, and the title keeps its code then")
         let notesOnly = object(try? Document.json(everything(), includesMeetCode: false, includesNotes: true))
         suite.expect(notesOnly["notes"] != nil && notesOnly["meetCode"] == nil, "each option goes alone")
         suite.expect(Document.fields == ["id", "schema", "title", "startedAt", "endedAt", "recordedSeconds", "provider",
-                                         "origin", "pauses", "transcript", "notes", "meetCode"],
+                                         "origin", "pauses", "markers", "transcript", "notes", "summary", "meetCode"],
                      "the list is the one the page says")
     }
 

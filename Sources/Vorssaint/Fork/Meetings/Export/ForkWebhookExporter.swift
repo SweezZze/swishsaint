@@ -68,7 +68,8 @@ struct ForkWebhookExporter: ForkMeetingExporter {
         let parts: [ForkWebhookMultipart.Part]
         do {
             parts = try ForkWebhookPayload.parts(package, includesMeetCode: config.includesMeetCode,
-                                                 includesNotes: config.includesNotes)
+                                                 includesNotes: config.includesNotes,
+                                                 includesSummary: config.includesSummary)
         } catch {
             throw ForkMeetingExportFailure.unreadable
         }

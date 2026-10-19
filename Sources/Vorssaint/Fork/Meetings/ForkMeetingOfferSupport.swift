@@ -265,7 +265,8 @@ enum ForkMeetingOfferText {
     /// no language has to put an article or a case before a name it does
     /// not know ("Fenêtre de Arc"). A meeting without a window to film, or
     /// with the display chosen, films the whole screen; a call filmed in its
-    /// app's main window says so ("Window: Teams (main window)").
+    /// app's main window says so ("Window: Teams (main window)"); one
+    /// recorded without picture says that first ("Sound only · sound: …").
     static func capture(target: ForkMeetingCaptureTarget, windowApp: String?, hasWindow: Bool,
                         mainWindow: Bool = false, sound: ForkMeetingSystemAudio, soundApp: String?,
                         microphone: ForkMeetingOfferMicrophone, strings s: ForkMeetingStrings) -> String {
@@ -282,7 +283,9 @@ enum ForkMeetingOfferText {
         case .denied: micValue = s.offerMicrophoneDenied
         }
         let line: String
-        if target == .window, hasWindow, let app = named(windowApp) {
+        if target == .audioOnly {
+            line = s.offerCaptureSoundOnly(sound: unbroken(soundValue), microphone: unbroken(micValue))
+        } else if target == .window, hasWindow, let app = named(windowApp) {
             let window = mainWindow ? s.offerMainWindow(app) : app
             line = s.offerCapture(window: unbroken(window), sound: unbroken(soundValue), microphone: unbroken(micValue))
         } else {

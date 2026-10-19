@@ -46,10 +46,14 @@ enum ForkMeetingPauseReason: String, Codable, CaseIterable {
     case sleep
 }
 
-/// What the picture follows: the meeting's window, or the display it is on.
+/// What the picture follows: the meeting's window, or the display it is on;
+/// or no picture at all (`audioOnly`), the meeting kept as an `.m4a`. A
+/// version that does not know `audioOnly` keeps the whole `capture` object
+/// as it was written (`preserved`), never a part of it.
 enum ForkMeetingCaptureTarget: String, Codable, CaseIterable {
     case window
     case display
+    case audioOnly
 
     static let fallback: ForkMeetingCaptureTarget = .window
 
@@ -186,6 +190,13 @@ struct ForkMeetingSidecar: Equatable {
         var preserved: [String: ForkMeetingJSON] = [:]
     }
 
+    /// A moment the person marked while recording (Finish E): `at` in
+    /// seconds of recording, pauses excluded, like every time here.
+    struct Marker: Equatable {
+        var at: Double?
+        var preserved: [String: ForkMeetingJSON] = [:]
+    }
+
     struct Capture: Equatable {
         /// Wanted, not allowed: the meeting was recorded without it.
         static let microphoneDenied = "denied"
@@ -243,6 +254,11 @@ struct ForkMeetingSidecar: Equatable {
     /// Not written yet: the transcript arrives with its own part of the
     /// feature, and its shape with it.
     var transcript: ForkMeetingJSON?
+    /// The moments marked while recording, in the order they were marked.
+    var markers: [Marker]?
+    /// What the last summary on this Mac did (`ForkMeetingSummaryRecord`),
+    /// kept as raw JSON like `transcript`.
+    var summary: ForkMeetingJSON?
     /// What this version could not read or does not know, written back as is.
     var preserved: [String: ForkMeetingJSON] = [:]
 
@@ -369,7 +385,7 @@ extension ForkMeetingSidecar: Codable {
     private enum Field: String, CaseIterable {
         case schema, id, state, origin, title, titleSource, provider, meetCode, app, startedAt, endedAt,
              recordedSeconds, pauses, capture, gaps, stopReason, recovered, finalPass, calendarEventID, notes,
-             exports, transcript
+             exports, transcript, markers, summary
     }
 
     private struct Key: CodingKey {
@@ -413,6 +429,8 @@ extension ForkMeetingSidecar: Codable {
         notes = field(.notes)
         exports = field(.exports)
         transcript = field(.transcript)
+        markers = field(.markers)
+        summary = field(.summary)
         let known = Set(Field.allCases.map(\.rawValue))
         for key in container.allKeys where !known.contains(key.stringValue) {
             kept[key.stringValue] = try? container.decode(ForkMeetingJSON.self, forKey: key)
@@ -450,6 +468,8 @@ extension ForkMeetingSidecar: Codable {
         try put(notes, .notes)
         try put(exports, .exports)
         try put(transcript, .transcript)
+        try put(markers, .markers)
+        try put(summary, .summary)
         for (key, value) in preserved where !written.contains(key) {
             try container.encode(value, forKey: Key(key))
         }
@@ -555,6 +575,21 @@ extension ForkMeetingSidecar.Gap: Codable {
     }
 }
 
+extension ForkMeetingSidecar.Marker: Codable {
+    private enum Field: String, CaseIterable { case at }
+
+    init(from decoder: Decoder) throws {
+        let object = try ForkMeetingSidecarObjectReader(decoder, fields: Field.self)
+        self.init(at: try object.field(Field.at), preserved: object.unknown)
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var object = ForkMeetingSidecarObjectWriter(encoder)
+        try object.put(at, Field.at)
+        try object.keep(preserved, besides: Field.self)
+    }
+}
+
 extension ForkMeetingSidecar.Capture: Codable {
     private enum Field: String, CaseIterable { case target, systemAudio, microphone, quality }
 
@@ -619,6 +654,8 @@ struct ForkMeetingSidecarPatch: Equatable {
     var finalPass: ForkMeetingSidecar.FinalPass?
     /// One export attempt, appended to `exports`.
     var export: ForkMeetingSidecar.Export?
+    /// A moment marked, appended to `markers`.
+    var marker: ForkMeetingSidecar.Marker?
 
     /// A list or an object this version could not read is never replaced by
     /// a partial one: the addition is dropped rather than what was there.
@@ -631,6 +668,7 @@ struct ForkMeetingSidecarPatch: Equatable {
         if let pause, sidecar.preserved["pauses"] == nil { result.pauses = (result.pauses ?? []) + [pause] }
         if let gap, sidecar.preserved["gaps"] == nil { result.gaps = (result.gaps ?? []) + [gap] }
         if let export, sidecar.preserved["exports"] == nil { result.exports = (result.exports ?? []) + [export] }
+        if let marker, sidecar.preserved["markers"] == nil { result.markers = (result.markers ?? []) + [marker] }
         if microphone != nil || target != nil || systemAudio != nil, sidecar.preserved["capture"] == nil {
             var capture = result.capture ?? ForkMeetingSidecar.Capture()
             if let microphone { capture.microphone = microphone }

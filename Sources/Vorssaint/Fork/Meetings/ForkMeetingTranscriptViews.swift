@@ -14,7 +14,9 @@ struct ForkMeetingTranscriptSection: View {
     @ObservedObject private var l10n = L10n.shared
     @AppStorage(ForkDefaultsKey.meetingsEnabled) private var enabled = false
     @AppStorage(ForkDefaultsKey.meetingsTranscribe) private var transcribe = false
+    @AppStorage(ForkDefaultsKey.meetingsSummarize) private var summarize = false
     @ObservedObject private var store = ForkParakeetModelStore.shared
+    @ObservedObject private var summarizer = ForkMeetingSummarizer.shared
 
     var body: some View {
         Section(text.transcriptTitle) {
@@ -35,7 +37,22 @@ struct ForkMeetingTranscriptSection: View {
             if !store.isInstalled {
                 ForkMeetingParakeetInstall(text: text, language: l10n.language, store: store)
             }
+            // Apple Intelligence on this Mac only: nothing of it shows
+            // otherwise (Finish E).
+            if summarizer.available {
+                Toggle(isOn: $summarize) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(text.summarizeAutomatically)
+                        Text(text.summarizeCaption)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+                .disabled(!enabled)
+            }
         }
+        .onAppear { summarizer.refreshAvailability() }
     }
 }
 

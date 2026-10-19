@@ -29,6 +29,20 @@ struct ForkUpdateStrings {
     let localBuild: String
     /// An update met while a meeting records or finishes: installed after it.
     let afterMeeting: String
+    /// The update window (`ForkUpdateNotesView`): its title before the
+    /// install and after it, the build under it ("Swishsaint build 2170")
+    /// with a beta mark when the official version is one, the official
+    /// version it brings or stays on, the section of changes without an
+    /// author, and how many builds it gathers.
+    let notesAvailableTitle: String
+    let notesInstalledTitle: String
+    let notesBuildFormat: String
+    let notesBeta: String
+    let notesOfficialSection: String
+    let notesOfficialNewFormat: String
+    let notesOfficialSameFormat: String
+    let notesOtherSection: String
+    let notesIncludesFormat: String
 
     static var current: ForkUpdateStrings { strings(L10n.shared.language) }
 
@@ -76,7 +90,16 @@ extension ForkUpdateStrings {
         untrusted: "This download is not signed like your copy, so it was not installed.",
         cannotReplace: "The app cannot replace itself where it is. Move it to the Applications folder, or download the new version from its page.",
         localBuild: "This copy was built on this Mac: it does not update itself.",
-        afterMeeting: "Update after the meeting: it installs as soon as the recording is saved."
+        afterMeeting: "Update after the meeting: it installs as soon as the recording is saved.",
+        notesAvailableTitle: "New update",
+        notesInstalledTitle: "Update installed",
+        notesBuildFormat: "%@ build %@",
+        notesBeta: "beta",
+        notesOfficialSection: "Official Vorssaint",
+        notesOfficialNewFormat: "Brings Vorssaint %@",
+        notesOfficialSameFormat: "Still based on Vorssaint %@",
+        notesOtherSection: "Other changes",
+        notesIncludesFormat: "Includes %d updates"
     )
 
     static let ptBR = ForkUpdateStrings(
@@ -101,7 +124,16 @@ extension ForkUpdateStrings {
         untrusted: "Este download não está assinado como a sua cópia, então não foi instalado.",
         cannotReplace: "O app não consegue se substituir onde está. Mova-o para a pasta Aplicativos ou baixe a nova versão na página dela.",
         localBuild: "Esta cópia foi compilada neste Mac: ela não se atualiza sozinha.",
-        afterMeeting: "Atualização após a reunião: ela será instalada assim que a gravação for salva."
+        afterMeeting: "Atualização após a reunião: ela será instalada assim que a gravação for salva.",
+        notesAvailableTitle: "Nova atualização",
+        notesInstalledTitle: "Atualização instalada",
+        notesBuildFormat: "%@ build %@",
+        notesBeta: "beta",
+        notesOfficialSection: "Vorssaint oficial",
+        notesOfficialNewFormat: "Traz o Vorssaint %@",
+        notesOfficialSameFormat: "Ainda baseada no Vorssaint %@",
+        notesOtherSection: "Outras mudanças",
+        notesIncludesFormat: "Inclui %d atualizações"
     )
 
     static let tr = ForkUpdateStrings(
@@ -126,7 +158,16 @@ extension ForkUpdateStrings {
         untrusted: "Bu indirme kopyanız gibi imzalanmamış, bu yüzden yüklenmedi.",
         cannotReplace: "Uygulama bulunduğu yerde kendini değiştiremiyor. Onu Uygulamalar klasörüne taşıyın ya da yeni sürümü sayfasından indirin.",
         localBuild: "Bu kopya bu Mac'te derlendi: kendini güncellemez.",
-        afterMeeting: "Güncelleme toplantıdan sonra: kayıt kaydedilir kaydedilmez yüklenecek."
+        afterMeeting: "Güncelleme toplantıdan sonra: kayıt kaydedilir kaydedilmez yüklenecek.",
+        notesAvailableTitle: "Yeni güncelleme",
+        notesInstalledTitle: "Güncelleme yüklendi",
+        notesBuildFormat: "%@ derleme %@",
+        notesBeta: "beta",
+        notesOfficialSection: "Resmi Vorssaint",
+        notesOfficialNewFormat: "Vorssaint %@ sürümünü getirir",
+        notesOfficialSameFormat: "Hâlâ Vorssaint %@ tabanlı",
+        notesOtherSection: "Diğer değişiklikler",
+        notesIncludesFormat: "%d güncellemeyi içerir"
     )
 
     static let ru = ForkUpdateStrings(
@@ -151,7 +192,16 @@ extension ForkUpdateStrings {
         untrusted: "Эта загрузка подписана не так, как ваша копия, поэтому она не установлена.",
         cannotReplace: "Приложение не может заменить себя в этом месте. Переместите его в папку «Программы» или загрузите новую версию с её страницы.",
         localBuild: "Эта копия собрана на этом Mac: она не обновляется сама.",
-        afterMeeting: "Обновление после встречи: оно установится, как только запись будет сохранена."
+        afterMeeting: "Обновление после встречи: оно установится, как только запись будет сохранена.",
+        notesAvailableTitle: "Новое обновление",
+        notesInstalledTitle: "Обновление установлено",
+        notesBuildFormat: "%@, сборка %@",
+        notesBeta: "бета",
+        notesOfficialSection: "Официальный Vorssaint",
+        notesOfficialNewFormat: "Приносит Vorssaint %@",
+        notesOfficialSameFormat: "По-прежнему основано на Vorssaint %@",
+        notesOtherSection: "Другие изменения",
+        notesIncludesFormat: "Включает обновлений: %d"
     )
 
     static let es = ForkUpdateStrings(
@@ -176,7 +226,16 @@ extension ForkUpdateStrings {
         untrusted: "Esta descarga no está firmada como tu copia, así que no se instaló.",
         cannotReplace: "La app no puede reemplazarse donde está. Muévela a la carpeta Aplicaciones o descarga la nueva versión desde su página.",
         localBuild: "Esta copia se compiló en este Mac: no se actualiza sola.",
-        afterMeeting: "Actualización después de la reunión: se instalará en cuanto se guarde la grabación."
+        afterMeeting: "Actualización después de la reunión: se instalará en cuanto se guarde la grabación.",
+        notesAvailableTitle: "Nueva actualización",
+        notesInstalledTitle: "Actualización instalada",
+        notesBuildFormat: "%@ build %@",
+        notesBeta: "beta",
+        notesOfficialSection: "Vorssaint oficial",
+        notesOfficialNewFormat: "Trae Vorssaint %@",
+        notesOfficialSameFormat: "Sigue basada en Vorssaint %@",
+        notesOtherSection: "Otros cambios",
+        notesIncludesFormat: "Incluye %d actualizaciones"
     )
 
     static let sk = ForkUpdateStrings(
@@ -201,7 +260,16 @@ extension ForkUpdateStrings {
         untrusted: "Toto stiahnutie nie je podpísané ako vaša kópia, preto sa nenainštalovalo.",
         cannotReplace: "Aplikácia sa nemôže nahradiť na mieste, kde je. Presuňte ju do priečinka Aplikácie alebo si stiahnite novú verziu z jej stránky.",
         localBuild: "Táto kópia bola zostavená na tomto Macu: sama sa neaktualizuje.",
-        afterMeeting: "Aktualizácia po stretnutí: nainštaluje sa hneď, ako sa záznam uloží."
+        afterMeeting: "Aktualizácia po stretnutí: nainštaluje sa hneď, ako sa záznam uloží.",
+        notesAvailableTitle: "Nová aktualizácia",
+        notesInstalledTitle: "Aktualizácia je nainštalovaná",
+        notesBuildFormat: "%@ zostava %@",
+        notesBeta: "beta",
+        notesOfficialSection: "Oficiálny Vorssaint",
+        notesOfficialNewFormat: "Prináša Vorssaint %@",
+        notesOfficialSameFormat: "Stále založená na Vorssaint %@",
+        notesOtherSection: "Ďalšie zmeny",
+        notesIncludesFormat: "Zahrnuté aktualizácie: %d"
     )
 
     static let de = ForkUpdateStrings(
@@ -226,7 +294,16 @@ extension ForkUpdateStrings {
         untrusted: "Dieser Download ist nicht wie deine Kopie signiert und wurde deshalb nicht installiert.",
         cannotReplace: "Die App kann sich an ihrem Ort nicht ersetzen. Verschiebe sie in den Ordner „Programme“ oder lade die neue Version von ihrer Seite.",
         localBuild: "Diese Kopie wurde auf diesem Mac gebaut: Sie aktualisiert sich nicht selbst.",
-        afterMeeting: "Update nach der Besprechung: Es wird installiert, sobald die Aufnahme gespeichert ist."
+        afterMeeting: "Update nach der Besprechung: Es wird installiert, sobald die Aufnahme gespeichert ist.",
+        notesAvailableTitle: "Neues Update",
+        notesInstalledTitle: "Update installiert",
+        notesBuildFormat: "%@ Build %@",
+        notesBeta: "Beta",
+        notesOfficialSection: "Offizielles Vorssaint",
+        notesOfficialNewFormat: "Bringt Vorssaint %@",
+        notesOfficialSameFormat: "Weiterhin auf Vorssaint %@ basierend",
+        notesOtherSection: "Weitere Änderungen",
+        notesIncludesFormat: "Enthält %d Updates"
     )
 
     static let fr = ForkUpdateStrings(
@@ -251,7 +328,16 @@ extension ForkUpdateStrings {
         untrusted: "Ce téléchargement n’est pas signé comme votre copie, il n’a donc pas été installé.",
         cannotReplace: "L’app ne peut pas se remplacer là où elle est. Placez-la dans le dossier Applications, ou téléchargez la nouvelle version depuis sa page.",
         localBuild: "Cette copie a été compilée sur ce Mac : elle ne se met pas à jour toute seule.",
-        afterMeeting: "Mise à jour après la réunion\u{00A0}: elle s’installera dès que l’enregistrement sera sauvegardé."
+        afterMeeting: "Mise à jour après la réunion\u{00A0}: elle s’installera dès que l’enregistrement sera sauvegardé.",
+        notesAvailableTitle: "Nouvelle mise à jour",
+        notesInstalledTitle: "Mise à jour installée",
+        notesBuildFormat: "%@ build %@",
+        notesBeta: "bêta",
+        notesOfficialSection: "Vorssaint officiel",
+        notesOfficialNewFormat: "Récupère Vorssaint %@",
+        notesOfficialSameFormat: "Toujours basée sur Vorssaint %@",
+        notesOtherSection: "Autres changements",
+        notesIncludesFormat: "Comprend %d mises à jour"
     )
 
     static let it = ForkUpdateStrings(
@@ -276,7 +362,16 @@ extension ForkUpdateStrings {
         untrusted: "Questo download non è firmato come la tua copia, quindi non è stato installato.",
         cannotReplace: "L’app non può sostituirsi dove si trova. Spostala nella cartella Applicazioni o scarica la nuova versione dalla sua pagina.",
         localBuild: "Questa copia è stata compilata su questo Mac: non si aggiorna da sola.",
-        afterMeeting: "Aggiornamento dopo la riunione: verrà installato appena la registrazione sarà salvata."
+        afterMeeting: "Aggiornamento dopo la riunione: verrà installato appena la registrazione sarà salvata.",
+        notesAvailableTitle: "Nuovo aggiornamento",
+        notesInstalledTitle: "Aggiornamento installato",
+        notesBuildFormat: "%@ build %@",
+        notesBeta: "beta",
+        notesOfficialSection: "Vorssaint ufficiale",
+        notesOfficialNewFormat: "Porta Vorssaint %@",
+        notesOfficialSameFormat: "Sempre basato su Vorssaint %@",
+        notesOtherSection: "Altre modifiche",
+        notesIncludesFormat: "Include %d aggiornamenti"
     )
 
     static let ja = ForkUpdateStrings(
@@ -301,7 +396,16 @@ extension ForkUpdateStrings {
         untrusted: "このダウンロードはお使いのコピーと同じ署名ではないため、インストールされませんでした。",
         cannotReplace: "アプリは今の場所で自身を置き換えられません。「アプリケーション」フォルダに移動するか、新しいバージョンをそのページからダウンロードしてください。",
         localBuild: "このコピーはこの Mac でビルドされたため、自動ではアップデートされません。",
-        afterMeeting: "ミーティングの後にアップデートします。録画が保存されるとすぐにインストールされます。"
+        afterMeeting: "ミーティングの後にアップデートします。録画が保存されるとすぐにインストールされます。",
+        notesAvailableTitle: "新しいアップデート",
+        notesInstalledTitle: "アップデートをインストールしました",
+        notesBuildFormat: "%@ ビルド %@",
+        notesBeta: "ベータ",
+        notesOfficialSection: "公式 Vorssaint",
+        notesOfficialNewFormat: "Vorssaint %@ を取り込みます",
+        notesOfficialSameFormat: "引き続き Vorssaint %@ がベースです",
+        notesOtherSection: "その他の変更",
+        notesIncludesFormat: "%d 件のアップデートを含みます"
     )
 
     static let ko = ForkUpdateStrings(
@@ -326,7 +430,16 @@ extension ForkUpdateStrings {
         untrusted: "이 다운로드는 사용 중인 사본과 같은 서명이 아니어서 설치되지 않았습니다.",
         cannotReplace: "앱이 현재 위치에서 자신을 교체할 수 없습니다. 응용 프로그램 폴더로 옮기거나 새 버전을 해당 페이지에서 다운로드하세요.",
         localBuild: "이 사본은 이 Mac에서 빌드되어 스스로 업데이트되지 않습니다.",
-        afterMeeting: "회의가 끝난 후 업데이트합니다. 녹화가 저장되면 바로 설치됩니다."
+        afterMeeting: "회의가 끝난 후 업데이트합니다. 녹화가 저장되면 바로 설치됩니다.",
+        notesAvailableTitle: "새 업데이트",
+        notesInstalledTitle: "업데이트 설치됨",
+        notesBuildFormat: "%@ 빌드 %@",
+        notesBeta: "베타",
+        notesOfficialSection: "공식 Vorssaint",
+        notesOfficialNewFormat: "Vorssaint %@ 포함",
+        notesOfficialSameFormat: "계속 Vorssaint %@ 기반",
+        notesOtherSection: "기타 변경 사항",
+        notesIncludesFormat: "업데이트 %d개 포함"
     )
 
     static let uk = ForkUpdateStrings(
@@ -351,7 +464,16 @@ extension ForkUpdateStrings {
         untrusted: "Це завантаження підписане не так, як ваша копія, тому його не встановлено.",
         cannotReplace: "Застосунок не може замінити себе в цьому місці. Перемістіть його в папку «Програми» або завантажте нову версію з її сторінки.",
         localBuild: "Цю копію зібрано на цьому Mac: вона не оновлюється сама.",
-        afterMeeting: "Оновлення після зустрічі: воно встановиться, щойно запис буде збережено."
+        afterMeeting: "Оновлення після зустрічі: воно встановиться, щойно запис буде збережено.",
+        notesAvailableTitle: "Нове оновлення",
+        notesInstalledTitle: "Оновлення встановлено",
+        notesBuildFormat: "%@, збірка %@",
+        notesBeta: "бета",
+        notesOfficialSection: "Офіційний Vorssaint",
+        notesOfficialNewFormat: "Приносить Vorssaint %@",
+        notesOfficialSameFormat: "Як і раніше на основі Vorssaint %@",
+        notesOtherSection: "Інші зміни",
+        notesIncludesFormat: "Містить оновлень: %d"
     )
 
     static let zhHans = ForkUpdateStrings(
@@ -376,7 +498,16 @@ extension ForkUpdateStrings {
         untrusted: "此下载与你的副本签名不同，因此没有安装。",
         cannotReplace: "App 无法在当前位置替换自身。请将它移到“应用程序”文件夹，或从页面下载新版本。",
         localBuild: "这个副本是在这台 Mac 上构建的：它不会自动更新。",
-        afterMeeting: "会议结束后更新：录制内容保存后会立即安装。"
+        afterMeeting: "会议结束后更新：录制内容保存后会立即安装。",
+        notesAvailableTitle: "新更新",
+        notesInstalledTitle: "更新已安装",
+        notesBuildFormat: "%@ 构建 %@",
+        notesBeta: "测试版",
+        notesOfficialSection: "官方 Vorssaint",
+        notesOfficialNewFormat: "带来 Vorssaint %@",
+        notesOfficialSameFormat: "仍基于 Vorssaint %@",
+        notesOtherSection: "其他更改",
+        notesIncludesFormat: "包含 %d 个更新"
     )
 
     static let zhTW = ForkUpdateStrings(
@@ -401,7 +532,16 @@ extension ForkUpdateStrings {
         untrusted: "此下載與你的副本簽署不同，因此沒有安裝。",
         cannotReplace: "App 無法在目前位置取代自己。請將它移到「應用程式」檔案夾，或從頁面下載新版本。",
         localBuild: "這個副本是在這台 Mac 上建置的：它不會自動更新。",
-        afterMeeting: "會議結束後更新：錄製內容儲存後會立即安裝。"
+        afterMeeting: "會議結束後更新：錄製內容儲存後會立即安裝。",
+        notesAvailableTitle: "新更新",
+        notesInstalledTitle: "更新已安裝",
+        notesBuildFormat: "%@ 組建 %@",
+        notesBeta: "測試版",
+        notesOfficialSection: "官方 Vorssaint",
+        notesOfficialNewFormat: "帶來 Vorssaint %@",
+        notesOfficialSameFormat: "仍以 Vorssaint %@ 為基礎",
+        notesOtherSection: "其他變更",
+        notesIncludesFormat: "包含 %d 個更新"
     )
 
     static let zhHK = ForkUpdateStrings(
@@ -426,6 +566,15 @@ extension ForkUpdateStrings {
         untrusted: "此下載與你的副本簽署不同，因此沒有安裝。",
         cannotReplace: "App 無法在目前位置取代自己。請將它移到「應用程式」檔案夾，或從頁面下載新版本。",
         localBuild: "這個副本是在這部 Mac 上建置的：它不會自動更新。",
-        afterMeeting: "會議結束後更新：錄影儲存後會即刻安裝。"
+        afterMeeting: "會議結束後更新：錄影儲存後會即刻安裝。",
+        notesAvailableTitle: "新更新",
+        notesInstalledTitle: "更新已完成安裝",
+        notesBuildFormat: "%@ 組建 %@",
+        notesBeta: "測試版",
+        notesOfficialSection: "官方 Vorssaint",
+        notesOfficialNewFormat: "帶來 Vorssaint %@",
+        notesOfficialSameFormat: "仍然以 Vorssaint %@ 為基礎",
+        notesOtherSection: "其他變更",
+        notesIncludesFormat: "包括 %d 個更新"
     )
 }

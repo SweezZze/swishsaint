@@ -574,6 +574,8 @@ final class ForkMeetingExports: ObservableObject {
         let transcript = ForkMeetingExportDocument.transcript(in: names, files: sidecar.transcriptFiles)
             .map { folder.appendingPathComponent($0) }
         var package = ForkMeetingExportPackage(folderName: name, sidecar: sidecar, audio: audio, transcript: transcript)
+        package.summary = ForkMeetingStore.summaryText(in: folder,
+                                                       files: ForkMeetingSummaryRecord(json: sidecar.summary)?.files ?? [])
         package.video = contents.video.map { folder.appendingPathComponent($0) }
         return package
     }

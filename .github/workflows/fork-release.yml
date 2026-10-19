@@ -88,6 +88,8 @@ jobs:
     environment: release
     permissions:
       contents: write
+      # Notes de version : lire le corps des PR mergées (leur note de mise à jour).
+      pull-requests: read
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -108,6 +110,8 @@ jobs:
         run: fork/build-release.sh
 
       - name: Notes de version
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: fork/release-notes.sh > dist/notes.md
 
       - name: Publier
