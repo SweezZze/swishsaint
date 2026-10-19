@@ -120,6 +120,16 @@ enum ForkDefaultsKey {
     /// The build the person answered "Later" for. Machine state: kept out
     /// of the settings backup.
     static let updatePostponedBuild = "fork.update.postponedBuild"
+    /// The build that ran last on this Mac: a newer one at launch is an
+    /// update just installed. Machine state, out of the settings backup.
+    static let updateLastRunBuild = "fork.update.lastRunBuild"
+    /// The newest build whose notes were read in the update window before
+    /// installing it; past it, the window opens again once installed.
+    /// Machine state.
+    static let updateNotesSeenBuild = "fork.update.notesSeenBuild"
+    /// The notes of the build last offered (`ForkUpdateNotes.Summary`,
+    /// JSON), shown again once it is installed. Machine state.
+    static let updateNotesCache = "fork.update.notesCache"
     /// Whether Parakeet was already offered on this Mac at a launch with
     /// dictation on. Machine state: kept out of the settings backup.
     static let dictationParakeetOffered = "fork.dictation.parakeetOffered"

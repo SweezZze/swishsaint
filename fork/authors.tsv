@@ -1,0 +1,6 @@
+# Auteurs des PR : pseudo GitHub<TAB>prénom affiché dans la fenêtre de mise à jour.
+# Un nouveau copain ajoute sa ligne dans sa première PR (lu par fork/release-notes.sh
+# et par le contrôle « Note de mise à jour », .github/workflows/fork-update-note.yml).
+Martial4034	Martial
+SweezZze	Louis
+hectorpasserat2004-create	Hector

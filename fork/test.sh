@@ -4,6 +4,8 @@
 #   fork/test.sh                      toutes les suites du fork
 #   fork/test.sh --suite=<nom>        une seule (fork/test.sh --list pour les voir)
 #
+# Sans option, lance aussi fork/release-notes-test.sh (notes de release, hors réseau).
+#
 # Les tests officiels ne compilent qu'une liste de fichiers écrite dans build.sh, qu'on ne
 # modifie jamais : ce script relit cette liste telle quelle et y ajoute les fichiers « purs »
 # du fork (sans service ni interface), listés ci-dessous. Lancé aussi par la synchro
@@ -73,6 +75,7 @@ FORK_SOURCES=(
     Sources/Vorssaint/Fork/Meetings/ForkMeetingTitleRules.swift
     Sources/Vorssaint/Fork/Meetings/ForkMeetingTranscriptFormat.swift
     Sources/Vorssaint/Fork/Meetings/ForkMeetingTranscriptSupport.swift
+    Sources/Vorssaint/Fork/Update/ForkUpdateNotes.swift
     Sources/Vorssaint/Fork/Update/ForkUpdateStrings.swift
     Sources/Vorssaint/Fork/Update/ForkUpdateSupport.swift
 )
@@ -128,4 +131,8 @@ status=0
 ./build/fork-tests "$@" || status=$?
 # Les suites UserDefaults laissent des plists vides : même ménage que build.sh.
 rm -f "$HOME"/Library/Preferences/vorss.tests.fork.*.plist
+# Toutes les suites demandées : aussi les notes de release (fork/release-notes.sh), hors réseau.
+if [ "$#" -eq 0 ]; then
+    fork/release-notes-test.sh || status=1
+fi
 exit $status
