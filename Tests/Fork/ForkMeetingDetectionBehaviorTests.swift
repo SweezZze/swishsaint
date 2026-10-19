@@ -87,7 +87,7 @@ enum ForkMeetingDetectionBehaviorTests {
                              providerName: "Google Meet", providerShortName: "Meet", titleName: nil, meetCode: code,
                              calendarTitle: nil, appBundle: "com.google.Chrome",
                              pid: chromePID, windowID: window, windowBundle: "com.google.Chrome", defaultSound: .app,
-                             policy: policy, silenced: silenced, bornAt: at(bornAt))
+                             policy: policy, silenced: silenced, bornAt: at(bornAt), alwaysProof: .meetCode)
     }
 
     private static func offer(_ candidate: ForkMeetingCandidate, collapsesAt: TimeInterval,

@@ -345,9 +345,11 @@ extension ForkMeetingPresenter {
         }
         card.actions = [notNow, record]
         let provider = ForkMeetingOfferText.reminderTitle(candidate)
-        card.menu = [
-            NotchMenuItem(title: text.offerAlways(provider), enabled: ForkMeetingOfferText.allowsAlways(offer),
-                          action: actions.always),
+        card.menu = ForkMeetingOfferText.showsAlways(offer)
+            ? [NotchMenuItem(title: text.offerAlways(provider), enabled: ForkMeetingOfferText.allowsAlways(offer),
+                             action: actions.always)]
+            : []
+        card.menu += [
             NotchMenuItem(title: text.offerNever(provider), action: actions.never),
             .separator,
             NotchMenuItem(title: text.copyAnnouncement, action: actions.copyAnnouncement),

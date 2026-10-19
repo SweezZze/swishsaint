@@ -401,7 +401,8 @@ struct ForkMeetingStrings {
     let noticeAnnouncementCopiedDetail: String
 
     /// The "Cancel" card's line: nobody pressed Record. %@ is the provider's
-    /// short name ("Meet").
+    /// short name ("Meet"): 28 characters at most with "FaceTime", the
+    /// longest that starts on its own.
     let undoAutoStartedFormat: String
 
     // MARK: Apps
@@ -671,7 +672,7 @@ extension ForkMeetingStrings {
         endingSoonFormat: "Stopping in %d s",
         endingSoonContinue: "Continue",
         undoFormat: "Cancel (%d s)",
-        noticeNeverFormat: "No more offers for %@",
+        noticeNeverFormat: "No more offers: %@",
         noticeNeverDetail: "Change it in Meetings",
         voiceOfferFormat: "Meeting detected: %@. Do you want to record it?",
         voiceAutoStartedFormat: "Meeting recording started on its own. To cancel it and move it to the Trash, choose Cancel within %d seconds.",
@@ -695,7 +696,7 @@ extension ForkMeetingStrings {
         voiceDiscardKept: "Recording cancelled, but its folder could be neither moved to the Trash nor deleted: it stays with your meetings.",
         noticeAnnouncementCopied: "Announcement copied",
         noticeAnnouncementCopiedDetail: "Paste it in the meeting chat",
-        undoAutoStartedFormat: "Auto-start · Always for %@",
+        undoAutoStartedFormat: "Auto · Always for %@",
         // MARK: Apps
         detectionOtherWebCalls: "Other web calls",
         detectionOtherWebCallsCaption: "Zoom, Whereby, Jitsi Meet or Teams in a browser: offered only while the browser uses the microphone.",
@@ -960,7 +961,7 @@ extension ForkMeetingStrings {
         // MARK: Fixes J
         microphoneExternal: "Microfone externo",
         voiceCancelled: "Gravação cancelada.",
-        noticeAskAgainFormat: "De volta a Oferecer: %@",
+        noticeAskAgainFormat: "Oferecer de novo: %@",
         voiceAskAgainFormat: "As reuniões do %@ voltarão a ser oferecidas."
     )
 }
@@ -1207,7 +1208,7 @@ extension ForkMeetingStrings {
         voiceDiscardKept: "Kayıt iptal edildi, ancak klasörü Çöp Sepeti’ne taşınamadı ve silinemedi: toplantılarınızda duruyor.",
         noticeAnnouncementCopied: "Duyuru kopyalandı",
         noticeAnnouncementCopiedDetail: "Sohbete yapıştırın",
-        undoAutoStartedFormat: "Otomatik · %@: her zaman",
+        undoAutoStartedFormat: "Oto · %@: her zaman",
         // MARK: Apps
         detectionOtherWebCalls: "Diğer web görüşmeleri",
         detectionOtherWebCallsCaption: "Tarayıcıda Zoom, Whereby, Jitsi Meet veya Teams: yalnızca tarayıcı mikrofonu kullanırken önerilir.",
@@ -1463,7 +1464,7 @@ extension ForkMeetingStrings {
         voiceDiscardKept: "Запись отменена, но её папку не удалось ни переместить в Корзину, ни удалить: она среди ваших встреч.",
         noticeAnnouncementCopied: "Объявление скопировано",
         noticeAnnouncementCopiedDetail: "Вставьте его в чат встречи",
-        undoAutoStartedFormat: "Автостарт · Всегда для %@",
+        undoAutoStartedFormat: "Авто · Всегда для %@",
         // MARK: Apps
         detectionOtherWebCalls: "Другие звонки в браузере",
         detectionOtherWebCallsCaption: "Zoom, Whereby, Jitsi Meet или Teams в браузере: предлагаются, только пока браузер использует микрофон.",
@@ -1472,7 +1473,7 @@ extension ForkMeetingStrings {
         // MARK: Fixes J
         microphoneExternal: "Внешний микрофон",
         voiceCancelled: "Запись отменена.",
-        noticeAskAgainFormat: "Снова «Предлагать» для %@",
+        noticeAskAgainFormat: "Снова «Предлагать»: %@",
         voiceAskAgainFormat: "Встречи %@ снова будут предлагаться."
     )
 }
@@ -1728,7 +1729,7 @@ extension ForkMeetingStrings {
         // MARK: Fixes J
         microphoneExternal: "Micrófono externo",
         voiceCancelled: "Grabación cancelada.",
-        noticeAskAgainFormat: "De nuevo Ofrecer para %@",
+        noticeAskAgainFormat: "Ofrecer otra vez: %@",
         voiceAskAgainFormat: "Las reuniones de %@ se volverán a ofrecer."
     )
 }
@@ -1975,7 +1976,7 @@ extension ForkMeetingStrings {
         voiceDiscardKept: "Nahrávanie zrušené, no jeho priečinok sa nepodarilo presunúť do Koša ani vymazať: ostáva medzi stretnutiami.",
         noticeAnnouncementCopied: "Oznámenie skopírované",
         noticeAnnouncementCopiedDetail: "Vložte ho do četu stretnutia",
-        undoAutoStartedFormat: "Automaticky · Vždy pre %@",
+        undoAutoStartedFormat: "Auto · Vždy pre %@",
         // MARK: Apps
         detectionOtherWebCalls: "Iné hovory na webe",
         detectionOtherWebCallsCaption: "Zoom, Whereby, Jitsi Meet alebo Teams v prehliadači: ponúknu sa, iba kým prehliadač používa mikrofón.",
@@ -2231,7 +2232,7 @@ extension ForkMeetingStrings {
         voiceDiscardKept: "Aufnahme abgebrochen, aber ihr Ordner ließ sich weder in den Papierkorb legen noch löschen: Er bleibt bei deinen Besprechungen.",
         noticeAnnouncementCopied: "Ankündigung kopiert",
         noticeAnnouncementCopiedDetail: "In den Chat einfügen",
-        undoAutoStartedFormat: "Autostart · Immer für %@",
+        undoAutoStartedFormat: "Auto · Immer für %@",
         // MARK: Apps
         detectionOtherWebCalls: "Andere Anrufe im Web",
         detectionOtherWebCallsCaption: "Zoom, Whereby, Jitsi Meet oder Teams im Browser: nur angeboten, solange der Browser das Mikrofon nutzt.",
@@ -2463,7 +2464,7 @@ extension ForkMeetingStrings {
         endingSoonFormat: "Arrêt dans %d s",
         endingSoonContinue: "Continuer",
         undoFormat: "Annuler (%d s)",
-        noticeNeverFormat: "%@ n’est plus proposé",
+        noticeNeverFormat: "Plus proposé\u{00A0}: %@",
         noticeNeverDetail: "Réglable dans Réunions",
         voiceOfferFormat: "Réunion détectée\u{00A0}: %@. Voulez-vous l’enregistrer\u{00A0}?",
         voiceAutoStartedFormat: "Enregistrement de la réunion démarré automatiquement. Pour l’annuler et le mettre à la Corbeille, choisissez Annuler dans les %d secondes.",
@@ -2487,7 +2488,7 @@ extension ForkMeetingStrings {
         voiceDiscardKept: "Enregistrement annulé, mais son dossier n’a pu être ni mis à la Corbeille ni supprimé\u{00A0}: il reste avec vos réunions.",
         noticeAnnouncementCopied: "Annonce copiée",
         noticeAnnouncementCopiedDetail: "À coller dans la discussion",
-        undoAutoStartedFormat: "Auto · Toujours pour %@",
+        undoAutoStartedFormat: "Auto · %@\u{00A0}: Toujours",
         // MARK: Apps
         detectionOtherWebCalls: "Autres appels sur le web",
         detectionOtherWebCallsCaption: "Zoom, Whereby, Jitsi Meet ou Teams dans un navigateur\u{00A0}: proposés seulement pendant que le navigateur utilise le micro.",
@@ -2496,7 +2497,7 @@ extension ForkMeetingStrings {
         // MARK: Fixes J
         microphoneExternal: "Micro externe",
         voiceCancelled: "Enregistrement annulé.",
-        noticeAskAgainFormat: "Retour à Proposer pour %@",
+        noticeAskAgainFormat: "Retour à Proposer\u{00A0}: %@",
         voiceAskAgainFormat: "Les réunions %@ seront de nouveau proposées."
     )
 }
@@ -2743,7 +2744,7 @@ extension ForkMeetingStrings {
         voiceDiscardKept: "Registrazione annullata, ma la cartella non è stata spostata nel Cestino né eliminata: resta tra le tue riunioni.",
         noticeAnnouncementCopied: "Annuncio copiato",
         noticeAnnouncementCopiedDetail: "Incollalo nella chat",
-        undoAutoStartedFormat: "Automatica · Sempre per %@",
+        undoAutoStartedFormat: "Auto · Sempre per %@",
         // MARK: Apps
         detectionOtherWebCalls: "Altre chiamate sul web",
         detectionOtherWebCallsCaption: "Zoom, Whereby, Jitsi Meet o Teams nel browser: proposte solo mentre il browser usa il microfono.",
@@ -2752,7 +2753,7 @@ extension ForkMeetingStrings {
         // MARK: Fixes J
         microphoneExternal: "Microfono esterno",
         voiceCancelled: "Registrazione annullata.",
-        noticeAskAgainFormat: "Di nuovo Proponi per %@",
+        noticeAskAgainFormat: "Di nuovo Proponi: %@",
         voiceAskAgainFormat: "Le riunioni di %@ saranno di nuovo proposte."
     )
 }
@@ -3487,7 +3488,7 @@ extension ForkMeetingStrings {
         endingSoonFormat: "Зупинка через %d с",
         endingSoonContinue: "Продовжити",
         undoFormat: "Скасувати (%d с)",
-        noticeNeverFormat: "Не пропонувати для %@",
+        noticeNeverFormat: "Не пропонувати: %@",
         noticeNeverDetail: "Можна змінити в «Зустрічах»",
         voiceOfferFormat: "Виявлено зустріч: %@. Записати її?",
         voiceAutoStartedFormat: "Запис зустрічі почався автоматично. Щоб скасувати його й перемістити в Смітник, виберіть «Скасувати» протягом %d секунд.",
@@ -3511,7 +3512,7 @@ extension ForkMeetingStrings {
         voiceDiscardKept: "Запис скасовано, але його теку не вдалося ні перемістити в Смітник, ні видалити: вона лишається серед зустрічей.",
         noticeAnnouncementCopied: "Оголошення скопійовано",
         noticeAnnouncementCopiedDetail: "Вставте його в чат зустрічі",
-        undoAutoStartedFormat: "Автостарт · Завжди для %@",
+        undoAutoStartedFormat: "Авто · Завжди для %@",
         // MARK: Apps
         detectionOtherWebCalls: "Інші дзвінки в браузері",
         detectionOtherWebCallsCaption: "Zoom, Whereby, Jitsi Meet або Teams у браузері: пропонуються, лише поки браузер використовує мікрофон.",
@@ -3520,7 +3521,7 @@ extension ForkMeetingStrings {
         // MARK: Fixes J
         microphoneExternal: "Зовнішній мікрофон",
         voiceCancelled: "Запис скасовано.",
-        noticeAskAgainFormat: "Знову «Пропонувати» для %@",
+        noticeAskAgainFormat: "Знову пропонувати: %@",
         voiceAskAgainFormat: "Зустрічі %@ знову пропонуватимуться."
     )
 }

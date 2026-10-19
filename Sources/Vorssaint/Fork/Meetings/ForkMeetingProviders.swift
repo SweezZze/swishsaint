@@ -57,6 +57,27 @@ struct ForkMeetingProvider: Equatable {
     /// (Slack's "Huddle", which a channel may be called).
     var titlesMakeMeetings = true
 
+    /// What lets "Always" start one of its meetings on its own, once its
+    /// microphone has been open for a second on a screen not locked.
+    enum AlwaysProof: Equatable {
+        /// Google Meet: its code in the title. A page may call itself
+        /// "Meet – x"; the code is Meet's own.
+        case meetCode
+        /// An app's meeting: the app itself, its window and its own
+        /// microphone, which no web page can be.
+        case ownApp
+        /// The other web calls: plain words any page may use, and no code
+        /// to check. "Always" is not offered for them: they are offered.
+        case none
+    }
+
+    var alwaysProof: AlwaysProof {
+        switch kind {
+        case .app: return .ownApp
+        case .web: return titles == .googleMeet ? .meetCode : .none
+        }
+    }
+
     /// Whether the window of `bundle` is one of this provider's.
     func owns(windowBundle bundle: String) -> Bool {
         bundles.contains(bundle) || webAppHosts.keys.contains(where: bundle.hasPrefix)
@@ -266,6 +287,12 @@ struct ForkMeetingPolicyRow: Equatable {
         microphoneSignal || providers.contains { $0.titles != nil && $0.titlesMakeMeetings }
     }
 
+    /// Whether "Always" is one of its choices: not for the other web calls,
+    /// which nothing can tell from a page that copies their title.
+    var allowsAlways: Bool {
+        providers.allSatisfy { $0.alwaysProof != .none }
+    }
+
     /// FaceTime's calls record the whole Mac: the page says so.
     var recordsWholeMac: Bool {
         providers.contains { $0.defaultSound == .all }
@@ -289,8 +316,11 @@ struct ForkMeetingPolicies: Equatable {
         stored = (object ?? [:]).compactMapValues { $0 as? String }
     }
 
+    /// "Always" for a provider that cannot have it (written by hand, or by
+    /// an earlier version) reads as "Offer".
     func policy(for provider: ForkMeetingProvider) -> ForkMeetingPolicy {
-        stored[provider.id].flatMap(ForkMeetingPolicy.init(rawValue:)) ?? provider.defaultPolicy
+        let policy = stored[provider.id].flatMap(ForkMeetingPolicy.init(rawValue:)) ?? provider.defaultPolicy
+        return policy == .always && provider.alwaysProof == .none ? .ask : policy
     }
 
     mutating func set(_ policy: ForkMeetingPolicy, for providerID: String) {

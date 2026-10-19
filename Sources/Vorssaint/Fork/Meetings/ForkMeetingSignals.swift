@@ -123,6 +123,19 @@ struct ForkMeetingCandidate: Equatable {
     /// it until it has been over for 10 minutes.
     var silenced: Bool
     let bornAt: Date
+    /// What lets "Always" start it on its own (`ForkMeetingProvider.alwaysProof`);
+    /// unknown, nothing does.
+    var alwaysProof: ForkMeetingProvider.AlwaysProof = .none
+
+    /// Whether it shows who it is beyond a title any page may copy: Meet's
+    /// code, or an app of its own. "Always" starts only such a meeting.
+    var provesItself: Bool {
+        switch alwaysProof {
+        case .meetCode: return meetCode != nil
+        case .ownApp: return true
+        case .none: return false
+        }
+    }
 
     /// The name to show and to give the recording: the title's, else the
     /// calendar's, else "Google Meet · abc-defg-hij", else the provider's.

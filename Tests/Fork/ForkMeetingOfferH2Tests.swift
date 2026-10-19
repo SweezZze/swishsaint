@@ -55,7 +55,7 @@ enum ForkMeetingOfferH2Tests {
                              providerName: "Google Meet", providerShortName: "Meet", titleName: name, meetCode: code,
                              calendarTitle: nil, appBundle: "com.google.Chrome",
                              pid: 100, windowID: 1, windowBundle: "com.google.Chrome", defaultSound: .app,
-                             policy: .ask, silenced: true, bornAt: zero)
+                             policy: .ask, silenced: true, bornAt: zero, alwaysProof: .meetCode)
     }
 
     // MARK: - H2.1 Seen in screen shares
@@ -236,8 +236,8 @@ enum ForkMeetingOfferH2Tests {
     // MARK: - H2.11 The "Cancel" card says it started on its own
 
     private static func undoCardWords(_ suite: TestSuite) {
-        suite.expect(french.undoAutoStarted("Meet") == "Auto · Toujours pour Meet",
-                     "« Auto · Toujours pour Meet »")
+        suite.expect(french.undoAutoStarted("Meet") == "Auto · Meet\u{00A0}: Toujours",
+                     "« Auto · Meet : Toujours », short enough for « FaceTime » too")
         suite.expect(AppLanguage.allCases.map(ForkMeetingStrings.strings).allSatisfy { $0.undoAutoStarted("Meet").contains("Meet") },
                      "every language names the provider")
     }

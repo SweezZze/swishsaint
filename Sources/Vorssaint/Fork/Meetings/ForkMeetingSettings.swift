@@ -482,7 +482,9 @@ private struct ForkMeetingProviderRow: View {
         let recognized = row.recognized(microphoneSignal: microphoneSignal)
         Picker(selection: policy) {
             Text(text.policyAsk).tag(ForkMeetingPolicy.ask)
-            Text(text.policyAlways).tag(ForkMeetingPolicy.always)
+            if row.allowsAlways {
+                Text(text.policyAlways).tag(ForkMeetingPolicy.always)
+            }
             Text(text.policyNever).tag(ForkMeetingPolicy.never)
         } label: {
             HStack(spacing: 8) {

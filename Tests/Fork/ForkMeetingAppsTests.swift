@@ -29,6 +29,7 @@ enum ForkMeetingAppsTests {
         otherWebCalls(suite)
         endings(suite)
         alwaysForAnApp(suite)
+        alwaysNeedsProof(suite)
         filmedAndHeard(suite)
         faceTimeSound(suite)
         tapRepair(suite)
@@ -494,6 +495,48 @@ enum ForkMeetingAppsTests {
                      "Always for FaceTime starts its call, with the whole Mac's sound")
     }
 
+    /// "Always" starts on its own only a meeting that proves who it is:
+    /// Google Meet's code, or an app's own call (its process, its
+    /// microphone: no page can be either). The other web calls have plain
+    /// words for titles and no code to check: "Always" is not theirs, and a
+    /// stored one reads as "Offer".
+    private static func alwaysNeedsProof(_ suite: TestSuite) {
+        let proofs = Dictionary(current.providers.map { ($0.name + "/" + $0.id, $0.alwaysProof) },
+                                uniquingKeysWith: { first, _ in first })
+        suite.expect(proofs["Google Meet/meet"] == .meetCode
+                        && current.providers.filter { $0.kind == .app }.allSatisfy { $0.alwaysProof == .ownApp }
+                        && ForkMeetingProvider.otherWebCalls.allSatisfy { $0.alwaysProof == .none },
+                     "Meet proves itself by its code, an app by being itself, the other web calls never")
+        suite.expect(current.policyRows.filter { !$0.allowsAlways }.map(\.id) == ["web"],
+                     "the page offers Always for every row but the other web calls")
+        let stored = ForkMeetingPolicies(json: #"{"web":"always","zoom":"always"}"#)
+        suite.expect(ForkMeetingProvider.otherWebCalls.allSatisfy { stored.policy(for: $0) == .ask }
+                        && stored.policy(for: .zoom) == .always && stored.stored["web"] == "always",
+                     "an Always stored for the other web calls reads as Offer, the text kept as it was")
+
+        // A page titled as Zoom's meeting window, or a Whereby room, the
+        // browser's microphone open long before: offered, never started,
+        // even with Always chosen for Zoom's app.
+        for title in ["Zoom Meeting", "Whereby"] {
+            var page = Live(apps: #"{"web":"always","zoom":"always"}"#)
+            page.read(-5, microphones: [chromeMicrophone])
+            page.read(0, windows: [chrome(title)], microphones: [chromeMicrophone])
+            page.read(3, windows: [chrome(title)], microphones: [chromeMicrophone])
+            page.read(6, windows: [chrome(title)], microphones: [chromeMicrophone])
+            let offer = page.offers.first
+            suite.expect(page.starts.isEmpty && page.offers.count == 1
+                            && offer?.candidate.identity.value.hasPrefix("web:") == true
+                            && offer.map(ForkMeetingOfferText.showsAlways) == false,
+                         "« \(title) » in Chrome, its microphone open, Always: offered without « Always for », never started")
+            guard offer != nil else { continue }
+            page.effects = []
+            page.send(.always(ForkMeetingStartRequest(settings: settings, facts: ready)), 7)
+            suite.expect(page.starts.map(\.origin) == [.offered]
+                            && !page.effects.contains { if case .setPolicy = $0 { return true } else { return false } },
+                         "an « Always » that reaches such an offer only records it, and stores nothing")
+        }
+    }
+
     // MARK: - What is filmed and heard
 
     private static func candidate(_ identity: String, pid: Int32, appBundle: String, windowID: UInt32? = nil,
@@ -501,7 +544,7 @@ enum ForkMeetingAppsTests {
         ForkMeetingCandidate(identity: ForkMeetingIdentity(identity), provider: "zoom", providerName: "Zoom",
                              providerShortName: "Zoom", titleName: nil, meetCode: nil, calendarTitle: nil,
                              appBundle: appBundle, pid: pid, windowID: windowID, windowBundle: windowBundle,
-                             defaultSound: sound, policy: .ask, silenced: false, bornAt: t0)
+                             defaultSound: sound, policy: .ask, silenced: false, bornAt: t0, alwaysProof: .ownApp)
     }
 
     private static func filmedAndHeard(_ suite: TestSuite) {

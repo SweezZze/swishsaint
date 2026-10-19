@@ -41,7 +41,7 @@ enum ForkMeetingDetectionEffectsTests {
                              providerName: "Google Meet", providerShortName: "Meet", titleName: "Point hebdo",
                              meetCode: "abc-defg-hij", calendarTitle: nil,
                              appBundle: "com.google.Chrome", pid: 100, windowID: 7, windowBundle: "com.google.Chrome",
-                             defaultSound: .app, policy: policy, silenced: false, bornAt: at(0))
+                             defaultSound: .app, policy: policy, silenced: false, bornAt: at(0), alwaysProof: .meetCode)
     }
 
     private static func running(_ suite: TestSuite) {

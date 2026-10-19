@@ -333,6 +333,13 @@ enum ForkMeetingOfferText {
         return (candidate.providerName, s.offerNameHidden)
     }
 
+    /// "Always for Zoom" is in the menu only for a meeting it could start on
+    /// its own one day: never for the other web calls (Whereby, Jitsi…),
+    /// which nothing tells from a page that copies their title.
+    static func showsAlways(_ offer: ForkMeetingOffer) -> Bool {
+        offer.candidate.alwaysProof != .none
+    }
+
     /// "Always for Meet" records now: a greyed offer, which cannot, offers
     /// it greyed too. "Never" stays.
     static func allowsAlways(_ offer: ForkMeetingOffer) -> Bool {

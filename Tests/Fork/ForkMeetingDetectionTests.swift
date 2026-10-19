@@ -57,7 +57,7 @@ enum ForkMeetingDetectionTests {
                              titleName: name, meetCode: String(identity.value.dropFirst(5)), calendarTitle: nil,
                              appBundle: "com.google.Chrome", pid: 100, windowID: 1,
                              windowBundle: "com.google.Chrome", defaultSound: .app, policy: policy, silenced: silenced,
-                             bornAt: at(bornAt))
+                             bornAt: at(bornAt), alwaysProof: .meetCode)
     }
 
     /// The offer of `candidate`, set aside from the moment it shows.
@@ -606,7 +606,7 @@ enum ForkMeetingDetectionTests {
                      },
                      "VoiceOver has its own sentence for the offer, Always, the countdown and Cancel, in every language")
         suite.expect(ForkMeetingNotice.neverOffered("Meet").detail(french) == "Réglable dans Réunions"
-                        && ForkMeetingNotice.neverOffered("Meet").title(french) == "Meet n’est plus proposé",
+                        && ForkMeetingNotice.neverOffered("Meet").title(french) == "Plus proposé\u{00A0}: Meet",
                      "after Never, the notice says where to change it")
     }
 
