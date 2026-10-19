@@ -111,6 +111,8 @@ enum ForkMeetingNotice: Equatable {
     case soundLost
     /// "Never for Meet" was chosen; the provider's short name.
     case neverOffered(String)
+    /// After "Cancel", once the folder is gone (or not).
+    case discarded(ForkMeetingDiscardOutcome)
 
     /// 28 characters at most.
     func title(_ s: ForkMeetingStrings) -> String {
@@ -127,6 +129,9 @@ enum ForkMeetingNotice: Equatable {
         case let .failure(failure): return failure.summary(s)
         case .soundLost: return s.noticeSoundLost
         case let .neverOffered(provider): return s.noticeNever(provider)
+        case .discarded(.trashed): return s.noticeDiscardedTrash
+        case .discarded(.deleted): return s.noticeDiscardedDeleted
+        case .discarded(.kept): return s.noticeDiscardKept
         }
     }
 
@@ -137,8 +142,9 @@ enum ForkMeetingNotice: Equatable {
         case let .microphone(name): return name
         case let .diskLow(minutes): return s.diskMinutes(minutes)
         case .neverOffered: return s.noticeNeverDetail
+        case .discarded(.kept): return s.noticeDiscardKeptDetail
         case .started, .resumed, .saved, .recovered, .microphoneSilent, .displayChanged, .sourceGone, .failure,
-             .soundLost:
+             .soundLost, .discarded:
             return nil
         }
     }

@@ -228,6 +228,17 @@ final class ForkMeetingPresenter {
         }
     }
 
+    /// After "Cancel", once the folder is gone, or not: the notice and
+    /// VoiceOver say what became of it.
+    func showDiscarded(_ outcome: ForkMeetingDiscardOutcome) {
+        guard Thread.isMainThread else {
+            DispatchQueue.main.async { self.showDiscarded(outcome) }
+            return
+        }
+        notice(.discarded(outcome))
+        announce(outcome.spoken(text))
+    }
+
     /// Said to VoiceOver only: what the pill shows without a word VoiceOver
     /// would hear change (the picture frozen).
     func say(_ message: String) {
@@ -415,6 +426,8 @@ final class ForkMeetingPresenter {
             }
         case .resumed, .microphone, .displayChanged, .neverOffered:
             tint = .accentColor
+        case let .discarded(outcome):
+            tint = outcome == .kept ? .orange : .secondary
         }
         return ForkMeetingCard(symbol: ForkMeetingIsland.symbol(for: notice), tint: tint, title: notice.title(text),
                                lines: lines, actions: actions)

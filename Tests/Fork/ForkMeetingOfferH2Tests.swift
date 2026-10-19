@@ -13,6 +13,7 @@ enum ForkMeetingOfferH2Tests {
         islandCards(suite)
         undoWindow(suite)
         voiceOver(suite)
+        discarded(suite)
     }
 
     private static let zero = Date(timeIntervalSinceReferenceDate: 800_000_000)
@@ -176,5 +177,35 @@ enum ForkMeetingOfferH2Tests {
         let again = machine.handle(.endProbable(meeting.identity, countdown: 15), now: at(700))
         suite.expect(said(back + again).last == ForkMeetingAnnouncement.endingSoon(seconds: 15).text(french),
                      "and the next countdown is said again")
+    }
+
+    // MARK: - H2.8 After "Cancel"
+
+    private struct Refused: Error {}
+
+    private static func discarded(_ suite: TestSuite) {
+        var removed = false
+        suite.expect(ForkMeetingDiscardOutcome.discard(trash: {}, remove: { removed = true }) == .trashed && !removed,
+                     "a cancelled recording goes to the Trash, never deleted when it can")
+        suite.expect(ForkMeetingDiscardOutcome.discard(trash: { throw Refused() }, remove: {}) == .deleted,
+                     "a volume without a Trash deletes it")
+        suite.expect(ForkMeetingDiscardOutcome.discard(trash: { throw Refused() }, remove: { throw Refused() }) == .kept,
+                     "neither: it is kept, and said so")
+        suite.expect(ForkMeetingNotice.discarded(.trashed).title(french) == "Annulé · mis à la Corbeille",
+                     "« Annulé · mis à la Corbeille »")
+        let kept = ForkMeetingNotice.discarded(.kept)
+        suite.expect(kept.title(french) == "Annulé · dossier non jeté"
+                        && kept.detail(french) == "Il reste avec vos réunions"
+                        && ForkMeetingDiscardOutcome.kept.spoken(french).contains("il reste avec vos réunions"),
+                     "a folder that stayed is never said deleted, on the screen or to VoiceOver")
+        let outcomes: [ForkMeetingDiscardOutcome] = [.trashed, .deleted, .kept]
+        let languages = AppLanguage.allCases.map(ForkMeetingStrings.strings)
+        suite.expect(languages.allSatisfy { s in
+                        let titles = outcomes.map { ForkMeetingNotice.discarded($0).title(s) }
+                        let voices = outcomes.map { $0.spoken(s) }
+                        return Set(titles).count == 3 && Set(voices).count == 3
+                            && (titles + [s.noticeDiscardKeptDetail]).allSatisfy { !$0.isEmpty && $0.count <= 28 }
+                     },
+                     "three outcomes, three notices of 28 characters at most, three sentences, in every language")
     }
 }

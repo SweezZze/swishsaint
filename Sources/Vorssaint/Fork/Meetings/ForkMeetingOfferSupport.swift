@@ -133,6 +133,39 @@ enum ForkMeetingOfferTiming {
     }
 }
 
+/// What became of a cancelled recording's folder, as its notice and
+/// VoiceOver say it: never "deleted" when it was not.
+enum ForkMeetingDiscardOutcome: Equatable {
+    case trashed
+    /// It could not go to the Trash (a volume without one): deleted.
+    case deleted
+    /// Neither: it stays in the meetings' folder.
+    case kept
+
+    /// To the Trash, else deleted, else kept.
+    static func discard(trash: () throws -> Void, remove: () throws -> Void) -> ForkMeetingDiscardOutcome {
+        do {
+            try trash()
+            return .trashed
+        } catch {
+            do {
+                try remove()
+                return .deleted
+            } catch {
+                return .kept
+            }
+        }
+    }
+
+    func spoken(_ s: ForkMeetingStrings) -> String {
+        switch self {
+        case .trashed: return s.voiceDiscarded
+        case .deleted: return s.voiceDiscardedDeleted
+        case .kept: return s.voiceDiscardKept
+        }
+    }
+}
+
 /// VoiceOver's last sentence: the same one twice in a row is said once.
 /// It is forgotten when what it spoke of goes away (the offer, the
 /// countdown, the recording's pill), so the next offer or countdown is said
