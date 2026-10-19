@@ -64,18 +64,27 @@ struct ForkMeetingProvider: Equatable {
         /// Google Meet: its code in the title. A page may call itself
         /// "Meet – x"; the code is Meet's own.
         case meetCode
-        /// An app's meeting: the app itself, its window and its own
-        /// microphone, which no web page can be.
-        case ownApp
-        /// The other web calls: plain words any page may use, and no code
-        /// to check. "Always" is not offered for them: they are offered.
+        /// An app whose meetings have a window of their own (Zoom's meeting
+        /// window, Slack's huddle): that window, which testing the
+        /// microphone in its settings never opens.
+        case meetingWindow
+        /// An app without one (Teams, Webex, Discord): its microphone open
+        /// for `ForkMeetingCandidate.alwaysMicrophone`, longer than a test.
+        case longMicrophone
+        /// FaceTime, whose system process carries an iPhone call relayed
+        /// too, and the other web calls, plain words any page may use with
+        /// no code to check. "Always" is not offered for them: they are
+        /// offered.
         case none
     }
 
     var alwaysProof: AlwaysProof {
         switch kind {
-        case .app: return .ownApp
-        case .web: return titles == .googleMeet ? .meetCode : .none
+        case .app:
+            guard processBundles.isEmpty else { return .none }
+            return titles != nil ? .meetingWindow : .longMicrophone
+        case .web:
+            return titles == .googleMeet ? .meetCode : .none
         }
     }
 
@@ -157,6 +166,7 @@ extension ForkMeetingProvider {
     /// A call runs in `avconferenced` (and `callservicesd`), system
     /// processes no app owns: theirs counts as FaceTime's only while
     /// FaceTime is open. Their sound is no app's: the whole Mac is recorded.
+    /// An iPhone call relayed runs there too: offered, never "Always".
     static let faceTime = ForkMeetingProvider(
         id: "facetime", name: "FaceTime", shortName: "FaceTime", kind: .app, bundles: ["com.apple.FaceTime"],
         webAppHosts: [:], processBundles: ["com.apple.avconferenced", "com.apple.TelephonyUtilities"], titles: nil,
@@ -289,7 +299,8 @@ struct ForkMeetingPolicyRow: Equatable {
     }
 
     /// Whether "Always" is one of its choices: not for the other web calls,
-    /// which nothing can tell from a page that copies their title.
+    /// which nothing can tell from a page that copies their title, nor for
+    /// FaceTime, which an iPhone call relayed looks like.
     var allowsAlways: Bool {
         providers.allSatisfy { $0.alwaysProof != .none }
     }
@@ -297,6 +308,12 @@ struct ForkMeetingPolicyRow: Equatable {
     /// FaceTime's calls record the whole Mac: the page says so.
     var recordsWholeMac: Bool {
         providers.contains { $0.defaultSound == .all }
+    }
+
+    /// FaceTime's system process carries an iPhone call relayed too: the
+    /// page says it may be offered.
+    var offersRelayedCalls: Bool {
+        providers.contains { !$0.processBundles.isEmpty }
     }
 }
 

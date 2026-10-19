@@ -489,10 +489,14 @@ enum ForkMeetingAppsTests {
         let call = current.attributing([callDaemon], running: ["com.apple.FaceTime": faceTimePID])
         faceTime.read(-5, microphones: call)
         faceTime.read(-3, microphones: call)
-        suite.expect(faceTime.starts.map(\.origin) == [.always]
-                        && faceTime.starts.first.map { ForkMeetingDetectionSupport.settings($0.settings, for: $0.meeting) }?
-                            .systemAudio == .all,
-                     "Always for FaceTime starts its call, with the whole Mac's sound")
+        faceTime.read(20, microphones: call)
+        suite.expect(faceTime.starts.isEmpty && faceTime.offers.map(\.candidate.identity.value) == ["facetime:600#1"]
+                        && faceTime.offers.first.map(ForkMeetingOfferText.showsAlways) == false,
+                     "an Always stored for FaceTime reads as Offer: its call (or an iPhone's relayed) is offered")
+        faceTime.send(.accept(ForkMeetingStartRequest(settings: settings, facts: ready)), 21)
+        suite.expect(faceTime.starts.first.map { ForkMeetingDetectionSupport.settings($0.settings, for: $0.meeting) }?
+                        .systemAudio == .all,
+                     "recorded, a FaceTime call has the whole Mac's sound")
     }
 
     /// "Always" starts on its own only a meeting that proves who it is:
@@ -504,11 +508,13 @@ enum ForkMeetingAppsTests {
         let proofs = Dictionary(current.providers.map { ($0.name + "/" + $0.id, $0.alwaysProof) },
                                 uniquingKeysWith: { first, _ in first })
         suite.expect(proofs["Google Meet/meet"] == .meetCode
-                        && current.providers.filter { $0.kind == .app }.allSatisfy { $0.alwaysProof == .ownApp }
+                        && [ForkMeetingProvider.zoom, .slack].allSatisfy { $0.alwaysProof == .meetingWindow }
+                        && [ForkMeetingProvider.teams, .webex, .discord].allSatisfy { $0.alwaysProof == .longMicrophone }
+                        && ForkMeetingProvider.faceTime.alwaysProof == .none
                         && ForkMeetingProvider.otherWebCalls.allSatisfy { $0.alwaysProof == .none },
-                     "Meet proves itself by its code, an app by being itself, the other web calls never")
-        suite.expect(current.policyRows.filter { !$0.allowsAlways }.map(\.id) == ["web"],
-                     "the page offers Always for every row but the other web calls")
+                     "Meet proves itself by its code, an app by its meeting window or a long microphone, FaceTime and the other web calls never")
+        suite.expect(current.policyRows.filter { !$0.allowsAlways }.map(\.id) == ["facetime", "web"],
+                     "the page offers Always for every row but FaceTime and the other web calls")
         let stored = ForkMeetingPolicies(json: #"{"web":"always","zoom":"always"}"#)
         suite.expect(ForkMeetingProvider.otherWebCalls.allSatisfy { stored.policy(for: $0) == .ask }
                         && stored.policy(for: .zoom) == .always && stored.stored["web"] == "always",
@@ -544,7 +550,7 @@ enum ForkMeetingAppsTests {
         ForkMeetingCandidate(identity: ForkMeetingIdentity(identity), provider: "zoom", providerName: "Zoom",
                              providerShortName: "Zoom", titleName: nil, meetCode: nil, calendarTitle: nil,
                              appBundle: appBundle, pid: pid, windowID: windowID, windowBundle: windowBundle,
-                             defaultSound: sound, policy: .ask, silenced: false, bornAt: t0, alwaysProof: .ownApp)
+                             defaultSound: sound, policy: .ask, silenced: false, bornAt: t0, alwaysProof: .meetingWindow)
     }
 
     private static func filmedAndHeard(_ suite: TestSuite) {

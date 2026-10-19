@@ -17,6 +17,9 @@ enum ForkMeetingFixesKTests {
         aSecondMeetingInTheSameApp(suite)
         alwaysAgainForTheNextMeeting(suite)
         aNewMeetingIsNotTheOldOneBack(suite)
+        aMicrophoneTestNeverStarts(suite)
+        aLongMicrophoneProvesTeams(suite)
+        faceTimeIsOnlyOffered(suite)
     }
 
     // MARK: - Fixtures
@@ -213,5 +216,94 @@ enum ForkMeetingFixesKTests {
         suite.expect(isEnding && !zoom.said.contains(.meetingBack)
                         && zoom.lastResolution.candidates.map(\.identity) == [identity("zoom:500#2")],
                      "Zoom's microphone again for a new meeting: the countdown of the first goes on")
+    }
+
+    // MARK: - K.I1: what "Always" for an app waits for
+
+    /// Probe P2: Slack's microphone test in its preferences (3 s), Always
+    /// for Slack, its main window in front.
+    private static func aMicrophoneTestNeverStarts(_ suite: TestSuite) {
+        let main = slackWindow("Alice (DM) - Acme - Slack", id: 9)
+        var test = Live(#"{"slack":"always"}"#)
+        test.read(0, windows: [main], microphones: [slackMicrophone])
+        test.read(2, windows: [main], microphones: [slackMicrophone])
+        test.read(4, windows: [main], microphones: [slackMicrophone])
+        suite.expect(test.starts.isEmpty && test.offers.isEmpty,
+                     "a 3 s microphone test with Always for Slack starts nothing, and is not offered while it runs")
+        test.read(6, windows: [main], microphones: [])
+        suite.expect(test.starts.isEmpty && test.offers.map(\.candidate.identity) == [identity("slack:300#1")],
+                     "its microphone closed, it is only offered, as any call")
+
+        var huddle = Live(#"{"slack":"always"}"#)
+        huddle.read(0, windows: [main], microphones: [slackMicrophone])
+        huddle.read(2, windows: [main], microphones: [slackMicrophone])
+        huddle.read(3, windows: [main, slackWindow("Huddle: #design", id: 10)], microphones: [slackMicrophone])
+        suite.expect(huddle.starts.map(\.config.origin) == [.always] && huddle.offers.isEmpty
+                        && huddle.starts.first?.config.meeting?.windowID == 10,
+                     "a huddle window: Always records the huddle, filmed in it")
+
+        var settings = Live(#"{"zoom":"always"}"#)
+        for second in stride(from: 0.0, through: 14, by: 2) {
+            settings.read(second, windows: [zoomWindow("Settings")], microphones: [zoomMicrophone])
+        }
+        suite.expect(settings.starts.isEmpty && settings.offers.isEmpty, "Zoom testing its microphone: nothing yet")
+        settings.read(16, windows: [zoomWindow("Settings")], microphones: [zoomMicrophone])
+        suite.expect(settings.starts.isEmpty && settings.offers.count == 1,
+                     "15 s without a meeting window: offered, never started on its own")
+    }
+
+    /// Teams, Webex and Discord have no meeting window: their microphone
+    /// open 15 s, longer than a test, proves the call.
+    private static func aLongMicrophoneProvesTeams(_ suite: TestSuite) {
+        let teams = Microphone(appBundle: "com.microsoft.teams2", appPID: 700, pid: 701,
+                               processBundle: "com.microsoft.teams2.helper")
+        var call = Live(#"{"teams":"always"}"#)
+        for second in stride(from: 0.0, through: 14, by: 2) { call.read(second, microphones: [teams]) }
+        suite.expect(call.starts.isEmpty && call.offers.isEmpty,
+                     "Always for Teams: its microphone open under 15 s, neither started nor offered")
+        call.read(16, microphones: [teams])
+        suite.expect(call.starts.map(\.config.origin) == [.always] && call.offers.isEmpty,
+                     "15 s: the call starts on its own")
+
+        var test = Live(#"{"teams":"always"}"#)
+        test.read(0, microphones: [teams])
+        test.read(2, microphones: [teams])
+        test.read(3, microphones: [])
+        test.read(6, microphones: [])
+        suite.expect(test.starts.isEmpty && test.offers.count == 1, "a 3 s test in Teams: only offered")
+
+        var locked = Live(#"{"teams":"always"}"#)
+        locked.send(.locked, -1)
+        locked.read(0, microphones: [teams])
+        locked.read(2, microphones: [teams])
+        suite.expect(locked.starts.isEmpty && locked.offers.count == 1,
+                     "a locked screen offers at once, as before: nobody to cancel")
+    }
+
+    // MARK: - K.I2: FaceTime is offered, never "Always"
+
+    private static func faceTimeIsOnlyOffered(_ suite: TestSuite) {
+        let table = ForkMeetingProviderTable.current
+        let call = table.attributing([Microphone(appBundle: nil, pid: 77, processBundle: "com.apple.avconferenced")],
+                                     running: ["com.apple.FaceTime": 600])
+        var faceTime = Live(#"{"facetime":"always"}"#)
+        for second in stride(from: 0.0, through: 30, by: 2) { faceTime.read(second, microphones: call) }
+        let offer = faceTime.offers.first
+        suite.expect(faceTime.starts.isEmpty && faceTime.offers.count == 1
+                        && offer.map(ForkMeetingOfferText.showsAlways) == false,
+                     "a FaceTime call (or an iPhone's relayed) with Always stored: offered, its menu without Always")
+        faceTime.effects = []
+        faceTime.send(.always(request()), 31)
+        suite.expect(faceTime.starts.map(\.config.origin) == [.offered]
+                        && !faceTime.effects.contains { if case .setPolicy = $0 { return true } else { return false } },
+                     "an Always that reaches its offer only records it, and stores nothing")
+        let row = table.policyRows.first { $0.id == "facetime" }
+        suite.expect(row?.allowsAlways == false && row?.offersRelayedCalls == true
+                        && table.policyRows.filter(\.offersRelayedCalls).map(\.id) == ["facetime"],
+                     "FaceTime's row has no Always, and says an iPhone call relayed may be offered")
+        let french = ForkMeetingStrings.strings(.fr)
+        suite.expect(french.detectionFaceTimeRelayed == "Un appel téléphonique relayé par l’iPhone peut aussi être proposé."
+                        && AppLanguage.allCases.allSatisfy { !ForkMeetingStrings.strings($0).detectionFaceTimeRelayed.isEmpty },
+                     "« Un appel téléphonique relayé par l’iPhone peut aussi être proposé », in every language")
     }
 }

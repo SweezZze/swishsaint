@@ -511,6 +511,9 @@ private struct ForkMeetingProviderRow: View {
                             .foregroundStyle(.orange)
                             .fixedSize(horizontal: false, vertical: true)
                     }
+                    if recognized, row.offersRelayedCalls {
+                        note(text.detectionFaceTimeRelayed)
+                    }
                 }
             }
         }

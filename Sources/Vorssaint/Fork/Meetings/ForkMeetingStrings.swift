@@ -431,6 +431,12 @@ struct ForkMeetingStrings {
     let noticeAskAgainFormat: String
     let voiceAskAgainFormat: String
 
+    // MARK: Fixes K
+
+    /// FaceTime's row: an iPhone call relayed to the Mac runs in FaceTime's
+    /// system process too, and may be offered.
+    let detectionFaceTimeRelayed: String
+
     func noticeAskAgain(_ provider: String) -> String { String(format: noticeAskAgainFormat, provider) }
     func voiceAskAgain(_ provider: String) -> String { String(format: voiceAskAgainFormat, provider) }
 
@@ -706,7 +712,9 @@ extension ForkMeetingStrings {
         microphoneExternal: "External microphone",
         voiceCancelled: "Recording cancelled.",
         noticeAskAgainFormat: "Back to Offer for %@",
-        voiceAskAgainFormat: "Meetings from %@ will be offered again."
+        voiceAskAgainFormat: "Meetings from %@ will be offered again.",
+        // MARK: Fixes K
+        detectionFaceTimeRelayed: "A phone call relayed from your iPhone may be offered too."
     )
 }
 
@@ -962,7 +970,9 @@ extension ForkMeetingStrings {
         microphoneExternal: "Microfone externo",
         voiceCancelled: "Gravação cancelada.",
         noticeAskAgainFormat: "Oferecer de novo: %@",
-        voiceAskAgainFormat: "As reuniões do %@ voltarão a ser oferecidas."
+        voiceAskAgainFormat: "As reuniões do %@ voltarão a ser oferecidas.",
+        // MARK: Fixes K
+        detectionFaceTimeRelayed: "Uma ligação telefônica retransmitida pelo iPhone também pode ser oferecida."
     )
 }
 
@@ -1218,7 +1228,9 @@ extension ForkMeetingStrings {
         microphoneExternal: "Harici mikrofon",
         voiceCancelled: "Kayıt iptal edildi.",
         noticeAskAgainFormat: "%@ için yine Öner",
-        voiceAskAgainFormat: "%@ toplantıları yeniden önerilecek."
+        voiceAskAgainFormat: "%@ toplantıları yeniden önerilecek.",
+        // MARK: Fixes K
+        detectionFaceTimeRelayed: "iPhone’unuzdan aktarılan bir telefon araması da önerilebilir."
     )
 }
 
@@ -1474,7 +1486,9 @@ extension ForkMeetingStrings {
         microphoneExternal: "Внешний микрофон",
         voiceCancelled: "Запись отменена.",
         noticeAskAgainFormat: "Снова «Предлагать»: %@",
-        voiceAskAgainFormat: "Встречи %@ снова будут предлагаться."
+        voiceAskAgainFormat: "Встречи %@ снова будут предлагаться.",
+        // MARK: Fixes K
+        detectionFaceTimeRelayed: "Телефонный звонок, переданный с iPhone, тоже может быть предложен."
     )
 }
 
@@ -1730,7 +1744,9 @@ extension ForkMeetingStrings {
         microphoneExternal: "Micrófono externo",
         voiceCancelled: "Grabación cancelada.",
         noticeAskAgainFormat: "Ofrecer otra vez: %@",
-        voiceAskAgainFormat: "Las reuniones de %@ se volverán a ofrecer."
+        voiceAskAgainFormat: "Las reuniones de %@ se volverán a ofrecer.",
+        // MARK: Fixes K
+        detectionFaceTimeRelayed: "Una llamada telefónica retransmitida desde tu iPhone también puede ofrecerse."
     )
 }
 
@@ -1986,7 +2002,9 @@ extension ForkMeetingStrings {
         microphoneExternal: "Externý mikrofón",
         voiceCancelled: "Nahrávanie zrušené.",
         noticeAskAgainFormat: "Znova Ponúknuť pre %@",
-        voiceAskAgainFormat: "Stretnutia %@ sa budú znova ponúkať."
+        voiceAskAgainFormat: "Stretnutia %@ sa budú znova ponúkať.",
+        // MARK: Fixes K
+        detectionFaceTimeRelayed: "Ponúknuť sa môže aj telefonický hovor presmerovaný z iPhonu."
     )
 }
 
@@ -2242,7 +2260,9 @@ extension ForkMeetingStrings {
         microphoneExternal: "Externes Mikrofon",
         voiceCancelled: "Aufnahme abgebrochen.",
         noticeAskAgainFormat: "Wieder Anbieten für %@",
-        voiceAskAgainFormat: "Besprechungen von %@ werden wieder angeboten."
+        voiceAskAgainFormat: "Besprechungen von %@ werden wieder angeboten.",
+        // MARK: Fixes K
+        detectionFaceTimeRelayed: "Auch ein vom iPhone weitergeleiteter Telefonanruf kann angeboten werden."
     )
 }
 
@@ -2498,7 +2518,9 @@ extension ForkMeetingStrings {
         microphoneExternal: "Micro externe",
         voiceCancelled: "Enregistrement annulé.",
         noticeAskAgainFormat: "Retour à Proposer\u{00A0}: %@",
-        voiceAskAgainFormat: "Les réunions %@ seront de nouveau proposées."
+        voiceAskAgainFormat: "Les réunions %@ seront de nouveau proposées.",
+        // MARK: Fixes K
+        detectionFaceTimeRelayed: "Un appel téléphonique relayé par l’iPhone peut aussi être proposé."
     )
 }
 
@@ -2754,7 +2776,9 @@ extension ForkMeetingStrings {
         microphoneExternal: "Microfono esterno",
         voiceCancelled: "Registrazione annullata.",
         noticeAskAgainFormat: "Di nuovo Proponi: %@",
-        voiceAskAgainFormat: "Le riunioni di %@ saranno di nuovo proposte."
+        voiceAskAgainFormat: "Le riunioni di %@ saranno di nuovo proposte.",
+        // MARK: Fixes K
+        detectionFaceTimeRelayed: "Anche una telefonata inoltrata dall’iPhone può essere proposta."
     )
 }
 
@@ -3010,7 +3034,9 @@ extension ForkMeetingStrings {
         microphoneExternal: "外部マイク",
         voiceCancelled: "録画を取り消しました。",
         noticeAskAgainFormat: "%@ は再び「提案する」",
-        voiceAskAgainFormat: "%@ のミーティングは再び提案されます。"
+        voiceAskAgainFormat: "%@ のミーティングは再び提案されます。",
+        // MARK: Fixes K
+        detectionFaceTimeRelayed: "iPhone から中継された電話も提案されることがあります。"
     )
 }
 
@@ -3266,7 +3292,9 @@ extension ForkMeetingStrings {
         microphoneExternal: "외장 마이크",
         voiceCancelled: "녹화가 취소되었습니다.",
         noticeAskAgainFormat: "%@: 다시 제안",
-        voiceAskAgainFormat: "%@ 회의가 다시 제안됩니다."
+        voiceAskAgainFormat: "%@ 회의가 다시 제안됩니다.",
+        // MARK: Fixes K
+        detectionFaceTimeRelayed: "iPhone에서 중계된 전화 통화도 제안될 수 있습니다."
     )
 }
 
@@ -3522,7 +3550,9 @@ extension ForkMeetingStrings {
         microphoneExternal: "Зовнішній мікрофон",
         voiceCancelled: "Запис скасовано.",
         noticeAskAgainFormat: "Знову пропонувати: %@",
-        voiceAskAgainFormat: "Зустрічі %@ знову пропонуватимуться."
+        voiceAskAgainFormat: "Зустрічі %@ знову пропонуватимуться.",
+        // MARK: Fixes K
+        detectionFaceTimeRelayed: "Телефонний дзвінок, переданий з iPhone, теж може бути запропонований."
     )
 }
 
@@ -3778,7 +3808,9 @@ extension ForkMeetingStrings {
         microphoneExternal: "外接麦克风",
         voiceCancelled: "录制已取消。",
         noticeAskAgainFormat: "%@ 改回“提议”",
-        voiceAskAgainFormat: "将重新提议录制 %@ 会议。"
+        voiceAskAgainFormat: "将重新提议录制 %@ 会议。",
+        // MARK: Fixes K
+        detectionFaceTimeRelayed: "通过 iPhone 转接的电话也可能会被提议录制。"
     )
 }
 
@@ -4034,7 +4066,9 @@ extension ForkMeetingStrings {
         microphoneExternal: "外接麥克風",
         voiceCancelled: "錄製已取消。",
         noticeAskAgainFormat: "%@ 改回「提議」",
-        voiceAskAgainFormat: "將重新提議錄製 %@ 會議。"
+        voiceAskAgainFormat: "將重新提議錄製 %@ 會議。",
+        // MARK: Fixes K
+        detectionFaceTimeRelayed: "透過 iPhone 轉接的電話也可能會被提議錄製。"
     )
 }
 
@@ -4290,6 +4324,8 @@ extension ForkMeetingStrings {
         microphoneExternal: "外置咪高風",
         voiceCancelled: "錄製已取消。",
         noticeAskAgainFormat: "%@ 改回「提議」",
-        voiceAskAgainFormat: "將重新提議錄製 %@ 會議。"
+        voiceAskAgainFormat: "將重新提議錄製 %@ 會議。",
+        // MARK: Fixes K
+        detectionFaceTimeRelayed: "透過 iPhone 轉駁的電話也可能會被提議錄製。"
     )
 }

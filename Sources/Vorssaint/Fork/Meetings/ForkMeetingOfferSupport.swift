@@ -335,7 +335,8 @@ enum ForkMeetingOfferText {
 
     /// "Always for Zoom" is in the menu only for a meeting it could start on
     /// its own one day: never for the other web calls (Whereby, Jitsi…),
-    /// which nothing tells from a page that copies their title.
+    /// which nothing tells from a page that copies their title, nor for
+    /// FaceTime, which an iPhone call relayed looks like.
     static func showsAlways(_ offer: ForkMeetingOffer) -> Bool {
         offer.candidate.alwaysProof != .none
     }

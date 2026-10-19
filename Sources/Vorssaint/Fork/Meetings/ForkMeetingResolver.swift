@@ -463,7 +463,8 @@ struct ForkMeetingResolver {
                 calendarTitle: hint?.title, appBundle: track.family, pid: track.pid,
                 windowID: track.windowID, windowBundle: track.windowBundle, defaultSound: track.provider.defaultSound,
                 policy: policy, silenced: silenced.keys.contains(track.identity), bornAt: bornAt,
-                alwaysProof: track.provider.alwaysProof)
+                alwaysProof: track.provider.alwaysProof,
+                microphoneSince: track.provider.kind == .app && microphoneOpen(track) ? track.firstMicrophoneAt : nil)
         }
         return born.sorted { $0.bornAt != $1.bornAt ? $0.bornAt > $1.bornAt : $0.identity.value < $1.identity.value }
     }
