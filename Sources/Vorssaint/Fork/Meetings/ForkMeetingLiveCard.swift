@@ -251,11 +251,12 @@ struct ForkMeetingLiveCardView: View {
 
     private func markButton(_ snapshot: ForkMeetingIslandSnapshot) -> some View {
         let marked = model.markedUntil != nil
-        return button(symbol: marked ? "checkmark" : "bookmark.fill", title: marked ? text.cardMarked : text.cardMark,
+        return button(symbol: marked ? "checkmark" : "star.fill", title: marked ? text.cardMarked : text.cardMark,
                       label: text.cardMarkHelp, enabled: snapshot.phase.canMark && !marked) {
+            // "Marked" only for a moment really kept: `addMarker` lights it
+            // when it returns true, whichever way the moment was marked, and
+            // says the time to VoiceOver.
             ForkMeetingService.shared.addMarker()
-            model.marked()
-            ForkMeetingPresenter.shared.say(text.voiceMarked)
             ForkMeetingLiveCard.shared.buttonUsed()
         }
         .animation(reduceMotion ? nil : .smooth(duration: 0.2), value: marked)

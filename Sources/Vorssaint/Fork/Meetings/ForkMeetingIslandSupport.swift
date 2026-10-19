@@ -184,8 +184,11 @@ enum ForkMeetingIslandRules {
         return share.formatted(.percent.precision(.fractionLength(0)).locale(language.formattingLocale()))
     }
 
-    /// How long a "Marked" stays on the card's button after a click.
-    static let markedHold: TimeInterval = 1.6
+    /// How long a "Marked" stays on the card's button after a click: as
+    /// long as a second press would be the same moment
+    /// (`ForkMeetingMarkers.mergeWindow`), so the button never offers a
+    /// press that marks nothing.
+    static let markedHold: TimeInterval = ForkMeetingMarkers.mergeWindow
     /// How long the live card stays once the pointer leaves it.
     static let cardHold: TimeInterval = 4
 }

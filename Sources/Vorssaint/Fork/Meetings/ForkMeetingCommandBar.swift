@@ -59,7 +59,7 @@ enum ForkMeetingCommandBar {
                 title: text.barMarker,
                 subtitle: area,
                 keywords: keywords,
-                icon: .symbol("flag"),
+                icon: .symbol("star"),
                 shortcut: shortcut(.marker),
                 run: { _ in ForkMeetingService.shared.addMarker() }))
         }

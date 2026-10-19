@@ -3,8 +3,8 @@
 
 import Foundation
 
-/// "Mark This Moment": the pill's ★, the island's live card and the
-/// shortcut all come here. The time is the file's own (the engine's pause
+/// "Mark This Moment": the pill's ★, the island's live card, the shortcut
+/// and the Command Bar's row all come here. The time is the file's own (the engine's pause
 /// clock, pauses left out), so the marker points at the same instant of the
 /// video; it goes into `meeting.json` at once, like a gap, so a crash keeps
 /// it with the meeting it recovers.
@@ -23,10 +23,17 @@ extension ForkMeetingService {
         if added {
             store.update(session.folder, with: ForkMeetingSidecarPatch(marker: ForkMeetingSidecar.Marker(at: time)))
             log.notice("moment marked at \(time, privacy: .public) s")
+            // The live card's button says "Marked" for this one, whichever
+            // entry marked it (the card, the pill, the shortcut, the bar).
+            ForkMeetingIslandModel.shared.marked()
         }
         let shown = added ? time : (book.nearest(to: time, in: session.token) ?? time)
         let clock = ForkMeetingMarkers.clock(shown)
-        presenter.notice(.marked, detail: clock)
+        // The live card, up in the island, is its own word: a notice there
+        // would push it aside.
+        if ForkMeetingMarkers.showsNotice(liveCardShown: ForkMeetingLiveCard.shared.isShowing) {
+            presenter.notice(.marked, detail: clock)
+        }
         presenter.say(ForkMeetingStrings.current.voiceMarked(clock))
         return added
     }

@@ -25,6 +25,11 @@ enum ForkMeetingMarkers {
         return (max(0, recorded) * 10).rounded() / 10
     }
 
+    /// Whether a marker gets its notice in the island (or the bubble). Not
+    /// while the live card is up there: its button says "Marked" itself,
+    /// and a notice would push the card aside.
+    static func showsNotice(liveCardShown: Bool) -> Bool { !liveCardShown }
+
     /// Whether a press at `time` is a new moment after the ones already
     /// marked in this recording.
     static func isNew(_ time: Double, after marked: [Double]) -> Bool {
