@@ -594,7 +594,6 @@ struct ForkMeetingPillView: View {
             .background(HUDBackdrop(cornerRadius: ForkMeetingPillLayout.restingSize.height / 2, contrast: .high))
             .overlay(Capsule(style: .continuous).strokeBorder(Color.primary.opacity(0.12), lineWidth: 0.8))
             .clipShape(Capsule(style: .continuous))
-            .accessibilityHidden(model.steppedAside)
             .accessibilityElement(children: .contain)
             .accessibilityLabel(model.text.pillRecording)
             // The name, what is filmed and ⧉ show under the pointer only:
@@ -608,6 +607,9 @@ struct ForkMeetingPillView: View {
                     Button(toggleLabel) { actions.toggleTarget() }
                 }
             }
+            // Stepped aside for the island: hidden from VoiceOver last, so
+            // nothing set after it brings the pill back to its list.
+            .accessibilityHidden(model.steppedAside)
     }
 
     private var filmed: String {

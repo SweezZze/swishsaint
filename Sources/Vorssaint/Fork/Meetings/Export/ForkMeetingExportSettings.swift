@@ -137,8 +137,9 @@ private struct ForkMeetingExporterCommon: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
         }
-        // Only where a summary can be written: nothing of it shows otherwise.
-        if ForkMeetingSummarizer.shared.available {
+        // Where a summary can be written, or once chosen: a choice made on
+        // a Mac where Apple Intelligence has since gone stays undoable.
+        if ForkMeetingSummarizer.shared.available || config.includesSummary {
             Toggle(isOn: Binding(get: { config.includesSummary }, set: { on in
                 var next = config
                 next.includesSummary = on

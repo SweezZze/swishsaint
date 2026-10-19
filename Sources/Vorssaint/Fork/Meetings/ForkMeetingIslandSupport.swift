@@ -192,13 +192,18 @@ enum ForkMeetingIslandRules {
     }
 
     /// What VoiceOver says of the strip after its name: "12 min, 3 sec",
-    /// "12 min, 3 sec, paused", "Finishing… 42%".
+    /// "12 min, 3 sec, paused", "Finishing… 42%"; and the minutes of disk
+    /// left once it runs low (`diskMinutesLeft`), which the strip shows in
+    /// orange.
     static func value(phase: ForkMeetingIslandPhase, elapsed: TimeInterval, language: AppLanguage,
-                      strings: ForkMeetingStrings) -> String {
+                      strings: ForkMeetingStrings, diskMinutesLeft: Int? = nil) -> String {
         let time = spokenDuration(elapsed, language: language)
+        func withDisk(_ said: String) -> String {
+            diskMinutesLeft.map { ForkMeetingLiveText.sentences(said, strings.diskMinutes($0)) } ?? said
+        }
         switch phase {
-        case .recording: return time
-        case .paused: return strings.islandValuePaused(time)
+        case .recording: return withDisk(time)
+        case .paused: return withDisk(strings.islandValuePaused(time))
         case .stopping: return strings.pillStopping
         case let .finalizing(progress):
             guard let progress else { return strings.pillFinalizing }

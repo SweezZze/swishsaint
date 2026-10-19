@@ -14,6 +14,7 @@ enum ForkMeetingFinishTests {
         updates(suite)
         pillStaysForWarnings(suite)
         summaryFiles(suite)
+        voiceOver(suite)
     }
 
     private static func markers(_ suite: TestSuite) {
@@ -166,5 +167,17 @@ enum ForkMeetingFinishTests {
         suite.expect(!ForkMeetingSummary.summarizesAutomatically(featureOn: true, settingOn: true, available: true, words: 0)
                         && ForkMeetingSummary.summarizesAutomatically(featureOn: true, settingOn: true, available: true, words: 3),
                      "a transcript without a word is not summarized")
+    }
+
+    private static func voiceOver(_ suite: TestSuite) {
+        let text = ForkMeetingStrings.strings(.fr)
+        let low = ForkMeetingIslandRules.value(phase: .recording(diskLow: true), elapsed: 723, language: .fr, strings: text,
+                                               diskMinutesLeft: 18)
+        let calm = ForkMeetingIslandRules.value(phase: .recording(diskLow: false), elapsed: 723, language: .fr, strings: text)
+        suite.expect(low.contains(text.diskMinutes(18)) && !calm.contains(text.diskMinutes(18)),
+                     "VoiceOver hears the strip's minutes of disk left once it runs low")
+        suite.expect(ForkMeetingIslandRules.percent(0.42, language: .fr).contains("42")
+                        && ForkMeetingIslandRules.percent(2, language: .enUS).contains("100"),
+                     "a summary's progress reads its percent in the app's language, never past 100")
     }
 }

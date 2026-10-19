@@ -107,7 +107,11 @@ struct ForkMeetingReviewBar: View {
                     Button {
                         playback.play(from: ForkMeetingMarkers.playFrom(time))
                     } label: {
-                        Label(ForkMeetingMarkers.clock(time), systemImage: "star.fill")
+                        Label {
+                            Text(ForkMeetingMarkers.clock(time))
+                        } icon: {
+                            Image(systemName: "star.fill").foregroundStyle(.yellow)
+                        }
                             .font(.caption.monospacedDigit())
                             .labelStyle(.titleAndIcon)
                             .padding(.horizontal, 8)
@@ -228,9 +232,14 @@ struct ForkMeetingReviewTranscript: View {
             Button {
                 playback.play(from: ForkMeetingMarkers.playFrom(time))
             } label: {
-                Label(text.markerLabel(ForkMeetingMarkers.clock(time)), systemImage: "star.fill")
+                // Marked moments are yellow everywhere: the strip, the
+                // list and the transcript.
+                Label {
+                    Text(text.markerLabel(ForkMeetingMarkers.clock(time)))
+                } icon: {
+                    Image(systemName: "star.fill").foregroundStyle(.yellow)
+                }
                     .font(.caption.weight(.semibold))
-                    .foregroundStyle(.orange)
                     .padding(.horizontal, 6)
                     .padding(.vertical, 2)
                     .contentShape(Rectangle())
@@ -329,7 +338,7 @@ struct ForkMeetingSummaryRow: View {
         switch phase {
         case let .running(fraction):
             ProgressView(value: fraction)
-            caption(text.summaryProgress(fraction.formatted(.percent.precision(.fractionLength(0)))))
+            caption(text.summaryProgress(ForkMeetingIslandRules.percent(fraction, language: L10n.shared.language)))
         case .waiting:
             caption(text.transcriptWaiting)
         case .idle:

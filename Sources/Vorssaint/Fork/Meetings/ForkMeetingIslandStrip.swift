@@ -35,6 +35,14 @@ final class ForkMeetingIslandModel: ObservableObject {
 
     var phase: ForkMeetingIslandPhase? { ForkMeetingIslandPhase(state: state, progress: progress) }
 
+    /// The minutes of disk left, once it runs low.
+    var diskMinutesLeft: Int? {
+        switch state {
+        case let .recording(_, minutes), let .paused(_, _, minutes): return minutes
+        case .hidden, .stopping, .finalizing: return nil
+        }
+    }
+
     var clock: ForkMeetingClock? {
         switch state {
         case let .recording(clock, _): return clock
@@ -188,7 +196,8 @@ struct ForkMeetingIslandStrip: View {
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(ForkMeetingIslandRules.label(target: snapshot.context.target, strings: text))
         .accessibilityValue(ForkMeetingIslandRules.value(phase: snapshot.phase, elapsed: snapshot.elapsed(at: now),
-                                                         language: l10n.language, strings: text))
+                                                         language: l10n.language, strings: text,
+                                                         diskMinutesLeft: model.diskMinutesLeft))
         .accessibilityHint(text.islandHint)
         .accessibilityAddTraits(.isButton)
         .accessibilityIdentifier("notch.meeting")
