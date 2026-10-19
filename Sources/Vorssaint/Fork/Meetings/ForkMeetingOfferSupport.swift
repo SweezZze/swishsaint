@@ -375,3 +375,35 @@ enum ForkMeetingOfferText {
         return value
     }
 }
+
+// MARK: Fixes J
+
+/// What the island shows when someone else's screen share sees it (the
+/// official "Show in screenshots and videos" on), and the pill under the
+/// pointer then: the service rather than the meeting's name, a kind of
+/// microphone rather than its own name ("AirPods d’Alice"). VoiceOver, which
+/// no share hears, keeps the names.
+enum ForkMeetingSharedText {
+    /// The pill's name under the pointer: the meeting's, or the provider's
+    /// when shares see the pill; the default name without either.
+    static func pillName(title: String?, providerName: String?, seenInShares: Bool,
+                         strings s: ForkMeetingStrings) -> String {
+        let name = seenInShares ? providerName : title
+        guard let name, !name.isEmpty else { return s.untitledMeeting }
+        return name
+    }
+
+    /// A microphone, by kind: "Automatic" for the meeting's own input, else
+    /// built in or external.
+    static func microphone(_ input: ForkMeetingOfferInput, builtIn: Bool, strings s: ForkMeetingStrings) -> String {
+        if case .meetingApp = input { return s.microphoneMeeting }
+        return builtIn ? s.microphoneBuiltIn : s.microphoneExternal
+    }
+
+    /// A notice's second line as the island shows it to shares: the
+    /// microphone changed names its kind; any other keeps its own.
+    static func detail(_ notice: ForkMeetingNotice, microphoneBuiltIn: Bool, strings s: ForkMeetingStrings) -> String? {
+        guard case .microphone = notice else { return notice.detail(s) }
+        return microphoneBuiltIn ? s.microphoneBuiltIn : s.microphoneExternal
+    }
+}

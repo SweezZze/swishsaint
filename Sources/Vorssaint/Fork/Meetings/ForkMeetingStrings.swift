@@ -406,6 +406,9 @@ struct ForkMeetingStrings {
 
     // MARK: Fixes J
 
+    /// A microphone named by its kind where screen shares see the island:
+    /// built in is `microphoneBuiltIn`, any other is external.
+    let microphoneExternal: String
     /// Said at the click on "Cancel"; where the folder went is said once it
     /// is gone, without this sentence again.
     let voiceCancelled: String
@@ -681,6 +684,7 @@ extension ForkMeetingStrings {
         noticeAnnouncementCopiedDetail: "Paste it in the meeting chat",
         undoAutoStartedFormat: "Auto-start · Always for %@",
         // MARK: Fixes J
+        microphoneExternal: "External microphone",
         voiceCancelled: "Recording cancelled.",
         noticeAskAgainFormat: "Back to Offer for %@",
         voiceAskAgainFormat: "Meetings from %@ will be offered again."
@@ -931,6 +935,7 @@ extension ForkMeetingStrings {
         noticeAnnouncementCopiedDetail: "Cole no chat da reunião",
         undoAutoStartedFormat: "Auto · Sempre para %@",
         // MARK: Fixes J
+        microphoneExternal: "Microfone externo",
         voiceCancelled: "Gravação cancelada.",
         noticeAskAgainFormat: "De volta a Oferecer: %@",
         voiceAskAgainFormat: "As reuniões do %@ voltarão a ser oferecidas."
@@ -1181,6 +1186,7 @@ extension ForkMeetingStrings {
         noticeAnnouncementCopiedDetail: "Sohbete yapıştırın",
         undoAutoStartedFormat: "Otomatik · %@: her zaman",
         // MARK: Fixes J
+        microphoneExternal: "Harici mikrofon",
         voiceCancelled: "Kayıt iptal edildi.",
         noticeAskAgainFormat: "%@ için yine Öner",
         voiceAskAgainFormat: "%@ toplantıları yeniden önerilecek."
@@ -1431,6 +1437,7 @@ extension ForkMeetingStrings {
         noticeAnnouncementCopiedDetail: "Вставьте его в чат встречи",
         undoAutoStartedFormat: "Автостарт · Всегда для %@",
         // MARK: Fixes J
+        microphoneExternal: "Внешний микрофон",
         voiceCancelled: "Запись отменена.",
         noticeAskAgainFormat: "Снова «Предлагать» для %@",
         voiceAskAgainFormat: "Встречи %@ снова будут предлагаться."
@@ -1681,6 +1688,7 @@ extension ForkMeetingStrings {
         noticeAnnouncementCopiedDetail: "Pégalo en el chat",
         undoAutoStartedFormat: "Auto · Siempre para %@",
         // MARK: Fixes J
+        microphoneExternal: "Micrófono externo",
         voiceCancelled: "Grabación cancelada.",
         noticeAskAgainFormat: "De nuevo Ofrecer para %@",
         voiceAskAgainFormat: "Las reuniones de %@ se volverán a ofrecer."
@@ -1931,6 +1939,7 @@ extension ForkMeetingStrings {
         noticeAnnouncementCopiedDetail: "Vložte ho do četu stretnutia",
         undoAutoStartedFormat: "Automaticky · Vždy pre %@",
         // MARK: Fixes J
+        microphoneExternal: "Externý mikrofón",
         voiceCancelled: "Nahrávanie zrušené.",
         noticeAskAgainFormat: "Znova Ponúknuť pre %@",
         voiceAskAgainFormat: "Stretnutia %@ sa budú znova ponúkať."
@@ -2181,6 +2190,7 @@ extension ForkMeetingStrings {
         noticeAnnouncementCopiedDetail: "In den Chat einfügen",
         undoAutoStartedFormat: "Autostart · Immer für %@",
         // MARK: Fixes J
+        microphoneExternal: "Externes Mikrofon",
         voiceCancelled: "Aufnahme abgebrochen.",
         noticeAskAgainFormat: "Wieder Anbieten für %@",
         voiceAskAgainFormat: "Besprechungen von %@ werden wieder angeboten."
@@ -2431,6 +2441,7 @@ extension ForkMeetingStrings {
         noticeAnnouncementCopiedDetail: "À coller dans la discussion",
         undoAutoStartedFormat: "Auto · Toujours pour %@",
         // MARK: Fixes J
+        microphoneExternal: "Micro externe",
         voiceCancelled: "Enregistrement annulé.",
         noticeAskAgainFormat: "Retour à Proposer pour %@",
         voiceAskAgainFormat: "Les réunions %@ seront de nouveau proposées."
@@ -2681,6 +2692,7 @@ extension ForkMeetingStrings {
         noticeAnnouncementCopiedDetail: "Incollalo nella chat",
         undoAutoStartedFormat: "Automatica · Sempre per %@",
         // MARK: Fixes J
+        microphoneExternal: "Microfono esterno",
         voiceCancelled: "Registrazione annullata.",
         noticeAskAgainFormat: "Di nuovo Proponi per %@",
         voiceAskAgainFormat: "Le riunioni di %@ saranno di nuovo proposte."
@@ -2931,6 +2943,7 @@ extension ForkMeetingStrings {
         noticeAnnouncementCopiedDetail: "チャットに貼り付けてください",
         undoAutoStartedFormat: "自動で開始 · %@ では常に録画",
         // MARK: Fixes J
+        microphoneExternal: "外部マイク",
         voiceCancelled: "録画を取り消しました。",
         noticeAskAgainFormat: "%@ は再び「提案する」",
         voiceAskAgainFormat: "%@ のミーティングは再び提案されます。"
@@ -3181,6 +3194,7 @@ extension ForkMeetingStrings {
         noticeAnnouncementCopiedDetail: "회의 채팅에 붙여 넣으세요",
         undoAutoStartedFormat: "자동으로 시작됨 · %@에서 항상 녹화",
         // MARK: Fixes J
+        microphoneExternal: "외장 마이크",
         voiceCancelled: "녹화가 취소되었습니다.",
         noticeAskAgainFormat: "%@: 다시 제안",
         voiceAskAgainFormat: "%@ 회의가 다시 제안됩니다."
@@ -3431,6 +3445,7 @@ extension ForkMeetingStrings {
         noticeAnnouncementCopiedDetail: "Вставте його в чат зустрічі",
         undoAutoStartedFormat: "Автостарт · Завжди для %@",
         // MARK: Fixes J
+        microphoneExternal: "Зовнішній мікрофон",
         voiceCancelled: "Запис скасовано.",
         noticeAskAgainFormat: "Знову «Пропонувати» для %@",
         voiceAskAgainFormat: "Зустрічі %@ знову пропонуватимуться."
@@ -3681,6 +3696,7 @@ extension ForkMeetingStrings {
         noticeAnnouncementCopiedDetail: "粘贴到会议聊天中",
         undoAutoStartedFormat: "已自动开始 · %@ 总是录制",
         // MARK: Fixes J
+        microphoneExternal: "外接麦克风",
         voiceCancelled: "录制已取消。",
         noticeAskAgainFormat: "%@ 改回“提议”",
         voiceAskAgainFormat: "将重新提议录制 %@ 会议。"
@@ -3931,6 +3947,7 @@ extension ForkMeetingStrings {
         noticeAnnouncementCopiedDetail: "貼到會議聊天中",
         undoAutoStartedFormat: "已自動開始 · %@ 一律錄製",
         // MARK: Fixes J
+        microphoneExternal: "外接麥克風",
         voiceCancelled: "錄製已取消。",
         noticeAskAgainFormat: "%@ 改回「提議」",
         voiceAskAgainFormat: "將重新提議錄製 %@ 會議。"
@@ -4181,6 +4198,7 @@ extension ForkMeetingStrings {
         noticeAnnouncementCopiedDetail: "貼到會議聊天中",
         undoAutoStartedFormat: "已自動開始 · %@ 一律錄製",
         // MARK: Fixes J
+        microphoneExternal: "外置咪高風",
         voiceCancelled: "錄製已取消。",
         noticeAskAgainFormat: "%@ 改回「提議」",
         voiceAskAgainFormat: "將重新提議錄製 %@ 會議。"

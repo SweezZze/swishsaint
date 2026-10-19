@@ -261,13 +261,15 @@ extension ForkMeetingPresenter {
         let candidate = offer.candidate
         let service = ForkMeetingService.shared
         let settings = service.captureSettings()
+        let seenInShares = inIsland && ForkMeetingIsland.showsInCaptures
         let facts = OfferFacts(
             icon: Self.icon(for: candidate), settings: settings,
             windowApp: Self.appName(pid: candidate.pid, bundle: candidate.windowBundle),
             soundApp: Self.appName(pid: nil, bundle: candidate.appBundle),
-            microphone: Self.microphone(settings.microphone, meetingInput: service.meetingMicrophone(for: candidate)),
+            microphone: Self.microphone(settings.microphone, meetingInput: service.meetingMicrophone(for: candidate),
+                                        seenInShares: seenInShares, text: text),
             consentReminder: UserDefaults.standard.bool(forKey: ForkDefaultsKey.meetingsConsentReminder),
-            seenInShares: inIsland && ForkMeetingIsland.showsInCaptures)
+            seenInShares: seenInShares)
         let actions = OfferActions(record: { service.acceptOffer() }, notNow: { service.dismissOffer(.thisTime) },
                                    always: { service.alwaysForOffer() }, never: { service.dismissOffer(.never) },
                                    copyAnnouncement: { service.copyAnnouncement() }, fix: failureAction)
@@ -537,8 +539,9 @@ extension ForkMeetingPresenter {
 
     /// The microphone a start would record, by name: for "Automatic", the
     /// input the meeting's app records from (`meetingInput`), else the
-    /// system's.
-    private static func microphone(_ stored: String, meetingInput: String?) -> ForkMeetingOfferMicrophone {
+    /// system's. Seen in shares, by kind only (`ForkMeetingSharedText`).
+    private static func microphone(_ stored: String, meetingInput: String?, seenInShares: Bool,
+                                   text: ForkMeetingStrings) -> ForkMeetingOfferMicrophone {
         let input = ForkMeetingOfferInput.of(ForkMeetingMicrophoneChoice(stored: stored), meetingInput: meetingInput)
         if input == .off { return .off }
         switch AVCaptureDevice.authorizationStatus(for: .audio) {
@@ -554,6 +557,9 @@ extension ForkMeetingPresenter {
         case let .meetingApp(uid): device = AVCaptureDevice(uniqueID: uid) ?? system()
         case .off: device = nil
         }
-        return device.map { .named($0.localizedName) } ?? .off
+        guard let device else { return .off }
+        guard seenInShares else { return .named(device.localizedName) }
+        let builtIn = ForkDictationAudioDevices.inputs().first { $0.id == device.uniqueID }?.isBuiltIn == true
+        return .named(ForkMeetingSharedText.microphone(input, builtIn: builtIn, strings: text))
     }
 }

@@ -24,6 +24,7 @@ enum ForkMeetingFixesJTests {
         cancelledNeverRecovered(suite)
         cancelSaidOnce(suite)
         alwaysChosenByHand(suite)
+        sharedIslandNamesNoDevice(suite)
         words(suite)
     }
 
@@ -467,6 +468,37 @@ enum ForkMeetingFixesJTests {
         suite.expect(auto.contains(.discard(folder)) && !auto.contains(.discard(folder, askedAgain: "Meet"))
                         && automatic.apps.policy(for: .googleMeet) == .always,
                      "a start Always made on its own, cancelled: the choice stays, nothing said of it")
+    }
+
+    // MARK: - J.I3, J.I6
+
+    private static func sharedIslandNamesNoDevice(_ suite: TestSuite) {
+        let french = ForkMeetingStrings.strings(.fr)
+        suite.expect(ForkMeetingSharedText.pillName(title: "Entretien Alice", providerName: "Google Meet", seenInShares: true,
+                                                    strings: french) == "Google Meet"
+                        && ForkMeetingSharedText.pillName(title: "Entretien Alice", providerName: "Google Meet",
+                                                          seenInShares: false, strings: french) == "Entretien Alice"
+                        && ForkMeetingSharedText.pillName(title: "Entretien Alice", providerName: nil, seenInShares: true,
+                                                          strings: french) == french.untitledMeeting,
+                     "J.I3: under the pointer, the pill names the service while shares see it, the meeting otherwise")
+        let shared = [
+            ForkMeetingSharedText.microphone(.meetingApp("uid"), builtIn: false, strings: french),
+            ForkMeetingSharedText.microphone(.chosen("uid"), builtIn: false, strings: french),
+            ForkMeetingSharedText.microphone(.system, builtIn: true, strings: french),
+        ]
+        suite.expect(shared == ["Automatique", "Micro externe", "Micro interne"],
+                     "J.I6: the offer's microphone, seen in shares, by kind: \(shared)")
+        let notice = ForkMeetingNotice.microphone("AirPods d’Alice")
+        let details = [true, false].compactMap { ForkMeetingSharedText.detail(notice, microphoneBuiltIn: $0, strings: french) }
+        suite.expect(details == ["Micro interne", "Micro externe"] && !details.contains { $0.contains("Alice") },
+                     "and « Micro changé » names no device: \(details)")
+        suite.expect(ForkMeetingSharedText.detail(.diskLow(minutesLeft: 12), microphoneBuiltIn: true, strings: french)
+                        == ForkMeetingNotice.diskLow(minutesLeft: 12).detail(french),
+                     "any other notice keeps its line")
+        let all = AppLanguage.allCases.map(ForkMeetingStrings.strings)
+        suite.expect(all.allSatisfy { !$0.microphoneExternal.isEmpty && $0.microphoneExternal != $0.microphoneBuiltIn
+                                        && $0.microphoneExternal.count <= 28 },
+                     "« external microphone » in every language, short")
     }
 
     // MARK: - The texts

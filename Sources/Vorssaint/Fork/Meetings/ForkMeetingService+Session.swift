@@ -291,6 +291,7 @@ extension ForkMeetingService {
         recorders[token] = recorder
         context = ForkMeetingLiveContext(title: config.title, target: config.settings.target,
                                          recordsMicrophone: config.recordsMicrophone)
+        context.providerName = config.meeting?.providerName
         if defaults.bool(forKey: ForkDefaultsKey.meetingsConsentReminder) {
             context.announcement = ForkMeetingAnnouncementText.text(
                 stored: defaults.string(forKey: ForkDefaultsKey.meetingsAnnouncement) ?? "", strings: .current)

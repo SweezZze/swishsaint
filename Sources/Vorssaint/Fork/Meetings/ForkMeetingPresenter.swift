@@ -329,7 +329,13 @@ final class ForkMeetingPresenter {
             return present(make, height: ForkMeetingIsland.height(of: make({}), minimum: Self.savedCardHeight),
                            hold: Self.hold(for: notice))
         }
-        if ForkMeetingIsland.show(notice, detail: detail, text: text) {
+        // Seen in shares, the island names a microphone by its kind only.
+        var islandDetail = detail
+        if detail == nil, case let .microphone(name) = notice, ForkMeetingIsland.showsInCaptures {
+            let builtIn = ForkDictationAudioDevices.inputs().first { $0.name == name }?.isBuiltIn == true
+            islandDetail = ForkMeetingSharedText.detail(notice, microphoneBuiltIn: builtIn, strings: text)
+        }
+        if ForkMeetingIsland.show(notice, detail: islandDetail, text: text) {
             // The island has the newest word: an older one in the bubble
             // would contradict it.
             bubble.hide()
