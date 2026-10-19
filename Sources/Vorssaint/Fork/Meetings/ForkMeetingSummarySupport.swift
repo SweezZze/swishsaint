@@ -29,9 +29,13 @@ struct ForkMeetingSummaryRecord: Equatable {
     /// The name it wrote in the folder: the only file this app ever
     /// replaces as a summary.
     var files: [String] = []
+    /// What the file held when written (`ForkMeetingSummary.digest`): one
+    /// the person edited since is theirs, never written over.
+    var digest: String?
     var preserved: [String: ForkMeetingJSON] = [:]
 
-    private static let known: Set<String> = ["state", "engine", "at", "language", "parts", "skipped", "reason", "files"]
+    private static let known: Set<String> = ["state", "engine", "at", "language", "parts", "skipped", "reason", "files",
+                                             "digest"]
 
     init(state: State, at: Date? = nil, language: String? = nil, parts: Int? = nil, skipped: Int? = nil,
          reason: String? = nil, files: [String] = []) {
@@ -55,6 +59,7 @@ struct ForkMeetingSummaryRecord: Equatable {
         if case let .number(value)? = object["parts"], value.isFinite, value >= 0, value < 1e6 { parts = Int(value) }
         if case let .number(value)? = object["skipped"], value.isFinite, value >= 0, value < 1e6 { skipped = Int(value) }
         if case let .string(value)? = object["reason"], !value.isEmpty { reason = value }
+        if case let .string(value)? = object["digest"], !value.isEmpty { digest = value }
         if case let .array(values)? = object["files"] {
             // A bare `.md` name only: a corrupt list never reaches out of
             // the folder nor names the video.
@@ -76,6 +81,7 @@ struct ForkMeetingSummaryRecord: Equatable {
         if let skipped, skipped > 0 { object["skipped"] = .number(Double(skipped)) }
         if let reason { object["reason"] = .string(reason) }
         if !files.isEmpty { object["files"] = .array(files.map { .string($0) }) }
+        if let digest { object["digest"] = .string(digest) }
         return .object(object)
     }
 
@@ -408,6 +414,26 @@ enum ForkMeetingSummary {
         return name
     }
 
+    /// A short fingerprint of a summary's bytes (FNV-1a, 64 bits, in hex):
+    /// enough to tell a file edited since it was written.
+    static func digest(_ data: Data) -> String {
+        var hash: UInt64 = 0xcbf2_9ce4_8422_2325
+        for byte in data {
+            hash ^= UInt64(byte)
+            hash = hash &* 0x0000_0100_0000_01b3
+        }
+        return String(format: "%016llx", hash)
+    }
+
+    /// Of this app's summaries (`ours`), the ones the person edited since
+    /// they were written: theirs from then on, kept, and the new summary
+    /// goes beside them (`… summary 2.md`). Without a fingerprint, or a file
+    /// gone, nothing is judged edited.
+    static func edited(_ ours: [String], digest: String?, read: (String) -> Data?) -> [String] {
+        guard let digest else { return [] }
+        return ours.filter { name in read(name).map { Self.digest($0) != digest } ?? false }
+    }
+
     static func isSummaryName(_ name: String) -> Bool {
         !name.isEmpty && !name.contains("/") && !name.hasPrefix(".")
             && (name as NSString).pathExtension.lowercased() == fileExtension
@@ -419,9 +445,10 @@ enum ForkMeetingSummary {
         return min(1, max(0, Double(done) / Double(steps)))
     }
 
-    /// Whether a transcript just written is summarized on its own.
-    static func summarizesAutomatically(featureOn: Bool, settingOn: Bool, available: Bool) -> Bool {
-        featureOn && settingOn && available
+    /// Whether a transcript just written is summarized on its own: not one
+    /// without a word (`words` 0), which has nothing to summarize.
+    static func summarizesAutomatically(featureOn: Bool, settingOn: Bool, available: Bool, words: Int? = nil) -> Bool {
+        featureOn && settingOn && available && words.map { $0 > 0 } ?? true
     }
 
     /// The headings' language: the meeting's when the app speaks it, else
@@ -445,4 +472,9 @@ enum ForkMeetingSummary {
         default: return app
         }
     }
+}
+
+extension ForkMeetingSidecar {
+    /// The summary's names this app wrote (`ForkMeetingSummaryRecord.files`).
+    var summaryFiles: [String] { ForkMeetingSummaryRecord(json: summary)?.files ?? [] }
 }

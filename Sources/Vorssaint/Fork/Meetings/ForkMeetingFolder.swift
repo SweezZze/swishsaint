@@ -357,12 +357,22 @@ enum ForkMeetingFolder {
     /// files are the ones named after the **old** folder: a clip the person
     /// saved beside them under another name never takes the meeting's. Each
     /// keeps its own extension: renaming never changes what a file holds.
+    /// The summary this app wrote (`summaryFiles`, "<old> summary.md")
+    /// follows as "<new> summary.md".
     static func mediaRenames(from old: String, to new: String, names: [String], alsoNamed: String? = nil,
-                             transcriptFiles: [String] = []) -> MediaRenames {
+                             transcriptFiles: [String] = [], summaryFiles: [String] = []) -> MediaRenames {
         let found = contents(of: names, folderName: old, alsoNamed: alsoNamed, transcriptFiles: transcriptFiles)
         var result = MediaRenames()
+        var planned: [(from: String, to: String)] = []
         for media in [found.video, found.audio, found.transcript, found.subtitles].compactMap({ $0 }) {
-            let target = "\(new).\((media as NSString).pathExtension)"
+            planned.append((media, "\(new).\((media as NSString).pathExtension)"))
+        }
+        let stems = [old, alsoNamed].compactMap { $0 }
+        for summary in summaryFiles where names.contains(summary) {
+            guard let stem = stems.first(where: { summary.hasPrefix($0 + " ") }) else { continue }
+            planned.append((summary, new + summary.dropFirst(stem.count)))
+        }
+        for (media, target) in planned {
             guard media != target else { continue }
             // APFS ignores case: "F.mp4" and "f.MP4" are the same file. The
             // medium itself is not in the way of a change of case of its

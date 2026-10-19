@@ -278,7 +278,7 @@ final class ForkMeetingTranscriber: ObservableObject {
         lastMeasure = measure
         outcomes.removeAll { $0.job.isFor(id: job.id, folder: job.folder) }
         outcomes.append(Outcome.Entry(job: job, outcome: outcome))
-        if case .done = outcome { ForkMeetingSummarizer.shared.transcriptWritten(job.folder, id: job.id) }
+        if case let .done(words) = outcome { ForkMeetingSummarizer.shared.transcriptWritten(job.folder, id: job.id, words: words) }
         log.notice("transcript of \(job.folder.lastPathComponent, privacy: .private): \(String(describing: outcome), privacy: .public)")
         // The person stopped it, or the meeting went to the Trash: nothing
         // to tell. An automatic job is told, once the saved notice had its

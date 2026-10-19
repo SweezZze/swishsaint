@@ -43,6 +43,8 @@ extension ForkMeetingStore {
                 return .failure(.noTranscript)
             }
             let record = ForkMeetingTranscriptRecord(json: meeting.transcript)
+            // A transcript without a word has nothing to summarize.
+            if record?.words == 0 { return .failure(.noTranscript) }
             return .success(SummarySource(folder: found, id: meeting.id, transcript: text, language: record?.language,
                                           title: meeting.title, startedAt: meeting.startedAt))
         }
@@ -64,9 +66,17 @@ extension ForkMeetingStore {
             let contents = ForkMeetingFolder.contents(of: names, folderName: found.lastPathComponent,
                                                       alsoNamed: meeting.recordedName())
             if isWritten(found, sidecar: read, contents: contents) { return .failure(.meetingInProgress) }
-            let source = ForkMeetingTranscript.source(video: contents.video, hasMaster: contents.hasMaster)
+            // Named after the meeting's own file: its video, or its .m4a.
+            let source = ForkMeetingTranscript.source(video: contents.media(audioOnly: meeting.isAudioOnly),
+                                                      hasMaster: contents.hasMaster)
                 ?? ForkMeetingFolder.masterName
-            let ours = ForkMeetingSummaryRecord(json: meeting.summary)?.files ?? []
+            let former = ForkMeetingSummaryRecord(json: meeting.summary)
+            // One the person edited since it was written is theirs now: kept,
+            // and the new one goes beside it.
+            let edited = Set(ForkMeetingSummary.edited(former?.files ?? [], digest: former?.digest) { name in
+                try? Data(contentsOf: found.appendingPathComponent(name))
+            })
+            let ours = (former?.files ?? []).filter { !edited.contains($0) }
             let base = ForkMeetingSummary.fileName(source: source, folderName: found.lastPathComponent, word: word)
             let name = ForkMeetingSummary.placement(base, names: names, ours: ours)
             guard Self.writeTogether([(name, markdown)], in: found) else { return .failure(.notWritten) }
@@ -78,6 +88,7 @@ extension ForkMeetingStore {
             var next = meeting
             var written = record
             written.files = [name]
+            written.digest = ForkMeetingSummary.digest(Data(markdown.utf8))
             next.summary = written.replacing(meeting.summary)
             if writeSidecar(next, in: found) != nil {
                 Self.summaryLog.error("summary written, its record not: \(found.lastPathComponent, privacy: .private)")

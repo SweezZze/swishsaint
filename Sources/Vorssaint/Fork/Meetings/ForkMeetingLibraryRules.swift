@@ -19,8 +19,11 @@ struct ForkMeetingSidecarEdit: Equatable {
     /// The transcript's names after a rename moved them
     /// (`ForkMeetingTranscriptRecord.files`).
     var transcriptFiles: [String]?
+    /// The summary's names after a rename moved them
+    /// (`ForkMeetingSummaryRecord.files`).
+    var summaryFiles: [String]?
 
-    var isEmpty: Bool { title == nil && notes == nil && transcriptFiles == nil }
+    var isEmpty: Bool { title == nil && notes == nil && transcriptFiles == nil && summaryFiles == nil }
 
     func applied(to sidecar: ForkMeetingSidecar) -> ForkMeetingSidecar {
         var result = sidecar
@@ -32,6 +35,10 @@ struct ForkMeetingSidecarEdit: Equatable {
         if let transcriptFiles, var record = ForkMeetingTranscriptRecord(json: result.transcript) {
             record.files = transcriptFiles
             result.transcript = record.replacing(result.transcript)
+        }
+        if let summaryFiles, var record = ForkMeetingSummaryRecord(json: result.summary) {
+            record.files = summaryFiles
+            result.summary = record.replacing(result.summary)
         }
         return result
     }
@@ -49,7 +56,8 @@ struct ForkMeetingSidecarEdit: Equatable {
     /// The later edit wins field by field.
     func merged(with later: ForkMeetingSidecarEdit) -> ForkMeetingSidecarEdit {
         ForkMeetingSidecarEdit(title: later.title ?? title, notes: later.notes ?? notes,
-                               transcriptFiles: later.transcriptFiles ?? transcriptFiles)
+                               transcriptFiles: later.transcriptFiles ?? transcriptFiles,
+                               summaryFiles: later.summaryFiles ?? summaryFiles)
     }
 }
 
@@ -188,7 +196,8 @@ enum ForkMeetingRename {
             plan.folder = ForkMeetingFolder.Move(from: folderName, to: name)
             plan.media = ForkMeetingFolder.mediaRenames(from: folderName, to: name, names: names,
                                                         alsoNamed: meeting.recordedName(calendar: calendar),
-                                                        transcriptFiles: meeting.transcriptFiles)
+                                                        transcriptFiles: meeting.transcriptFiles,
+                                                        summaryFiles: meeting.summaryFiles)
         case .adopt, .exhausted:
             plan.folderKept = .namesExhausted
         }

@@ -349,6 +349,11 @@ extension ForkMeetingStore {
             let moved = ForkMeetingTranscript.renamed(ours, by: mediaMoved)
             if moved != ours { edit = (edit ?? ForkMeetingSidecarEdit()).merged(with: ForkMeetingSidecarEdit(transcriptFiles: moved)) }
         }
+        // So do the summary's.
+        if let ours = (try? read.get())?.summaryFiles, !ours.isEmpty {
+            let moved = ForkMeetingTranscript.renamed(ours, by: mediaMoved)
+            if moved != ours { edit = (edit ?? ForkMeetingSidecarEdit()).merged(with: ForkMeetingSidecarEdit(summaryFiles: moved)) }
+        }
         var titleSaved = true
         if let edit, case .failure = writeEdit(edit, in: now), plan.edit != nil {
             // The folder may have moved all the same: the window follows it.

@@ -113,11 +113,12 @@ final class ForkMeetingSummarizer: ObservableObject, @unchecked Sendable {
     }
 
     /// A transcript was just written: summarized when the setting asks.
-    func transcriptWritten(_ folder: URL, id: UUID?) {
+    func transcriptWritten(_ folder: URL, id: UUID?, words: Int) {
         refreshAvailability()
         guard ForkMeetingSummary.summarizesAutomatically(
             featureOn: ForkMeetingService.shared.isWanted,
-            settingOn: defaults.bool(forKey: ForkDefaultsKey.meetingsSummarize), available: isAvailable) else { return }
+            settingOn: defaults.bool(forKey: ForkDefaultsKey.meetingsSummarize), available: isAvailable,
+            words: words) else { return }
         summarize(folder, id: id, automatic: true)
     }
 

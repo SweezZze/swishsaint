@@ -13,6 +13,7 @@ enum ForkMeetingFinishTests {
         notifications(suite)
         updates(suite)
         pillStaysForWarnings(suite)
+        summaryFiles(suite)
     }
 
     private static func markers(_ suite: TestSuite) {
@@ -137,5 +138,33 @@ enum ForkMeetingFinishTests {
                         && !ForkMeetingIslandRules.showsMicrophoneMuted(ForkMeetingIslandSnapshotFacts(phase: recording, context: context))
                         && !ForkMeetingIslandRules.showsMicrophoneMuted(ForkMeetingIslandSnapshotFacts(phase: recording, context: off)),
                      "the strip crosses out a recorded microphone that sends nothing, not one left off")
+    }
+
+    private static func summaryFiles(_ suite: TestSuite) {
+        let old = "2026-10-18 10h02 — Point", new = "2026-10-18 10h02 — Budget"
+        let names = ["\(old).m4a", "\(old).txt", "\(old) résumé.md", "Mes notes.md", "meeting.json"]
+        let renames = ForkMeetingFolder.mediaRenames(from: old, to: new, names: names, transcriptFiles: ["\(old).txt"],
+                                                     summaryFiles: ["\(old) résumé.md"])
+        suite.expect(renames.moves.contains(ForkMeetingFolder.Move(from: "\(old) résumé.md", to: "\(new) résumé.md"))
+                        && renames.moves.contains(ForkMeetingFolder.Move(from: "\(old).m4a", to: "\(new).m4a"))
+                        && !renames.moves.contains { $0.from == "Mes notes.md" },
+                     "the summary follows the sound-only meeting's rename; a note of the person's stays")
+        var record = ForkMeetingSummaryRecord(state: .done, files: ["\(old) résumé.md"])
+        record.digest = ForkMeetingSummary.digest(Data("# Point".utf8))
+        var sidecar = ForkMeetingSidecar()
+        sidecar.summary = record.json
+        let moved = ForkMeetingSidecarEdit(summaryFiles: ["\(new) résumé.md"]).applied(to: sidecar)
+        suite.expect(moved.summaryFiles == ["\(new) résumé.md"]
+                        && ForkMeetingSummaryRecord(json: moved.summary)?.digest == record.digest,
+                     "meeting.json follows the summary's new name and keeps its fingerprint")
+        let files: [String: Data] = ["a.md": Data("# Point".utf8), "b.md": Data("# Point, edited".utf8)]
+        suite.expect(ForkMeetingSummary.edited(["a.md", "b.md", "gone.md"], digest: record.digest) { files[$0] } == ["b.md"]
+                        && ForkMeetingSummary.edited(["b.md"], digest: nil) { files[$0] }.isEmpty,
+                     "a summary edited since it was written is the person's; one gone or without fingerprint is not judged")
+        suite.expect(ForkMeetingSummary.placement("x résumé.md", names: ["x résumé.md"], ours: []) == "x résumé 2.md",
+                     "the new summary goes beside an edited one, never over it")
+        suite.expect(!ForkMeetingSummary.summarizesAutomatically(featureOn: true, settingOn: true, available: true, words: 0)
+                        && ForkMeetingSummary.summarizesAutomatically(featureOn: true, settingOn: true, available: true, words: 3),
+                     "a transcript without a word is not summarized")
     }
 }
