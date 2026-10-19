@@ -11,6 +11,9 @@ struct ForkMeetingLibraryList: View {
     let text: ForkMeetingStrings
     let language: AppLanguage
 
+    /// The exporters set up: a row's ✓ or ✗ is theirs only (§7.1).
+    @ObservedObject private var exports = ForkMeetingExports.shared
+
     var body: some View {
         VStack(spacing: 0) {
             ForkMeetingSearchField(text: $model.query, placeholder: text.searchPlaceholder, focus: model.searchFocus)
@@ -29,13 +32,15 @@ struct ForkMeetingLibraryList: View {
                     .padding(20)
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             } else {
+                let targets = exports.configured.map(\.id)
                 List(selection: $model.selection) {
                     ForEach(groups, id: \.day) { group in
                         Section {
                             ForEach(group.entries, id: \.folderName) { entry in
                                 ForkMeetingLibraryRow(entry: entry, text: text, language: language,
                                                       calendar: model.calendar,
-                                                      selected: model.selection == entry.folderName)
+                                                      selected: model.selection == entry.folderName,
+                                                      exportMark: ForkMeetingExportHistory.mark(entry.exports, targets: targets))
                                     .tag(entry.folderName)
                             }
                         } header: {
@@ -74,6 +79,8 @@ struct ForkMeetingLibraryRow: View {
     /// On the selection's accent colour, orange would read badly: the
     /// status takes the row's own colour there.
     var selected = false
+    /// ✓ exported, ✗ an export failed, by the exporters set up.
+    var exportMark: ForkMeetingExportHistory.Mark?
 
     var body: some View {
         HStack(alignment: .firstTextBaseline, spacing: 8) {
@@ -98,18 +105,41 @@ struct ForkMeetingLibraryRow: View {
                     }
                 }
                 let caption = ForkMeetingLibraryText.caption(entry, strings: text, language: language)
-                if !caption.isEmpty {
-                    Text(caption)
-                        .font(.caption)
-                        .foregroundStyle(entry.status.isFlagged && !selected ? AnyShapeStyle(.orange) : AnyShapeStyle(.secondary))
-                        .lineLimit(1)
+                if !caption.isEmpty || exportMark != nil {
+                    HStack(alignment: .firstTextBaseline, spacing: 4) {
+                        Text(caption)
+                            .foregroundStyle(entry.status.isFlagged && !selected ? AnyShapeStyle(.orange) : AnyShapeStyle(.secondary))
+                            .lineLimit(1)
+                        Spacer(minLength: 4)
+                        switch exportMark {
+                        case .done?:
+                            Image(systemName: "checkmark.circle.fill")
+                                .foregroundStyle(selected ? AnyShapeStyle(.primary) : AnyShapeStyle(.green))
+                                .help(text.exportDone)
+                        case .failed?:
+                            Image(systemName: "xmark.circle.fill")
+                                .foregroundStyle(selected ? AnyShapeStyle(.primary) : AnyShapeStyle(.red))
+                                .help(text.exportFailedNotice)
+                        case nil:
+                            EmptyView()
+                        }
+                    }
+                    .font(.caption)
                 }
             }
         }
         .padding(.vertical, 3)
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(ForkMeetingLibraryText.accessibilityLabel(entry, strings: text, language: language,
-                                                                      calendar: calendar))
+        .accessibilityLabel(accessibilityLabel)
+    }
+
+    private var accessibilityLabel: String {
+        let label = ForkMeetingLibraryText.accessibilityLabel(entry, strings: text, language: language, calendar: calendar)
+        switch exportMark {
+        case .done?: return ForkMeetingLiveText.sentences(label, text.exportDone)
+        case .failed?: return ForkMeetingLiveText.sentences(label, text.exportFailedNotice)
+        case nil: return label
+        }
     }
 }
 

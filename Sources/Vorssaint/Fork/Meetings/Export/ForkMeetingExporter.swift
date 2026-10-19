@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 Martial
 
+import CryptoKit
 import Foundation
 
 /// Where a meeting can be sent once it is recorded. Nothing is, until the
@@ -15,6 +16,9 @@ import Foundation
 ///   appended only), and a failed one has its Retry.
 /// - A meeting that did not end well (interrupted, recovered, cancelled) is
 ///   never sent without a click (`ForkMeetingExportEligibility`).
+/// - What leaves is a list of fields, never the meeting.json minus some
+///   (`ForkMeetingExportDocument`): a field added later stays on the Mac
+///   until it is named there.
 protocol ForkMeetingExporter {
     /// The exporter's own id among the configured ones: the `target` of
     /// its records in `meeting.json`.
@@ -23,6 +27,9 @@ protocol ForkMeetingExporter {
     /// Has what it needs to send (a folder, an address and its secret).
     var isConfigured: Bool { get }
     var mode: ForkMeetingExportMode { get }
+    /// Throws what keeps it from sending, before anything is gathered: no
+    /// folder, no address, an origin changed, no secret.
+    func check() throws
     /// Sends one meeting. Off the main thread; throws a
     /// `ForkMeetingExportFailure`.
     func export(_ package: ForkMeetingExportPackage, progress: @escaping (Double) -> Void) async throws -> ForkMeetingExportReceipt
@@ -48,8 +55,11 @@ struct ForkMeetingExporterConfig: Equatable, Identifiable {
     var kind: ForkMeetingExportKind
     var mode: ForkMeetingExportMode = .manual
     /// The Google Meet code is a way into the meeting: left out of what
-    /// leaves the folder unless the person asks for it.
+    /// leaves the folder unless the person asks for it, from the title and
+    /// the names too.
     var includesMeetCode = false
+    /// The notes are the person's own: left out unless asked.
+    var includesNotes = false
     /// Drop folder: the folder's path, as chosen in the panel.
     var folder: String?
     /// Webhook: the address as saved.
@@ -60,25 +70,28 @@ struct ForkMeetingExporterConfig: Equatable, Identifiable {
     var origin: String?
 
     init(id: String = UUID().uuidString, kind: ForkMeetingExportKind, mode: ForkMeetingExportMode = .manual,
-         includesMeetCode: Bool = false, folder: String? = nil, address: String? = nil, origin: String? = nil) {
+         includesMeetCode: Bool = false, includesNotes: Bool = false, folder: String? = nil, address: String? = nil,
+         origin: String? = nil) {
         self.id = id
         self.kind = kind
         self.mode = mode
         self.includesMeetCode = includesMeetCode
+        self.includesNotes = includesNotes
         self.folder = folder
         self.address = address
         self.origin = origin
     }
 
-    /// The Keychain account of a webhook's secret: one per origin, so an
-    /// address rewritten in the preferences finds no secret instead of the
-    /// real one.
+    /// The Keychain account of a webhook's secret: one per exporter and per
+    /// origin (`webhook@<host[:port]>#<id>`), so an address rewritten in the
+    /// preferences finds no secret instead of the real one, and two
+    /// exporters never share one without a word.
     var secretAccount: String? {
         guard kind == .webhook, let origin, !origin.isEmpty else { return nil }
-        return Self.secretAccount(origin: origin)
+        return Self.secretAccount(origin: origin, id: id)
     }
 
-    static func secretAccount(origin: String) -> String { "webhook@\(origin)" }
+    static func secretAccount(origin: String, id: String) -> String { "webhook@\(origin)#\(id)" }
 
     /// What the page and the menus call it after its kind: the folder's
     /// name, or the host.
@@ -93,9 +106,53 @@ struct ForkMeetingExporterConfig: Equatable, Identifiable {
     }
 }
 
+extension ForkMeetingExporterConfig {
+    /// A webhook's address to send to and its secret's account, once the
+    /// origin policy and the frozen origin agree; else why not.
+    func approvedTarget() throws -> (url: URL, account: String) {
+        guard let address, !address.isEmpty, let frozenName = origin else {
+            throw ForkMeetingExportFailure.notConfigured
+        }
+        guard let frozen = ForkMeetingOriginPolicy.Origin(name: frozenName) else { throw ForkMeetingExportFailure.originChanged }
+        switch ForkMeetingOriginPolicy.destination(address, frozen: frozen) {
+        case let .approved(url, origin):
+            return (url, Self.secretAccount(origin: origin.name, id: id))
+        case .refused(.unapprovedHost):
+            throw ForkMeetingExportFailure.originChanged
+        case let .refused(refusal):
+            throw ForkMeetingExportFailure.refusedAddress(refusal)
+        }
+    }
+
+    /// What keeps this exporter from sending, as far as its settings and
+    /// the Keychain's list of secrets say; `nil` when it is set up.
+    func readiness(hasSecret: (String) -> Bool) -> ForkMeetingExportFailure? {
+        switch kind {
+        case .dropFolder:
+            return (folder ?? "").isEmpty ? .notConfigured : nil
+        case .webhook:
+            do {
+                let target = try approvedTarget()
+                return hasSecret(target.account) ? nil : .noSecret
+            } catch {
+                return error as? ForkMeetingExportFailure ?? .notConfigured
+            }
+        }
+    }
+}
+
+extension ForkMeetingExporterList {
+    /// The exporters set up, in their order: the only ones the library
+    /// names (§7.1: no exporter set up, no word of exporting).
+    static func configured(_ configs: [ForkMeetingExporterConfig],
+                           hasSecret: (String) -> Bool) -> [ForkMeetingExporterConfig] {
+        configs.filter { $0.readiness(hasSecret: hasSecret) == nil }
+    }
+}
+
 extension ForkMeetingExporterConfig: Codable {
     private enum CodingKeys: String, CodingKey {
-        case id, kind, mode, includesMeetCode, folder, address, origin
+        case id, kind, mode, includesMeetCode, includesNotes, folder, address, origin
     }
 
     /// Lenient: a missing or unknown mode is manual, a missing option off.
@@ -108,6 +165,7 @@ extension ForkMeetingExporterConfig: Codable {
         self.id = id.flatMap { $0.isEmpty ? nil : $0 } ?? UUID().uuidString
         mode = ((try? container.decodeIfPresent(ForkMeetingExportMode.self, forKey: .mode)) ?? nil) ?? .manual
         includesMeetCode = ((try? container.decodeIfPresent(Bool.self, forKey: .includesMeetCode)) ?? nil) ?? false
+        includesNotes = ((try? container.decodeIfPresent(Bool.self, forKey: .includesNotes)) ?? nil) ?? false
         folder = (try? container.decodeIfPresent(String.self, forKey: .folder)) ?? nil
         address = (try? container.decodeIfPresent(String.self, forKey: .address)) ?? nil
         origin = (try? container.decodeIfPresent(String.self, forKey: .origin)) ?? nil
@@ -134,6 +192,23 @@ enum ForkMeetingExporterList {
         return String(decoding: data, as: UTF8.self)
     }
 
+    /// What the Keychain keeps of the list the page wrote
+    /// (`ForkMeetingExports`): the SHA-256 of the setting as stored, in
+    /// hexadecimal. Another process may write the preferences, not that
+    /// item: a list it rewrote no longer matches, and nothing is sent on
+    /// its own until the page confirms it.
+    static func fingerprint(_ stored: String?) -> String {
+        SHA256.hash(data: Data((stored ?? "").utf8)).map { String(format: "%02x", $0) }.joined()
+    }
+
+    /// Whether the list read matches what the page last wrote. An empty
+    /// list sends nothing: it always matches.
+    static func matches(_ stored: String?, fingerprint saved: String?) -> Bool {
+        guard !decode(stored).isEmpty else { return true }
+        guard let saved, !saved.isEmpty else { return false }
+        return fingerprint(stored) == saved
+    }
+
     /// One entry of the array, whatever it holds.
     private struct Lenient: Decodable {
         let config: ForkMeetingExporterConfig?
@@ -147,14 +222,20 @@ enum ForkMeetingExporterList {
 /// `meeting.json`, its audio as an M4A ready to be read, and its transcript
 /// when there is one.
 struct ForkMeetingExportPackage {
-    /// The meeting folder's name: the name of what is sent.
+    /// The meeting folder's name.
     let folderName: String
     let sidecar: ForkMeetingSidecar
     let audio: URL
     let transcript: URL?
 
-    var audioName: String { "\(folderName).\(ForkMeetingFolder.audioExtension)" }
-    var transcriptName: String { "\(folderName).\(ForkMeetingExportDocument.transcriptExtension)" }
+    /// The name of what is sent: the folder's, without the Google Meet code
+    /// unless asked (`ForkMeetingExportDocument.name`).
+    func name(includesMeetCode: Bool) -> String {
+        ForkMeetingExportDocument.name(folderName, meetCode: sidecar.meetCode, includesMeetCode: includesMeetCode)
+    }
+
+    static func audioName(_ name: String) -> String { "\(name).\(ForkMeetingFolder.audioExtension)" }
+    static func transcriptName(_ name: String) -> String { "\(name).\(ForkMeetingExportDocument.transcriptExtension)" }
 }
 
 /// One export done: where to, and when.
@@ -193,6 +274,18 @@ enum ForkMeetingExportFailure: Error, Equatable {
     case network
     /// The exporter is not set up (no folder, no address).
     case notConfigured
+    /// The Keychain refused, or did not answer in time.
+    case keychain
+    /// The address's certificate was refused: not a network failure.
+    case certificate
+    /// The disk of this Mac had no room for the copy or the body.
+    case temporarySpace
+    /// The address answered before the whole meeting reached it: nothing
+    /// says it was received.
+    case earlyAnswer
+    /// The list of exporters was changed outside the page: nothing is sent
+    /// on its own until the page confirms it.
+    case listChanged
 
     var code: String {
         switch self {
@@ -209,6 +302,11 @@ enum ForkMeetingExportFailure: Error, Equatable {
         case .status: return "status"
         case .network: return "network"
         case .notConfigured: return "notConfigured"
+        case .keychain: return "keychain"
+        case .certificate: return "certificate"
+        case .temporarySpace: return "temporarySpace"
+        case .earlyAnswer: return "earlyAnswer"
+        case .listChanged: return "listChanged"
         }
     }
 
@@ -232,6 +330,11 @@ enum ForkMeetingExportFailure: Error, Equatable {
         case "redirected": self = .redirected
         case "status": self = .status(httpStatus ?? 0)
         case "notConfigured": self = .notConfigured
+        case "keychain": self = .keychain
+        case "certificate": self = .certificate
+        case "temporarySpace": self = .temporarySpace
+        case "earlyAnswer": self = .earlyAnswer
+        case "listChanged": self = .listChanged
         case let code? where code.hasPrefix("refusedAddress"):
             self = .refusedAddress(Self.refusal(String(code.dropFirst("refusedAddress.".count))))
         default: self = .network
@@ -266,6 +369,12 @@ enum ForkMeetingExportFailure: Error, Equatable {
 /// Which meetings may go: never one being written; never on its own one
 /// that did not end well, or that already went there.
 enum ForkMeetingExportEligibility {
+    /// The only ends after which a meeting goes on its own: the person's
+    /// Stop, or the call over. A disk full, a permission taken back, a
+    /// sleep, the feature turned off, the capture stopped, a crash, a quit
+    /// or a cancel each wait for a click.
+    static let automaticStopReasons: Set<ForkMeetingStopReason> = [.user, .meetingEnded]
+
     enum Verdict: Equatable {
         case allowed
         case refused(ForkMeetingExportFailure)
@@ -284,7 +393,7 @@ enum ForkMeetingExportEligibility {
         }
         guard automatic else { return .allowed }
         let endedWell = meeting.state == .complete && meeting.recovered != true
-            && meeting.stopReason != .cancelled && meeting.stopReason != .crash && meeting.stopReason != .quit
+            && meeting.stopReason.map(automaticStopReasons.contains) == true
             && meeting.finalPass != .failed
         guard endedWell else { return .needsClick }
         if let target, ForkMeetingExportHistory.lastResult(meeting.exports ?? [], target: target)?.status == .done {
@@ -332,25 +441,150 @@ enum ForkMeetingExportHistory {
         }
         return nil
     }
+
+    /// The list row's mark (§4.5): ✗ when the latest attempt of one of
+    /// `targets` failed, else ✓ when one went, else nothing.
+    enum Mark: Equatable {
+        case done
+        case failed
+    }
+
+    static func mark(_ exports: [ForkMeetingSidecar.Export], targets: [String]) -> Mark? {
+        let results = targets.compactMap { lastResult(exports, target: $0) }
+        if results.contains(where: { $0.status == .failed }) { return .failed }
+        return results.isEmpty ? nil : .done
+    }
+}
+
+// MARK: - On its own
+
+/// What becomes of one automatic exporter once a meeting is finalized,
+/// before any file is read.
+enum ForkMeetingAutomaticExport {
+    enum Plan: Equatable {
+        /// Nothing, not even a record: the feature is off, or the exporter
+        /// sends only when asked.
+        case none
+        /// Sent, if the meeting itself may go (`ForkMeetingExportEligibility`).
+        case send
+        /// Not sent, and said: written in the meeting's history with its
+        /// Retry, and in a notice.
+        case fail(ForkMeetingExportFailure)
+    }
+
+    /// - `featureOn`: the Meetings feature, read at that moment.
+    /// - `listMatches`: the list read matches the page's
+    ///   (`ForkMeetingExporterList.matches`).
+    /// - `readiness`: what the exporter's `check()` threw, if anything.
+    static func plan(mode: ForkMeetingExportMode, featureOn: Bool, listMatches: Bool,
+                     readiness: ForkMeetingExportFailure?) -> Plan {
+        guard featureOn, mode == .automatic else { return .none }
+        guard listMatches else { return .fail(.listChanged) }
+        if let readiness { return .fail(readiness) }
+        return .send
+    }
 }
 
 // MARK: - What leaves the folder
 
-/// The `meeting.json` that leaves the Mac: the meeting's own, without what
-/// only matters here (the history of its exports) and without the Google
-/// Meet code unless asked, since it lets anyone with it in.
+/// The `meeting.json` that leaves the Mac: **a list of fields**, never the
+/// meeting's own minus some. A field this version writes later, or one it
+/// does not know (a later version's), stays here until it is named below.
+///
+/// - Always: `id`, `schema`, `title` (without the Google Meet code unless
+///   asked), `startedAt`, `endedAt`, `recordedSeconds`, `provider`,
+///   `origin`, `pauses`, and `transcript` when there is one.
+/// - Only when asked: `notes`, `meetCode`.
+/// - Never: the microphone's name, the app, the calendar event, the
+///   history of the exports, a path.
 enum ForkMeetingExportDocument {
     static let transcriptExtension = "txt"
 
-    static func json(_ sidecar: ForkMeetingSidecar, includesMeetCode: Bool) throws -> Data {
-        var shared = sidecar
-        shared.exports = nil
-        shared.preserved["exports"] = nil
-        if !includesMeetCode {
-            shared.meetCode = nil
-            shared.preserved["meetCode"] = nil
+    /// Every key that may leave, in the order of the list above.
+    static let fields = ["id", "schema", "title", "startedAt", "endedAt", "recordedSeconds", "provider", "origin",
+                         "pauses", "transcript", "notes", "meetCode"]
+    /// The keys of each pause.
+    static let pauseFields = ["at", "seconds", "reason"]
+
+    static func json(_ sidecar: ForkMeetingSidecar, includesMeetCode: Bool, includesNotes: Bool) throws -> Data {
+        let shared = Shared(
+            id: sidecar.id, schema: sidecar.schema,
+            title: title(sidecar.title, meetCode: sidecar.meetCode, includesMeetCode: includesMeetCode),
+            startedAt: sidecar.startedAt, endedAt: sidecar.endedAt, recordedSeconds: sidecar.recordedSeconds,
+            provider: sidecar.provider, origin: sidecar.origin,
+            pauses: sidecar.pauses?.map { Shared.Pause(at: $0.at, seconds: $0.seconds, reason: $0.reason) },
+            transcript: sidecar.transcript,
+            notes: includesNotes ? sidecar.notes : nil,
+            meetCode: includesMeetCode ? sidecar.meetCode : nil)
+        return try ForkMeetingSidecar.encoder().encode(shared)
+    }
+
+    /// What is written, field by field: only these.
+    private struct Shared: Encodable {
+        struct Pause: Encodable {
+            let at: Double?
+            let seconds: Double?
+            let reason: ForkMeetingPauseReason?
         }
-        return try shared.encoded()
+
+        let id: UUID?
+        let schema: Int?
+        let title: String?
+        let startedAt: Date?
+        let endedAt: Date?
+        let recordedSeconds: Double?
+        let provider: String?
+        let origin: ForkMeetingOrigin?
+        let pauses: [Pause]?
+        let transcript: ForkMeetingJSON?
+        let notes: String?
+        let meetCode: String?
+    }
+
+    /// The title sent: without the Google Meet code unless asked
+    /// ("Google Meet · abc-defg-hij" → "Google Meet"); `nil` when nothing is
+    /// left of it.
+    static func title(_ title: String?, meetCode: String?, includesMeetCode: Bool) -> String? {
+        guard let title else { return nil }
+        let kept = includesMeetCode ? title : withoutMeetCode(title, meetCode: meetCode)
+        let trimmed = kept.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? nil : trimmed
+    }
+
+    /// The name of the folder and the files sent: the meeting folder's,
+    /// without the Google Meet code unless asked
+    /// ("2026-10-19 10h02 — Google Meet · abc-defg-hij" →
+    /// "2026-10-19 10h02 — Google Meet"). Never empty.
+    static func name(_ folderName: String, meetCode: String?, includesMeetCode: Bool) -> String {
+        guard !includesMeetCode else { return folderName }
+        let cleaned = withoutMeetCode(folderName, meetCode: meetCode)
+        return cleaned.isEmpty ? "meeting" : cleaned
+    }
+
+    /// The text without its Google Meet codes (the meeting's own, and any
+    /// other of that shape), and without the separator they leave alone.
+    static func withoutMeetCode(_ text: String, meetCode: String?) -> String {
+        var text = text
+        if let meetCode, !meetCode.isEmpty {
+            while let range = text.range(of: meetCode, options: .caseInsensitive) { text.removeSubrange(range) }
+        }
+        // Each pass removes one: the shape's own rule finds the next.
+        for _ in 0..<16 {
+            guard let code = ForkMeetingTitleRules.meetCode(in: text),
+                  let range = text.range(of: code, options: .caseInsensitive) else { break }
+            text.removeSubrange(range)
+        }
+        return tidied(text)
+    }
+
+    /// Spaces in one, and no separator left with nothing after it, or
+    /// before a disambiguation's "(2)".
+    private static func tidied(_ text: String) -> String {
+        let separators = CharacterSet(charactersIn: "·•|–—-:,/").union(.whitespacesAndNewlines)
+        var text = text.components(separatedBy: .whitespacesAndNewlines).filter { !$0.isEmpty }.joined(separator: " ")
+        text = text.replacingOccurrences(of: #"\s*[·•|–—:,/-]\s*(?=\(\d+\)$)"#, with: " ", options: .regularExpression)
+        text = text.replacingOccurrences(of: #"(\s[·•|–—:,/-])+(?=\s[·•|–—:,/-]\s)"#, with: "", options: .regularExpression)
+        return text.trimmingCharacters(in: separators)
     }
 
     /// The transcript of the folder, when there is one: the `.txt` named
@@ -411,6 +645,11 @@ extension ForkMeetingExportFailure {
         case let .status(status): return strings.exportFailStatus(status)
         case .network: return strings.exportFailNetwork
         case .notConfigured: return strings.exportFailNotConfigured
+        case .keychain: return strings.exportFailKeychain
+        case .certificate: return strings.exportFailCertificate
+        case .temporarySpace: return strings.exportFailTemporarySpace
+        case .earlyAnswer: return strings.exportFailEarlyAnswer
+        case .listChanged: return strings.exportsListChanged
         }
     }
 }

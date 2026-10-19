@@ -15,8 +15,11 @@ import Security
 ///   Only then is the secret read, under that host's account: an address
 ///   rewritten in the preferences gets nothing signed.
 /// - No redirection to another origin or to plain HTTP is followed (the
-///   session's delegate), nor one that would drop the body, and any `3xx`
-///   left is a failure: the audio never goes where nobody approved.
+///   session's delegate), nor one that would drop the body, nor more than
+///   two (`ForkWebhookRedirects`), and any `3xx` left is a failure: the
+///   audio never goes where nobody approved.
+/// - A `2xx` counts only once the whole body has left: an answer given
+///   before is no proof the meeting arrived (`ForkWebhookVerdict`).
 /// - An ephemeral session (no cookie, no cache, no credential kept),
 ///   bounded in time (`ForkWebhookLimits`), whose answer is read no further
 ///   than 64 KiB.
@@ -33,7 +36,7 @@ struct ForkWebhookExporter: ForkMeetingExporter {
 
     let config: ForkMeetingExporterConfig
     /// Reads a secret from the Keychain by account, at the moment of a send.
-    let secret: (String) -> Data?
+    let secret: (String) -> ForkMeetingKeychain.Read
     /// Whether a secret is saved, without reading it.
     let hasSecret: (String) -> Bool
     var trust: Trust = .system
@@ -52,24 +55,21 @@ struct ForkWebhookExporter: ForkMeetingExporter {
 
     /// The address to send to and its secret's account, once the policy
     /// and the frozen origin agree.
+    func check() throws {
+        let target = try approvedTarget()
+        guard hasSecret(target.account) else { throw ForkMeetingExportFailure.noSecret }
+    }
+
     func approvedTarget() throws -> (url: URL, account: String) {
-        guard let address = config.address, !address.isEmpty, let frozenName = config.origin else {
-            throw ForkMeetingExportFailure.notConfigured
-        }
-        guard let frozen = ForkMeetingOriginPolicy.Origin(name: frozenName) else { throw ForkMeetingExportFailure.originChanged }
-        switch ForkMeetingOriginPolicy.destination(address, frozen: frozen) {
-        case let .approved(url, origin):
-            return (url, ForkMeetingExporterConfig.secretAccount(origin: origin.name))
-        case .refused(.unapprovedHost):
-            throw ForkMeetingExportFailure.originChanged
-        case let .refused(refusal):
-            throw ForkMeetingExportFailure.refusedAddress(refusal)
-        }
+        try config.approvedTarget()
     }
 
     func export(_ package: ForkMeetingExportPackage, progress: @escaping (Double) -> Void) async throws -> ForkMeetingExportReceipt {
         let parts: [ForkWebhookMultipart.Part]
-        do { parts = try ForkWebhookPayload.parts(package, includesMeetCode: config.includesMeetCode) } catch {
+        do {
+            parts = try ForkWebhookPayload.parts(package, includesMeetCode: config.includesMeetCode,
+                                                 includesNotes: config.includesNotes)
+        } catch {
             throw ForkMeetingExportFailure.unreadable
         }
         let status = try await send(parts, event: "meeting", progress: progress)
@@ -85,14 +85,23 @@ struct ForkWebhookExporter: ForkMeetingExporter {
     private func send(_ parts: [ForkWebhookMultipart.Part], event: String,
                       progress: @escaping (Double) -> Void) async throws -> Int {
         let target = try approvedTarget()
-        guard let key = secret(target.account) else { throw ForkMeetingExportFailure.noSecret }
+        let key: Data
+        switch secret(target.account) {
+        case let .found(data): key = data
+        case .missing: throw ForkMeetingExportFailure.noSecret
+        case .failed: throw ForkMeetingExportFailure.keychain
+        }
         var multipart = ForkWebhookMultipart()
         multipart.parts = parts
-        let body = temporaryDirectory.appendingPathComponent("fork.meetings.webhook-\(UUID().uuidString).body")
+        let body = temporaryDirectory.appendingPathComponent("\(Self.bodyPrefix)\(UUID().uuidString).body")
         defer { try? FileManager.default.removeItem(at: body) }
         var signer = ForkWebhookSigner(secret: key, at: Date())
         let length: Int64
-        do { length = try multipart.write(to: body) { signer.update($0) } } catch {
+        do { length = try multipart.write(to: body) { signer.update($0) } } catch ForkWebhookMultipart.Failure.unwritable {
+            throw ForkMeetingExportFailure.temporarySpace
+        } catch ForkWebhookMultipart.Failure.unreadable {
+            throw ForkMeetingExportFailure.noAudio
+        } catch {
             throw ForkMeetingExportFailure.unreadable
         }
 
@@ -115,32 +124,33 @@ struct ForkWebhookExporter: ForkMeetingExporter {
         let transfer = ForkWebhookTransfer(origin: target.url, trust: trust, bodyBytes: length, progress: progress)
         let session = URLSession(configuration: configuration, delegate: transfer, delegateQueue: nil)
         defer { session.finishTasksAndInvalidate() }
-        let outcome = await transfer.run(session.uploadTask(with: request, fromFile: body))
-        switch outcome {
-        case let .answered(status) where (200..<300).contains(status):
-            return status
-        case let .answered(status) where (300..<400).contains(status):
-            throw ForkMeetingExportFailure.redirected
-        case let .answered(status):
-            throw ForkMeetingExportFailure.status(status)
-        case .redirectRefused:
-            throw ForkMeetingExportFailure.redirected
-        case let .failed(code):
+        let ending = await transfer.run(session.uploadTask(with: request, fromFile: body))
+        if let code = ending.errorCode, ending.status == nil {
             Self.log.error("webhook send failed: \(code, privacy: .public)")
-            throw ForkMeetingExportFailure.network
         }
+        return try ForkWebhookVerdict.result(status: ending.status, redirectRefused: ending.redirectRefused,
+                                             trustRefused: ending.trustRefused, errorCode: ending.errorCode,
+                                             sent: ending.sent, bodyBytes: length).get()
     }
+
+    /// The bodies' names in the temporary folder: what a send cut short by
+    /// a quit leaves there is removed at the next launch.
+    static let bodyPrefix = "fork.meetings.webhook-"
 }
 
 /// One request's delegate: the redirection policy, the server's trust, the
-/// answer's cap and the progress of the body sent.
+/// answer's cap and the body sent.
 final class ForkWebhookTransfer: NSObject, URLSessionDataDelegate, @unchecked Sendable {
-    enum Outcome: Equatable {
-        case answered(Int)
-        case redirectRefused
-        /// The `NSURLError` code: no connection, a timeout, a refused
-        /// certificate.
-        case failed(Int)
+    /// What the request saw, at its end.
+    struct Ending: Equatable {
+        var status: Int?
+        var redirectRefused = false
+        var trustRefused = false
+        /// The `NSURLError` code the task ended with: no connection, a
+        /// timeout, a refused certificate.
+        var errorCode: Int?
+        /// The bytes of the body that left.
+        var sent: Int64 = 0
     }
 
     private let origin: URL
@@ -149,11 +159,11 @@ final class ForkWebhookTransfer: NSObject, URLSessionDataDelegate, @unchecked Se
     private let progress: (Double) -> Void
     private let lock = NSLock()
     /// Under `lock`.
-    private var status: Int?
+    private var seen = Ending()
     private var received = 0
-    private var redirectRefused = false
-    private var continuation: CheckedContinuation<Outcome, Never>?
-    private var finished: Outcome?
+    private var redirects = 0
+    private var continuation: CheckedContinuation<Ending, Never>?
+    private var finished: Ending?
 
     init(origin: URL, trust: ForkWebhookExporter.Trust, bodyBytes: Int64, progress: @escaping (Double) -> Void) {
         self.origin = origin
@@ -162,9 +172,9 @@ final class ForkWebhookTransfer: NSObject, URLSessionDataDelegate, @unchecked Se
         self.progress = progress
     }
 
-    func run(_ task: URLSessionTask) async -> Outcome {
+    func run(_ task: URLSessionTask) async -> Ending {
         await withCheckedContinuation { continuation in
-            let done: Outcome? = lock.withLock {
+            let done: Ending? = lock.withLock {
                 if let finished { return finished }
                 self.continuation = continuation
                 return nil
@@ -173,30 +183,36 @@ final class ForkWebhookTransfer: NSObject, URLSessionDataDelegate, @unchecked Se
         }
     }
 
-    private func finish(_ outcome: Outcome) {
-        let continuation: CheckedContinuation<Outcome, Never>? = lock.withLock {
+    private func finish(_ ending: Ending) {
+        let continuation: CheckedContinuation<Ending, Never>? = lock.withLock {
             guard finished == nil else { return nil }
-            finished = outcome
+            finished = ending
             defer { self.continuation = nil }
             return self.continuation
         }
-        continuation?.resume(returning: outcome)
+        continuation?.resume(returning: ending)
     }
 
     func urlSession(_ session: URLSession, task: URLSessionTask, willPerformHTTPRedirection response: HTTPURLResponse,
                     newRequest request: URLRequest, completionHandler: @escaping (URLRequest?) -> Void) {
-        // Followed only on the same origin, and only when the body goes
-        // along (307, 308): a 302 would turn the POST into an empty GET,
-        // whose "200" would pass for a meeting received.
+        // Followed only on the same origin, only when the body goes along
+        // (307, 308: a 302 would turn the POST into an empty GET, whose
+        // "200" would pass for a meeting received), and twice at most. The
+        // body starts again from its first byte.
         let from = task.currentRequest?.url ?? origin
-        guard let to = request.url, [307, 308].contains(response.statusCode), request.httpMethod == "POST",
-              ForkMeetingOriginPolicy.allowsRedirection(from: from, to: to),
-              ForkMeetingOriginPolicy.allowsRedirection(from: origin, to: to) else {
-            lock.withLock { redirectRefused = true }
-            completionHandler(nil)
-            return
+        let follows = lock.withLock { () -> Bool in
+            let follows = ForkWebhookRedirects.follows(followed: redirects, status: response.statusCode,
+                                                       method: request.httpMethod, from: from, to: request.url,
+                                                       origin: origin)
+            if follows {
+                redirects += 1
+                seen.sent = 0
+            } else {
+                seen.redirectRefused = true
+            }
+            return follows
         }
-        completionHandler(request)
+        completionHandler(follows ? request : nil)
     }
 
     func urlSession(_ session: URLSession, didReceive challenge: URLAuthenticationChallenge,
@@ -212,12 +228,14 @@ final class ForkWebhookTransfer: NSObject, URLSessionDataDelegate, @unchecked Se
         if SecTrustEvaluateWithError(serverTrust, nil) {
             completionHandler(.useCredential, URLCredential(trust: serverTrust))
         } else {
+            lock.withLock { seen.trustRefused = true }
             completionHandler(.cancelAuthenticationChallenge, nil)
         }
     }
 
     func urlSession(_ session: URLSession, task: URLSessionTask, didSendBodyData bytesSent: Int64,
                     totalBytesSent: Int64, totalBytesExpectedToSend: Int64) {
+        lock.withLock { seen.sent = totalBytesSent }
         let total = totalBytesExpectedToSend > 0 ? totalBytesExpectedToSend : bodyBytes
         guard total > 0 else { return }
         progress(min(1, Double(totalBytesSent) / Double(total)))
@@ -226,7 +244,7 @@ final class ForkWebhookTransfer: NSObject, URLSessionDataDelegate, @unchecked Se
     func urlSession(_ session: URLSession, dataTask: URLSessionDataTask, didReceive response: URLResponse,
                     completionHandler: @escaping (URLSession.ResponseDisposition) -> Void) {
         let code = (response as? HTTPURLResponse)?.statusCode
-        lock.withLock { status = code }
+        lock.withLock { seen.status = code }
         // Only the status matters: an answer announced larger than the cap
         // is not read at all.
         completionHandler(response.expectedContentLength > Int64(ForkWebhookLimits.maximumResponseBytes) ? .cancel : .allow)
@@ -241,13 +259,10 @@ final class ForkWebhookTransfer: NSObject, URLSessionDataDelegate, @unchecked Se
     }
 
     func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: Error?) {
-        let (status, refused) = lock.withLock { (self.status, redirectRefused) }
-        if let status, !(300..<400).contains(status) || !refused {
-            finish(.answered(status))
-        } else if refused {
-            finish(.redirectRefused)
-        } else {
-            finish(.failed((error as NSError?)?.code ?? NSURLErrorUnknown))
+        let ending = lock.withLock { () -> Ending in
+            seen.errorCode = (error as NSError?)?.code
+            return seen
         }
+        finish(ending)
     }
 }

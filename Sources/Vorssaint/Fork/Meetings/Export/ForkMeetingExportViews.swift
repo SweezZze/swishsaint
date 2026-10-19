@@ -4,7 +4,8 @@
 import SwiftUI
 
 /// The ⋯ menu's "Export To": one item per exporter set up, and nothing at
-/// all without one (only "Export Audio (M4A)…" stays).
+/// all without one (only "Export Audio (M4A)…" stays, §7.1). An exporter
+/// added but not finished is not named.
 struct ForkMeetingExportMenu: View {
     let folder: URL
     let live: Bool
@@ -13,21 +14,22 @@ struct ForkMeetingExportMenu: View {
     @ObservedObject private var exports = ForkMeetingExports.shared
 
     var body: some View {
-        if exports.hasExporters {
+        let configured = exports.configured
+        if !configured.isEmpty {
             Menu(text.actionExportTo) {
-                ForEach(exports.configs) { config in
+                ForEach(configured) { config in
                     Button(config.title(text)) { exports.export(folder, to: config.id) }
-                        .disabled(live || !exports.isConfigured(config)
-                                    || exports.pending.contains(ForkMeetingExports.key(folder, config.id)))
+                        .disabled(live || exports.pending.contains(ForkMeetingExports.key(folder, config.id)))
                 }
             }
         }
     }
 }
 
-/// The detail's line: each exporter, and what became of this meeting there
-/// (✓ and when, ✗ with why and Retry, sending, or nothing yet). Absent
-/// without an exporter.
+/// The detail's line: each exporter set up, and what became of this meeting
+/// there (✓ and when, ✗ with why and Retry, sending, or nothing yet); one
+/// not set up only when it failed here, to say why. Absent without an
+/// exporter set up (§7.1).
 struct ForkMeetingExportStatus: View {
     let folder: URL
     let live: Bool
@@ -37,12 +39,12 @@ struct ForkMeetingExportStatus: View {
     @ObservedObject private var exports = ForkMeetingExports.shared
 
     var body: some View {
-        if exports.hasExporters {
+        if !exports.configured.isEmpty {
             VStack(alignment: .leading, spacing: 6) {
                 Text(text.exportsTitle)
                     .font(.caption)
                     .foregroundStyle(.secondary)
-                ForEach(exports.configs) { config in
+                ForEach(shown) { config in
                     row(config)
                 }
             }
@@ -52,6 +54,10 @@ struct ForkMeetingExportStatus: View {
             .background(RoundedRectangle(cornerRadius: 8).fill(Color.primary.opacity(0.05)))
             .task(id: folder.standardizedFileURL.path) { exports.refreshResults(folder) }
         }
+    }
+
+    private var shown: [ForkMeetingExporterConfig] {
+        exports.configs.filter { exports.isConfigured($0) || failure($0) != nil }
     }
 
     /// What failed last here, refused before it began or written.

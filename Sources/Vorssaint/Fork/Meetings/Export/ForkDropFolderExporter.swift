@@ -4,18 +4,22 @@
 import Foundation
 
 /// Copies a meeting into a folder the person chose: a synced folder, a NAS,
-/// a folder Hazel watches. No network, no secret.
+/// a folder Hazel watches. No secret; the app itself sends nothing over the
+/// network, whatever the folder then does with the copy.
 ///
 /// `<folder>/<meeting's name>/` receives the audio (M4A), `meeting.json`
-/// (without the Google Meet code unless asked) and the transcript when there
-/// is one. **Atomic**: everything is copied into a hidden draft beside it,
-/// then moved into place in one step, so whatever watches the folder never
-/// sees half a meeting. Sent again, the same meeting replaces its copy; a
-/// different meeting of the same name gets `(2)`.
+/// (`ForkMeetingExportDocument`) and the transcript when there is one, under
+/// the meeting's name without its Google Meet code unless asked.
+/// **Atomic**: everything is copied into a hidden draft beside it, then
+/// moved into place in one step, so whatever watches the folder never sees
+/// half a meeting. Sent again, the same meeting replaces **only its own
+/// files** there (what another tool added stays); a different meeting of
+/// the same name gets `(2)`. The copy takes the chosen folder's rights.
 ///
 /// The chosen folder is never made: a disk that is not mounted would
 /// otherwise get an empty folder of the same name on the startup disk, and
-/// the meetings with it.
+/// the meetings with it. An entry there that is a link, or that leads into
+/// the meetings folder, is never written into.
 struct ForkDropFolderExporter: ForkMeetingExporter {
     let config: ForkMeetingExporterConfig
     /// The meetings folder: a drop folder there, or inside one of its
@@ -32,6 +36,10 @@ struct ForkDropFolderExporter: ForkMeetingExporter {
     var destination: URL? {
         guard let folder = config.folder, !folder.isEmpty else { return nil }
         return URL(fileURLWithPath: (folder as NSString).expandingTildeInPath, isDirectory: true)
+    }
+
+    func check() throws {
+        guard isConfigured else { throw ForkMeetingExportFailure.notConfigured }
     }
 
     /// Whether `folder` may be a drop folder: never the meetings folder nor
@@ -58,21 +66,45 @@ struct ForkDropFolderExporter: ForkMeetingExporter {
         }
         if Self.isInsideLibrary(destination, libraryRoot: libraryRoot) { throw ForkMeetingExportFailure.folderInsideLibrary }
         let json: Data
-        do { json = try ForkMeetingExportDocument.json(package.sidecar, includesMeetCode: config.includesMeetCode) } catch {
+        do {
+            json = try ForkMeetingExportDocument.json(package.sidecar, includesMeetCode: config.includesMeetCode,
+                                                      includesNotes: config.includesNotes)
+        } catch {
             throw ForkMeetingExportFailure.unreadable
         }
+        let name = package.name(includesMeetCode: config.includesMeetCode)
+        // The chosen folder's rights, for the folder and, without their
+        // execution, for the files: a shared folder stays shared.
+        let rights = (((try? manager.attributesOfItem(atPath: destination.path))?[.posixPermissions] as? NSNumber)?
+            .intValue ?? 0o755) & 0o777
+        let fileRights = rights & 0o666
         let draft = destination.appendingPathComponent(Self.draftPrefix + UUID().uuidString, isDirectory: true)
         do {
             try manager.createDirectory(at: draft, withIntermediateDirectories: false,
-                                        attributes: [.posixPermissions: 0o700])
-            try manager.copyItem(at: package.audio, to: draft.appendingPathComponent(package.audioName))
-            try json.write(to: draft.appendingPathComponent(ForkMeetingFolder.sidecarName))
+                                        attributes: [.posixPermissions: rights])
+            let audio = draft.appendingPathComponent(ForkMeetingExportPackage.audioName(name))
+            try manager.copyItem(at: package.audio, to: audio)
+            let sidecar = draft.appendingPathComponent(ForkMeetingFolder.sidecarName)
+            try json.write(to: sidecar)
+            var written = [audio, sidecar]
             if let transcript = package.transcript {
-                try manager.copyItem(at: transcript, to: draft.appendingPathComponent(package.transcriptName))
+                let copy = draft.appendingPathComponent(ForkMeetingExportPackage.transcriptName(name))
+                try manager.copyItem(at: transcript, to: copy)
+                written.append(copy)
             }
-            let target = try place(for: package, in: destination)
+            for file in written { try? manager.setAttributes([.posixPermissions: fileRights], ofItemAtPath: file.path) }
+            let target = try place(named: name, id: package.sidecar.id, in: destination)
             if manager.fileExists(atPath: target.path) {
-                _ = try manager.replaceItemAt(target, withItemAt: draft)
+                // Ours: each of our files replaced in one step, the rest kept.
+                for file in written {
+                    let there = target.appendingPathComponent(file.lastPathComponent)
+                    if manager.fileExists(atPath: there.path) {
+                        _ = try manager.replaceItemAt(there, withItemAt: file)
+                    } else {
+                        try manager.moveItem(at: file, to: there)
+                    }
+                }
+                try? manager.removeItem(at: draft)
             } else {
                 try manager.moveItem(at: draft, to: target)
             }
@@ -81,22 +113,35 @@ struct ForkDropFolderExporter: ForkMeetingExporter {
             throw failure
         } catch {
             try? manager.removeItem(at: draft)
-            throw ForkMeetingExportFailure.writeFailed
+            throw (error as NSError).code == NSFileWriteOutOfSpaceError ? ForkMeetingExportFailure.temporarySpace
+                : ForkMeetingExportFailure.writeFailed
         }
     }
 
     /// The meeting's folder in the drop folder: its own name, or the first
     /// free `name (n)` when another meeting already has it. The same
-    /// meeting sent again (same id) takes its place back.
-    func place(for package: ForkMeetingExportPackage, in destination: URL) throws -> URL {
+    /// meeting sent again (same id) takes its place back. An entry that is
+    /// a link, or that leads into the meetings folder, is never ours.
+    func place(named name: String, id: UUID?, in destination: URL) throws -> URL {
         let manager = FileManager.default
         for index in 1...ForkMeetingFolder.maximumSiblings {
-            let name = index == 1 ? package.folderName : "\(package.folderName) (\(index))"
-            let candidate = destination.appendingPathComponent(name, isDirectory: true)
-            guard manager.fileExists(atPath: candidate.path) else { return candidate }
+            let candidate = destination.appendingPathComponent(index == 1 ? name : "\(name) (\(index))", isDirectory: true)
+            guard let attributes = try? manager.attributesOfItem(atPath: candidate.path) else { return candidate }
+            guard attributes[.type] as? FileAttributeType == .typeDirectory,
+                  !Self.isInsideLibrary(candidate, libraryRoot: libraryRoot) else { continue }
             let there = ForkMeetingSidecar.read(at: candidate.appendingPathComponent(ForkMeetingFolder.sidecarName))
-            if case let .success(sidecar) = there, sidecar.id != nil, sidecar.id == package.sidecar.id { return candidate }
+            if case let .success(sidecar) = there, sidecar.id != nil, sidecar.id == id { return candidate }
         }
         throw ForkMeetingExportFailure.writeFailed
+    }
+
+    /// The drafts a copy cut short (a quit, a disk pulled) left in the drop
+    /// folder: removed at the next launch.
+    static func removeDrafts(in destination: URL) {
+        let manager = FileManager.default
+        guard let names = try? manager.contentsOfDirectory(atPath: destination.path) else { return }
+        for name in names where name.hasPrefix(draftPrefix) {
+            try? manager.removeItem(at: destination.appendingPathComponent(name))
+        }
     }
 }

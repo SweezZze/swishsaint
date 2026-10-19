@@ -6,9 +6,12 @@ import Foundation
 
 /// The webhook's signature: `X-Swishsaint-Signature: sha256=<hex>`, the
 /// HMAC-SHA256 of `timestamp + "." + body` keyed with the secret, and
-/// `X-Swishsaint-Timestamp`, Unix seconds. The receiver recomputes it over
-/// the raw body it got and refuses a request whose signature differs or
-/// whose timestamp is old: a copy of a request replayed later fails.
+/// `X-Swishsaint-Timestamp`, Unix seconds, taken when the body is signed,
+/// before it is sent. The receiver recomputes it over the raw body it got,
+/// refuses a request whose signature differs or whose timestamp is older
+/// than `freshness` (the longest send, and five minutes of clocks apart),
+/// and keeps the `id` of the meetings it took: a copy replayed within that
+/// window is then refused too.
 ///
 /// Computed while the body is written, chunk by chunk: an hour of audio is
 /// never held in memory.
@@ -18,6 +21,10 @@ struct ForkWebhookSigner {
     /// `meeting`, or `test` for the page's "Send a test".
     static let eventHeader = "X-Swishsaint-Event"
     static let prefix = "sha256="
+    /// How old a timestamp a receiver takes: a send may last two hours
+    /// (`ForkWebhookLimits.resourceTimeout`), plus five minutes. Said in
+    /// the page's help.
+    static let freshness: TimeInterval = ForkWebhookLimits.longestSend + 5 * 60
 
     let timestamp: String
     private var hmac: HMAC<SHA256>
@@ -177,16 +184,21 @@ enum ForkWebhookPayload {
     static let audioPart = "audio"
     static let transcriptPart = "transcript"
 
-    static func parts(_ package: ForkMeetingExportPackage, includesMeetCode: Bool) throws -> [ForkWebhookMultipart.Part] {
+    /// The file names carry the meeting's name, without its Google Meet
+    /// code unless asked, like the `meeting` part.
+    static func parts(_ package: ForkMeetingExportPackage, includesMeetCode: Bool,
+                      includesNotes: Bool) throws -> [ForkWebhookMultipart.Part] {
+        let json = try ForkMeetingExportDocument.json(package.sidecar, includesMeetCode: includesMeetCode,
+                                                      includesNotes: includesNotes)
+        let name = package.name(includesMeetCode: includesMeetCode)
         var parts = [
             ForkWebhookMultipart.Part(name: meetingPart, filename: ForkMeetingFolder.sidecarName,
-                                      contentType: "application/json",
-                                      source: .data(try ForkMeetingExportDocument.json(package.sidecar, includesMeetCode: includesMeetCode))),
-            ForkWebhookMultipart.Part(name: audioPart, filename: package.audioName, contentType: "audio/mp4",
-                                      source: .file(package.audio)),
+                                      contentType: "application/json", source: .data(json)),
+            ForkWebhookMultipart.Part(name: audioPart, filename: ForkMeetingExportPackage.audioName(name),
+                                      contentType: "audio/mp4", source: .file(package.audio)),
         ]
         if let transcript = package.transcript {
-            parts.append(ForkWebhookMultipart.Part(name: transcriptPart, filename: package.transcriptName,
+            parts.append(ForkWebhookMultipart.Part(name: transcriptPart, filename: ForkMeetingExportPackage.transcriptName(name),
                                                    contentType: "text/plain; charset=utf-8", source: .file(transcript)))
         }
         return parts
@@ -209,22 +221,41 @@ enum ForkWebhookPayload {
         let startedAt: Date
     }
 
-    /// The receiver side, in a few lines, for the page's help.
+    /// The receiver side, for the page's help: the raw body, headers that
+    /// may be missing, a timestamp that may not be a number, the window of
+    /// `ForkWebhookSigner.freshness`, and a meeting already taken refused.
     static let verificationExample = """
-    // n8n "Code" node, or any Node.js server (the raw body, not parsed JSON)
+    // Node.js (n8n "Code" node, Express with express.raw()): rawBody is a Buffer
     const crypto = require('crypto');
-    const ts = headers['x-swishsaint-timestamp'];
-    const expected = 'sha256=' + crypto.createHmac('sha256', SECRET)
-      .update(ts + '.').update(rawBody).digest('hex');
-    const given = headers['x-swishsaint-signature'] || '';
-    const fresh = Math.abs(Date.now() / 1000 - Number(ts)) < 300;
-    const ok = fresh && given.length === expected.length
-      && crypto.timingSafeEqual(Buffer.from(given), Buffer.from(expected));
+    const seen = new Set(); // ids of the meetings already taken
+    function verify(headers, rawBody, SECRET) {
+      const ts = String(headers['x-swishsaint-timestamp'] || '');
+      const given = String(headers['x-swishsaint-signature'] || '');
+      if (!/^[0-9]+$/.test(ts)) return false;
+      if (Math.abs(Date.now() / 1000 - Number(ts)) > 7500) return false; // 2 h 05
+      const expected = 'sha256=' + crypto.createHmac('sha256', SECRET)
+        .update(ts + '.').update(rawBody).digest('hex');
+      if (Buffer.byteLength(given) !== Buffer.byteLength(expected)) return false;
+      try {
+        return crypto.timingSafeEqual(Buffer.from(given), Buffer.from(expected));
+      } catch (e) { return false; }
+    }
+    // Then: const id = JSON.parse(meetingPart).id;
+    // if (seen.has(id)) refuse; else seen.add(id).
 
-    # Python
-    import hmac, hashlib, time
-    expected = 'sha256=' + hmac.new(SECRET, ts.encode() + b'.' + raw_body, hashlib.sha256).hexdigest()
-    ok = abs(time.time() - int(ts)) < 300 and hmac.compare_digest(expected, given)
+    # Python: raw_body is bytes, headers a dict
+    import hashlib, hmac, time
+    seen = set()  # ids of the meetings already taken
+    def verify(headers, raw_body, secret):
+        ts = headers.get('X-Swishsaint-Timestamp') or ''
+        given = headers.get('X-Swishsaint-Signature') or ''
+        if not (ts.isascii() and ts.isdigit()):
+            return False
+        if abs(time.time() - int(ts)) > 7500:  # 2 h 05
+            return False
+        expected = 'sha256=' + hmac.new(secret, ts.encode() + b'.' + raw_body, hashlib.sha256).hexdigest()
+        return hmac.compare_digest(expected.encode(), given.encode())
+    # Then: refuse when json.loads(meeting_part)['id'] is in seen, else add it.
     """
 }
 
@@ -235,8 +266,53 @@ enum ForkWebhookPayload {
 enum ForkWebhookLimits {
     static let idleTimeout: TimeInterval = 60
     static let maximumResponseBytes = 64 << 10
+    static let longestSend: TimeInterval = 2 * 3600
 
     static func resourceTimeout(bodyBytes: Int64) -> TimeInterval {
-        min(2 * 3600, max(120, Double(bodyBytes) / 20_000))
+        min(longestSend, max(120, Double(bodyBytes) / 20_000))
     }
+}
+
+/// The redirections a send follows: on the same origin, with its body (307,
+/// 308), and no more than `maximum` of them; any other is a failure.
+enum ForkWebhookRedirects {
+    static let maximum = 2
+
+    /// - `followed`: how many this request already followed.
+    /// - `from`: the address redirected; `origin`, the one approved.
+    static func follows(followed: Int, status: Int, method: String?, from: URL, to: URL?, origin: URL) -> Bool {
+        guard followed < maximum, let to, [307, 308].contains(status), method == "POST" else { return false }
+        return ForkMeetingOriginPolicy.allowsRedirection(from: from, to: to)
+            && ForkMeetingOriginPolicy.allowsRedirection(from: origin, to: to)
+    }
+}
+
+/// What a send's end means, from what its delegate saw.
+enum ForkWebhookVerdict {
+    /// - `status`: the answer's, when one came.
+    /// - `redirectRefused`: a redirection was not followed.
+    /// - `trustRefused`: the server's certificate was refused.
+    /// - `errorCode`: the `NSURLError` the task ended with, if any.
+    /// - `sent` / `bodyBytes`: a 2xx counts only once the whole body left.
+    static func result(status: Int?, redirectRefused: Bool, trustRefused: Bool, errorCode: Int?,
+                       sent: Int64, bodyBytes: Int64) -> Result<Int, ForkMeetingExportFailure> {
+        if let status, !((300..<400).contains(status) && redirectRefused) {
+            switch status {
+            case 200..<300: return sent >= bodyBytes ? .success(status) : .failure(.earlyAnswer)
+            case 300..<400: return .failure(.redirected)
+            default: return .failure(.status(status))
+            }
+        }
+        if redirectRefused { return .failure(.redirected) }
+        if trustRefused || errorCode.map(certificateErrors.contains) == true { return .failure(.certificate) }
+        return .failure(.network)
+    }
+
+    /// The `NSURLError` codes of a certificate refused, here or there.
+    static let certificateErrors: Set<Int> = [
+        NSURLErrorSecureConnectionFailed, NSURLErrorServerCertificateHasBadDate,
+        NSURLErrorServerCertificateUntrusted, NSURLErrorServerCertificateHasUnknownRoot,
+        NSURLErrorServerCertificateNotYetValid, NSURLErrorClientCertificateRejected,
+        NSURLErrorClientCertificateRequired,
+    ]
 }

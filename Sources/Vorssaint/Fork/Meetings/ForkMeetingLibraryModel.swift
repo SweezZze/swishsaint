@@ -313,6 +313,12 @@ final class ForkMeetingLibraryModel: ObservableObject {
     func commitTitle(_ title: String, of entry: ForkMeetingLibraryEntry) {
         let folder = entry.folderName
         guard !entry.isReadOnly else { return }
+        // A send reads this folder: its name waits, its title is saved.
+        guard !ForkMeetingExports.shared.isSending(folderURL(entry)) else {
+            flushEdits(folder)
+            say(strings.exportInProgress)
+            return
+        }
         let wanted = ForkMeetingRename.cleaned(title)
         guard !working.contains(folder) else {
             deferredTitles[folder] = wanted
@@ -385,11 +391,19 @@ final class ForkMeetingLibraryModel: ObservableObject {
             say(strings.refusedWhileRecording)
             return
         }
+        guard !ForkMeetingExports.shared.isSending(folderURL(entry)) else {
+            say(strings.exportInProgress)
+            return
+        }
         trashAsked = entry.folderName
     }
 
     func trash(_ folder: String) {
         trashAsked = nil
+        guard !ForkMeetingExports.shared.isSending(root.appendingPathComponent(folder, isDirectory: true)) else {
+            say(strings.exportInProgress)
+            return
+        }
         edits.forget(folder)
         let order = ForkMeetingLibrary.order(groups)
         let path = root.appendingPathComponent(folder, isDirectory: true).standardizedFileURL.path
@@ -685,7 +699,9 @@ final class ForkMeetingRetentionSweep: ObservableObject {
         running?.cancel()
         let stop = ForkMeetingSweepStop()
         running = stop
-        store.sweepRetention(days: days, now: now, writing: ForkMeetingService.shared.writingFolders,
+        // A meeting being sent is left for the next sweep, as one being written.
+        let busy = ForkMeetingService.shared.writingFolders.union(ForkMeetingExports.shared.sendingFolders)
+        store.sweepRetention(days: days, now: now, writing: busy,
                              confirmed: confirmed, stop: stop) { [weak self] outcome in
             guard let self else { return }
             if self.running === stop { self.running = nil }

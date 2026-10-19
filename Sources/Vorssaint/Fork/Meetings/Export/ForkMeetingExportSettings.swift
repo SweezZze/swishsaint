@@ -5,7 +5,9 @@ import AppKit
 import SwiftUI
 
 /// The Meetings page's Exports: empty until the person adds an exporter,
-/// then one block per exporter. Says what leaves the Mac, and where.
+/// then one block per exporter. Says what leaves the Mac, field by field,
+/// and where; and, when the list was rewritten outside the page, asks to
+/// look at it before anything goes on its own again.
 struct ForkMeetingExportsSection: View {
     let text: ForkMeetingStrings
 
@@ -18,6 +20,22 @@ struct ForkMeetingExportsSection: View {
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
+            if exports.hasExporters {
+                Text(text.exportModeCaption)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            if exports.listChanged {
+                HStack(alignment: .firstTextBaseline) {
+                    Label(text.exportsListChanged, systemImage: "exclamationmark.triangle.fill")
+                        .font(.callout)
+                        .foregroundStyle(.orange)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Spacer()
+                    Button(text.exportsListConfirm) { exports.confirmList() }
+                }
+            }
             ForEach(exports.configs) { config in
                 switch config.kind {
                 case .dropFolder:
@@ -38,6 +56,11 @@ struct ForkMeetingExportsSection: View {
         } header: {
             Text(text.exportsTitle)
         }
+        // The Keychain and the preferences may have changed behind the page.
+        .onAppear {
+            exports.reload()
+            exports.verifyList()
+        }
         .alert(text.exportRemoveTitle, isPresented: Binding(get: { removing != nil }, set: { if !$0 { removing = nil } })) {
             Button(text.exportRemove, role: .destructive) {
                 if let removing { exports.remove(removing.id) }
@@ -50,7 +73,8 @@ struct ForkMeetingExportsSection: View {
     }
 }
 
-/// The settings every exporter has: when it sends, the Meet code, remove.
+/// The settings every exporter has: when it sends, the Meet code, the
+/// notes, remove.
 private struct ForkMeetingExporterCommon: View {
     let config: ForkMeetingExporterConfig
     let text: ForkMeetingStrings
@@ -67,13 +91,13 @@ private struct ForkMeetingExporterCommon: View {
             Text(text.exportModeManual).tag(ForkMeetingExportMode.manual)
             Text(text.exportModeAutomatic).tag(ForkMeetingExportMode.automatic)
         } label: {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(text.exportMode)
-                Text(text.exportModeCaption)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
+            Text(text.exportMode)
+        }
+        if config.kind == .webhook, config.mode == .automatic, !exports.hasSecret(config) {
+            Text(text.exportAutomaticNoSecret)
+                .font(.caption)
+                .foregroundStyle(.orange)
+                .fixedSize(horizontal: false, vertical: true)
         }
         Toggle(isOn: Binding(get: { config.includesMeetCode }, set: { on in
             var next = config
@@ -83,6 +107,19 @@ private struct ForkMeetingExporterCommon: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(text.exportIncludeMeetCode)
                 Text(text.exportIncludeMeetCodeCaption)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        Toggle(isOn: Binding(get: { config.includesNotes }, set: { on in
+            var next = config
+            next.includesNotes = on
+            exports.update(next)
+        })) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(text.exportIncludeNotes)
+                Text(text.exportIncludeNotesCaption)
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
@@ -289,7 +326,7 @@ private struct ForkMeetingWebhookRow: View {
         case let .refused(refusal):
             problem = refusal.message(text)
         case .secretNotSaved:
-            problem = text.webhookSecretMissing
+            problem = text.webhookSecretRefused
             newSecret = ""
         }
     }

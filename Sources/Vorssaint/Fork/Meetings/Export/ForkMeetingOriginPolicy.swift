@@ -149,6 +149,9 @@ enum ForkMeetingOriginPolicy {
     /// undone by a `302`. It also happens without malice (a service moving
     /// to a backup domain), and must not pass either.
     static func allowsRedirection(from source: URL, to target: URL) -> Bool {
+        // A user name or a password in the new address would go along with
+        // the body: refused, as at the address's Save.
+        guard target.user == nil, target.password == nil else { return false }
         guard target.scheme?.lowercased() == "https", source.scheme?.lowercased() == "https",
               let from = origin(of: source), let to = origin(of: target),
               let raw = target.host(percentEncoded: true), isPlainHost(raw) else { return false }

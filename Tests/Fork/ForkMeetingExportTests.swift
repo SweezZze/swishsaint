@@ -162,9 +162,9 @@ enum ForkMeetingExportTests {
                      "a frozen origin reads back exactly as it was written, and nothing else does")
         let v6 = Policy.destination("https://[::1]:8443/hook")
         suite.expect(v6.origin?.name == "[::1]:8443", "an IPv6 literal is an origin with its brackets")
-        let plain = ForkMeetingExporterConfig(kind: .webhook, origin: "hooks.example.org")
-        let ported = ForkMeetingExporterConfig(kind: .webhook, origin: "hooks.example.org:8443")
-        suite.expect(plain.secretAccount == "webhook@hooks.example.org" && ported.secretAccount == "webhook@hooks.example.org:8443",
+        let plain = ForkMeetingExporterConfig(id: "a", kind: .webhook, origin: "hooks.example.org")
+        let ported = ForkMeetingExporterConfig(id: "a", kind: .webhook, origin: "hooks.example.org:8443")
+        suite.expect(plain.secretAccount == "webhook@hooks.example.org#a" && ported.secretAccount == "webhook@hooks.example.org:8443#a",
                      "each origin has its own secret account, port included")
     }
 
@@ -275,21 +275,25 @@ enum ForkMeetingExportTests {
     }
 
     private static func payload(_ suite: TestSuite) {
-        let shared = (try? ForkMeetingExportDocument.json(meeting(), includesMeetCode: false)).map { String(decoding: $0, as: UTF8.self) } ?? ""
+        let shared = (try? ForkMeetingExportDocument.json(meeting(), includesMeetCode: false, includesNotes: false))
+            .map { String(decoding: $0, as: UTF8.self) } ?? ""
         suite.expect(!shared.contains("abc-defg-hij") && !shared.contains("meetCode") && !shared.contains("\"exports\"")
-                        && shared.contains("Point hebdo") && shared.contains("Budget validé"),
-                     "the meeting.json sent has no Meet code and no export history by default, and keeps the rest")
-        let withCode = (try? ForkMeetingExportDocument.json(meeting(), includesMeetCode: true)).map { String(decoding: $0, as: UTF8.self) } ?? ""
-        suite.expect(withCode.contains("\"meetCode\" : \"abc-defg-hij\""), "the Meet code goes only when asked")
+                        && shared.contains("Point hebdo") && !shared.contains("Budget validé"),
+                     "the meeting.json sent has no Meet code, no notes and no export history by default, and keeps its title")
+        let withCode = (try? ForkMeetingExportDocument.json(meeting(), includesMeetCode: true, includesNotes: true))
+            .map { String(decoding: $0, as: UTF8.self) } ?? ""
+        suite.expect(withCode.contains("\"meetCode\" : \"abc-defg-hij\"") && withCode.contains("Budget validé"),
+                     "the Meet code and the notes go only when asked")
         let audio = URL(fileURLWithPath: "/tmp/a.m4a"), text = URL(fileURLWithPath: "/tmp/a.txt")
         let package = ForkMeetingExportPackage(folderName: "2026-10-18 10h02 — Point hebdo", sidecar: meeting(), audio: audio, transcript: text)
-        let parts = (try? ForkWebhookPayload.parts(package, includesMeetCode: false)) ?? []
+        let parts = (try? ForkWebhookPayload.parts(package, includesMeetCode: false, includesNotes: false)) ?? []
         suite.expect(parts.map(\.name) == ["meeting", "audio", "transcript"]
                         && parts.map(\.filename) == ["meeting.json", "2026-10-18 10h02 — Point hebdo.m4a", "2026-10-18 10h02 — Point hebdo.txt"]
                         && parts.map(\.contentType) == ["application/json", "audio/mp4", "text/plain; charset=utf-8"],
                      "a webhook gets the parts meeting, audio and transcript, named after the meeting")
         let alone = ForkMeetingExportPackage(folderName: "x", sidecar: meeting(), audio: audio, transcript: nil)
-        suite.expect(((try? ForkWebhookPayload.parts(alone, includesMeetCode: false)) ?? []).map(\.name) == ["meeting", "audio"],
+        suite.expect(((try? ForkWebhookPayload.parts(alone, includesMeetCode: false, includesNotes: false)) ?? []).map(\.name)
+                        == ["meeting", "audio"],
                      "without a transcript, no transcript part")
         let test = ForkWebhookPayload.testParts(at: start)
         if case let .data(data)? = test.first?.source {
@@ -378,7 +382,7 @@ enum ForkMeetingExportTests {
                      "an exporter's settings have no field for a secret: \(labels)")
         let stored = ForkMeetingExporterList.encode([config])
         let keys = (try? JSONSerialization.jsonObject(with: Data(stored.utf8)) as? [[String: Any]])?.first.map { Set($0.keys) }
-        suite.expect(keys == ["id", "kind", "mode", "includesMeetCode", "address", "origin"],
+        suite.expect(keys == ["id", "kind", "mode", "includesMeetCode", "includesNotes", "address", "origin"],
                      "the setting written holds the address and its origin, nothing else: \(keys ?? [])")
         suite.expect(ForkDefaultsKey.meetingsExporters == "fork.meetings.exporters"
                         && !ForkDefaults.backupKeys.contains(ForkDefaultsKey.meetingsExporters)
@@ -407,7 +411,8 @@ enum ForkMeetingExportTests {
                      "the latest known attempt of each exporter is what the library shows")
         let failures: [ForkMeetingExportFailure] = [.inProgress, .unreadable, .noAudio, .folderMissing, .folderInsideLibrary,
                                                     .writeFailed, .refusedAddress(.notHTTPS(scheme: nil)), .refusedAddress(.fragmentInURL),
-                                                    .originChanged, .noSecret, .redirected, .status(500), .network, .notConfigured]
+                                                    .originChanged, .noSecret, .redirected, .status(500), .network, .notConfigured,
+                                                    .keychain, .certificate, .temporarySpace, .earlyAnswer, .listChanged]
         suite.expect(failures.allSatisfy { ForkMeetingExportFailure(code: $0.code, httpStatus: $0.httpStatus) == $0 }
                         && Set(failures.map(\.code)).count == failures.count,
                      "every failure reads back from meeting.json as it was written")
@@ -554,8 +559,8 @@ enum ForkMeetingExportTests {
         suite.expect(formats.isEmpty, "every export format fills its host or its status in: \(formats)")
         suite.expect(silent.isEmpty, "every export failure has a sentence of its own, in every language: \(silent)")
         let english = ForkMeetingStrings.strings(.enUS).exportsCaption, french = ForkMeetingStrings.strings(.fr).exportsCaption
-        suite.expect(english.contains("leave this Mac") && french.contains("quittent alors ce Mac"),
-                     "the page says that the audio and the record leave the Mac for the address chosen")
+        suite.expect(english.contains("Only this leaves") && french.contains("Seul ceci part"),
+                     "the page says what leaves the Mac, and that nothing else does")
     }
 }
 
