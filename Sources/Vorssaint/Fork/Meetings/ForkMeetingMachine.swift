@@ -260,12 +260,13 @@ enum ForkMeetingDismissal: Equatable {
 ///   once the recording is over;
 /// - an offer is greyed out, never started, while the official recorder
 ///   runs (or anything else would refuse the start);
-/// - a recording "Always" started can be cancelled for 5 s: its folder is
-///   deleted, never finalized.
+/// - a recording "Always" started can be cancelled for 5 s: its folder goes
+///   to the Trash, never finalized.
 struct ForkMeetingMachine {
     /// An unanswered offer folds after this long.
     static let offerCollapse: TimeInterval = 20
-    /// How long "Cancel" deletes a recording "Always" started.
+    /// How long "Cancel" can still send a recording "Always" started to the
+    /// Trash.
     static let undoWindow: TimeInterval = 5
 
     /// A start asked, the capture not running yet.
@@ -299,7 +300,7 @@ struct ForkMeetingMachine {
         /// Seconds recorded when the screen locked, while it stays locked.
         var lockedAt: TimeInterval?
         var stoppedAt: Date?
-        /// Until when "Cancel" deletes a recording "Always" started.
+        /// Until when "Cancel" sends a recording "Always" started to the Trash.
         var undoUntil: Date?
         /// Cancelled: its folder goes once the file is closed.
         var discarded = false
@@ -474,7 +475,8 @@ struct ForkMeetingMachine {
         /// "Meeting over? Stopping in 15 s [Continue]".
         case showEndingSoon(until: Date)
         case hideEndingSoon
-        /// Deletes a cancelled recording's folder, once its file is closed.
+        /// Sends a cancelled recording's folder to the Trash, once its file is
+        /// closed.
         case discard(URL)
     }
 

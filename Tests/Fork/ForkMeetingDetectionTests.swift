@@ -238,7 +238,7 @@ enum ForkMeetingDetectionTests {
                      "Cancel within 5 s stops it")
         let closed = machine.handle(.writerFinished(token1, .finished(recordedSeconds: 3)), now: at(5))
         suite.expect(closed == [.discard(folder), .showPill(.hidden)] && !finalizes(closed) && machine.phase == .idle,
-                     "and deletes its folder once the file is closed: nothing is finalized or kept")
+                     "and sends its folder to the Trash once the file is closed: nothing is finalized or kept")
 
         var late = recording(.always, candidate(policy: .always))
         suite.expect(late.handle(.tick, now: at(4)).isEmpty && late.handle(.tick, now: at(5)) == [.hideUndo],
@@ -263,7 +263,7 @@ enum ForkMeetingDetectionTests {
         var quitting = recording(.always, candidate(policy: .always))
         quitting.handle(.cancelAutoStart, now: at(2))
         suite.expect(quitting.handle(.appWillTerminate, now: at(3)) == [.discard(folder)],
-                     "a cancelled recording is deleted even when the app quits, never recovered at the next launch")
+                     "a cancelled recording goes to the Trash even when the app quits, never recovered at the next launch")
 
         var manual = recording(.offered)
         suite.expect(manual.handle(.cancelAutoStart, now: at(1)).isEmpty,
