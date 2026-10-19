@@ -104,6 +104,15 @@ enum ForkMeetingIsland {
         return measured.isFinite ? max(minimum, measured.rounded(.up)) : minimum
     }
 
+    /// The island's panel takes the keyboard while open (`acceptsKeyFocus`),
+    /// so a click on our card made it key. After a button that leaves the
+    /// card up ("Copy Announcement"), the keyboard goes back, so typing lands
+    /// in the call again; the buttons that take the card away give it back
+    /// with the island's collapse.
+    static func giveKeyboardBack() {
+        NotchService.shared.resignPanelKey()
+    }
+
     /// Takes the card away; never calls its `close`.
     static func remove(id: UUID) {
         NotchService.shared.removeCapture(id: id)

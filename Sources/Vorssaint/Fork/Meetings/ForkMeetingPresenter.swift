@@ -516,6 +516,7 @@ final class ForkMeetingPresenter {
             return
         }
         Self.write(announcement)
+        if offerUI.islandCard != nil || cardID != nil { ForkMeetingIsland.giveKeyboardBack() }
         notice(.announcementCopied)
         announce(text.voiceAnnouncementCopied)
     }
