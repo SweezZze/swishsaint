@@ -156,6 +156,9 @@ final class ForkWebhookTransfer: NSObject, URLSessionDataDelegate, @unchecked Se
         var errorCode: Int?
         /// The bytes of the body that left.
         var sent: Int64 = 0
+        /// The answer, up to the cap: only Immich reads it (the id of the
+        /// asset it made).
+        var body = Data()
     }
 
     private let origin: URL
@@ -258,7 +261,9 @@ final class ForkWebhookTransfer: NSObject, URLSessionDataDelegate, @unchecked Se
     func urlSession(_ session: URLSession, dataTask: URLSessionDataTask, didReceive data: Data) {
         let over = lock.withLock { () -> Bool in
             received += data.count
-            return received > ForkWebhookLimits.maximumResponseBytes
+            guard received <= ForkWebhookLimits.maximumResponseBytes else { return true }
+            seen.body.append(data)
+            return false
         }
         if over { dataTask.cancel() }
     }

@@ -41,6 +41,8 @@ FORK_SOURCES=(
     Sources/Vorssaint/Fork/Gestures/ForkTrackpadModifierKeys.swift
     Sources/Vorssaint/Fork/Gestures/ForkTrackpadTuning.swift
     Sources/Vorssaint/Fork/Meetings/Export/ForkDropFolderExporter.swift
+    Sources/Vorssaint/Fork/Meetings/Export/ForkImmichStrings.swift
+    Sources/Vorssaint/Fork/Meetings/Export/ForkImmichSupport.swift
     Sources/Vorssaint/Fork/Meetings/Export/ForkMeetingExporter.swift
     Sources/Vorssaint/Fork/Meetings/Export/ForkMeetingOriginPolicy.swift
     Sources/Vorssaint/Fork/Meetings/Export/ForkWebhookSupport.swift

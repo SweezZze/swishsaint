@@ -46,6 +46,9 @@ struct ForkMeetingExportsSection: View {
                 case .webhook:
                     ForkMeetingWebhookRow(config: config, text: text) { removing = config }
                         .disabled(exports.listChanged)
+                case .immich:
+                    ForkMeetingImmichRow(config: config, text: text) { removing = config }
+                        .disabled(exports.listChanged)
                 }
             }
             HStack {
@@ -87,7 +90,7 @@ struct ForkMeetingExportsSection: View {
 
 /// The settings every exporter has: when it sends, the Meet code, the
 /// notes, remove.
-private struct ForkMeetingExporterCommon: View {
+struct ForkMeetingExporterCommon: View {
     let config: ForkMeetingExporterConfig
     let text: ForkMeetingStrings
     let remove: () -> Void
@@ -105,7 +108,7 @@ private struct ForkMeetingExporterCommon: View {
         } label: {
             Text(text.exportMode)
         }
-        if config.kind == .webhook, config.mode == .automatic, !exports.hasSecret(config) {
+        if config.usesAddress, config.mode == .automatic, !exports.hasSecret(config) {
             Text(text.exportAutomaticNoSecret)
                 .font(.caption)
                 .foregroundStyle(.orange)
@@ -144,12 +147,12 @@ private struct ForkMeetingExporterCommon: View {
     }
 }
 
-private struct ForkMeetingExporterHeader: View {
+struct ForkMeetingExporterHeader: View {
     let config: ForkMeetingExporterConfig
     let text: ForkMeetingStrings
 
     var body: some View {
-        Label(config.kind.name(text), systemImage: config.kind == .dropFolder ? "folder" : "network")
+        Label(config.kind.name(text), systemImage: config.kind.symbol)
             .font(.headline)
             .padding(.top, 6)
             .accessibilityAddTraits(.isHeader)
@@ -169,6 +172,10 @@ private struct ForkMeetingDropFolderRow: View {
     var body: some View {
         ForkMeetingExporterHeader(config: config, text: text)
         Text(text.dropFolderCaption)
+            .font(.caption)
+            .foregroundStyle(.secondary)
+            .fixedSize(horizontal: false, vertical: true)
+        Text(ForkImmichStrings.strings(L10n.shared.language).driveTip)
             .font(.caption)
             .foregroundStyle(.secondary)
             .fixedSize(horizontal: false, vertical: true)

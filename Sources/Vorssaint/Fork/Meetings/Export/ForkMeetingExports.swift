@@ -216,7 +216,15 @@ final class ForkMeetingExports: ObservableObject {
             return ForkDropFolderExporter(config: config, libraryRoot: store.root())
         case .webhook:
             return webhook(config)
+        case .immich:
+            return immich(config)
         }
+    }
+
+    private func immich(_ config: ForkMeetingExporterConfig) -> ForkImmichExporter {
+        let keychain = self.keychain
+        return ForkImmichExporter(config: config, secret: { keychain.read($0) }, hasSecret: { keychain.exists($0) },
+                                  trust: trust)
     }
 
     private func webhook(_ config: ForkMeetingExporterConfig) -> ForkWebhookExporter {
@@ -272,7 +280,7 @@ final class ForkMeetingExports: ObservableObject {
     func saveWebhook(_ id: String, address: String, secret: String, confirmed: Bool,
                      done: @escaping (AddressChange) -> Void) {
         guard !listChanged else { return done(.listUnconfirmed) }
-        guard let config = config(id), config.kind == .webhook else { return done(.saved) }
+        guard let config = config(id), config.usesAddress else { return done(.saved) }
         let verdict = ForkMeetingOriginPolicy.destination(address)
         guard case let .approved(url, origin) = verdict else { return done(.refused(verdict.refusal ?? .unreadable)) }
         let oldAccount = config.origin.flatMap { $0 != origin.name ? config.secretAccount : nil }
@@ -512,7 +520,9 @@ final class ForkMeetingExports: ObservableObject {
                 let url = temporary.appendingPathComponent(name)
                 let modified = (try? manager.attributesOfItem(atPath: url.path))?[.modificationDate] as? Date
                 let body = name.hasSuffix(".body")
-                    && ForkMeetingLeftovers.removable(name, prefix: ForkWebhookExporter.bodyPrefix, pid: pid, modified: modified, now: now)
+                    && [ForkWebhookExporter.bodyPrefix, ForkImmichExporter.bodyPrefix].contains {
+                        ForkMeetingLeftovers.removable(name, prefix: $0, pid: pid, modified: modified, now: now)
+                    }
                 let staged = ForkMeetingLeftovers.removable(name, prefix: Self.stagingPrefix, pid: pid, modified: modified, now: now)
                 if body || staged { try? manager.removeItem(at: url) }
             }
@@ -563,7 +573,9 @@ final class ForkMeetingExports: ObservableObject {
         }
         let transcript = ForkMeetingExportDocument.transcript(in: names, folderName: name, video: contents.video)
             .map { folder.appendingPathComponent($0) }
-        return ForkMeetingExportPackage(folderName: name, sidecar: sidecar, audio: audio, transcript: transcript)
+        var package = ForkMeetingExportPackage(folderName: name, sidecar: sidecar, audio: audio, transcript: transcript)
+        package.video = contents.video.map { folder.appendingPathComponent($0) }
+        return package
     }
 
     // MARK: - Results
@@ -592,14 +604,21 @@ final class ForkMeetingExports: ObservableObject {
 
     /// The page's "Send a test" for a webhook saved.
     func sendTest(_ id: String) {
-        guard let config = config(id), config.kind == .webhook, !testing.contains(id) else { return }
+        guard let config = config(id), config.usesAddress, !testing.contains(id) else { return }
         testing.insert(id)
         tests[id] = nil
-        let exporter = webhook(config)
+        let test: () async throws -> Int
+        if config.kind == .immich {
+            let exporter = immich(config)
+            test = { try await exporter.sendTest() }
+        } else {
+            let exporter = webhook(config)
+            test = { try await exporter.sendTest() }
+        }
         queue.async { [self] in
             let result: Result<Int, ForkMeetingExportFailure>
             do {
-                result = .success(try Self.blocking { try await exporter.sendTest() })
+                result = .success(try Self.blocking(test))
             } catch {
                 result = .failure(error as? ForkMeetingExportFailure ?? .network)
             }
