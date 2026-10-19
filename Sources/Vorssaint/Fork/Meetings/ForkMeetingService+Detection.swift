@@ -172,8 +172,9 @@ extension ForkMeetingService {
         }
     }
 
-    /// The input the meeting's app records from, for "Meeting microphone
-    /// (auto)"; `nil` gives the system's.
+    /// The input the meeting's app records from (a capture device's unique
+    /// ID), for "Meeting microphone (auto)", for the recording and for what
+    /// the offer says it records; `nil` gives the system's.
     func meetingMicrophone(for meeting: ForkMeetingCandidate?) -> String? {
         ForkMeetingDetectionSupport.meetingInput(for: meeting, in: detection.lastMicrophones)
     }
@@ -238,45 +239,6 @@ extension ForkMeetingService {
         pasteboard.clearContents()
         pasteboard.setString(announcement, forType: .string)
         presenter.say(text.voiceAnnouncementCopied)
-    }
-
-    /// What the offer will record, "Google Chrome window · Google Chrome
-    /// sound · MacBook Pro Microphone mic", from the page's choices as they
-    /// are now.
-    func offerCapture(for offer: ForkMeetingOffer) -> String {
-        let text = ForkMeetingStrings.current
-        let candidate = offer.candidate
-        let settings = ForkMeetingDetectionSupport.settings(captureSettings(), for: candidate)
-        let appName = NSRunningApplication(processIdentifier: candidate.pid)?.localizedName
-            ?? NSRunningApplication.runningApplications(withBundleIdentifier: candidate.appBundle).first?.localizedName
-            ?? candidate.providerName
-        let sound: String?
-        switch settings.systemAudio {
-        case .app: sound = appName
-        case .all: sound = text.offerWholeMac
-        case .off: sound = nil
-        }
-        return ForkMeetingDetectionSupport.offerCapture(window: appName, sound: sound,
-                                                        microphone: microphoneName(settings, meeting: candidate),
-                                                        strings: text)
-    }
-
-    private func microphoneName(_ settings: ForkMeetingCaptureSettings, meeting: ForkMeetingCandidate) -> String? {
-        let device: AVCaptureDevice?
-        switch ForkMeetingMicrophoneChoice(stored: settings.microphone) {
-        case .off:
-            return nil
-        case .meeting:
-            device = meetingMicrophone(for: meeting).flatMap(AVCaptureDevice.init(uniqueID:))
-                ?? ForkDictationAudioDevices.captureDevice(for: ForkDictationAudioDevices.systemChoice)
-        case .system:
-            device = ForkDictationAudioDevices.captureDevice(for: ForkDictationAudioDevices.systemChoice)
-        case .builtIn:
-            device = ForkDictationAudioDevices.captureDevice(for: ForkDictationAudioDevices.builtInChoice)
-        case let .device(uid):
-            device = ForkDictationAudioDevices.captureDevice(for: uid)
-        }
-        return device?.localizedName
     }
 
     /// "Record" and "Always" gather what the machine needs like a start by

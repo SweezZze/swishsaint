@@ -4,8 +4,8 @@
 import Foundation
 
 /// The service's side of the detection: when it runs, when its clock
-/// ticks, which input "Meeting microphone (auto)" records, what the offer
-/// says it records, the calendar's links, and the page's words.
+/// ticks, which input "Meeting microphone (auto)" records, the calendar's
+/// links, and the page's words.
 enum ForkMeetingDetectionEffectsTests {
     typealias Machine = ForkMeetingMachine
     typealias Support = ForkMeetingDetectionSupport
@@ -21,7 +21,6 @@ enum ForkMeetingDetectionEffectsTests {
         running(suite)
         clock(suite)
         meetingMicrophone(suite)
-        offerCapture(suite)
         freeSpace(suite)
         calendarLinks(suite)
         pageTexts(suite)
@@ -87,28 +86,6 @@ enum ForkMeetingDetectionEffectsTests {
                         && Support.meetingInput(for: nil, in: [helper]) == nil
                         && Support.meetingInput(for: candidate(), in: []) == nil,
                      "another app's input, an unknown device or no meeting: the system's input")
-    }
-
-    private static func offerCapture(_ suite: TestSuite) {
-        let french = ForkMeetingStrings.strings(.fr)
-        suite.expect(Support.offerCapture(window: "Chrome", sound: "Chrome", microphone: "AirPods", strings: french)
-                        == "Fenêtre\u{00A0}: Chrome · son\u{00A0}: Chrome · micro\u{00A0}: AirPods"
-                        && Support.offerCapture(window: "Chrome", sound: french.offerWholeMac, microphone: "AirPods",
-                                                strings: french) == "Fenêtre\u{00A0}: Chrome · son\u{00A0}: tout le Mac · micro\u{00A0}: AirPods",
-                     "the offer says the window, the sound and the microphone it records")
-        suite.expect(Support.offerCapture(window: "Chrome", sound: nil, microphone: "AirPods", strings: french)
-                        == "Fenêtre\u{00A0}: Chrome · micro\u{00A0}: AirPods"
-                        && Support.offerCapture(window: "Chrome", sound: "Chrome", microphone: nil, strings: french)
-                        == "Fenêtre\u{00A0}: Chrome · son\u{00A0}: Chrome"
-                        && Support.offerCapture(window: "Chrome", sound: nil, microphone: nil, strings: french)
-                        == "Fenêtre\u{00A0}: Chrome",
-                     "a sound or a microphone turned off is left out, never named as nothing")
-        suite.expect(AppLanguage.allCases.map(ForkMeetingStrings.strings).allSatisfy { strings in
-                        let line = Support.offerCapture(window: "Chrome", sound: nil, microphone: "AirPods", strings: strings)
-                        return line.contains("Chrome") && line.contains("AirPods")
-                            && line.components(separatedBy: " · ").count == 2
-                     },
-                     "every language keeps its parts apart, so one can be left out")
     }
 
     private static func freeSpace(_ suite: TestSuite) {

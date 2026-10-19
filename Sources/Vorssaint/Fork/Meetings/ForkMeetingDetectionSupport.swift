@@ -57,18 +57,6 @@ enum ForkMeetingDetectionSupport {
         return best?.inputDevice
     }
 
-    /// What the offer records, "Chrome window · Chrome sound · AirPods mic":
-    /// the sound's app, or the whole Mac; a sound or a microphone turned off
-    /// leaves its part out. The three parts are always apart with " · ".
-    static func offerCapture(window: String, sound: String?, microphone: String?,
-                             strings: ForkMeetingStrings) -> String {
-        let parts = strings.offerCapture(window: window, sound: sound ?? "", microphone: microphone ?? "")
-            .components(separatedBy: " · ")
-        guard parts.count == 3 else { return parts.joined(separator: " · ") }
-        let kept = [parts[0], sound == nil ? nil : parts[1], microphone == nil ? nil : parts[2]]
-        return kept.compactMap { $0 }.joined(separator: " · ")
-    }
-
     /// How long a reading of the free space is trusted for an offer: the
     /// disk is watched every 15 s once a meeting records.
     static let freeSpaceLifetime: TimeInterval = 15
