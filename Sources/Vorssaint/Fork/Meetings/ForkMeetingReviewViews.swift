@@ -146,12 +146,13 @@ struct ForkMeetingReviewTranscript: View {
     private var current: Int? { ForkMeetingPlayback.current(rows, at: playback.time) }
 
     var body: some View {
-        Group {
+        // A stack, not a group: an empty group never appears, and the lines
+        // would never be read.
+        VStack(alignment: .leading, spacing: 0) {
             if source != nil, !rows.isEmpty {
                 VStack(alignment: .leading, spacing: 6) {
+                    // No title: the transcript's own row, below, has it.
                     HStack(spacing: 8) {
-                        Text(text.transcriptTitle)
-                            .font(.callout.weight(.medium))
                         Spacer(minLength: 8)
                         Toggle(text.transcriptFollow, isOn: $follows)
                             .toggleStyle(.checkbox)
@@ -188,6 +189,9 @@ struct ForkMeetingReviewTranscript: View {
                     reader.scrollTo(now, anchor: .center)
                 }
             }
+            // Read (again) with the video already started: the line said
+            // now is in sight at once.
+            .onAppear { if let current { reader.scrollTo(current, anchor: .center) } }
         }
     }
 
@@ -279,7 +283,7 @@ struct ForkMeetingSummaryRow: View {
     }
 
     var body: some View {
-        Group {
+        VStack(alignment: .leading, spacing: 0) {
             if summarizer.available || summaryURL != nil {
                 VStack(alignment: .leading, spacing: 6) {
                     HStack(alignment: .firstTextBaseline, spacing: 8) {
