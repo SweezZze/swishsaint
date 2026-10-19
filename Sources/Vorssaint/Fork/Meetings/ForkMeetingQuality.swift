@@ -92,11 +92,15 @@ enum ForkMeetingQuality: String, CaseIterable, Codable {
     /// `codec` is the one this Mac's encoder takes at this size (HEVC, else
     /// H.264), which the writer decides in the same way; the decimals follow
     /// `locale`.
-    func specification(codec: String, strings: ForkMeetingStrings, locale: Locale) -> String {
+    /// The frame rate says its unit as the official recorder does
+    /// (`recorder`), so the two pages never disagree.
+    func specification(codec: String, strings: ForkMeetingStrings, recorder: RecorderFeatureStrings,
+                       locale: Locale) -> String {
         let decimal = FloatingPointFormatStyle<Double>.number.precision(.fractionLength(1)).locale(locale)
         let megabits = (Double(videoBitRate) / 1_000_000).formatted(decimal)
         let perHour = strings.perHour(estimatedGigabytesPerHour.formatted(decimal))
-        return String(format: strings.qualitySpecFormat, "\(maximumLines)p", Rates.frameRate, codec, megabits, perHour)
+        let frames = String(format: recorder.frameRateFormat, Rates.frameRate)
+        return String(format: strings.qualitySpecFormat, "\(maximumLines)p", frames, codec, megabits, perHour)
     }
 
     /// The size the writer encodes for a source of `source` pixels: the

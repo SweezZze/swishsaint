@@ -348,7 +348,7 @@ enum ForkMeetingAudioOnlyTests {
     private static func offer(_ suite: TestSuite) {
         let line = ForkMeetingOfferText.capture(target: .audioOnly, windowApp: "Chrome", hasWindow: true, sound: .app,
                                                 soundApp: "Chrome", microphone: .named("AirPods"), strings: english)
-        suite.expect(line == "Sound only · sound:\u{00A0}Chrome · mic:\u{00A0}AirPods",
+        suite.expect(line == "No picture · sound:\u{00A0}Chrome · mic:\u{00A0}AirPods",
                      "the offer says the meeting would be recorded without picture, with its sound and microphone")
         suite.expect(ForkMeetingCaptureTarget.window.alternative == .audioOnly
                         && ForkMeetingCaptureTarget.display.alternative == .audioOnly
@@ -374,9 +374,9 @@ enum ForkMeetingAudioOnlyTests {
                      "“Sound only” fits the pill and the island in every language")
         suite.expect(all.allSatisfy { strings in
                         let line = strings.offerCaptureSoundOnly(sound: "Chrome", microphone: "AirPods")
-                        return line.contains("Chrome") && line.contains("AirPods") && line.hasPrefix(strings.soundOnly)
+                        return line.contains("Chrome") && line.contains("AirPods") && !line.hasPrefix("Chrome")
                      },
-                     "every language's offer line starts with sound only and names the sound and the microphone")
+                     "every language's offer line says there is no picture, then names the sound and the microphone")
         suite.expect(all.allSatisfy { $0.soundOnlyCaption.contains(".m4a") && $0.soundOnlyBefore144.contains("14.4") },
                      "every language says the file is an .m4a, and what changes before macOS 14.4")
         suite.expect(all.allSatisfy { $0.offerRecordSoundOnly != $0.offerRecordWithPicture

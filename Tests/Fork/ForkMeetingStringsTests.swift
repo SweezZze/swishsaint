@@ -29,9 +29,12 @@ enum ForkMeetingStringsTests {
         suite.expect(allStrings.allSatisfy { strings in fields(strings).allSatisfy { !$0.1.isEmpty } },
                      "every meetings text exists in every language")
         let english = Dictionary(uniqueKeysWithValues: fields(.enUS))
+        // Figures and units only, the frame rate's in the official
+        // recorder's words: the same in most languages.
+        let figuresOnly: Set<String> = ["qualitySpecFormat"]
         var untranslated: [String] = []
         for language in languages where language != .enUS {
-            for (label, value) in fields(.strings(language)) where value == english[label] {
+            for (label, value) in fields(.strings(language)) where value == english[label] && !figuresOnly.contains(label) {
                 untranslated.append("\(language.rawValue).\(label)")
             }
         }

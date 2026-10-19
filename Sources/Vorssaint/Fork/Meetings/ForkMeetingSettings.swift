@@ -832,6 +832,7 @@ private struct ForkMeetingCaptureSection: View {
     private var specification: String {
         let preset = ForkMeetingQuality(stored: quality)
         return preset.specification(codec: ForkMeetingQualityCodec.name(for: preset), strings: text,
+                                    recorder: FeatureStrings.recorder(l10n.language),
                                     locale: Locale(identifier: l10n.language.rawValue))
     }
 

@@ -62,18 +62,18 @@ enum ForkMeetingFinishBTests {
     private static func quality(_ suite: TestSuite) {
         let english = ForkMeetingStrings.strings(.enUS)
         let us = Locale(identifier: "en_US")
-        suite.expect(ForkMeetingQuality.standard.specification(codec: "HEVC", strings: english, locale: us)
+        suite.expect(ForkMeetingQuality.standard.specification(codec: "HEVC", strings: english, recorder: FeatureStrings.recorder(.enUS), locale: us)
                         == "1080p · 30 fps · HEVC · 1.2 Mbit/s · ~0.6 GB/h",
                      "Balanced reads 1080p, 30 fps, HEVC, 1.2 Mbit/s and its size per hour")
-        suite.expect(ForkMeetingQuality.light.specification(codec: "H.264", strings: english, locale: us)
+        suite.expect(ForkMeetingQuality.light.specification(codec: "H.264", strings: english, recorder: FeatureStrings.recorder(.enUS), locale: us)
                         .hasPrefix("720p · 30 fps · H.264 · 0.6 Mbit/s"),
                      "Light reads 720p and the codec this Mac takes")
         let french = ForkMeetingStrings.strings(.fr)
-        suite.expect(ForkMeetingQuality.high.specification(codec: "HEVC", strings: french, locale: Locale(identifier: "fr"))
+        suite.expect(ForkMeetingQuality.high.specification(codec: "HEVC", strings: french, recorder: FeatureStrings.recorder(.fr), locale: Locale(identifier: "fr"))
                         == "1080p · 30 i/s · HEVC · 2,5 Mbit/s · ~1,2 Go/h",
                      "in French the frame rate is in i/s, the decimals take a comma")
         for preset in ForkMeetingQuality.allCases {
-            let text = preset.specification(codec: "HEVC", strings: english, locale: us)
+            let text = preset.specification(codec: "HEVC", strings: english, recorder: FeatureStrings.recorder(.enUS), locale: us)
             let megabits = String(format: "%.1f", Double(preset.videoBitRate) / 1_000_000)
             suite.expect(text.contains("\(preset.maximumLines)p") && text.contains("\(ForkMeetingQuality.Rates.frameRate) ")
                             && text.contains(megabits),
@@ -81,6 +81,7 @@ enum ForkMeetingFinishBTests {
         }
         suite.expect(AppLanguage.allCases.allSatisfy { language in
                         let text = ForkMeetingQuality.standard.specification(codec: "HEVC", strings: .strings(language),
+                                                                             recorder: FeatureStrings.recorder(language),
                                                                              locale: Locale(identifier: language.rawValue))
                         return text.contains("1080") && text.contains("30") && text.contains("HEVC")
                      },
