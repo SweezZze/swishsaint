@@ -66,6 +66,7 @@ enum ForkMeetingIsland {
         case .discarded: return "trash"
         case .announcementCopied: return "doc.on.doc"
         case .askedAgain: return "arrow.uturn.backward.circle"
+        case .marked: return "star.fill"
         }
     }
 

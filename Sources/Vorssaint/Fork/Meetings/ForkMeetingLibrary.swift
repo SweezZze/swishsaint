@@ -96,6 +96,10 @@ struct ForkMeetingLibraryEntry: Equatable {
     private(set) var subtitles: String?
     /// What `meeting.json` says of the last transcription.
     private(set) var transcriptRecord: ForkMeetingTranscriptRecord?
+    /// The moments marked while recording, sorted (`ForkMeetingMarkers`).
+    private(set) var markers: [Double] = []
+    /// What `meeting.json` says of the last summary (Finish E).
+    private(set) var summaryRecord: ForkMeetingSummaryRecord?
     /// From a later version of the app, unreadable, or not written by it:
     /// shown, never written.
     let isReadOnly: Bool
@@ -171,6 +175,8 @@ struct ForkMeetingLibraryEntry: Equatable {
             isForeign = !meeting.isWrittenByMeetings
             isReadOnly = !meeting.isRewritable || isForeign
             transcriptRecord = ForkMeetingTranscriptRecord(json: meeting.transcript)
+            markers = ForkMeetingMarkers.times(meeting.markers)
+            summaryRecord = ForkMeetingSummaryRecord(json: meeting.summary)
         }
         if let startedAt {
             date = startedAt

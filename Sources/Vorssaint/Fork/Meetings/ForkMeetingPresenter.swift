@@ -348,6 +348,32 @@ final class ForkMeetingPresenter {
         }
     }
 
+    /// "Summary ready [Show]", or "Summary failed [Show]", when a summary
+    /// started on its own after a transcript ends (Finish E): like the
+    /// transcript's notice, no meeting name.
+    func showSummary(folder: URL, outcome: ForkMeetingSummarizer.Outcome) {
+        guard Thread.isMainThread else {
+            DispatchQueue.main.async { self.showSummary(folder: folder, outcome: outcome) }
+            return
+        }
+        let text = self.text
+        let done = outcome == .done
+        let title = done ? text.noticeSummaryReady : text.noticeSummaryFailed
+        announce(title)
+        let shown = present({ dismiss in
+            ForkMeetingCard(symbol: done ? "text.append" : "exclamationmark.bubble.fill", tint: done ? .green : .orange,
+                            title: title, lines: [],
+                            actions: [ForkMeetingCard.Action(title: text.actionShowMeeting, prominent: true) {
+                                ForkMeetingLibraryWindow.shared.show(folder: folder)
+                                dismiss()
+                            }])
+        }, height: Self.savedCardHeight, hold: Self.savedHold)
+        if ForkMeetingServiceSupport.notifies(shownInIsland: shown.island, shownInBubble: shown.bubble,
+                                              canNotify: Self.canNotify) {
+            Notifier.post(title: title, body: "")
+        }
+    }
+
     /// Said to VoiceOver only: what the pill shows without a word VoiceOver
     /// would hear change (the picture frozen).
     func say(_ message: String) {
@@ -559,6 +585,8 @@ final class ForkMeetingPresenter {
         case .resumed, .microphone, .displayChanged, .neverOffered, .neverOfferedWebCalls, .alwaysChosen,
              .announcementCopied, .askedAgain:
             tint = .accentColor
+        case .marked:
+            tint = .yellow
         case let .discarded(outcome):
             tint = outcome == .kept ? .orange : .secondary
         }

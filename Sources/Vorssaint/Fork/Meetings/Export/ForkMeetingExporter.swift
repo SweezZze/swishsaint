@@ -62,6 +62,9 @@ struct ForkMeetingExporterConfig: Equatable, Identifiable {
     var includesMeetCode = false
     /// The notes are the person's own: left out unless asked.
     var includesNotes = false
+    /// The summary Apple Intelligence wrote on this Mac: left out unless
+    /// asked (Finish E).
+    var includesSummary = false
     /// Drop folder: the folder's path, as chosen in the panel.
     var folder: String?
     /// Webhook: the address as saved.
@@ -72,13 +75,14 @@ struct ForkMeetingExporterConfig: Equatable, Identifiable {
     var origin: String?
 
     init(id: String = UUID().uuidString, kind: ForkMeetingExportKind, mode: ForkMeetingExportMode = .manual,
-         includesMeetCode: Bool = false, includesNotes: Bool = false, folder: String? = nil, address: String? = nil,
-         origin: String? = nil) {
+         includesMeetCode: Bool = false, includesNotes: Bool = false, includesSummary: Bool = false,
+         folder: String? = nil, address: String? = nil, origin: String? = nil) {
         self.id = id
         self.kind = kind
         self.mode = mode
         self.includesMeetCode = includesMeetCode
         self.includesNotes = includesNotes
+        self.includesSummary = includesSummary
         self.folder = folder
         self.address = address
         self.origin = origin
@@ -188,7 +192,7 @@ extension ForkMeetingExporterList {
 
 extension ForkMeetingExporterConfig: Codable {
     private enum CodingKeys: String, CodingKey {
-        case id, kind, mode, includesMeetCode, includesNotes, folder, address, origin
+        case id, kind, mode, includesMeetCode, includesNotes, includesSummary, folder, address, origin
     }
 
     /// Lenient: a missing or unknown mode is manual, a missing option off.
@@ -202,6 +206,7 @@ extension ForkMeetingExporterConfig: Codable {
         mode = ((try? container.decodeIfPresent(ForkMeetingExportMode.self, forKey: .mode)) ?? nil) ?? .manual
         includesMeetCode = ((try? container.decodeIfPresent(Bool.self, forKey: .includesMeetCode)) ?? nil) ?? false
         includesNotes = ((try? container.decodeIfPresent(Bool.self, forKey: .includesNotes)) ?? nil) ?? false
+        includesSummary = ((try? container.decodeIfPresent(Bool.self, forKey: .includesSummary)) ?? nil) ?? false
         folder = (try? container.decodeIfPresent(String.self, forKey: .folder)) ?? nil
         address = (try? container.decodeIfPresent(String.self, forKey: .address)) ?? nil
         origin = (try? container.decodeIfPresent(String.self, forKey: .origin)) ?? nil
@@ -255,14 +260,17 @@ enum ForkMeetingExporterList {
 }
 
 /// What a meeting holds for an export, gathered once from its folder: its
-/// `meeting.json`, its audio as an M4A ready to be read, and its transcript
-/// when there is one.
+/// `meeting.json`, its audio as an M4A ready to be read, its transcript
+/// when there is one, and its summary's text when there is one.
 struct ForkMeetingExportPackage {
     /// The meeting folder's name.
     let folderName: String
     let sidecar: ForkMeetingSidecar
     let audio: URL
     let transcript: URL?
+    /// The summary written on this Mac; sent only when the exporter asks
+    /// (`includesSummary`).
+    var summary: String? = nil
 
     /// The name of what is sent: the folder's, without the Google Meet code
     /// unless asked (`ForkMeetingExportDocument.name`).
@@ -567,8 +575,10 @@ enum ForkMeetingAutomaticExport {
 ///
 /// - Always: `id`, `schema`, `title` (without the Google Meet code unless
 ///   asked), `startedAt`, `endedAt`, `recordedSeconds`, `provider`,
-///   `origin`, `pauses`, and `transcript` when there is one.
-/// - Only when asked: `notes`, `meetCode`.
+///   `origin`, `pauses`, `markers` (each one's time only), and `transcript`
+///   when there is one.
+/// - Only when asked: `notes`, `summary` (the Markdown written on this Mac,
+///   when there is one), `meetCode`.
 /// - Never: the microphone's name, the app, the calendar event, the
 ///   history of the exports, a path.
 enum ForkMeetingExportDocument {
@@ -576,19 +586,29 @@ enum ForkMeetingExportDocument {
 
     /// Every key that may leave, in the order of the list above.
     static let fields = ["id", "schema", "title", "startedAt", "endedAt", "recordedSeconds", "provider", "origin",
-                         "pauses", "transcript", "notes", "meetCode"]
+                         "pauses", "markers", "transcript", "notes", "summary", "meetCode"]
     /// The keys of each pause.
     static let pauseFields = ["at", "seconds", "reason"]
+    /// The keys of each marker.
+    static let markerFields = ["at"]
 
-    static func json(_ sidecar: ForkMeetingSidecar, includesMeetCode: Bool, includesNotes: Bool) throws -> Data {
+    static func json(_ sidecar: ForkMeetingSidecar, includesMeetCode: Bool, includesNotes: Bool,
+                     includesSummary: Bool = false, summary: String? = nil) throws -> Data {
+        let times = ForkMeetingMarkers.times(sidecar.markers)
+        let sharedSummary = includesSummary ? summary.flatMap { text -> String? in
+            let kept = includesMeetCode ? text : removingMeetCodes(text, meetCode: sidecar.meetCode)
+            return kept.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : kept
+        } : nil
         let shared = Shared(
             id: sidecar.id, schema: sidecar.schema,
             title: title(sidecar.title, meetCode: sidecar.meetCode, includesMeetCode: includesMeetCode),
             startedAt: sidecar.startedAt, endedAt: sidecar.endedAt, recordedSeconds: sidecar.recordedSeconds,
             provider: sidecar.provider, origin: sidecar.origin,
             pauses: sidecar.pauses?.map { Shared.Pause(at: $0.at, seconds: $0.seconds, reason: $0.reason) },
+            markers: sidecar.markers == nil ? nil : times.map { Shared.Marker(at: $0) },
             transcript: transcript(sidecar.transcript),
             notes: includesNotes ? sidecar.notes.map { includesMeetCode ? $0 : removingMeetCodes($0, meetCode: sidecar.meetCode) } : nil,
+            summary: sharedSummary,
             meetCode: includesMeetCode ? sidecar.meetCode : nil)
         return try ForkMeetingSidecar.encoder().encode(shared)
     }
@@ -601,6 +621,10 @@ enum ForkMeetingExportDocument {
             let reason: ForkMeetingPauseReason?
         }
 
+        struct Marker: Encodable {
+            let at: Double
+        }
+
         let id: UUID?
         let schema: Int?
         let title: String?
@@ -610,8 +634,10 @@ enum ForkMeetingExportDocument {
         let provider: String?
         let origin: ForkMeetingOrigin?
         let pauses: [Pause]?
+        let markers: [Marker]?
         let transcript: ForkMeetingJSON?
         let notes: String?
+        let summary: String?
         let meetCode: String?
     }
 

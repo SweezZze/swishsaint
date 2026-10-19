@@ -855,6 +855,68 @@ struct ForkMeetingStrings {
     let barMarker: String
     /// Words a search of the Command Bar may type, comma-separated.
     let barKeywords: String
+
+    // MARK: Finish E
+
+    /// ★ in the pill and the island's live card: 28 characters at most.
+    let pillMark: String
+    /// The notice of a moment marked: 28 characters at most; its time comes under it.
+    let noticeMarked: String
+    /// %@: the time marked ("00:12:03"), said to VoiceOver.
+    let voiceMarkedFormat: String
+    let markersTitle: String
+    /// %@: the time of a marked moment, for its button.
+    let markerLabelFormat: String
+    let markerPlayHelp: String
+    let playbackSpeed: String
+    /// The transcript keeps the line said in sight while the video plays.
+    let transcriptFollow: String
+    let actionCopyTranscript: String
+    let transcriptCopied: String
+    let transcriptLineHelp: String
+    /// The detail's row, and the word after the title in the file.
+    let summaryTitle: String
+    let actionSummarize: String
+    let actionResummarize: String
+    let actionCopySummary: String
+    let actionOpenSummary: String
+    let summaryCopied: String
+    /// %@: the share done ("42 %").
+    let summaryProgressFormat: String
+    let summaryCaption: String
+    let summaryNeedsTranscript: String
+    let summaryFailedGeneric: String
+    let summaryLanguageUnsupported: String
+    let summaryRefused: String
+    let summaryUnavailable: String
+    /// Under the summary, and at the top of its file, when a part was left out.
+    let summaryPartial: String
+    let summarizeAutomatically: String
+    let summarizeCaption: String
+    /// The notice of an automatic summary: 28 characters at most.
+    let noticeSummaryReady: String
+    let noticeSummaryFailed: String
+    /// What follows the video's name in the file's name ("… summary.md").
+    let summaryFileWord: String
+    /// The file's three sections, what an empty one says, and its last line.
+    let summaryHeadingPoints: String
+    let summaryHeadingDecisions: String
+    let summaryHeadingActions: String
+    let summaryHeadingNone: String
+    let summaryFooter: String
+    let exportIncludeSummary: String
+    let exportIncludeSummaryCaption: String
+
+    func voiceMarked(_ clock: String) -> String { String(format: voiceMarkedFormat, clock) }
+    func markerLabel(_ clock: String) -> String { String(format: markerLabelFormat, clock) }
+    func summaryProgress(_ share: String) -> String { String(format: summaryProgressFormat, share) }
+
+    /// The summary file's words, in this language.
+    var summaryHeadings: ForkMeetingSummary.Headings {
+        ForkMeetingSummary.Headings(title: summaryTitle, points: summaryHeadingPoints, decisions: summaryHeadingDecisions,
+                                    actions: summaryHeadingActions, none: summaryHeadingNone, partial: summaryPartial,
+                                    footer: summaryFooter)
+    }
 }
 
 extension ForkMeetingStrings {
@@ -1125,7 +1187,7 @@ extension ForkMeetingStrings {
         offerMainWindowFormat: "%@ (main window)",
         // MARK: Exports
         exportsTitle: "Exports",
-        exportsCaption: "Nothing is exported until you add an exporter. Only this leaves: the audio (M4A), the transcript when there is one, and a meeting.json holding only id, schema, title (without the Google Meet code unless meetCode is on), startedAt, endedAt, recordedSeconds, provider, origin, pauses and transcript, plus notes and meetCode if you turn them on; never the microphone, the app, the calendar event, the history of the exports nor a path. A drop folder copies it into a folder; a webhook sends it to the HTTPS address you choose.",
+        exportsCaption: "Nothing is exported until you add an exporter. Only this leaves: the audio (M4A), the transcript when there is one, and a meeting.json holding only id, schema, title (without the Google Meet code unless meetCode is on), startedAt, endedAt, recordedSeconds, provider, origin, pauses, markers and transcript, plus notes, summary and meetCode if you turn them on; never the microphone, the app, the calendar event, the history of the exports nor a path. A drop folder copies it into a folder; a webhook sends it to the HTTPS address you choose.",
         exportsAdd: "Add",
         exportKindDropFolder: "Drop folder",
         exportKindWebhook: "HTTPS webhook",
@@ -1339,7 +1401,45 @@ extension ForkMeetingStrings {
         barPause: "Pause the Meeting Recording",
         barResume: "Resume the Meeting Recording",
         barMarker: "Mark This Moment in the Meeting",
-        barKeywords: "meeting, recording, record, call, video call, pause, stop, marker"
+        barKeywords: "meeting, recording, record, call, video call, pause, stop, marker",
+        // MARK: Finish E
+        pillMark: "Mark this moment",
+        noticeMarked: "Moment marked",
+        voiceMarkedFormat: "Moment marked at %@.",
+        markersTitle: "Marked moments",
+        markerLabelFormat: "Marked moment, %@",
+        markerPlayHelp: "Play from just before this moment",
+        playbackSpeed: "Playback speed",
+        transcriptFollow: "Follow the video",
+        actionCopyTranscript: "Copy Transcript",
+        transcriptCopied: "Transcript copied.",
+        transcriptLineHelp: "Plays the meeting from this line.",
+        summaryTitle: "Summary",
+        actionSummarize: "Summarize on This Mac",
+        actionResummarize: "Summarize Again",
+        actionCopySummary: "Copy Summary",
+        actionOpenSummary: "Open Summary",
+        summaryCopied: "Summary copied.",
+        summaryProgressFormat: "Summarizing… %@",
+        summaryCaption: "Apple Intelligence writes the key points, the decisions and the next steps from the transcript, in the meeting’s language, on this Mac: nothing is sent.",
+        summaryNeedsTranscript: "Transcribe the meeting first: the summary is written from its transcript.",
+        summaryFailedGeneric: "The summary failed. The meeting and its transcript are untouched: try again.",
+        summaryLanguageUnsupported: "Apple Intelligence does not write this meeting’s language yet.",
+        summaryRefused: "Apple Intelligence declined to summarize this meeting.",
+        summaryUnavailable: "Apple Intelligence is not available on this Mac right now. Check that it is turned on in System Settings.",
+        summaryPartial: "Apple Intelligence left out part of the meeting: this summary is partial.",
+        summarizeAutomatically: "Summarize after the transcript",
+        summarizeCaption: "Apple Intelligence writes the key points, the decisions and the next steps beside the video, in a .md, in the meeting’s language. On this Mac: nothing is sent.",
+        noticeSummaryReady: "Summary ready",
+        noticeSummaryFailed: "Summary failed",
+        summaryFileWord: "summary",
+        summaryHeadingPoints: "Key points",
+        summaryHeadingDecisions: "Decisions",
+        summaryHeadingActions: "Next steps",
+        summaryHeadingNone: "Nothing noted.",
+        summaryFooter: "Written on this Mac by Apple Intelligence from the transcript. It can be wrong: check it against the recording.",
+        exportIncludeSummary: "Include the summary",
+        exportIncludeSummaryCaption: "The summary written on this Mac, when there is one, goes in meeting.json as summary. Otherwise it stays on this Mac."
     )
 }
 
@@ -1611,7 +1711,7 @@ extension ForkMeetingStrings {
         offerMainWindowFormat: "%@ (janela principal)",
         // MARK: Exports
         exportsTitle: "Exportações",
-        exportsCaption: "Nada é exportado até você adicionar um exportador. Só isto sai: o áudio (M4A), a transcrição quando houver e um meeting.json só com id, schema, title (sem o código do Google Meet, a menos que meetCode esteja ativado), startedAt, endedAt, recordedSeconds, provider, origin, pauses e transcript, mais notes e meetCode se você os ativar; nunca o microfone, o app, o evento do calendário, o histórico das exportações nem um caminho. Uma pasta de entrega copia tudo para uma pasta; um webhook envia tudo para o endereço HTTPS escolhido.",
+        exportsCaption: "Nada é exportado até você adicionar um exportador. Só isto sai: o áudio (M4A), a transcrição quando houver e um meeting.json só com id, schema, title (sem o código do Google Meet, a menos que meetCode esteja ativado), startedAt, endedAt, recordedSeconds, provider, origin, pauses, markers e transcript, mais notes, summary e meetCode se você os ativar; nunca o microfone, o app, o evento do calendário, o histórico das exportações nem um caminho. Uma pasta de entrega copia tudo para uma pasta; um webhook envia tudo para o endereço HTTPS escolhido.",
         exportsAdd: "Adicionar",
         exportKindDropFolder: "Pasta de entrega",
         exportKindWebhook: "Webhook HTTPS",
@@ -1825,7 +1925,45 @@ extension ForkMeetingStrings {
         barPause: "Pausar a gravação da reunião",
         barResume: "Retomar a gravação da reunião",
         barMarker: "Marcar este momento da reunião",
-        barKeywords: "reunião, gravação, gravar, chamada, videochamada, pausa, parar, marcador"
+        barKeywords: "reunião, gravação, gravar, chamada, videochamada, pausa, parar, marcador",
+        // MARK: Finish E
+        pillMark: "Marcar este momento",
+        noticeMarked: "Momento marcado",
+        voiceMarkedFormat: "Momento marcado em %@.",
+        markersTitle: "Momentos marcados",
+        markerLabelFormat: "Momento marcado, %@",
+        markerPlayHelp: "Reproduzir desde pouco antes deste momento",
+        playbackSpeed: "Velocidade de reprodução",
+        transcriptFollow: "Acompanhar o vídeo",
+        actionCopyTranscript: "Copiar transcrição",
+        transcriptCopied: "Transcrição copiada.",
+        transcriptLineHelp: "Reproduz a reunião a partir desta linha.",
+        summaryTitle: "Resumo",
+        actionSummarize: "Resumir neste Mac",
+        actionResummarize: "Resumir de novo",
+        actionCopySummary: "Copiar resumo",
+        actionOpenSummary: "Abrir resumo",
+        summaryCopied: "Resumo copiado.",
+        summaryProgressFormat: "Resumindo… %@",
+        summaryCaption: "A Apple Intelligence escreve os pontos-chave, as decisões e os próximos passos a partir da transcrição, no idioma da reunião, neste Mac: nada é enviado.",
+        summaryNeedsTranscript: "Transcreva a reunião primeiro: o resumo é escrito a partir da transcrição.",
+        summaryFailedGeneric: "O resumo falhou. A reunião e a transcrição continuam intactas: tente de novo.",
+        summaryLanguageUnsupported: "A Apple Intelligence ainda não escreve no idioma desta reunião.",
+        summaryRefused: "A Apple Intelligence recusou resumir esta reunião.",
+        summaryUnavailable: "A Apple Intelligence não está disponível neste Mac agora. Verifique se ela está ativada nos Ajustes do Sistema.",
+        summaryPartial: "A Apple Intelligence deixou de fora parte da reunião: este resumo é parcial.",
+        summarizeAutomatically: "Resumir após a transcrição",
+        summarizeCaption: "A Apple Intelligence escreve os pontos-chave, as decisões e os próximos passos ao lado do vídeo, em um .md, no idioma da reunião. Neste Mac: nada é enviado.",
+        noticeSummaryReady: "Resumo pronto",
+        noticeSummaryFailed: "Falha no resumo",
+        summaryFileWord: "resumo",
+        summaryHeadingPoints: "Pontos-chave",
+        summaryHeadingDecisions: "Decisões",
+        summaryHeadingActions: "Próximos passos",
+        summaryHeadingNone: "Nada anotado.",
+        summaryFooter: "Escrito neste Mac pela Apple Intelligence a partir da transcrição. Pode conter erros: confira com a gravação.",
+        exportIncludeSummary: "Incluir o resumo",
+        exportIncludeSummaryCaption: "O resumo escrito neste Mac, quando houver, vai no meeting.json como summary. Caso contrário, fica neste Mac."
     )
 }
 
@@ -2097,7 +2235,7 @@ extension ForkMeetingStrings {
         offerMainWindowFormat: "%@ (ana pencere)",
         // MARK: Exports
         exportsTitle: "Dışa aktarımlar",
-        exportsCaption: "Bir dışa aktarıcı eklenene kadar hiçbir şey dışa aktarılmaz. Yalnızca şunlar gider: ses (M4A), varsa döküm ve yalnızca id, schema, title (meetCode açık değilse Google Meet kodu olmadan), startedAt, endedAt, recordedSeconds, provider, origin, pauses ve transcript içeren bir meeting.json; açarsanız notes ve meetCode da. Mikrofon, uygulama, takvim etkinliği, dışa aktarma geçmişi ve dosya yolları asla gitmez. Bırakma klasörü bunları bir klasöre kopyalar; webhook seçtiğiniz HTTPS adresine gönderir.",
+        exportsCaption: "Bir dışa aktarıcı eklenene kadar hiçbir şey dışa aktarılmaz. Yalnızca şunlar gider: ses (M4A), varsa döküm ve yalnızca id, schema, title (meetCode açık değilse Google Meet kodu olmadan), startedAt, endedAt, recordedSeconds, provider, origin, pauses, markers ve transcript içeren bir meeting.json; açarsanız notes, summary ve meetCode da. Mikrofon, uygulama, takvim etkinliği, dışa aktarma geçmişi ve dosya yolları asla gitmez. Bırakma klasörü bunları bir klasöre kopyalar; webhook seçtiğiniz HTTPS adresine gönderir.",
         exportsAdd: "Ekle",
         exportKindDropFolder: "Bırakma klasörü",
         exportKindWebhook: "HTTPS Webhook",
@@ -2311,7 +2449,45 @@ extension ForkMeetingStrings {
         barPause: "Toplantı kaydını duraklat",
         barResume: "Toplantı kaydını sürdür",
         barMarker: "Toplantının bu anını işaretle",
-        barKeywords: "toplantı, kayıt, kaydet, görüşme, görüntülü görüşme, duraklat, durdur, işaret"
+        barKeywords: "toplantı, kayıt, kaydet, görüşme, görüntülü görüşme, duraklat, durdur, işaret",
+        // MARK: Finish E
+        pillMark: "Bu anı işaretle",
+        noticeMarked: "An işaretlendi",
+        voiceMarkedFormat: "%@ anı işaretlendi.",
+        markersTitle: "İşaretlenen anlar",
+        markerLabelFormat: "İşaretlenen an, %@",
+        markerPlayHelp: "Bu anın biraz öncesinden oynat",
+        playbackSpeed: "Oynatma hızı",
+        transcriptFollow: "Videoyu takip et",
+        actionCopyTranscript: "Dökümü Kopyala",
+        transcriptCopied: "Döküm kopyalandı.",
+        transcriptLineHelp: "Toplantıyı bu satırdan oynatır.",
+        summaryTitle: "Özet",
+        actionSummarize: "Bu Mac’te Özetle",
+        actionResummarize: "Yeniden Özetle",
+        actionCopySummary: "Özeti Kopyala",
+        actionOpenSummary: "Özeti Aç",
+        summaryCopied: "Özet kopyalandı.",
+        summaryProgressFormat: "Özetleniyor… %@",
+        summaryCaption: "Apple Intelligence önemli noktaları, kararları ve sonraki adımları dökümden, toplantının dilinde, bu Mac’te yazar: hiçbir şey gönderilmez.",
+        summaryNeedsTranscript: "Önce toplantının dökümünü alın: özet, dökümünden yazılır.",
+        summaryFailedGeneric: "Özet oluşturulamadı. Toplantı ve dökümü olduğu gibi duruyor: yeniden deneyin.",
+        summaryLanguageUnsupported: "Apple Intelligence bu toplantının dilinde henüz yazamıyor.",
+        summaryRefused: "Apple Intelligence bu toplantıyı özetlemeyi reddetti.",
+        summaryUnavailable: "Apple Intelligence şu anda bu Mac’te kullanılamıyor. Sistem Ayarları’nda açık olduğunu denetleyin.",
+        summaryPartial: "Apple Intelligence toplantının bir bölümünü dışarıda bıraktı: bu özet eksik.",
+        summarizeAutomatically: "Dökümden sonra özetle",
+        summarizeCaption: "Apple Intelligence önemli noktaları, kararları ve sonraki adımları videonun yanına, bir .md dosyasına, toplantının dilinde yazar. Bu Mac’te: hiçbir şey gönderilmez.",
+        noticeSummaryReady: "Özet hazır",
+        noticeSummaryFailed: "Özet oluşturulamadı",
+        summaryFileWord: "özet",
+        summaryHeadingPoints: "Önemli noktalar",
+        summaryHeadingDecisions: "Kararlar",
+        summaryHeadingActions: "Sonraki adımlar",
+        summaryHeadingNone: "Not alınan bir şey yok.",
+        summaryFooter: "Bu Mac’te Apple Intelligence tarafından dökümden yazıldı. Hatalı olabilir: kayıtla karşılaştırın.",
+        exportIncludeSummary: "Özeti dahil et",
+        exportIncludeSummaryCaption: "Bu Mac’te yazılan özet, varsa, meeting.json içinde summary olarak gider. Yoksa bu Mac’te kalır."
     )
 }
 
@@ -2583,7 +2759,7 @@ extension ForkMeetingStrings {
         offerMainWindowFormat: "%@ (главное окно)",
         // MARK: Exports
         exportsTitle: "Экспорт",
-        exportsCaption: "Пока вы не добавите экспорт, ничего не экспортируется. Уходит только это: звук (M4A), расшифровка, если она есть, и meeting.json, где есть лишь id, schema, title (без кода Google Meet, если не включён meetCode), startedAt, endedAt, recordedSeconds, provider, origin, pauses и transcript, а notes и meetCode — только если вы их включите; никогда — микрофон, приложение, событие календаря, история экспорта или путь. Папка выгрузки копирует всё это в папку; веб-хук отправляет на выбранный вами адрес HTTPS.",
+        exportsCaption: "Пока вы не добавите экспорт, ничего не экспортируется. Уходит только это: звук (M4A), расшифровка, если она есть, и meeting.json, где есть лишь id, schema, title (без кода Google Meet, если не включён meetCode), startedAt, endedAt, recordedSeconds, provider, origin, pauses, markers и transcript, а notes, summary и meetCode — только если вы их включите; никогда — микрофон, приложение, событие календаря, история экспорта или путь. Папка выгрузки копирует всё это в папку; веб-хук отправляет на выбранный вами адрес HTTPS.",
         exportsAdd: "Добавить",
         exportKindDropFolder: "Папка выгрузки",
         exportKindWebhook: "Веб-хук HTTPS",
@@ -2797,7 +2973,45 @@ extension ForkMeetingStrings {
         barPause: "Приостановить запись встречи",
         barResume: "Продолжить запись встречи",
         barMarker: "Отметить этот момент встречи",
-        barKeywords: "встреча, запись, записать, звонок, видеозвонок, пауза, стоп, отметка"
+        barKeywords: "встреча, запись, записать, звонок, видеозвонок, пауза, стоп, отметка",
+        // MARK: Finish E
+        pillMark: "Отметить момент",
+        noticeMarked: "Момент отмечен",
+        voiceMarkedFormat: "Момент отмечен на %@.",
+        markersTitle: "Отмеченные моменты",
+        markerLabelFormat: "Отмеченный момент, %@",
+        markerPlayHelp: "Воспроизвести чуть раньше этого момента",
+        playbackSpeed: "Скорость воспроизведения",
+        transcriptFollow: "Следовать за видео",
+        actionCopyTranscript: "Скопировать расшифровку",
+        transcriptCopied: "Расшифровка скопирована.",
+        transcriptLineHelp: "Воспроизводит встречу с этой строки.",
+        summaryTitle: "Сводка",
+        actionSummarize: "Составить сводку на этом Mac",
+        actionResummarize: "Составить сводку заново",
+        actionCopySummary: "Скопировать сводку",
+        actionOpenSummary: "Открыть сводку",
+        summaryCopied: "Сводка скопирована.",
+        summaryProgressFormat: "Составление сводки… %@",
+        summaryCaption: "Apple Intelligence пишет главное, решения и следующие шаги по расшифровке, на языке встречи, на этом Mac: ничего не отправляется.",
+        summaryNeedsTranscript: "Сначала расшифруйте встречу: сводка пишется по её расшифровке.",
+        summaryFailedGeneric: "Не удалось составить сводку. Встреча и её расшифровка не тронуты: попробуйте ещё раз.",
+        summaryLanguageUnsupported: "Apple Intelligence пока не пишет на языке этой встречи.",
+        summaryRefused: "Apple Intelligence отказалась составлять сводку этой встречи.",
+        summaryUnavailable: "Apple Intelligence сейчас недоступна на этом Mac. Проверьте, что она включена в Системных настройках.",
+        summaryPartial: "Apple Intelligence пропустила часть встречи: сводка неполная.",
+        summarizeAutomatically: "Сводка после расшифровки",
+        summarizeCaption: "Apple Intelligence пишет главное, решения и следующие шаги рядом с видео, в файл .md, на языке встречи. На этом Mac: ничего не отправляется.",
+        noticeSummaryReady: "Сводка готова",
+        noticeSummaryFailed: "Сводка не составлена",
+        summaryFileWord: "сводка",
+        summaryHeadingPoints: "Главное",
+        summaryHeadingDecisions: "Решения",
+        summaryHeadingActions: "Следующие шаги",
+        summaryHeadingNone: "Ничего не отмечено.",
+        summaryFooter: "Написано на этом Mac с помощью Apple Intelligence по расшифровке. Возможны ошибки: сверьтесь с записью.",
+        exportIncludeSummary: "Включать сводку",
+        exportIncludeSummaryCaption: "Сводка, составленная на этом Mac, если она есть, отправляется в meeting.json как summary. Иначе она остаётся на этом Mac."
     )
 }
 
@@ -3069,7 +3283,7 @@ extension ForkMeetingStrings {
         offerMainWindowFormat: "%@ (ventana principal)",
         // MARK: Exports
         exportsTitle: "Exportaciones",
-        exportsCaption: "No se exporta nada hasta que añadas un exportador. Solo sale esto: el audio (M4A), la transcripción si la hay y un meeting.json con solo id, schema, title (sin el código de Google Meet salvo que actives meetCode), startedAt, endedAt, recordedSeconds, provider, origin, pauses y transcript, más notes y meetCode si los activas; nunca el micrófono, la app, el evento del calendario, el historial de exportaciones ni una ruta. Una carpeta de entrega lo copia todo en una carpeta; un webhook lo envía a la dirección HTTPS que elijas.",
+        exportsCaption: "No se exporta nada hasta que añadas un exportador. Solo sale esto: el audio (M4A), la transcripción si la hay y un meeting.json con solo id, schema, title (sin el código de Google Meet salvo que actives meetCode), startedAt, endedAt, recordedSeconds, provider, origin, pauses, markers y transcript, más notes, summary y meetCode si los activas; nunca el micrófono, la app, el evento del calendario, el historial de exportaciones ni una ruta. Una carpeta de entrega lo copia todo en una carpeta; un webhook lo envía a la dirección HTTPS que elijas.",
         exportsAdd: "Añadir",
         exportKindDropFolder: "Carpeta de entrega",
         exportKindWebhook: "Webhook HTTPS",
@@ -3283,7 +3497,45 @@ extension ForkMeetingStrings {
         barPause: "Pausar la grabación de la reunión",
         barResume: "Reanudar la grabación de la reunión",
         barMarker: "Marcar este momento de la reunión",
-        barKeywords: "reunión, grabación, grabar, llamada, videollamada, pausa, detener, marcador"
+        barKeywords: "reunión, grabación, grabar, llamada, videollamada, pausa, detener, marcador",
+        // MARK: Finish E
+        pillMark: "Marcar este momento",
+        noticeMarked: "Momento marcado",
+        voiceMarkedFormat: "Momento marcado en %@.",
+        markersTitle: "Momentos marcados",
+        markerLabelFormat: "Momento marcado, %@",
+        markerPlayHelp: "Reproducir desde justo antes de este momento",
+        playbackSpeed: "Velocidad de reproducción",
+        transcriptFollow: "Seguir el vídeo",
+        actionCopyTranscript: "Copiar transcripción",
+        transcriptCopied: "Transcripción copiada.",
+        transcriptLineHelp: "Reproduce la reunión desde esta línea.",
+        summaryTitle: "Resumen",
+        actionSummarize: "Resumir en este Mac",
+        actionResummarize: "Volver a resumir",
+        actionCopySummary: "Copiar resumen",
+        actionOpenSummary: "Abrir resumen",
+        summaryCopied: "Resumen copiado.",
+        summaryProgressFormat: "Resumiendo… %@",
+        summaryCaption: "Apple Intelligence escribe los puntos clave, las decisiones y los próximos pasos a partir de la transcripción, en el idioma de la reunión, en este Mac: no se envía nada.",
+        summaryNeedsTranscript: "Transcribe primero la reunión: el resumen se escribe a partir de su transcripción.",
+        summaryFailedGeneric: "El resumen ha fallado. La reunión y su transcripción siguen intactas: inténtalo de nuevo.",
+        summaryLanguageUnsupported: "Apple Intelligence todavía no escribe en el idioma de esta reunión.",
+        summaryRefused: "Apple Intelligence se ha negado a resumir esta reunión.",
+        summaryUnavailable: "Apple Intelligence no está disponible en este Mac ahora mismo. Comprueba que esté activada en Ajustes del Sistema.",
+        summaryPartial: "Apple Intelligence ha dejado fuera parte de la reunión: este resumen es parcial.",
+        summarizeAutomatically: "Resumir después de la transcripción",
+        summarizeCaption: "Apple Intelligence escribe los puntos clave, las decisiones y los próximos pasos junto al vídeo, en un .md, en el idioma de la reunión. En este Mac: no se envía nada.",
+        noticeSummaryReady: "Resumen listo",
+        noticeSummaryFailed: "Error en el resumen",
+        summaryFileWord: "resumen",
+        summaryHeadingPoints: "Puntos clave",
+        summaryHeadingDecisions: "Decisiones",
+        summaryHeadingActions: "Próximos pasos",
+        summaryHeadingNone: "Nada anotado.",
+        summaryFooter: "Escrito en este Mac por Apple Intelligence a partir de la transcripción. Puede equivocarse: compruébalo con la grabación.",
+        exportIncludeSummary: "Incluir el resumen",
+        exportIncludeSummaryCaption: "El resumen escrito en este Mac, si lo hay, va en meeting.json como summary. Si no, se queda en este Mac."
     )
 }
 
@@ -3555,7 +3807,7 @@ extension ForkMeetingStrings {
         offerMainWindowFormat: "%@ (hlavné okno)",
         // MARK: Exports
         exportsTitle: "Exporty",
-        exportsCaption: "Kým nepridáte export, nič sa neexportuje. Odíde len toto: zvuk (M4A), prepis, ak existuje, a meeting.json len s id, schema, title (bez kódu Google Meet, ak nie je zapnutý meetCode), startedAt, endedAt, recordedSeconds, provider, origin, pauses a transcript, plus notes a meetCode, ak ich zapnete; nikdy mikrofón, aplikácia, udalosť kalendára, história exportov ani cesta. Priečinok na odovzdanie to skopíruje do priečinka; webhook to pošle na zvolenú adresu HTTPS.",
+        exportsCaption: "Kým nepridáte export, nič sa neexportuje. Odíde len toto: zvuk (M4A), prepis, ak existuje, a meeting.json len s id, schema, title (bez kódu Google Meet, ak nie je zapnutý meetCode), startedAt, endedAt, recordedSeconds, provider, origin, pauses, markers a transcript, plus notes, summary a meetCode, ak ich zapnete; nikdy mikrofón, aplikácia, udalosť kalendára, história exportov ani cesta. Priečinok na odovzdanie to skopíruje do priečinka; webhook to pošle na zvolenú adresu HTTPS.",
         exportsAdd: "Pridať",
         exportKindDropFolder: "Priečinok na odovzdanie",
         exportKindWebhook: "Webhook HTTPS",
@@ -3769,7 +4021,45 @@ extension ForkMeetingStrings {
         barPause: "Pozastaviť nahrávanie stretnutia",
         barResume: "Pokračovať v nahrávaní stretnutia",
         barMarker: "Označiť tento okamih stretnutia",
-        barKeywords: "stretnutie, nahrávanie, nahrať, hovor, videohovor, pauza, zastaviť, značka"
+        barKeywords: "stretnutie, nahrávanie, nahrať, hovor, videohovor, pauza, zastaviť, značka",
+        // MARK: Finish E
+        pillMark: "Označiť tento moment",
+        noticeMarked: "Moment označený",
+        voiceMarkedFormat: "Moment označený v čase %@.",
+        markersTitle: "Označené momenty",
+        markerLabelFormat: "Označený moment, %@",
+        markerPlayHelp: "Prehrať od chvíľky pred týmto momentom",
+        playbackSpeed: "Rýchlosť prehrávania",
+        transcriptFollow: "Sledovať video",
+        actionCopyTranscript: "Kopírovať prepis",
+        transcriptCopied: "Prepis skopírovaný.",
+        transcriptLineHelp: "Prehrá stretnutie od tohto riadku.",
+        summaryTitle: "Zhrnutie",
+        actionSummarize: "Zhrnúť na tomto Macu",
+        actionResummarize: "Zhrnúť znova",
+        actionCopySummary: "Kopírovať zhrnutie",
+        actionOpenSummary: "Otvoriť zhrnutie",
+        summaryCopied: "Zhrnutie skopírované.",
+        summaryProgressFormat: "Zhŕňa sa… %@",
+        summaryCaption: "Apple Intelligence napíše hlavné body, rozhodnutia a ďalšie kroky z prepisu, v jazyku stretnutia, na tomto Macu: nič sa neodosiela.",
+        summaryNeedsTranscript: "Najprv stretnutie prepíšte: zhrnutie sa píše z jeho prepisu.",
+        summaryFailedGeneric: "Zhrnutie zlyhalo. Stretnutie a jeho prepis zostali nedotknuté: skúste to znova.",
+        summaryLanguageUnsupported: "Apple Intelligence zatiaľ nepíše v jazyku tohto stretnutia.",
+        summaryRefused: "Apple Intelligence odmietla zhrnúť toto stretnutie.",
+        summaryUnavailable: "Apple Intelligence teraz na tomto Macu nie je k dispozícii. Skontrolujte, či je zapnutá v Systémových nastaveniach.",
+        summaryPartial: "Apple Intelligence vynechala časť stretnutia: toto zhrnutie je neúplné.",
+        summarizeAutomatically: "Zhrnúť po prepise",
+        summarizeCaption: "Apple Intelligence napíše hlavné body, rozhodnutia a ďalšie kroky vedľa videa, do súboru .md, v jazyku stretnutia. Na tomto Macu: nič sa neodosiela.",
+        noticeSummaryReady: "Zhrnutie je hotové",
+        noticeSummaryFailed: "Zhrnutie zlyhalo",
+        summaryFileWord: "zhrnutie",
+        summaryHeadingPoints: "Hlavné body",
+        summaryHeadingDecisions: "Rozhodnutia",
+        summaryHeadingActions: "Ďalšie kroky",
+        summaryHeadingNone: "Nič nezaznamenané.",
+        summaryFooter: "Napísané na tomto Macu pomocou Apple Intelligence z prepisu. Môže sa mýliť: overte si to v nahrávke.",
+        exportIncludeSummary: "Zahrnúť zhrnutie",
+        exportIncludeSummaryCaption: "Zhrnutie napísané na tomto Macu, ak existuje, ide do meeting.json ako summary. Inak zostane na tomto Macu."
     )
 }
 
@@ -4041,7 +4331,7 @@ extension ForkMeetingStrings {
         offerMainWindowFormat: "%@ (Hauptfenster)",
         // MARK: Exports
         exportsTitle: "Exporte",
-        exportsCaption: "Es wird nichts exportiert, bevor du einen Export hinzufügst. Nur das geht hinaus: der Ton (M4A), das Transkript, falls vorhanden, und eine meeting.json nur mit id, schema, title (ohne den Google-Meet-Code, außer meetCode ist eingeschaltet), startedAt, endedAt, recordedSeconds, provider, origin, pauses und transcript, dazu notes und meetCode, wenn du sie einschaltest; nie das Mikrofon, die App, der Kalendertermin, der Verlauf der Exporte oder ein Pfad. Ein Ablageordner kopiert das in einen Ordner; ein Webhook sendet es an die gewählte HTTPS-Adresse.",
+        exportsCaption: "Es wird nichts exportiert, bevor du einen Export hinzufügst. Nur das geht hinaus: der Ton (M4A), das Transkript, falls vorhanden, und eine meeting.json nur mit id, schema, title (ohne den Google-Meet-Code, außer meetCode ist eingeschaltet), startedAt, endedAt, recordedSeconds, provider, origin, pauses, markers und transcript, dazu notes, summary und meetCode, wenn du sie einschaltest; nie das Mikrofon, die App, der Kalendertermin, der Verlauf der Exporte oder ein Pfad. Ein Ablageordner kopiert das in einen Ordner; ein Webhook sendet es an die gewählte HTTPS-Adresse.",
         exportsAdd: "Hinzufügen",
         exportKindDropFolder: "Ablageordner",
         exportKindWebhook: "HTTPS-Webhook",
@@ -4255,7 +4545,45 @@ extension ForkMeetingStrings {
         barPause: "Besprechungsaufnahme pausieren",
         barResume: "Besprechungsaufnahme fortsetzen",
         barMarker: "Diesen Moment der Besprechung markieren",
-        barKeywords: "Besprechung, Meeting, Aufnahme, aufnehmen, Anruf, Videoanruf, Pause, stoppen, Markierung"
+        barKeywords: "Besprechung, Meeting, Aufnahme, aufnehmen, Anruf, Videoanruf, Pause, stoppen, Markierung",
+        // MARK: Finish E
+        pillMark: "Diesen Moment markieren",
+        noticeMarked: "Moment markiert",
+        voiceMarkedFormat: "Moment bei %@ markiert.",
+        markersTitle: "Markierte Momente",
+        markerLabelFormat: "Markierter Moment, %@",
+        markerPlayHelp: "Kurz vor diesem Moment abspielen",
+        playbackSpeed: "Wiedergabegeschwindigkeit",
+        transcriptFollow: "Dem Video folgen",
+        actionCopyTranscript: "Transkript kopieren",
+        transcriptCopied: "Transkript kopiert.",
+        transcriptLineHelp: "Spielt das Meeting ab dieser Zeile ab.",
+        summaryTitle: "Zusammenfassung",
+        actionSummarize: "Auf diesem Mac zusammenfassen",
+        actionResummarize: "Erneut zusammenfassen",
+        actionCopySummary: "Zusammenfassung kopieren",
+        actionOpenSummary: "Zusammenfassung öffnen",
+        summaryCopied: "Zusammenfassung kopiert.",
+        summaryProgressFormat: "Wird zusammengefasst … %@",
+        summaryCaption: "Apple Intelligence schreibt die wichtigsten Punkte, die Entscheidungen und die nächsten Schritte aus dem Transkript, in der Sprache des Meetings, auf diesem Mac: Es wird nichts gesendet.",
+        summaryNeedsTranscript: "Transkribiere das Meeting zuerst: Die Zusammenfassung entsteht aus dem Transkript.",
+        summaryFailedGeneric: "Die Zusammenfassung ist fehlgeschlagen. Das Meeting und sein Transkript sind unverändert: Versuch es noch einmal.",
+        summaryLanguageUnsupported: "Apple Intelligence schreibt die Sprache dieses Meetings noch nicht.",
+        summaryRefused: "Apple Intelligence hat es abgelehnt, dieses Meeting zusammenzufassen.",
+        summaryUnavailable: "Apple Intelligence ist auf diesem Mac gerade nicht verfügbar. Prüfe, ob sie in den Systemeinstellungen eingeschaltet ist.",
+        summaryPartial: "Apple Intelligence hat einen Teil des Meetings ausgelassen: Diese Zusammenfassung ist unvollständig.",
+        summarizeAutomatically: "Nach dem Transkript zusammenfassen",
+        summarizeCaption: "Apple Intelligence schreibt die wichtigsten Punkte, die Entscheidungen und die nächsten Schritte neben das Video, in eine .md, in der Sprache des Meetings. Auf diesem Mac: Es wird nichts gesendet.",
+        noticeSummaryReady: "Zusammenfassung fertig",
+        noticeSummaryFailed: "Zusammenfassung fehlerhaft",
+        summaryFileWord: "Zusammenfassung",
+        summaryHeadingPoints: "Wichtigste Punkte",
+        summaryHeadingDecisions: "Entscheidungen",
+        summaryHeadingActions: "Nächste Schritte",
+        summaryHeadingNone: "Nichts notiert.",
+        summaryFooter: "Auf diesem Mac von Apple Intelligence aus dem Transkript geschrieben. Sie kann sich irren: Vergleiche sie mit der Aufnahme.",
+        exportIncludeSummary: "Zusammenfassung einschließen",
+        exportIncludeSummaryCaption: "Die auf diesem Mac geschriebene Zusammenfassung geht, falls vorhanden, als summary in meeting.json. Sonst bleibt sie auf diesem Mac."
     )
 }
 
@@ -4527,7 +4855,7 @@ extension ForkMeetingStrings {
         offerMainWindowFormat: "%@ (fenêtre principale)",
         // MARK: Exports
         exportsTitle: "Exportations",
-        exportsCaption: "Rien n’est exporté tant que vous n’ajoutez pas d’export. Seul ceci part\u{00A0}: l’audio (M4A), la transcription s’il y en a une, et une fiche meeting.json réduite à id, schema, title (sans le code Google Meet, sauf si meetCode est coché), startedAt, endedAt, recordedSeconds, provider, origin, pauses et transcript, plus notes et meetCode si vous les cochez\u{00A0}; jamais le micro, l’app, l’événement du calendrier, l’historique des exports ni un chemin. Un dossier de dépôt copie le tout dans un dossier\u{00A0}; un webhook l’envoie à l’adresse HTTPS choisie.",
+        exportsCaption: "Rien n’est exporté tant que vous n’ajoutez pas d’export. Seul ceci part\u{00A0}: l’audio (M4A), la transcription s’il y en a une, et une fiche meeting.json réduite à id, schema, title (sans le code Google Meet, sauf si meetCode est coché), startedAt, endedAt, recordedSeconds, provider, origin, pauses, markers et transcript, plus notes, summary et meetCode si vous les cochez\u{00A0}; jamais le micro, l’app, l’événement du calendrier, l’historique des exports ni un chemin. Un dossier de dépôt copie le tout dans un dossier\u{00A0}; un webhook l’envoie à l’adresse HTTPS choisie.",
         exportsAdd: "Ajouter",
         exportKindDropFolder: "Dossier de dépôt",
         exportKindWebhook: "Webhook HTTPS",
@@ -4741,7 +5069,45 @@ extension ForkMeetingStrings {
         barPause: "Mettre l’enregistrement de la réunion en pause",
         barResume: "Reprendre l’enregistrement de la réunion",
         barMarker: "Marquer ce moment de la réunion",
-        barKeywords: "réunion, enregistrement, enregistrer, appel, visio, pause, arrêter, marqueur"
+        barKeywords: "réunion, enregistrement, enregistrer, appel, visio, pause, arrêter, marqueur",
+        // MARK: Finish E
+        pillMark: "Marquer ce moment",
+        noticeMarked: "Moment marqué",
+        voiceMarkedFormat: "Moment marqué à %@.",
+        markersTitle: "Moments marqués",
+        markerLabelFormat: "Moment marqué, %@",
+        markerPlayHelp: "Lire depuis juste avant ce moment",
+        playbackSpeed: "Vitesse de lecture",
+        transcriptFollow: "Suivre la vidéo",
+        actionCopyTranscript: "Copier la transcription",
+        transcriptCopied: "Transcription copiée.",
+        transcriptLineHelp: "Lit la réunion à partir de cette ligne.",
+        summaryTitle: "Résumé",
+        actionSummarize: "Résumer sur ce Mac",
+        actionResummarize: "Résumer à nouveau",
+        actionCopySummary: "Copier le résumé",
+        actionOpenSummary: "Ouvrir le résumé",
+        summaryCopied: "Résumé copié.",
+        summaryProgressFormat: "Résumé en cours… %@",
+        summaryCaption: "Apple Intelligence écrit les points clés, les décisions et les actions à partir de la transcription, dans la langue de la réunion, sur ce Mac\u{00A0}: rien n’est envoyé.",
+        summaryNeedsTranscript: "Transcrivez d’abord la réunion\u{00A0}: le résumé est écrit à partir de sa transcription.",
+        summaryFailedGeneric: "Le résumé a échoué. La réunion et sa transcription restent intactes\u{00A0}: réessayez.",
+        summaryLanguageUnsupported: "Apple Intelligence n’écrit pas encore la langue de cette réunion.",
+        summaryRefused: "Apple Intelligence a refusé de résumer cette réunion.",
+        summaryUnavailable: "Apple Intelligence n’est pas disponible sur ce Mac pour l’instant. Vérifiez qu’elle est activée dans Réglages Système.",
+        summaryPartial: "Apple Intelligence a laissé de côté une partie de la réunion\u{00A0}: ce résumé est partiel.",
+        summarizeAutomatically: "Résumer après la transcription",
+        summarizeCaption: "Apple Intelligence écrit les points clés, les décisions et les actions à côté de la vidéo, dans un .md, dans la langue de la réunion. Sur ce Mac\u{00A0}: rien n’est envoyé.",
+        noticeSummaryReady: "Résumé prêt",
+        noticeSummaryFailed: "Résumé impossible",
+        summaryFileWord: "résumé",
+        summaryHeadingPoints: "Points clés",
+        summaryHeadingDecisions: "Décisions",
+        summaryHeadingActions: "À faire",
+        summaryHeadingNone: "Rien de noté.",
+        summaryFooter: "Écrit sur ce Mac par Apple Intelligence à partir de la transcription. Il peut se tromper\u{00A0}: vérifiez avec l’enregistrement.",
+        exportIncludeSummary: "Inclure le résumé",
+        exportIncludeSummaryCaption: "Le résumé écrit sur ce Mac, s’il y en a un, part dans meeting.json sous summary. Sinon, il reste sur ce Mac."
     )
 }
 
@@ -5013,7 +5379,7 @@ extension ForkMeetingStrings {
         offerMainWindowFormat: "%@ (finestra principale)",
         // MARK: Exports
         exportsTitle: "Esportazioni",
-        exportsCaption: "Non viene esportato nulla finché non aggiungi un’esportazione. Esce solo questo: l’audio (M4A), la trascrizione se c’è e un meeting.json con solo id, schema, title (senza il codice di Google Meet, a meno che meetCode sia attivo), startedAt, endedAt, recordedSeconds, provider, origin, pauses e transcript, più notes e meetCode se li attivi; mai il microfono, l’app, l’evento del calendario, la cronologia delle esportazioni né un percorso. Una cartella di consegna copia tutto in una cartella; un webhook lo invia all’indirizzo HTTPS scelto.",
+        exportsCaption: "Non viene esportato nulla finché non aggiungi un’esportazione. Esce solo questo: l’audio (M4A), la trascrizione se c’è e un meeting.json con solo id, schema, title (senza il codice di Google Meet, a meno che meetCode sia attivo), startedAt, endedAt, recordedSeconds, provider, origin, pauses, markers e transcript, più notes, summary e meetCode se li attivi; mai il microfono, l’app, l’evento del calendario, la cronologia delle esportazioni né un percorso. Una cartella di consegna copia tutto in una cartella; un webhook lo invia all’indirizzo HTTPS scelto.",
         exportsAdd: "Aggiungi",
         exportKindDropFolder: "Cartella di consegna",
         exportKindWebhook: "Webhook HTTPS",
@@ -5227,7 +5593,45 @@ extension ForkMeetingStrings {
         barPause: "Metti in pausa la registrazione della riunione",
         barResume: "Riprendi la registrazione della riunione",
         barMarker: "Segna questo momento della riunione",
-        barKeywords: "riunione, registrazione, registra, chiamata, videochiamata, pausa, ferma, segnalibro"
+        barKeywords: "riunione, registrazione, registra, chiamata, videochiamata, pausa, ferma, segnalibro",
+        // MARK: Finish E
+        pillMark: "Segna questo momento",
+        noticeMarked: "Momento segnato",
+        voiceMarkedFormat: "Momento segnato a %@.",
+        markersTitle: "Momenti segnati",
+        markerLabelFormat: "Momento segnato, %@",
+        markerPlayHelp: "Riproduci da poco prima di questo momento",
+        playbackSpeed: "Velocità di riproduzione",
+        transcriptFollow: "Segui il video",
+        actionCopyTranscript: "Copia trascrizione",
+        transcriptCopied: "Trascrizione copiata.",
+        transcriptLineHelp: "Riproduce la riunione da questa riga.",
+        summaryTitle: "Riepilogo",
+        actionSummarize: "Riassumi su questo Mac",
+        actionResummarize: "Riassumi di nuovo",
+        actionCopySummary: "Copia riepilogo",
+        actionOpenSummary: "Apri riepilogo",
+        summaryCopied: "Riepilogo copiato.",
+        summaryProgressFormat: "Riepilogo in corso… %@",
+        summaryCaption: "Apple Intelligence scrive i punti chiave, le decisioni e i prossimi passi dalla trascrizione, nella lingua della riunione, su questo Mac: non viene inviato nulla.",
+        summaryNeedsTranscript: "Prima trascrivi la riunione: il riepilogo si scrive dalla sua trascrizione.",
+        summaryFailedGeneric: "Il riepilogo non è riuscito. La riunione e la sua trascrizione sono intatte: riprova.",
+        summaryLanguageUnsupported: "Apple Intelligence non scrive ancora nella lingua di questa riunione.",
+        summaryRefused: "Apple Intelligence si è rifiutata di riassumere questa riunione.",
+        summaryUnavailable: "Apple Intelligence non è disponibile su questo Mac al momento. Verifica che sia attiva in Impostazioni di Sistema.",
+        summaryPartial: "Apple Intelligence ha tralasciato una parte della riunione: questo riepilogo è parziale.",
+        summarizeAutomatically: "Riassumi dopo la trascrizione",
+        summarizeCaption: "Apple Intelligence scrive i punti chiave, le decisioni e i prossimi passi accanto al video, in un .md, nella lingua della riunione. Su questo Mac: non viene inviato nulla.",
+        noticeSummaryReady: "Riepilogo pronto",
+        noticeSummaryFailed: "Riepilogo non riuscito",
+        summaryFileWord: "riepilogo",
+        summaryHeadingPoints: "Punti chiave",
+        summaryHeadingDecisions: "Decisioni",
+        summaryHeadingActions: "Prossimi passi",
+        summaryHeadingNone: "Niente da segnalare.",
+        summaryFooter: "Scritto su questo Mac da Apple Intelligence dalla trascrizione. Può sbagliare: verifica con la registrazione.",
+        exportIncludeSummary: "Includi il riepilogo",
+        exportIncludeSummaryCaption: "Il riepilogo scritto su questo Mac, se c’è, va in meeting.json come summary. Altrimenti resta su questo Mac."
     )
 }
 
@@ -5499,7 +5903,7 @@ extension ForkMeetingStrings {
         offerMainWindowFormat: "%@（メインウインドウ）",
         // MARK: Exports
         exportsTitle: "書き出し",
-        exportsCaption: "書き出し先を追加するまで何も書き出されません。送られるのは次のものだけです。音声（M4A）、文字起こし（ある場合）、そして id, schema, title（meetCodeがオンでない限りGoogle Meetのコードを除く）、startedAt, endedAt, recordedSeconds, provider, origin, pauses と transcript だけを含むmeeting.json。notes と meetCode はオンにした場合のみ。マイク、App、カレンダーのイベント、書き出しの履歴、パスは送りません。ドロップフォルダはこれらをフォルダにコピーし、Webhookは選んだHTTPSアドレスへ送信します。",
+        exportsCaption: "書き出し先を追加するまで何も書き出されません。送られるのは次のものだけです。音声（M4A）、文字起こし（ある場合）、そして id, schema, title（meetCodeがオンでない限りGoogle Meetのコードを除く）、startedAt, endedAt, recordedSeconds, provider, origin, pauses、markers と transcript だけを含むmeeting.json。notes、summary と meetCode はオンにした場合のみ。マイク、App、カレンダーのイベント、書き出しの履歴、パスは送りません。ドロップフォルダはこれらをフォルダにコピーし、Webhookは選んだHTTPSアドレスへ送信します。",
         exportsAdd: "追加",
         exportKindDropFolder: "ドロップフォルダ",
         exportKindWebhook: "HTTPS Webhook",
@@ -5713,7 +6117,45 @@ extension ForkMeetingStrings {
         barPause: "ミーティングの録画を一時停止",
         barResume: "ミーティングの録画を再開",
         barMarker: "ミーティングのこの瞬間をマーク",
-        barKeywords: "ミーティング, 録画, 録音, 通話, ビデオ通話, 一時停止, 停止, マーク"
+        barKeywords: "ミーティング, 録画, 録音, 通話, ビデオ通話, 一時停止, 停止, マーク",
+        // MARK: Finish E
+        pillMark: "この瞬間をマーク",
+        noticeMarked: "瞬間をマークしました",
+        voiceMarkedFormat: "%@ をマークしました。",
+        markersTitle: "マークした瞬間",
+        markerLabelFormat: "マークした瞬間、%@",
+        markerPlayHelp: "この瞬間の少し前から再生",
+        playbackSpeed: "再生速度",
+        transcriptFollow: "ビデオに合わせる",
+        actionCopyTranscript: "文字起こしをコピー",
+        transcriptCopied: "文字起こしをコピーしました。",
+        transcriptLineHelp: "この行から会議を再生します。",
+        summaryTitle: "要約",
+        actionSummarize: "このMacで要約",
+        actionResummarize: "もう一度要約",
+        actionCopySummary: "要約をコピー",
+        actionOpenSummary: "要約を開く",
+        summaryCopied: "要約をコピーしました。",
+        summaryProgressFormat: "要約中… %@",
+        summaryCaption: "Apple Intelligenceが文字起こしから要点、決定事項、次のステップを会議の言語でこのMac上で書きます。何も送信されません。",
+        summaryNeedsTranscript: "まず会議を文字起こししてください。要約は文字起こしから書かれます。",
+        summaryFailedGeneric: "要約に失敗しました。会議と文字起こしはそのままです。もう一度お試しください。",
+        summaryLanguageUnsupported: "Apple Intelligenceはこの会議の言語にまだ対応していません。",
+        summaryRefused: "Apple Intelligenceはこの会議の要約を断りました。",
+        summaryUnavailable: "Apple Intelligenceは現在このMacで利用できません。システム設定でオンになっているか確認してください。",
+        summaryPartial: "Apple Intelligenceが会議の一部を省きました。この要約は一部のみです。",
+        summarizeAutomatically: "文字起こしの後に要約",
+        summarizeCaption: "Apple Intelligenceが要点、決定事項、次のステップを会議の言語で.mdファイルとしてビデオの横に書きます。このMac上で処理され、何も送信されません。",
+        noticeSummaryReady: "要約の準備ができました",
+        noticeSummaryFailed: "要約できませんでした",
+        summaryFileWord: "要約",
+        summaryHeadingPoints: "要点",
+        summaryHeadingDecisions: "決定事項",
+        summaryHeadingActions: "次のステップ",
+        summaryHeadingNone: "記録なし。",
+        summaryFooter: "Apple Intelligenceが文字起こしからこのMac上で書きました。誤りがある場合があります。録画で確認してください。",
+        exportIncludeSummary: "要約を含める",
+        exportIncludeSummaryCaption: "このMacで書かれた要約がある場合は、meeting.jsonにsummaryとして含まれます。それ以外の場合はこのMacに残ります。"
     )
 }
 
@@ -5985,7 +6427,7 @@ extension ForkMeetingStrings {
         offerMainWindowFormat: "%@ (메인 윈도우)",
         // MARK: Exports
         exportsTitle: "내보내기",
-        exportsCaption: "내보내기를 추가하기 전에는 아무것도 내보내지 않습니다. 나가는 것은 다음뿐입니다. 오디오(M4A), 있으면 녹취록, 그리고 id, schema, title(meetCode를 켜지 않으면 Google Meet 코드 제외), startedAt, endedAt, recordedSeconds, provider, origin, pauses, transcript만 담은 meeting.json입니다. notes와 meetCode는 켠 경우에만 포함됩니다. 마이크, 앱, 캘린더 이벤트, 내보내기 기록, 경로는 절대 보내지 않습니다. 드롭 폴더는 이를 폴더에 복사하고, 웹훅은 선택한 HTTPS 주소로 보냅니다.",
+        exportsCaption: "내보내기를 추가하기 전에는 아무것도 내보내지 않습니다. 나가는 것은 다음뿐입니다. 오디오(M4A), 있으면 녹취록, 그리고 id, schema, title(meetCode를 켜지 않으면 Google Meet 코드 제외), startedAt, endedAt, recordedSeconds, provider, origin, pauses, markers, transcript만 담은 meeting.json입니다. notes, summary와 meetCode는 켠 경우에만 포함됩니다. 마이크, 앱, 캘린더 이벤트, 내보내기 기록, 경로는 절대 보내지 않습니다. 드롭 폴더는 이를 폴더에 복사하고, 웹훅은 선택한 HTTPS 주소로 보냅니다.",
         exportsAdd: "추가",
         exportKindDropFolder: "드롭 폴더",
         exportKindWebhook: "HTTPS 웹훅",
@@ -6199,7 +6641,45 @@ extension ForkMeetingStrings {
         barPause: "회의 녹화 일시 정지",
         barResume: "회의 녹화 재개",
         barMarker: "회의의 이 순간 표시",
-        barKeywords: "회의, 녹화, 녹음, 통화, 영상 통화, 일시 정지, 중지, 표시"
+        barKeywords: "회의, 녹화, 녹음, 통화, 영상 통화, 일시 정지, 중지, 표시",
+        // MARK: Finish E
+        pillMark: "이 순간 표시",
+        noticeMarked: "순간 표시됨",
+        voiceMarkedFormat: "%@에 순간을 표시했습니다.",
+        markersTitle: "표시한 순간",
+        markerLabelFormat: "표시한 순간, %@",
+        markerPlayHelp: "이 순간 조금 전부터 재생",
+        playbackSpeed: "재생 속도",
+        transcriptFollow: "비디오 따라가기",
+        actionCopyTranscript: "전사본 복사",
+        transcriptCopied: "전사본을 복사했습니다.",
+        transcriptLineHelp: "이 줄부터 회의를 재생합니다.",
+        summaryTitle: "요약",
+        actionSummarize: "이 Mac에서 요약",
+        actionResummarize: "다시 요약",
+        actionCopySummary: "요약 복사",
+        actionOpenSummary: "요약 열기",
+        summaryCopied: "요약을 복사했습니다.",
+        summaryProgressFormat: "요약 중… %@",
+        summaryCaption: "Apple Intelligence가 전사본에서 핵심 내용, 결정 사항, 다음 단계를 회의 언어로 이 Mac에서 작성합니다. 아무것도 전송되지 않습니다.",
+        summaryNeedsTranscript: "먼저 회의를 전사하십시오. 요약은 전사본으로 작성됩니다.",
+        summaryFailedGeneric: "요약에 실패했습니다. 회의와 전사본은 그대로입니다. 다시 시도하십시오.",
+        summaryLanguageUnsupported: "Apple Intelligence는 아직 이 회의의 언어로 작성하지 않습니다.",
+        summaryRefused: "Apple Intelligence가 이 회의 요약을 거부했습니다.",
+        summaryUnavailable: "지금은 이 Mac에서 Apple Intelligence를 사용할 수 없습니다. 시스템 설정에서 켜져 있는지 확인하십시오.",
+        summaryPartial: "Apple Intelligence가 회의 일부를 제외했습니다. 이 요약은 일부만 담고 있습니다.",
+        summarizeAutomatically: "전사 후 요약",
+        summarizeCaption: "Apple Intelligence가 핵심 내용, 결정 사항, 다음 단계를 회의 언어로 비디오 옆 .md 파일에 작성합니다. 이 Mac에서 처리되며 아무것도 전송되지 않습니다.",
+        noticeSummaryReady: "요약 준비됨",
+        noticeSummaryFailed: "요약 실패",
+        summaryFileWord: "요약",
+        summaryHeadingPoints: "핵심 내용",
+        summaryHeadingDecisions: "결정 사항",
+        summaryHeadingActions: "다음 단계",
+        summaryHeadingNone: "기록된 내용 없음.",
+        summaryFooter: "Apple Intelligence가 전사본으로 이 Mac에서 작성했습니다. 틀릴 수 있으니 녹화와 대조하십시오.",
+        exportIncludeSummary: "요약 포함",
+        exportIncludeSummaryCaption: "이 Mac에서 작성된 요약이 있으면 meeting.json에 summary로 포함됩니다. 그렇지 않으면 이 Mac에 남습니다."
     )
 }
 
@@ -6471,7 +6951,7 @@ extension ForkMeetingStrings {
         offerMainWindowFormat: "%@ (головне вікно)",
         // MARK: Exports
         exportsTitle: "Експорт",
-        exportsCaption: "Поки ви не додасте експорт, нічого не експортується. Іде лише це: звук (M4A), розшифровка, якщо вона є, і meeting.json, де є тільки id, schema, title (без коду Google Meet, якщо не ввімкнено meetCode), startedAt, endedAt, recordedSeconds, provider, origin, pauses і transcript, а notes і meetCode — лише якщо ви їх увімкнете; ніколи — мікрофон, застосунок, подія календаря, історія експорту чи шлях. Папка вивантаження копіює все це в папку; вебхук надсилає на вибрану адресу HTTPS.",
+        exportsCaption: "Поки ви не додасте експорт, нічого не експортується. Іде лише це: звук (M4A), розшифровка, якщо вона є, і meeting.json, де є тільки id, schema, title (без коду Google Meet, якщо не ввімкнено meetCode), startedAt, endedAt, recordedSeconds, provider, origin, pauses, markers і transcript, а notes, summary і meetCode — лише якщо ви їх увімкнете; ніколи — мікрофон, застосунок, подія календаря, історія експорту чи шлях. Папка вивантаження копіює все це в папку; вебхук надсилає на вибрану адресу HTTPS.",
         exportsAdd: "Додати",
         exportKindDropFolder: "Папка вивантаження",
         exportKindWebhook: "Вебхук HTTPS",
@@ -6685,7 +7165,45 @@ extension ForkMeetingStrings {
         barPause: "Призупинити запис зустрічі",
         barResume: "Продовжити запис зустрічі",
         barMarker: "Позначити цю мить зустрічі",
-        barKeywords: "зустріч, запис, записати, дзвінок, відеодзвінок, пауза, зупинити, позначка"
+        barKeywords: "зустріч, запис, записати, дзвінок, відеодзвінок, пауза, зупинити, позначка",
+        // MARK: Finish E
+        pillMark: "Позначити момент",
+        noticeMarked: "Момент позначено",
+        voiceMarkedFormat: "Момент позначено на %@.",
+        markersTitle: "Позначені моменти",
+        markerLabelFormat: "Позначений момент, %@",
+        markerPlayHelp: "Відтворити трохи раніше за цей момент",
+        playbackSpeed: "Швидкість відтворення",
+        transcriptFollow: "Стежити за відео",
+        actionCopyTranscript: "Скопіювати розшифровку",
+        transcriptCopied: "Розшифровку скопійовано.",
+        transcriptLineHelp: "Відтворює зустріч із цього рядка.",
+        summaryTitle: "Підсумок",
+        actionSummarize: "Підсумувати на цьому Mac",
+        actionResummarize: "Підсумувати знову",
+        actionCopySummary: "Скопіювати підсумок",
+        actionOpenSummary: "Відкрити підсумок",
+        summaryCopied: "Підсумок скопійовано.",
+        summaryProgressFormat: "Підсумовування… %@",
+        summaryCaption: "Apple Intelligence пише головне, рішення й наступні кроки з розшифровки, мовою зустрічі, на цьому Mac: нічого не надсилається.",
+        summaryNeedsTranscript: "Спершу розшифруйте зустріч: підсумок пишеться з її розшифровки.",
+        summaryFailedGeneric: "Не вдалося підсумувати. Зустріч і її розшифровка не змінені: спробуйте ще раз.",
+        summaryLanguageUnsupported: "Apple Intelligence ще не пише мовою цієї зустрічі.",
+        summaryRefused: "Apple Intelligence відмовилася підсумовувати цю зустріч.",
+        summaryUnavailable: "Apple Intelligence зараз недоступна на цьому Mac. Перевірте, чи її ввімкнено в Системних параметрах.",
+        summaryPartial: "Apple Intelligence пропустила частину зустрічі: цей підсумок неповний.",
+        summarizeAutomatically: "Підсумовувати після розшифровки",
+        summarizeCaption: "Apple Intelligence пише головне, рішення й наступні кроки поруч із відео, у файл .md, мовою зустрічі. На цьому Mac: нічого не надсилається.",
+        noticeSummaryReady: "Підсумок готовий",
+        noticeSummaryFailed: "Підсумок не вдався",
+        summaryFileWord: "підсумок",
+        summaryHeadingPoints: "Головне",
+        summaryHeadingDecisions: "Рішення",
+        summaryHeadingActions: "Наступні кроки",
+        summaryHeadingNone: "Нічого не зазначено.",
+        summaryFooter: "Написано на цьому Mac за допомогою Apple Intelligence з розшифровки. Можливі помилки: звірте із записом.",
+        exportIncludeSummary: "Додавати підсумок",
+        exportIncludeSummaryCaption: "Підсумок, написаний на цьому Mac, якщо він є, іде в meeting.json як summary. Інакше він лишається на цьому Mac."
     )
 }
 
@@ -6957,7 +7475,7 @@ extension ForkMeetingStrings {
         offerMainWindowFormat: "%@（主窗口）",
         // MARK: Exports
         exportsTitle: "导出",
-        exportsCaption: "添加导出方式之前不会导出任何内容。只会发出以下内容：音频（M4A）、转写文本（如有），以及只含 id, schema, title（除非打开 meetCode，否则不含 Google Meet 代码）、startedAt, endedAt, recordedSeconds, provider, origin, pauses 和 transcript 的 meeting.json；打开相应选项时还包括 notes 和 meetCode。绝不包括麦克风、App、日历事件、导出历史记录或路径。投放文件夹会把这些拷贝到文件夹；Webhook 会把它们发送到你选择的 HTTPS 地址。",
+        exportsCaption: "添加导出方式之前不会导出任何内容。只会发出以下内容：音频（M4A）、转写文本（如有），以及只含 id, schema, title（除非打开 meetCode，否则不含 Google Meet 代码）、startedAt, endedAt, recordedSeconds, provider, origin, pauses、markers 和 transcript 的 meeting.json；打开相应选项时还包括 notes、summary 和 meetCode。绝不包括麦克风、App、日历事件、导出历史记录或路径。投放文件夹会把这些拷贝到文件夹；Webhook 会把它们发送到你选择的 HTTPS 地址。",
         exportsAdd: "添加",
         exportKindDropFolder: "投放文件夹",
         exportKindWebhook: "HTTPS Webhook",
@@ -7171,7 +7689,45 @@ extension ForkMeetingStrings {
         barPause: "暂停录制会议",
         barResume: "继续录制会议",
         barMarker: "标记会议的此刻",
-        barKeywords: "会议, 录制, 录音, 通话, 视频通话, 暂停, 停止, 标记"
+        barKeywords: "会议, 录制, 录音, 通话, 视频通话, 暂停, 停止, 标记",
+        // MARK: Finish E
+        pillMark: "标记此刻",
+        noticeMarked: "已标记此刻",
+        voiceMarkedFormat: "已在 %@ 标记此刻。",
+        markersTitle: "已标记的时刻",
+        markerLabelFormat: "已标记的时刻，%@",
+        markerPlayHelp: "从此刻稍前处播放",
+        playbackSpeed: "播放速度",
+        transcriptFollow: "跟随视频",
+        actionCopyTranscript: "拷贝转写文本",
+        transcriptCopied: "已拷贝转写文本。",
+        transcriptLineHelp: "从这一行开始播放会议。",
+        summaryTitle: "摘要",
+        actionSummarize: "在这台 Mac 上生成摘要",
+        actionResummarize: "重新生成摘要",
+        actionCopySummary: "拷贝摘要",
+        actionOpenSummary: "打开摘要",
+        summaryCopied: "已拷贝摘要。",
+        summaryProgressFormat: "正在生成摘要… %@",
+        summaryCaption: "Apple 智能会根据转写文本，以会议的语言在这台 Mac 上写出要点、决定和后续步骤：不会发送任何内容。",
+        summaryNeedsTranscript: "请先转写会议：摘要根据转写文本写成。",
+        summaryFailedGeneric: "摘要生成失败。会议及其转写文本保持不变：请重试。",
+        summaryLanguageUnsupported: "Apple 智能暂不支持用这场会议的语言写作。",
+        summaryRefused: "Apple 智能拒绝为这场会议生成摘要。",
+        summaryUnavailable: "Apple 智能目前在这台 Mac 上不可用。请在“系统设置”中确认它已打开。",
+        summaryPartial: "Apple 智能略去了会议的一部分：此摘要不完整。",
+        summarizeAutomatically: "转写后生成摘要",
+        summarizeCaption: "Apple 智能会以会议的语言，把要点、决定和后续步骤写入视频旁边的 .md 文件。在这台 Mac 上完成：不会发送任何内容。",
+        noticeSummaryReady: "摘要已就绪",
+        noticeSummaryFailed: "摘要生成失败",
+        summaryFileWord: "摘要",
+        summaryHeadingPoints: "要点",
+        summaryHeadingDecisions: "决定",
+        summaryHeadingActions: "后续步骤",
+        summaryHeadingNone: "无记录。",
+        summaryFooter: "由 Apple 智能根据转写文本在这台 Mac 上写成。可能有误：请对照录制内容核实。",
+        exportIncludeSummary: "包括摘要",
+        exportIncludeSummaryCaption: "在这台 Mac 上写成的摘要（如有）会作为 summary 放入 meeting.json。否则会留在这台 Mac 上。"
     )
 }
 
@@ -7443,7 +7999,7 @@ extension ForkMeetingStrings {
         offerMainWindowFormat: "%@（主視窗）",
         // MARK: Exports
         exportsTitle: "輸出",
-        exportsCaption: "加入輸出方式之前不會輸出任何內容。只會送出以下內容：音訊（M4A）、逐字稿（如有），以及只含 id, schema, title（除非開啟 meetCode，否則不含 Google Meet 代碼）、startedAt, endedAt, recordedSeconds, provider, origin, pauses 和 transcript 的 meeting.json；開啟相應選項時還包含 notes 和 meetCode。絕不包含麥克風、App、行事曆活動、輸出記錄或路徑。投放資料夾會把這些拷貝到資料夾；Webhook 會把它們傳送到你選擇的 HTTPS 位址。",
+        exportsCaption: "加入輸出方式之前不會輸出任何內容。只會送出以下內容：音訊（M4A）、逐字稿（如有），以及只含 id, schema, title（除非開啟 meetCode，否則不含 Google Meet 代碼）、startedAt, endedAt, recordedSeconds, provider, origin, pauses、markers 和 transcript 的 meeting.json；開啟相應選項時還包含 notes、summary 和 meetCode。絕不包含麥克風、App、行事曆活動、輸出記錄或路徑。投放資料夾會把這些拷貝到資料夾；Webhook 會把它們傳送到你選擇的 HTTPS 位址。",
         exportsAdd: "加入",
         exportKindDropFolder: "投放資料夾",
         exportKindWebhook: "HTTPS Webhook",
@@ -7657,7 +8213,45 @@ extension ForkMeetingStrings {
         barPause: "暫停錄製會議",
         barResume: "繼續錄製會議",
         barMarker: "標記會議的此刻",
-        barKeywords: "會議, 錄製, 錄音, 通話, 視訊通話, 暫停, 停止, 標記"
+        barKeywords: "會議, 錄製, 錄音, 通話, 視訊通話, 暫停, 停止, 標記",
+        // MARK: Finish E
+        pillMark: "標記此刻",
+        noticeMarked: "已標記此刻",
+        voiceMarkedFormat: "已在 %@ 標記此刻。",
+        markersTitle: "已標記的時刻",
+        markerLabelFormat: "已標記的時刻，%@",
+        markerPlayHelp: "從此刻稍前處播放",
+        playbackSpeed: "播放速度",
+        transcriptFollow: "跟隨影片",
+        actionCopyTranscript: "拷貝逐字稿",
+        transcriptCopied: "已拷貝逐字稿。",
+        transcriptLineHelp: "從這一行開始播放會議。",
+        summaryTitle: "摘要",
+        actionSummarize: "在這台 Mac 上產生摘要",
+        actionResummarize: "重新產生摘要",
+        actionCopySummary: "拷貝摘要",
+        actionOpenSummary: "打開摘要",
+        summaryCopied: "已拷貝摘要。",
+        summaryProgressFormat: "正在產生摘要… %@",
+        summaryCaption: "Apple Intelligence 會根據逐字稿，以會議的語言在這台 Mac 上寫出重點、決定和後續步驟：不會傳送任何內容。",
+        summaryNeedsTranscript: "請先轉寫會議：摘要是根據逐字稿寫成。",
+        summaryFailedGeneric: "摘要產生失敗。會議及其逐字稿維持不變：請再試一次。",
+        summaryLanguageUnsupported: "Apple Intelligence 尚不支援以這場會議的語言寫作。",
+        summaryRefused: "Apple Intelligence 拒絕為這場會議產生摘要。",
+        summaryUnavailable: "Apple Intelligence 目前無法在這台 Mac 上使用。請在「系統設定」中確認已開啟。",
+        summaryPartial: "Apple Intelligence 略過了會議的一部分：此摘要不完整。",
+        summarizeAutomatically: "轉寫後產生摘要",
+        summarizeCaption: "Apple Intelligence 會以會議的語言，把重點、決定和後續步驟寫入影片旁的 .md 檔案。在這台 Mac 上完成：不會傳送任何內容。",
+        noticeSummaryReady: "摘要已就緒",
+        noticeSummaryFailed: "摘要產生失敗",
+        summaryFileWord: "摘要",
+        summaryHeadingPoints: "重點",
+        summaryHeadingDecisions: "決定",
+        summaryHeadingActions: "後續步驟",
+        summaryHeadingNone: "無記錄。",
+        summaryFooter: "由 Apple Intelligence 根據逐字稿在這台 Mac 上寫成。可能有誤：請對照錄製內容確認。",
+        exportIncludeSummary: "包含摘要",
+        exportIncludeSummaryCaption: "在這台 Mac 上寫成的摘要（如有）會以 summary 放入 meeting.json。否則會留在這台 Mac 上。"
     )
 }
 
@@ -7929,7 +8523,7 @@ extension ForkMeetingStrings {
         offerMainWindowFormat: "%@（主視窗）",
         // MARK: Exports
         exportsTitle: "匯出",
-        exportsCaption: "加入匯出方式之前不會匯出任何內容。只會送出以下內容：音訊（M4A）、逐字稿（如有），以及只含 id, schema, title（除非開啟 meetCode，否則不含 Google Meet 代碼）、startedAt, endedAt, recordedSeconds, provider, origin, pauses 和 transcript 的 meeting.json；開啟相應選項時還包括 notes 和 meetCode。絕不包括咪高風、App、日曆活動、匯出記錄或路徑。投放資料夾會把這些複製到資料夾；Webhook 會把它們傳送到你選擇的 HTTPS 位址。",
+        exportsCaption: "加入匯出方式之前不會匯出任何內容。只會送出以下內容：音訊（M4A）、逐字稿（如有），以及只含 id, schema, title（除非開啟 meetCode，否則不含 Google Meet 代碼）、startedAt, endedAt, recordedSeconds, provider, origin, pauses、markers 和 transcript 的 meeting.json；開啟相應選項時還包括 notes、summary 和 meetCode。絕不包括咪高風、App、日曆活動、匯出記錄或路徑。投放資料夾會把這些複製到資料夾；Webhook 會把它們傳送到你選擇的 HTTPS 位址。",
         exportsAdd: "新增",
         exportKindDropFolder: "投放資料夾",
         exportKindWebhook: "HTTPS Webhook",
@@ -8143,6 +8737,44 @@ extension ForkMeetingStrings {
         barPause: "暫停錄製會議",
         barResume: "繼續錄製會議",
         barMarker: "標記會議的此刻",
-        barKeywords: "會議, 錄製, 錄音, 通話, 視像通話, 暫停, 停止, 標記"
+        barKeywords: "會議, 錄製, 錄音, 通話, 視像通話, 暫停, 停止, 標記",
+        // MARK: Finish E
+        pillMark: "標記此刻",
+        noticeMarked: "已標記此刻",
+        voiceMarkedFormat: "已在 %@ 標記此刻。",
+        markersTitle: "已標記的時刻",
+        markerLabelFormat: "已標記的時刻，%@",
+        markerPlayHelp: "從此刻稍前處播放",
+        playbackSpeed: "播放速度",
+        transcriptFollow: "跟隨影片",
+        actionCopyTranscript: "複製逐字稿",
+        transcriptCopied: "已複製逐字稿。",
+        transcriptLineHelp: "從這一行開始播放會議。",
+        summaryTitle: "摘要",
+        actionSummarize: "在這部 Mac 上產生摘要",
+        actionResummarize: "重新產生摘要",
+        actionCopySummary: "複製摘要",
+        actionOpenSummary: "打開摘要",
+        summaryCopied: "已複製摘要。",
+        summaryProgressFormat: "正在產生摘要… %@",
+        summaryCaption: "Apple Intelligence 會根據逐字稿，以會議的語言在這部 Mac 上寫出重點、決定和後續步驟：不會傳送任何內容。",
+        summaryNeedsTranscript: "請先轉寫會議：摘要是根據逐字稿寫成。",
+        summaryFailedGeneric: "摘要產生失敗。會議及其逐字稿維持不變：請再試一次。",
+        summaryLanguageUnsupported: "Apple Intelligence 尚未支援以這個會議的語言寫作。",
+        summaryRefused: "Apple Intelligence 拒絕為這個會議產生摘要。",
+        summaryUnavailable: "Apple Intelligence 目前無法在這部 Mac 上使用。請在「系統設定」中確認已開啟。",
+        summaryPartial: "Apple Intelligence 略過了會議的一部分：此摘要不完整。",
+        summarizeAutomatically: "轉寫後產生摘要",
+        summarizeCaption: "Apple Intelligence 會以會議的語言，把重點、決定和後續步驟寫入影片旁的 .md 檔案。在這部 Mac 上完成：不會傳送任何內容。",
+        noticeSummaryReady: "摘要已準備好",
+        noticeSummaryFailed: "摘要產生失敗",
+        summaryFileWord: "摘要",
+        summaryHeadingPoints: "重點",
+        summaryHeadingDecisions: "決定",
+        summaryHeadingActions: "後續步驟",
+        summaryHeadingNone: "沒有記錄。",
+        summaryFooter: "由 Apple Intelligence 根據逐字稿在這部 Mac 上寫成。可能有誤：請對照錄影內容確認。",
+        exportIncludeSummary: "包括摘要",
+        exportIncludeSummaryCaption: "在這部 Mac 上寫成的摘要（如有）會以 summary 放入 meeting.json。否則會留在這部 Mac 上。"
     )
 }

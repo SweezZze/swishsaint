@@ -121,6 +121,11 @@ enum ForkDefaultsKey {
     /// while a meeting records.
     static let meetingsPauseShortcut = "fork.meetings.pauseShortcut"
     static let meetingsMarkerShortcut = "fork.meetings.markerShortcut"
+    // MARK: Finish E
+    /// Each transcript written is summarized on this Mac by Apple
+    /// Intelligence (`ForkMeetingSummarizer`), when it can run here. Off by
+    /// default (Finish E).
+    static let meetingsSummarize = "fork.meetings.summarize"
     /// The meetings folder's path; empty: a folder in Movies, named in the
     /// person's language and saved here at the first recording. Machine
     /// state, like the official recorder's folder: kept out of the backup.
@@ -204,6 +209,7 @@ enum ForkDefaults {
         ForkDefaultsKey.meetingsSounds: false,
         ForkDefaultsKey.meetingsPauseShortcut: "",
         ForkDefaultsKey.meetingsMarkerShortcut: "",
+        ForkDefaultsKey.meetingsSummarize: false,
     ]
 
     /// Where each setting lived in the test builds made before the fork

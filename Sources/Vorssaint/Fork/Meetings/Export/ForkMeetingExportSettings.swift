@@ -137,6 +137,22 @@ private struct ForkMeetingExporterCommon: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
         }
+        // Only where a summary can be written: nothing of it shows otherwise.
+        if ForkMeetingSummarizer.shared.available {
+            Toggle(isOn: Binding(get: { config.includesSummary }, set: { on in
+                var next = config
+                next.includesSummary = on
+                exports.update(next)
+            })) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(text.exportIncludeSummary)
+                    Text(text.exportIncludeSummaryCaption)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+        }
         HStack {
             Spacer()
             Button(text.exportRemove, role: .destructive, action: remove)

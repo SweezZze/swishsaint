@@ -22,6 +22,8 @@ extension ForkMeetingStore {
         /// A master, or a final file that kept the master's tracks
         /// (`skipped-disk`): what orders the tracks when the file cannot say.
         let keptMasterTracks: Bool
+        /// The moments marked while recording, for the text's `★` lines.
+        var markers: [Double] = []
     }
 
     /// Off the store's queue. `folder` as the caller knew it; `id` finds it
@@ -43,7 +45,8 @@ extension ForkMeetingStore {
                 return .failure(.noAudio)
             }
             let kept = file == ForkMeetingFolder.masterName || meeting.finalPass == .skippedDisk
-            return .success(TranscriptSource(folder: found, id: meeting.id, file: file, keptMasterTracks: kept))
+            return .success(TranscriptSource(folder: found, id: meeting.id, file: file, keptMasterTracks: kept,
+                                             markers: ForkMeetingMarkers.times(meeting.markers)))
         }
     }
 
@@ -117,7 +120,7 @@ extension ForkMeetingStore {
     /// The folder now: where it was, else where the library's rename moved
     /// it, else, by its meeting's id, wherever the Finder put it in the
     /// meetings folder.
-    private func locate(_ folder: URL, id: UUID?) -> URL? {
+    func locate(_ folder: URL, id: UUID?) -> URL? {
         let manager = FileManager.default
         func holds(_ candidate: URL) -> Bool {
             guard manager.fileExists(atPath: candidate.appendingPathComponent(ForkMeetingFolder.sidecarName).path) else {
@@ -142,7 +145,7 @@ extension ForkMeetingStore {
     }
 
     /// Recorded or finished now, here or by another copy of the app.
-    private func isWritten(_ folder: URL, sidecar: Result<ForkMeetingSidecar, ForkMeetingSidecarFault>,
+    func isWritten(_ folder: URL, sidecar: Result<ForkMeetingSidecar, ForkMeetingSidecarFault>,
                            contents: ForkMeetingFolder.Contents) -> Bool {
         if isClaimedHere(folder) { return true }
         guard ForkMeetingLibraryLock.mayBeHeldElsewhere(sidecar, contents: contents) else { return false }
