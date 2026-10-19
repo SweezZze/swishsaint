@@ -22,6 +22,19 @@ final class ForkUpdateNotesWindow: NSObject, NSWindowDelegate {
 
     var isOpen: Bool { window != nil }
 
+    func isShowing(build: Int, mode: ForkUpdateNotesView.Mode) -> Bool {
+        shown?.build == build && shown?.mode == mode
+    }
+
+    /// An install started (here or from the Settings): the offer closes
+    /// without counting as "Later".
+    func closeForInstall() {
+        guard shown?.mode == .available else { return }
+        onInstall = nil
+        onDismiss = nil
+        window?.close()
+    }
+
     /// The app's name as the Finder shows it.
     static var appName: String {
         let info = Bundle.main.infoDictionary

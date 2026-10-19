@@ -135,21 +135,23 @@ fork/test.sh && fork/check-seams.sh --fetch && ./build.sh --test
 ./build.sh --dev --install     # essai en vrai dans « Vorssaint (Developer) » ; quitte Swishsaint pendant l'essai
 ```
 
-#### La note de mise à jour (avant de pousser, obligatoire)
+#### La note de mise à jour (avant d'ouvrir la PR, obligatoire)
+
+**Le moment : `gh pr create`.** La question se pose une fois par PR, juste avant de l'ouvrir (donc avant le
+`git push` qui sert à l'ouvrir). Les pushes de sauvegarde de l'étape 3, feature pas finie, en sont dispensés.
 
 Chaque PR porte une petite phrase de son auteur, avec **ses** mots. Elle s'affiche sous son prénom dans la
 fenêtre de mise à jour que tout le monde reçoit (« Martial — J'ai corrigé un bug sur l'historique du
 presse-papiers. »), avec celles des autres PR publiées depuis la dernière mise à jour de chacun.
 
-**Claude : juste avant le `git push` qui sert à ouvrir la PR, et dans tous les cas avant `gh pr create`**, tu DOIS :
+**Claude : juste avant `gh pr create` (et le `git push` qui le précède)**, tu DOIS :
 
 1. Afficher à la personne, mot pour mot (avec `AskUserQuestion` si l'outil existe, sinon en question dans ta
    réponse), puis **attendre sa réponse** :
 
    > ✍️ Martial te demande d'écrire avec TES mots ce que tu viens de faire (une petite phrase suffit). Elle s'affichera dans la fenêtre de mise à jour que tout le monde recevra.
 
-   Ne l'écris **jamais** à sa place, même si tu sais très bien ce que fait la PR. Pas de réponse, pas de push.
-   (Les pushes de sauvegarde de l'étape 3, avant que la feature soit finie, n'en ont pas besoin.)
+   Ne l'écris **jamais** à sa place, même si tu sais très bien ce que fait la PR. Pas de réponse, pas de PR.
 2. Reformule-la en 1 phrase (2 au plus), en français : même sens, mêmes faits (n'ajoute rien), plus claire,
    sans jargon technique (aucun nom de fichier, de type ou de fonction), à la 1re personne comme l'auteur
    (« J'ai… ») : son prénom s'affiche à côté. Montre la version finale et fais-la valider ; l'auteur peut
@@ -174,6 +176,10 @@ Le contrôle `Note de mise à jour` (`.github/workflows/fork-update-note.yml`) �
 est vide, sauf label `pas-de-note`, synchro avec l'officiel ou robot. À la release, `fork/release-notes.sh`
 range les notes par prénom (une PR sans bloc n'apparaît que par son titre, dans « Autres changements »).
 
+Le prénom affiché vient du compte GitHub qui **ouvre** la PR : c'est donc la personne dont c'est le travail qui
+l'ouvre, depuis son propre `gh`. Pour une PR ouverte par quelqu'un d'autre (rare : aide, reprise), ajoute dans le
+bloc une ligne `Par : <Prénom>` (par exemple `Par : Louis`) : elle remplace le prénom et ne s'affiche pas.
+
 Un nouveau copain ajoute sa ligne `pseudo GitHub<TAB>prénom` dans `fork/authors.tsv` dans sa première PR ;
 sinon ses notes s'affichent sous le prénom de son nom de branche (`feat/<prénom>-…`), à défaut sous son pseudo.
 
@@ -193,7 +199,11 @@ Une PR = une feature ; si tu as besoin d'une autre PR avant, dis-le (« dépend 
   Si un échec vient aussi de `main` de l'officiel (pas de ta PR), écris-le dans la PR : Hector décide du contournement.
 - Merge par le bouton **« Create a merge commit »** (seul mode autorisé), par l'auteur une fois les contrôles verts,
   ou par Hector. Supprime la branche ensuite.
-- Le workflow `Fork · Release` publie alors `build-<N>` ; l'app de chacun propose la mise à jour toute seule.
+- Le workflow `Fork · Release` publie alors `build-<N>` ; l'app de chacun propose la mise à jour toute seule,
+  avec les notes de toutes les builds publiées depuis la sienne.
+- L'app propose toujours **la build au plus grand numéro** parmi les releases publiées (zip + SHA256), quelle que
+  soit celle marquée « Latest ». Pour retirer une build ratée : marque-la **pre-release** (ou supprime la release) ;
+  l'app ne la propose plus et n'affiche plus ses notes, et retombe sur la précédente.
 - Chez toi : `git switch main && git pull --ff-only && git branch -d feat/<prenom>-<sujet>`, et la feature suivante
   repart de l'étape 2.
 
@@ -202,6 +212,9 @@ Une PR = une feature ; si tu as besoin d'une autre PR avant, dis-le (« dépend 
 - `sync/upstream-*` : synchro avec l'officiel qui a besoin d'aide (conflit ou casse). Elle passe avant les features ;
   n'y mets jamais de feature. Tant qu'elle est ouverte, les synchros suivantes attendent.
 - `claude/*` : créées par `@claude` dans une issue ou une PR. Même process : relue, contrôles verts, merge commit.
+  `@claude` en CI n'invente **jamais** la note de mise à jour : il demande à la personne qui l'a sollicité, dans un
+  commentaire de la PR, la question « ✍️ Martial te demande… » mot pour mot. Le contrôle `Note de mise à jour` reste
+  rouge jusqu'à ce que l'auteur ajoute lui-même le bloc (avec `Par : <Prénom>` si la PR est ouverte par le robot).
 
 ### Interdits
 

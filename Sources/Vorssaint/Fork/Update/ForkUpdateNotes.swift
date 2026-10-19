@@ -183,7 +183,14 @@ enum ForkUpdateNotes {
                 continue
             }
             guard inSection, trimmed.hasPrefix("- ") || trimmed.hasPrefix("* ") else { continue }
-            let item = cleanedItem(trimmed)
+            // Markdown written for GitHub: entities, and the invisible space
+            // that keeps an @ from mentioning anyone.
+            let plain = trimmed
+                .replacingOccurrences(of: "\u{200B}", with: "")
+                .replacingOccurrences(of: "&lt;", with: "<")
+                .replacingOccurrences(of: "&gt;", with: ">")
+                .replacingOccurrences(of: "&amp;", with: "&")
+            let item = cleanedItem(plain)
             if !item.isEmpty { items.append(item) }
         }
         return items
@@ -191,13 +198,16 @@ enum ForkUpdateNotes {
 
     // MARK: - Several releases
 
-    /// The notes of every build in (installed, candidate], oldest first:
+    /// The notes of every published build in (installed, candidate] (no
+    /// draft, no pre-release, as for the candidate), oldest first:
     /// each author's sentences under their name, in the order the authors
     /// first appear, each sentence once; then the other changes. An unknown
     /// installed build gathers the candidate alone.
     static func summary(releases: [ForkUpdateSupport.Release], installed: Int?, candidate: Int,
                         installedUpstream: String?) -> Summary {
         let included = releases
+            // What is never offered never speaks in the notes either.
+            .filter { $0.draft != true && $0.prerelease != true }
             .compactMap { release in ForkUpdateSupport.buildNumber(fromTag: release.tagName).map { ($0, release) } }
             .filter { build, _ in build <= candidate && (installed.map { build > $0 } ?? (build == candidate)) }
             .sorted { $0.0 < $1.0 }

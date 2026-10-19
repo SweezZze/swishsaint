@@ -133,10 +133,12 @@ final class ForkUpdateService: ObservableObject {
                 if reporting || (offering && postponed != candidate.build) {
                     // A window in the middle of a meeting would take the
                     // keyboard from the call: asked once it is over.
-                    if ForkMeetingActivity.isBusy && !reporting {
+                    if reporting {
+                        self.offer(candidate, asked: true)
+                    } else if ForkMeetingActivity.isBusy {
                         self.waitForMeeting(candidate, install: false)
                     } else {
-                        self.offer(candidate, asked: reporting)
+                        self.offerWhenFree(candidate)
                     }
                 }
             }
@@ -204,6 +206,20 @@ final class ForkUpdateService: ObservableObject {
         offer(candidate, asked: true)
     }
 
+    /// An offer nobody asked for: after the onboarding, What's New, the
+    /// official intros, any alert and the notes of the update just
+    /// installed, never on top of them. Dropped if the build was postponed
+    /// or replaced in the meantime, or is already on screen.
+    private func offerWhenFree(_ candidate: ForkUpdateSupport.Candidate) {
+        guard !ForkUpdateNotesWindow.shared.isShowing(build: candidate.build, mode: .available) else { return }
+        presentWhenFree("offer") { [weak self] in
+            guard let self, self.state == .available(candidate),
+                  UserDefaults.standard.integer(forKey: ForkDefaultsKey.updatePostponedBuild) != candidate.build
+            else { return }
+            self.offer(candidate)
+        }
+    }
+
     /// The window with the notes of every build since the installed one.
     /// "Later" (or closing it) postpones this build until a newer one is
     /// out; installing from it counts its notes as read, so they are not
@@ -245,8 +261,6 @@ final class ForkUpdateService: ObservableObject {
     /// The build the app ran before this one, while the notes of the update
     /// just installed wait to be shown.
     private var installedSince: Int?
-    private var launchWindowObservers: [NSObjectProtocol] = []
-    private var launchWindowRecheck = false
 
     /// At launch: a build newer than the one that ran last on this Mac is
     /// an update just installed. Its notes are shown once, unless they were
@@ -272,25 +286,24 @@ final class ForkUpdateService: ObservableObject {
     /// update intros, any alert and a meeting: one window at a time.
     private func showInstalledNotesWhenFree() {
         guard let since = installedSince, let current = currentBuild, let repository else { return }
-        guard Self.launchWindowsAreDone else {
-            waitForLaunchWindows()
-            return
-        }
-        stopWaitingForLaunchWindows()
         installedSince = nil
-        if let data = UserDefaults.standard.data(forKey: ForkDefaultsKey.updateNotesCache),
-           let cached = try? JSONDecoder().decode(ForkUpdateNotes.Summary.self, from: data),
-           cached.build == current {
-            showInstalled(cached)
-            return
-        }
-        Self.fetchReleases(repository: repository, installed: since) { [weak self] releases in
-            DispatchQueue.main.async {
-                guard let self else { return }
-                // Offline: tried again at the next launch.
-                guard let releases else { return }
-                self.showInstalled(ForkUpdateNotes.summary(releases: releases, installed: since, candidate: current,
-                                                           installedUpstream: self.upstreamVersion))
+        presentWhenFree("installed") { [weak self] in
+            guard let self else { return }
+            if let data = UserDefaults.standard.data(forKey: ForkDefaultsKey.updateNotesCache),
+               let cached = try? JSONDecoder().decode(ForkUpdateNotes.Summary.self, from: data),
+               cached.build == current {
+                self.showInstalled(cached)
+                return
+            }
+            Self.fetchReleases(repository: repository, installed: since) { [weak self] releases in
+                DispatchQueue.main.async {
+                    guard let self else { return }
+                    // Offline: tried again at the next launch.
+                    guard let releases else { return }
+                    self.showInstalled(ForkUpdateNotes.summary(releases: releases, installed: since,
+                                                               candidate: current,
+                                                               installedUpstream: self.upstreamVersion))
+                }
             }
         }
     }
@@ -302,13 +315,56 @@ final class ForkUpdateService: ObservableObject {
             UserDefaults.standard.set(build, forKey: ForkDefaultsKey.updateNotesSeenBuild)
         }
         // Nothing an author wrote: the official window says the rest.
-        guard notes.hasNotes, !ForkUpdateNotesWindow.shared.isOpen else {
+        guard notes.hasNotes else {
             markSeen()
+            return
+        }
+        // An offer opened while the notes were fetched: they come after it.
+        guard Self.launchWindowsAreDone else {
+            presentWhenFree("installed") { [weak self] in self?.showInstalled(notes) }
             return
         }
         ForkUpdateNotesWindow.shared.show(notes, mode: .installed, onDismiss: markSeen)
     }
 
+    // MARK: - One window at a time
+
+    /// What waits to open on its own, first come first shown: the notes of
+    /// the update just installed, an offer. One entry per kind, the latest.
+    private var waitingToPresent: [(kind: String, present: () -> Void)] = []
+    private var launchWindowObservers: [NSObjectProtocol] = []
+    private var launchWindowRecheck = false
+
+    private func presentWhenFree(_ kind: String, _ present: @escaping () -> Void) {
+        if let index = waitingToPresent.firstIndex(where: { $0.kind == kind }) {
+            waitingToPresent[index].present = present
+        } else {
+            waitingToPresent.append((kind, present))
+        }
+        presentNextIfFree()
+    }
+
+    private func presentNextIfFree() {
+        guard !waitingToPresent.isEmpty else {
+            stopWaitingForLaunchWindows()
+            return
+        }
+        guard Self.launchWindowsAreDone else {
+            waitForLaunchWindows()
+            return
+        }
+        let next = waitingToPresent.removeFirst()
+        next.present()
+        if waitingToPresent.isEmpty {
+            stopWaitingForLaunchWindows()
+        } else {
+            waitForLaunchWindows()
+        }
+    }
+
+    /// Nothing else is asking for the person's attention: the onboarding,
+    /// What's New and the official update intros are done, no alert is up,
+    /// no meeting records, and no update window is open.
     private static var launchWindowsAreDone: Bool {
         let defaults = UserDefaults.standard
         guard defaults.bool(forKey: DefaultsKey.hasOnboarded),
@@ -331,7 +387,7 @@ final class ForkUpdateService: ObservableObject {
             let delay: TimeInterval = notification.name == NSWindow.willCloseNotification ? 0.6 : 0.2
             DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
                 self?.launchWindowRecheck = false
-                self?.showInstalledNotesWhenFree()
+                self?.presentNextIfFree()
             }
         }
         launchWindowObservers = [
@@ -350,6 +406,14 @@ final class ForkUpdateService: ObservableObject {
 
     func install(_ candidate: ForkUpdateSupport.Candidate) {
         guard repository != nil else { return }
+        // The Settings button and the window's can both be clicked: one
+        // download at a time.
+        switch state {
+        case .downloading, .installing: return
+        default: break
+        }
+        // Its question is answered, wherever it was.
+        ForkUpdateNotesWindow.shared.closeForInstall()
         guard !ForkMeetingActivity.isBusy else {
             waitForMeeting(candidate, install: true)
             return
@@ -412,7 +476,7 @@ final class ForkUpdateService: ObservableObject {
         if pending.install {
             install(pending.candidate)
         } else if UserDefaults.standard.integer(forKey: ForkDefaultsKey.updatePostponedBuild) != pending.candidate.build {
-            offer(pending.candidate)
+            offerWhenFree(pending.candidate)
         }
     }
 

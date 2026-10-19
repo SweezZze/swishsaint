@@ -8,8 +8,11 @@ name: Fork · Note de mise à jour
 #   J'ai corrigé un bug sur l'historique du presse-papiers.
 #   <!-- /update-note -->
 #
+# Le prénom affiché est celui de l'auteur de la PR (fork/authors.tsv) ; une ligne « Par : <Prénom> »
+# dans le bloc le remplace.
 # Sans note : le label « pas-de-note » (PR sans effet pour les utilisateurs : CI, docs, outils).
-# Pas de note demandée aux synchros avec l'officiel ni aux robots. Voir .claude/CLAUDE.md.
+# Pas de note demandée aux synchros avec l'officiel ni aux robots (sauf les PR claude/* de @claude, dont la
+# note est écrite par la personne qui l'a sollicité). Voir .claude/CLAUDE.md.
 on:
   pull_request:
     types: [opened, edited, synchronize, reopened, labeled, unlabeled]
@@ -49,7 +52,8 @@ jobs:
           case "$TITLE" in
             "sync(upstream):"*) echo "Synchro avec l'officiel : pas de note demandée."; exit 0 ;;
           esac
-          if [ "$AUTHOR_TYPE" = Bot ]; then
+          # Les PR de @claude (claude/*) ont une note comme les autres : celle de la personne qui l'a sollicité.
+          if [ "$AUTHOR_TYPE" = Bot ] && [ "${HEAD_REF#claude/}" = "$HEAD_REF" ]; then
             echo "PR ouverte par un robot : pas de note demandée."
             exit 0
           fi
@@ -62,9 +66,10 @@ jobs:
             echo "::warning title=Auteur absent de fork/authors.tsv::« $AUTHOR » n'est pas dans fork/authors.tsv : ajoute la ligne « $AUTHOR<TAB>Prénom » pour que la note s'affiche sous ton prénom (sinon : le prénom du nom de branche feat/<prénom>-…, ou ton pseudo)."
           fi
 
-          # Même lecture que fork/release-notes.sh : le texte entre les deux marqueurs, sans commentaires.
+          # Même lecture que fork/release-notes.sh : le texte entre les deux marqueurs, sans commentaires,
+          # et une ligne « Par : <Prénom> » facultative qui ne compte pas comme note.
           note="$(python3 -c '
-          import os, re
+          import os, re, sys
           match = re.search(r"<!--\s*update-note\s*-->(.*?)<!--\s*/update-note\s*-->", os.environ.get("BODY") or "", re.S)
           if match:
               text = re.sub(r"<!--.*?-->", "", match.group(1), flags=re.S)
@@ -73,7 +78,11 @@ jobs:
                   for bullet in ("- ", "* ", "• "):
                       if line.startswith(bullet):
                           line = line[len(bullet):].strip()
-                  if line:
+                  # « Par : <Prénom> » choisit le prénom affiché, sans compter comme phrase.
+                  by = re.match(r"^par\s*:\s*(.+)$", line, re.I)
+                  if by:
+                      print("(affichée sous le prénom « %s »)" % by.group(1).strip(), file=sys.stderr)
+                  elif line:
                       print(line)
           ')"
           if [ -n "$note" ]; then

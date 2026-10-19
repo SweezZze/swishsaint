@@ -29,7 +29,8 @@ TO="${2:-HEAD}"
 BUILD_NUMBER="${BUILD_NUMBER:-$(git rev-list --count "$TO")}"
 UPSTREAM_VERSION="${UPSTREAM_VERSION:-$(plutil -extract CFBundleShortVersionString raw Resources/Info.plist 2>/dev/null || true)}"
 
-fetch_upstream 2>/dev/null || warn "Officiel injoignable : résumé officiel incomplet."
+# Avertissements sur stderr : la sortie standard, c'est dist/notes.md.
+fetch_upstream 2>/dev/null || warn "Officiel injoignable : résumé officiel incomplet." >&2
 UP="$(upstream_ref)"
 UP_HEAD=""
 LATEST_TAG=""
@@ -64,7 +65,7 @@ fi
 printf '\n\n'
 
 # Une ligne par changement de main, du plus ancien au plus récent (premier parent, sans les
-# synchros automatiques) : « pr<TAB>numéro<TAB>branche<TAB>titre » ou « commit<TAB><TAB><TAB>sujet ».
+# synchros automatiques) : « pr<TAB>numéro<TAB>branche<TAB>titre » ou « commit<TAB>-<TAB>-<TAB>sujet ».
 # La réponse de GitHub pour la PR N est dans $WORK/pr-N.json.
 : > "$WORK/entries.tsv"
 if [ -z "$LAST" ]; then
@@ -84,17 +85,19 @@ else
                 if [ "$CAN_ASK_GITHUB" = 1 ]; then
                     gh pr view "$number" --repo "$REPO" --json author,body,title,labels,headRefName \
                         > "$WORK/pr-$number.json" 2>/dev/null \
-                        || { rm -f "$WORK/pr-$number.json"; warn "PR #$number illisible : son titre servira de note."; }
+                        || { rm -f "$WORK/pr-$number.json"; warn "PR #$number illisible : son titre servira de note." >&2; }
                 fi
                 printf 'pr\t%s\t%s\t%s\n' "$number" "$branch" "${title:-$branch}" >> "$WORK/entries.tsv"
                 ;;
-            *) printf 'commit\t\t\t%s\n' "$subject" >> "$WORK/entries.tsv" ;;
+            *) printf 'commit\t-\t-\t%s\n' "$subject" >> "$WORK/entries.tsv" ;;
         esac
     done
 fi
 
-# Les notes : sections markdown sur la sortie, ligne machine dans $WORK/meta.txt.
-python3 - "$WORK" fork/authors.tsv "$BUILD_NUMBER" "${UPSTREAM_VERSION:-}" <<'PY'
+# Les notes : sections markdown dans $WORK/sections.md, ligne machine dans $WORK/meta.txt.
+# Si python3 échoue, la release part quand même : les PR par leur titre, sans ligne machine
+# (l'app lit alors les puces des sections, comme pour une release d'avant les notes d'auteur).
+if ! python3 - "$WORK" fork/authors.tsv "$BUILD_NUMBER" "${UPSTREAM_VERSION:-}" > "$WORK/sections.md" <<'PY'
 import json, os, re, sys
 
 work, authors_path, build, upstream = sys.argv[1:5]
@@ -123,14 +126,20 @@ def safe(text):
     return " ".join(text.replace("<!--", "").replace("-->", "").split())
 
 def shown(text):
-    """La même phrase dans le markdown de GitHub, où < ouvrirait une balise."""
-    return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+    """La même phrase dans le markdown de GitHub, où < ouvrirait une balise et @pseudo
+    notifierait quelqu'un (un espace sans chasse après @ l'en empêche)."""
+    text = text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+    return text.replace("@", "@\u200b")
+
+BY = re.compile(r"^par\s*:\s*(.+)$", re.I)
 
 def note_lines(body):
-    """Les phrases du bloc <!-- update-note --> … <!-- /update-note --> ; None sans bloc."""
+    """(prénom donné par « Par : <Prénom> » ou None, phrases) du bloc
+    <!-- update-note --> … <!-- /update-note --> ; None sans bloc."""
     match = re.search(r"<!--\s*update-note\s*-->(.*?)<!--\s*/update-note\s*-->", body or "", re.S)
     if not match:
         return None
+    by = None
     lines = []
     # Un commentaire laissé dans le bloc (« <!-- ta phrase ici --> ») n'est pas une note.
     for raw in re.sub(r"<!--.*?-->", "", match.group(1), flags=re.S).splitlines():
@@ -139,9 +148,13 @@ def note_lines(body):
             if line.startswith(bullet):
                 line = line[len(bullet):].strip()
         line = safe(line)
+        override = BY.match(line)
+        if override:
+            by = by or override.group(1).strip()
+            continue
         if line and line not in lines:
             lines.append(line)
-    return lines
+    return by, lines
 
 def author_name(login, branch):
     if login and login.lower() in names:
@@ -179,13 +192,14 @@ with open(os.path.join(work, "entries.tsv"), encoding="utf-8") as handle:
         labels = {label.get("name", "") for label in pr.get("labels") or []}
         if "pas-de-note" in labels:
             continue
-        lines = note_lines(pr.get("body"))
+        by, lines = note_lines(pr.get("body")) or (None, [])
         if not lines:
             item = safe(cleaned(pr.get("title") or title))
             other.append(("%s (#%s)" % (shown(item), number), item))
             continue
         author = pr.get("author") or {}
-        name = author_name(author.get("login", ""), pr.get("headRefName") or branch)
+        # Le prénom vient de qui ouvre la PR ; « Par : <Prénom> » dans le bloc le remplace.
+        name = by or author_name(author.get("login", ""), pr.get("headRefName") or branch)
         if name not in sections:
             sections[name] = []
             order.append(name)
@@ -215,6 +229,25 @@ text = text.replace("<", "\\u003c").replace(">", "\\u003e")
 with open(os.path.join(work, "meta.txt"), "w", encoding="utf-8") as handle:
     handle.write("<!-- swishsaint-meta v1 %s -->\n" % text)
 PY
+then
+    warn "Notes d'auteur illisibles (python3 a échoué) : les PR sont listées par leur titre." >&2
+    rm -f "$WORK/meta.txt"
+    ZWSP=$'\xe2\x80\x8b'
+    while IFS=$'\t' read -r kind number _ title; do
+        line="$(printf '%s' "$title" | sed "s/&/\\&amp;/g; s/</\\&lt;/g; s/>/\\&gt;/g; s/@/@$ZWSP/g")"
+        if [ "$kind" = pr ]; then
+            printf -- '- %s (#%s)\n' "$line" "$number"
+        else
+            printf -- '- %s\n' "$line"
+        fi
+    done < "$WORK/entries.tsv" > "$WORK/items.md"
+    if [ -s "$WORK/items.md" ]; then
+        { printf '### Autres changements\n'; cat "$WORK/items.md"; printf '\n'; } > "$WORK/sections.md"
+    else
+        : > "$WORK/sections.md"
+    fi
+fi
+cat "$WORK/sections.md"
 
 if [ -n "$LAST" ] && [ -n "$UP_HEAD" ]; then
     last_up="$(git merge-base "$LAST" "$UP" 2>/dev/null || true)"
@@ -225,7 +258,9 @@ if [ -n "$LAST" ] && [ -n "$UP_HEAD" ]; then
     fi
 fi
 
-cat "$WORK/meta.txt"
+if [ -f "$WORK/meta.txt" ]; then
+    cat "$WORK/meta.txt"
+fi
 if [ -n "$SHA256" ]; then
     printf '\nSHA256: %s\n' "$SHA256"
 fi

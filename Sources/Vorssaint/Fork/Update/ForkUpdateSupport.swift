@@ -68,7 +68,9 @@ enum ForkUpdateSupport {
         let tagName: String
         let body: String?
         let assets: [Asset]
-        /// Neither is offered, as `/releases/latest` never returned them.
+        /// A draft (listed only to the repository's writers) or a release
+        /// marked pre-release is never offered, nor read for the notes:
+        /// marking a bad build pre-release withdraws it.
         var draft: Bool? = nil
         var prerelease: Bool? = nil
 

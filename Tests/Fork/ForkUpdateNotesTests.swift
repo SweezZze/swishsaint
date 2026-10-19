@@ -106,6 +106,9 @@ enum ForkUpdateNotesTests {
         let old = "**Swishsaint build 2164** — base officielle Vorssaint 3.4.2-beta.1\n\n### Nouveau chez nous\n"
             + "- feat(dictation): show the dictation history in the island (#30)\n- Direct commit\n\n"
             + "### Côté officiel\n- 12 commit(s) intégré(s) depuis build-2160 : https://github.com/x/compare/a...b\n\n\(sha)\n"
+        suite.expect(Notes.fallbackItems(in: "### Autres changements\n- Fix for @\u{200B}louis &lt;3 &amp; co (#12)\n")
+                        == ["Fix for @louis <3 & co"],
+                     "the markdown escapes written for GitHub do not show in the window")
         suite.expect(Notes.fallbackItems(in: old) == ["Show the dictation history in the island", "Direct commit"],
                      "an old release gives the bullets of its sections, never the official compare link")
     }
@@ -154,6 +157,16 @@ enum ForkUpdateNotesTests {
                                        installedUpstream: nil)
         suite.expect(duplicated.includedBuilds == 1 && duplicated.authors.first?.items == ["J'ai corrigé un bug."],
                      "the same build listed twice counts once")
+
+        let withdrawn = Notes.summary(releases: releases + [
+            release(2175, body(2175, notes: [(36, "Louis", ["Build retirée."])]), prerelease: true),
+            release(2176, body(2176, notes: [(37, "Louis", ["Brouillon."])], other: ["Brouillon"]), draft: true),
+        ], installed: 2164, candidate: 2190, installedUpstream: "3.4.2-beta.1")
+        suite.expect(withdrawn.includedBuilds == 3
+                        && !withdrawn.authors.flatMap(\.items).contains("Build retirée.")
+                        && !withdrawn.authors.flatMap(\.items).contains("Brouillon.")
+                        && !withdrawn.other.contains("Brouillon"),
+                     "a build marked pre-release or still a draft is left out of the notes, as it is never offered")
 
         let data = try? JSONEncoder().encode(summary)
         let decoded = data.flatMap { try? JSONDecoder().decode(Notes.Summary.self, from: $0) }
@@ -212,6 +225,15 @@ enum ForkUpdateNotesTests {
                      "the check reads the release list, and falls back on the latest release alone")
         suite.expect(service.contains("guard repository != nil, timer == nil else { return }\n        noteLaunch()"),
                      "the notes after a relaunch are looked at once, at launch, by a build that updates itself")
+        let install = service.components(separatedBy: "func install(_ candidate: ForkUpdateSupport.Candidate) {").dropFirst().first?
+            .components(separatedBy: "state = .downloading").first ?? ""
+        suite.expect(install.contains("case .downloading, .installing: return")
+                        && install.contains("ForkUpdateNotesWindow.shared.closeForInstall()"),
+                     "one download at a time, from the window or the Settings, and the offer closes once it starts")
+        suite.expect(service.contains("self.offerWhenFree(candidate)") && service.contains("offerWhenFree(pending.candidate)")
+                        && service.contains("presentWhenFree(\"offer\")") && service.contains("presentWhenFree(\"installed\")")
+                        && service.contains("defaults.string(forKey: DefaultsKey.whatsNewPendingVersion) == nil"),
+                     "an offer nobody asked for, like the notes after a relaunch, waits for the launch windows")
         let defaults = source("Sources/Vorssaint/Fork/Core/ForkDefaults.swift")
         suite.expect(defaults.contains("static let updateLastRunBuild = \"fork.update.lastRunBuild\"")
                         && defaults.contains("static let updateNotesSeenBuild = \"fork.update.notesSeenBuild\""),
