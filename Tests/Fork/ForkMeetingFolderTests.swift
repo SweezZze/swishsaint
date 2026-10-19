@@ -189,19 +189,19 @@ enum ForkMeetingFolderTests {
                      "a folder already right, numbered or not, is not renamed again")
 
         let folder = "2026-10-18 10h02 — Point hebdo Acme"
-        let renames = ForkMeetingFolder.mediaRenames(folderName: folder,
+        let renames = ForkMeetingFolder.mediaRenames(from: current, to: folder,
                                                      names: ["2026-10-18 10h02 — Meeting.mp4", "2026-10-18 10h02 — Meeting.m4a",
                                                              "meeting.json", ".recording.mp4", "slides.pdf"])
         suite.expect(renames.moves == [.init(from: "2026-10-18 10h02 — Meeting.mp4", to: "\(folder).mp4"),
                                        .init(from: "2026-10-18 10h02 — Meeting.m4a", to: "\(folder).m4a")]
                         && renames.blocked.isEmpty,
                      "the video and the audio take the folder's name; the sidecar, the master and other files stay")
-        suite.expect(ForkMeetingFolder.mediaRenames(folderName: folder, names: ["\(folder).mp4", "meeting.json"]).moves.isEmpty,
+        suite.expect(ForkMeetingFolder.mediaRenames(from: current, to: folder, names: ["\(folder).mp4", "meeting.json"]).moves.isEmpty,
                      "media already named right are not moved")
-        let blocked = ForkMeetingFolder.mediaRenames(folderName: "F", names: ["a.mp4", "f.MP4"])
+        let blocked = ForkMeetingFolder.mediaRenames(from: "a", to: "F", names: ["a.mp4", "f.MP4"])
         suite.expect(blocked.moves.isEmpty && blocked.blocked == ["a.mp4"],
                      "a new name already used in the folder, in any case, leaves both files untouched")
-        let clash = ForkMeetingFolder.mediaRenames(folderName: folder, names: ["Old.mp4", "\(folder).mov", "x.m4a", "\(folder).m4a"])
+        let clash = ForkMeetingFolder.mediaRenames(from: "Old", to: folder, names: ["Old.mp4", "\(folder).mov", "x.m4a", "\(folder).m4a"])
         suite.expect(clash.moves == [.init(from: "Old.mp4", to: "\(folder).mp4")],
                      "each file keeps its own extension; renaming never changes what a file holds")
     }

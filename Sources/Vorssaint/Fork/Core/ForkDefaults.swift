@@ -92,6 +92,9 @@ enum ForkDefaultsKey {
     /// A detected Google Meet takes the name of the calendar event that
     /// links to it (EventKit, full access asked when it is turned on).
     static let meetingsCalendarNaming = "fork.meetings.calendarNaming"
+    /// Meetings older than this many days go to the Trash
+    /// (`ForkMeetingRetention`); 0: never.
+    static let meetingsRetentionDays = "fork.meetings.retentionDays"
     /// The meetings folder's path; empty: a folder in Movies, named in the
     /// person's language and saved here at the first recording. Machine
     /// state, like the official recorder's folder: kept out of the backup.
@@ -159,6 +162,7 @@ enum ForkDefaults {
         ForkDefaultsKey.meetingsAutoStop: true,
         ForkDefaultsKey.meetingsAutoStopSeconds: ForkMeetingAutoStop.defaultSeconds,
         ForkDefaultsKey.meetingsCalendarNaming: false,
+        ForkDefaultsKey.meetingsRetentionDays: ForkMeetingRetention.fallback,
     ]
 
     /// Where each setting lived in the test builds made before the fork

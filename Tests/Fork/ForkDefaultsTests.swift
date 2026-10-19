@@ -38,7 +38,7 @@ enum ForkDefaultsTests {
                                            ForkDefaultsKey.meetingsConsentReminder, ForkDefaultsKey.meetingsAnnouncement,
                                            ForkDefaultsKey.meetingsShortcut, ForkDefaultsKey.meetingsApps,
                                            ForkDefaultsKey.meetingsAutoStop, ForkDefaultsKey.meetingsAutoStopSeconds,
-                                           ForkDefaultsKey.meetingsCalendarNaming]
+                                           ForkDefaultsKey.meetingsCalendarNaming, ForkDefaultsKey.meetingsRetentionDays]
         suite.expect(Set(ForkDefaults.legacyKeys.values) == Set(ForkDefaults.registered.keys).subtracting(addedSinceFork)
                         && ForkDefaults.legacyKeys.count == ForkDefaults.registered.count - addedSinceFork.count,
                      "every setting of the pre-fork test builds has its new name, and only those")
@@ -59,7 +59,8 @@ enum ForkDefaultsTests {
                         && ForkDefaults.registered[ForkDefaultsKey.meetingsSystemAudioVerified] == nil,
                      "whether this Mac allows system audio recording stays on this Mac, and is never registered")
         suite.expect(ForkDefaults.backupKeys.isSuperset(of: [ForkDefaultsKey.meetingsEnabled, ForkDefaultsKey.meetingsQuality,
-                                                             ForkDefaultsKey.meetingsShortcut, ForkDefaultsKey.meetingsAnnouncement]),
+                                                             ForkDefaultsKey.meetingsShortcut, ForkDefaultsKey.meetingsAnnouncement,
+                                                             ForkDefaultsKey.meetingsRetentionDays]),
                      "the meetings choices go into the backup")
         suite.expect(ForkDefaults.registered[ForkDefaultsKey.meetingsEnabled] as? Bool == false
                         && ForkDefaults.registered[ForkDefaultsKey.meetingsCaptureTarget] as? String == "window"
@@ -67,8 +68,9 @@ enum ForkDefaultsTests {
                         && ForkDefaults.registered[ForkDefaultsKey.meetingsMicrophone] as? String == "meeting"
                         && ForkDefaults.registered[ForkDefaultsKey.meetingsQuality] as? String == "standard"
                         && ForkDefaults.registered[ForkDefaultsKey.meetingsExtractAudio] as? Bool == true
-                        && ForkDefaults.registered[ForkDefaultsKey.meetingsConsentReminder] as? Bool == true,
-                     "meetings start off; once on, they film the window with the app's sound and its microphone, in standard quality")
+                        && ForkDefaults.registered[ForkDefaultsKey.meetingsConsentReminder] as? Bool == true
+                        && ForkDefaults.registered[ForkDefaultsKey.meetingsRetentionDays] as? Int == 0,
+                     "meetings start off; once on, they film the window with the app's sound and its microphone, in standard quality, and never go to the Trash on their own")
         suite.expect(ForkDefaults.backupKeys.isSuperset(of: [ForkDefaultsKey.meetingsApps, ForkDefaultsKey.meetingsAutoStop,
                                                              ForkDefaultsKey.meetingsAutoStopSeconds])
                         && ForkDefaults.registered[ForkDefaultsKey.meetingsApps] as? String == ForkMeetingPolicies.defaultJSON

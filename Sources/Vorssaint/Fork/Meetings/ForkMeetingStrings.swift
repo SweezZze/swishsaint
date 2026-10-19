@@ -478,6 +478,136 @@ struct ForkMeetingStrings {
     func voiceAutoStarted(seconds: Int) -> String { String(format: voiceAutoStartedFormat, seconds) }
     func voiceEndingSoon(seconds: Int) -> String { String(format: voiceEndingSoonFormat, seconds) }
     func voiceNever(_ provider: String) -> String { String(format: voiceNeverFormat, provider) }
+
+    // MARK: Library
+
+    /// The headings the rows sit under; older days are dates, written by
+    /// the system in the app's language.
+    let groupToday: String
+    let groupYesterday: String
+    let groupUndated: String
+
+    /// The detail's facts and the list's columns.
+    let columnTitle: String
+    let columnDuration: String
+    let columnSize: String
+    let columnApp: String
+    let columnMeetCode: String
+
+    /// The ⋯ menu and the detail’s buttons. Exporting to a service comes with
+    /// the exporters; until then, only the audio.
+    let actionRename: String
+    let actionExportAudio: String
+    let actionCopyPath: String
+    let actionTrash: String
+    let actionTrim: String
+
+    /// Short: the island or a bubble.
+    let noticePathCopied: String
+
+    /// %@ is the meeting's title.
+    let confirmTrashFormat: String
+    let confirmTrashMessage: String
+
+    /// Beside a row: 28 characters at most, the cause filled in.
+    let statusRecovered: String
+    let statusInterruptedFormat: String
+    let statusUnreadable: String
+
+    /// In the detail of an unreadable or later meeting.
+    let statusUnreadableHelp: String
+    let statusLaterVersion: String
+
+    /// What %@ says in `statusInterruptedFormat`: a few words, lower case
+    /// where the language allows.
+    let causeCrash: String
+    let causeQuit: String
+    let causeDisk: String
+    let causePermission: String
+    let causeSleep: String
+    let causeFeatureOff: String
+    let causeCaptureStopped: String
+    let causeFinalPass: String
+    let causeUnknown: String
+
+    /// Rename, Move to Trash and Trim refused, or done in part.
+    let refusedWhileRecording: String
+    let renameUnreadable: String
+    let renameFolderKept: String
+    let renameMediaKept: String
+    let renameNamesExhausted: String
+
+    /// The search field, and the list with nothing to show.
+    let searchPlaceholder: String
+    let searchNoResultsFormat: String
+    let emptyTitle: String
+    let emptyCaption: String
+    let notesPlaceholder: String
+
+    /// `fork.meetings.retentionDays` on the Meetings page.
+    let retentionTitle: String
+    let retentionNever: String
+    let retentionDaysFormat: String
+    let retentionCaption: String
+    let retentionConfirmTitle: String
+
+    /// %1$d meetings, older than %2$d days.
+    let retentionConfirmFormat: String
+
+    /// Trim in Editor.
+    let trimCaption: String
+    let trimNeedsEditor: String
+    let trimNoVideo: String
+
+    func confirmTrash(_ title: String) -> String { String(format: confirmTrashFormat, title) }
+    func statusInterrupted(_ cause: String) -> String { String(format: statusInterruptedFormat, cause) }
+    func searchNoResults(_ query: String) -> String { String(format: searchNoResultsFormat, query) }
+    func retentionDays(_ days: Int) -> String { String(format: retentionDaysFormat, days) }
+    func retentionConfirm(count: Int, days: Int) -> String { String(format: retentionConfirmFormat, count, days) }
+
+    // MARK: Library effects
+
+    /// The Meetings page's button, and the "Show" of the saved and
+    /// recovered notices, which open the meeting in the library: short.
+    let openLibrary: String
+    let actionShowMeeting: String
+    /// The ⋯ menu's name for VoiceOver: short.
+    let actionMore: String
+    /// Under an empty library: %@ is the meetings folder's path.
+    let emptyWhereFormat: String
+    /// Where the player would be, for a meeting with nothing to play: short.
+    let playerNoVideo: String
+    /// Under a flagged meeting's title, said in full.
+    let statusRecoveredHelp: String
+    let statusInterruptedHelp: String
+    /// An action on the files that did not go through.
+    let trashFailed: String
+    let renameFailed: String
+    let exportFailed: String
+    let trimFailed: String
+    /// What `statusInterruptedFormat` says of a recording cancelled whose
+    /// folder could not go to the Trash yet: a word or two.
+    let causeCancelled: String
+    let voiceTrashed: String
+
+    func emptyWhere(_ path: String) -> String { String(format: emptyWhereFormat, path) }
+
+    // MARK: Fixes M
+
+    /// An automatic sweep that would take more than ten meetings, or more
+    /// than a quarter of the library, waits on the Meetings page for this:
+    /// %1$d meetings older than %2$d days; the same with one meeting.
+    let retentionHeldFormat: String
+    let retentionHeldOneFormat: String
+    let retentionHeldCaption: String
+    /// The folder moved but `meeting.json` refused the title.
+    let renameTitleNotSaved: String
+    /// The detail of a folder whose `meeting.json` another app wrote.
+    let statusForeign: String
+
+    func retentionHeld(count: Int, days: Int) -> String {
+        count == 1 ? String(format: retentionHeldOneFormat, days) : String(format: retentionHeldFormat, count, days)
+    }
 }
 
 extension ForkMeetingStrings {
@@ -567,8 +697,10 @@ extension ForkMeetingStrings {
         consentPledge: "I will inform the participants",
         consentPledgeNeeded: "Tick “I will inform the participants” to continue.",
         consentConfirm: "Turn On Meetings",
+        // MARK: Library folder and names
         folderName: "Meetings",
         untitledMeeting: "Meeting",
+        // MARK: Island, pill and bubble notices: short
         noticeStarted: "Recording started",
         noticeResumed: "Recording resumed",
         noticeSaved: "Meeting saved",
@@ -578,6 +710,7 @@ extension ForkMeetingStrings {
         noticeDiskLow: "Disk almost full",
         noticeDisplayChanged: "Display changed",
         diskMinutesFormat: "~%d min of disk left",
+        // MARK: VoiceOver
         voiceStarted: "Meeting recording started.",
         voicePaused: "Meeting recording paused.",
         voiceResumed: "Meeting recording resumed.",
@@ -585,6 +718,7 @@ extension ForkMeetingStrings {
         voiceMicrophoneFormat: "The recording now uses the microphone %@.",
         voiceMicrophoneSilent: "The microphone sends no sound. Check the microphone chosen for meetings.",
         voiceDiskLowFormat: "The disk is almost full. Minutes of recording left: %d.",
+        // MARK: Failures: a short summary, then what to do
         failScreenDenied: "Screen Recording not allowed",
         failScreenDeniedRemedy: "Without it, nothing can be filmed. Allow Vorssaint in System Settings › Privacy & Security › Screen & System Audio Recording.",
         failScreenRevoked: "Screen access withdrawn",
@@ -741,7 +875,77 @@ extension ForkMeetingStrings {
         detectionAlwaysUnavailable: "Always is not available on this Mac: meetings are offered, never recorded on their own.",
         // MARK: Fixes L
         detectionAlwaysDelay: "Teams, Webex and Discord: recorded on their own 15 s into the call. Zoom and Slack: once their meeting window opens, otherwise offered.",
-        offerMainWindowFormat: "%@ (main window)"
+        offerMainWindowFormat: "%@ (main window)",
+        // MARK: Library
+        groupToday: "Today",
+        groupYesterday: "Yesterday",
+        groupUndated: "No date",
+        columnTitle: "Title",
+        columnDuration: "Length",
+        columnSize: "Size",
+        columnApp: "App",
+        columnMeetCode: "Meeting code",
+        actionRename: "Rename",
+        actionExportAudio: "Export Audio (M4A)…",
+        actionCopyPath: "Copy Path",
+        actionTrash: "Move to Trash",
+        actionTrim: "Trim in Editor",
+        noticePathCopied: "Path copied",
+        confirmTrashFormat: "Move “%@” to the Trash?",
+        confirmTrashMessage: "The meeting’s folder goes to the Trash with its video, its audio and its notes. You can take it back out until the Trash is emptied.",
+        statusRecovered: "Recovered",
+        statusInterruptedFormat: "Interrupted: %@",
+        statusUnreadable: "Unreadable record",
+        statusUnreadableHelp: "Its meeting.json could not be read. It is never rewritten: the video stays in the folder, and the record can still be repaired by hand.",
+        statusLaterVersion: "Made by a newer version of Vorssaint: shown, never changed.",
+        causeCrash: "crash",
+        causeQuit: "app quit",
+        causeDisk: "disk full",
+        causePermission: "access removed",
+        causeSleep: "Mac asleep",
+        causeFeatureOff: "feature off",
+        causeCaptureStopped: "capture stopped",
+        causeFinalPass: "finishing",
+        causeUnknown: "unknown cause",
+        refusedWhileRecording: "Not while this meeting is being recorded or finished.",
+        renameUnreadable: "This meeting’s meeting.json can’t be read: its title can’t change.",
+        renameFolderKept: "The folder was renamed in the Finder: it keeps that name, and only the title changes.",
+        renameMediaKept: "A file in the folder already has the new name: the video or the audio keeps its old one.",
+        renameNamesExhausted: "Too many folders already have this name: the folder keeps its own.",
+        searchPlaceholder: "Search",
+        searchNoResultsFormat: "No meeting matches “%@”",
+        emptyTitle: "No meetings yet",
+        emptyCaption: "Each meeting you record appears here, in its own folder.",
+        notesPlaceholder: "Add notes",
+        retentionTitle: "Automatic Trash",
+        retentionNever: "Never",
+        retentionDaysFormat: "After %d days",
+        retentionCaption: "Older meetings go to the Trash at launch, then once a day. Never one being recorded, nor one marked ⚠.",
+        retentionConfirmTitle: "Move older meetings to the Trash?",
+        retentionConfirmFormat: "Meetings older than %2$d days: %1$d. They stay in the Trash until it is emptied.",
+        trimCaption: "The editor opens a copy: the meeting itself stays untouched.",
+        trimNeedsEditor: "The editor belongs to Screen recording: turn it on in Vorssaint to trim a meeting.",
+        trimNoVideo: "This meeting has no video to trim.",
+        // MARK: Library effects
+        openLibrary: "Open Meetings",
+        actionShowMeeting: "Show",
+        actionMore: "More",
+        emptyWhereFormat: "They will be kept in %@.",
+        playerNoVideo: "No video to play",
+        statusRecoveredHelp: "Recovered after the app stopped unexpectedly: its last seconds may be missing.",
+        statusInterruptedHelp: "This meeting did not end normally. Everything recorded is kept in its folder.",
+        trashFailed: "The meeting could not be moved to the Trash.",
+        renameFailed: "The folder could not be renamed: the title changed, the folder kept its name.",
+        exportFailed: "The audio could not be exported.",
+        trimFailed: "The copy for the editor could not be made. The meeting itself is untouched.",
+        causeCancelled: "cancelled",
+        voiceTrashed: "Meeting moved to the Trash.",
+        // MARK: Fixes M
+        retentionHeldFormat: "%1$d meetings older than %2$d days: move them to the Trash?",
+        retentionHeldOneFormat: "1 meeting older than %d days: move it to the Trash?",
+        retentionHeldCaption: "More than the automatic Trash takes on its own: nothing goes until you confirm.",
+        renameTitleNotSaved: "The folder was renamed, but its new title could not be saved.",
+        statusForeign: "Its meeting.json was not written by Vorssaint: shown, never changed."
     )
 }
 
@@ -832,8 +1036,10 @@ extension ForkMeetingStrings {
         consentPledge: "Vou avisar os participantes",
         consentPledgeNeeded: "Marque “Vou avisar os participantes” para continuar.",
         consentConfirm: "Ativar Reuniões",
+        // MARK: Library folder and names
         folderName: "Reuniões",
         untitledMeeting: "Reunião",
+        // MARK: Island, pill and bubble notices: short
         noticeStarted: "Gravação iniciada",
         noticeResumed: "Gravação retomada",
         noticeSaved: "Reunião salva",
@@ -843,6 +1049,7 @@ extension ForkMeetingStrings {
         noticeDiskLow: "Disco quase cheio",
         noticeDisplayChanged: "Tela alterada",
         diskMinutesFormat: "~%d min de disco",
+        // MARK: VoiceOver
         voiceStarted: "Gravação da reunião iniciada.",
         voicePaused: "Gravação da reunião pausada.",
         voiceResumed: "Gravação da reunião retomada.",
@@ -850,6 +1057,7 @@ extension ForkMeetingStrings {
         voiceMicrophoneFormat: "A gravação agora usa o microfone %@.",
         voiceMicrophoneSilent: "O microfone não envia som. Verifique o microfone escolhido para as reuniões.",
         voiceDiskLowFormat: "O disco está quase cheio. Minutos de gravação restantes: %d.",
+        // MARK: Failures: a short summary, then what to do
         failScreenDenied: "Acesso à tela negado",
         failScreenDeniedRemedy: "Sem ele, nada pode ser filmado. Permita o Vorssaint em Ajustes do Sistema › Privacidade e Segurança › Gravação de Tela e Áudio do Sistema.",
         failScreenRevoked: "Acesso à tela retirado",
@@ -1006,7 +1214,77 @@ extension ForkMeetingStrings {
         detectionAlwaysUnavailable: "“Sempre” não está disponível neste Mac: as reuniões são oferecidas, nunca gravadas sozinhas.",
         // MARK: Fixes L
         detectionAlwaysDelay: "Teams, Webex e Discord: gravados sozinhos 15 s após o início da chamada. Zoom e Slack: assim que a janela da reunião abre; senão, oferecidos.",
-        offerMainWindowFormat: "%@ (janela principal)"
+        offerMainWindowFormat: "%@ (janela principal)",
+        // MARK: Library
+        groupToday: "Hoje",
+        groupYesterday: "Ontem",
+        groupUndated: "Sem data",
+        columnTitle: "Título",
+        columnDuration: "Duração",
+        columnSize: "Tamanho",
+        columnApp: "Aplicativo",
+        columnMeetCode: "Código da reunião",
+        actionRename: "Renomear",
+        actionExportAudio: "Exportar áudio (M4A)…",
+        actionCopyPath: "Copiar caminho",
+        actionTrash: "Mover para o Lixo",
+        actionTrim: "Cortar no editor",
+        noticePathCopied: "Caminho copiado",
+        confirmTrashFormat: "Mover “%@” para o Lixo?",
+        confirmTrashMessage: "A pasta da reunião vai para o Lixo com o vídeo, o áudio e as notas. Você pode tirá-la de lá enquanto o Lixo não for esvaziado.",
+        statusRecovered: "Recuperada",
+        statusInterruptedFormat: "Interrompida: %@",
+        statusUnreadable: "Ficha ilegível",
+        statusUnreadableHelp: "Não foi possível ler o meeting.json. Ele nunca é reescrito: o vídeo fica na pasta, e a ficha ainda pode ser reparada à mão.",
+        statusLaterVersion: "Criada por uma versão mais recente do Vorssaint: exibida, nunca alterada.",
+        causeCrash: "falha",
+        causeQuit: "app encerrado",
+        causeDisk: "disco cheio",
+        causePermission: "sem acesso",
+        causeSleep: "repouso",
+        causeFeatureOff: "desativação",
+        causeCaptureStopped: "captura parada",
+        causeFinalPass: "finalização",
+        causeUnknown: "causa incerta",
+        refusedWhileRecording: "Não é possível enquanto a reunião é gravada ou finalizada.",
+        renameUnreadable: "O meeting.json desta reunião não pode ser lido: o título não pode mudar.",
+        renameFolderKept: "A pasta foi renomeada no Finder: ela mantém esse nome, e só o título muda.",
+        renameMediaKept: "Um arquivo da pasta já tem o novo nome: o vídeo ou o áudio mantém o antigo.",
+        renameNamesExhausted: "Pastas demais já têm este nome: a pasta mantém o seu.",
+        searchPlaceholder: "Buscar",
+        searchNoResultsFormat: "Nenhuma reunião corresponde a “%@”",
+        emptyTitle: "Nenhuma reunião ainda",
+        emptyCaption: "Cada reunião gravada aparece aqui, na sua própria pasta.",
+        notesPlaceholder: "Adicionar notas",
+        retentionTitle: "Lixo automático",
+        retentionNever: "Nunca",
+        retentionDaysFormat: "Após %d dias",
+        retentionCaption: "As reuniões mais antigas vão para o Lixo na abertura e depois uma vez por dia. Nunca uma em gravação, nem uma marcada com ⚠.",
+        retentionConfirmTitle: "Mover as reuniões antigas para o Lixo?",
+        retentionConfirmFormat: "Reuniões com mais de %2$d dias: %1$d. Elas ficam no Lixo até ele ser esvaziado.",
+        trimCaption: "O editor abre uma cópia: a reunião em si fica intacta.",
+        trimNeedsEditor: "O editor faz parte de Gravação de tela: ative-a no Vorssaint para cortar uma reunião.",
+        trimNoVideo: "Esta reunião não tem vídeo para cortar.",
+        // MARK: Library effects
+        openLibrary: "Abrir reuniões",
+        actionShowMeeting: "Mostrar",
+        actionMore: "Mais",
+        emptyWhereFormat: "Elas serão guardadas em %@.",
+        playerNoVideo: "Nenhum vídeo para reproduzir",
+        statusRecoveredHelp: "Recuperada depois que o app parou de forma inesperada: os últimos segundos podem faltar.",
+        statusInterruptedHelp: "Esta reunião não terminou normalmente. Tudo o que foi gravado está guardado na pasta dela.",
+        trashFailed: "Não foi possível mover a reunião para o Lixo.",
+        renameFailed: "Não foi possível renomear a pasta: o título mudou, a pasta manteve o nome.",
+        exportFailed: "Não foi possível exportar o áudio.",
+        trimFailed: "Não foi possível fazer a cópia para o editor. A reunião em si não foi alterada.",
+        causeCancelled: "cancelada",
+        voiceTrashed: "Reunião movida para o Lixo.",
+        // MARK: Fixes M
+        retentionHeldFormat: "%1$d reuniões com mais de %2$d dias: movê-las para o Lixo?",
+        retentionHeldOneFormat: "1 reunião com mais de %d dias: movê-la para o Lixo?",
+        retentionHeldCaption: "Mais do que o Lixo automático leva sozinho: nada sai antes de você confirmar.",
+        renameTitleNotSaved: "A pasta foi renomeada, mas não foi possível salvar o novo título.",
+        statusForeign: "O meeting.json não foi escrito pelo Vorssaint: exibida, nunca alterada."
     )
 }
 
@@ -1097,8 +1375,10 @@ extension ForkMeetingStrings {
         consentPledge: "Katılımcıları bilgilendireceğim",
         consentPledgeNeeded: "Devam etmek için “Katılımcıları bilgilendireceğim” kutusunu işaretleyin.",
         consentConfirm: "Toplantılar’ı aç",
+        // MARK: Library folder and names
         folderName: "Toplantılar",
         untitledMeeting: "Toplantı",
+        // MARK: Island, pill and bubble notices: short
         noticeStarted: "Kayıt başladı",
         noticeResumed: "Kayıt sürdürüldü",
         noticeSaved: "Toplantı kaydedildi",
@@ -1108,6 +1388,7 @@ extension ForkMeetingStrings {
         noticeDiskLow: "Disk neredeyse dolu",
         noticeDisplayChanged: "Ekran değişti",
         diskMinutesFormat: "~%d dk disk kaldı",
+        // MARK: VoiceOver
         voiceStarted: "Toplantı kaydı başladı.",
         voicePaused: "Toplantı kaydı duraklatıldı.",
         voiceResumed: "Toplantı kaydı sürdürüldü.",
@@ -1115,6 +1396,7 @@ extension ForkMeetingStrings {
         voiceMicrophoneFormat: "Kayıt artık %@ mikrofonunu kullanıyor.",
         voiceMicrophoneSilent: "Mikrofon ses göndermiyor. Toplantılar için seçilen mikrofonu kontrol edin.",
         voiceDiskLowFormat: "Disk neredeyse dolu. Kalan kayıt dakikası: %d.",
+        // MARK: Failures: a short summary, then what to do
         failScreenDenied: "Ekran erişimi reddedildi",
         failScreenDeniedRemedy: "Bu izin olmadan hiçbir şey kaydedilemez. Sistem Ayarları › Gizlilik ve Güvenlik › Ekran ve Sistem Sesi Kaydı’ndan Vorssaint’e izin verin.",
         failScreenRevoked: "Ekran erişimi kaldırıldı",
@@ -1271,7 +1553,77 @@ extension ForkMeetingStrings {
         detectionAlwaysUnavailable: "“Her zaman” bu Mac’te kullanılamaz: toplantılar önerilir, hiçbir zaman kendiliğinden kaydedilmez.",
         // MARK: Fixes L
         detectionAlwaysDelay: "Teams, Webex ve Discord: görüşme başladıktan 15 sn sonra kendiliğinden kaydedilir. Zoom ve Slack: toplantı pencereleri açılır açılmaz, aksi hâlde önerilir.",
-        offerMainWindowFormat: "%@ (ana pencere)"
+        offerMainWindowFormat: "%@ (ana pencere)",
+        // MARK: Library
+        groupToday: "Bugün",
+        groupYesterday: "Dün",
+        groupUndated: "Tarihsiz",
+        columnTitle: "Başlık",
+        columnDuration: "Süre",
+        columnSize: "Boyut",
+        columnApp: "Uygulama",
+        columnMeetCode: "Toplantı kodu",
+        actionRename: "Adını Değiştir",
+        actionExportAudio: "Sesi Dışa Aktar (M4A)…",
+        actionCopyPath: "Yolu Kopyala",
+        actionTrash: "Çöp Sepeti’ne Taşı",
+        actionTrim: "Düzenleyicide Kırp",
+        noticePathCopied: "Yol kopyalandı",
+        confirmTrashFormat: "“%@” Çöp Sepeti’ne taşınsın mı?",
+        confirmTrashMessage: "Toplantının klasörü videosu, sesi ve notlarıyla Çöp Sepeti’ne gider. Çöp Sepeti boşaltılana kadar geri alabilirsiniz.",
+        statusRecovered: "Kurtarıldı",
+        statusInterruptedFormat: "Yarıda kaldı: %@",
+        statusUnreadable: "Kayıt okunamıyor",
+        statusUnreadableHelp: "meeting.json dosyası okunamadı. Hiçbir zaman yeniden yazılmaz: video klasörde kalır ve kayıt hâlâ elle onarılabilir.",
+        statusLaterVersion: "Vorssaint’in daha yeni bir sürümüyle oluşturuldu: gösterilir, hiç değiştirilmez.",
+        causeCrash: "çökme",
+        causeQuit: "uygulama çıktı",
+        causeDisk: "disk dolu",
+        causePermission: "izin kalktı",
+        causeSleep: "uyku",
+        causeFeatureOff: "özellik kapalı",
+        causeCaptureStopped: "yakalama durdu",
+        causeFinalPass: "sonlandırma",
+        causeUnknown: "neden belirsiz",
+        refusedWhileRecording: "Bu toplantı kaydedilirken veya sonlandırılırken yapılamaz.",
+        renameUnreadable: "Bu toplantının meeting.json dosyası okunamıyor: başlığı değiştirilemez.",
+        renameFolderKept: "Klasör Finder’da yeniden adlandırılmış: bu adı korur, yalnızca başlık değişir.",
+        renameMediaKept: "Klasördeki bir dosya zaten yeni adı taşıyor: video veya ses eski adını korur.",
+        renameNamesExhausted: "Bu adı taşıyan çok fazla klasör var: klasör kendi adını korur.",
+        searchPlaceholder: "Ara",
+        searchNoResultsFormat: "“%@” ile eşleşen toplantı yok",
+        emptyTitle: "Henüz toplantı yok",
+        emptyCaption: "Kaydettiğiniz her toplantı kendi klasöründe burada görünür.",
+        notesPlaceholder: "Not ekle",
+        retentionTitle: "Otomatik Çöp Sepeti",
+        retentionNever: "Hiçbir zaman",
+        retentionDaysFormat: "%d gün sonra",
+        retentionCaption: "Daha eski toplantılar açılışta, sonra günde bir kez Çöp Sepeti’ne gider. Kaydedilen ya da ⚠ ile işaretli bir toplantı asla gitmez.",
+        retentionConfirmTitle: "Eski toplantılar Çöp Sepeti’ne taşınsın mı?",
+        retentionConfirmFormat: "%2$d günden eski toplantılar: %1$d. Çöp Sepeti boşaltılana kadar orada kalırlar.",
+        trimCaption: "Düzenleyici bir kopya açar: toplantının kendisine dokunulmaz.",
+        trimNeedsEditor: "Düzenleyici Ekran Kaydı’na aittir: bir toplantıyı kırpmak için Vorssaint’te onu açın.",
+        trimNoVideo: "Bu toplantının kırpılacak videosu yok.",
+        // MARK: Library effects
+        openLibrary: "Toplantıları Aç",
+        actionShowMeeting: "Göster",
+        actionMore: "Diğer",
+        emptyWhereFormat: "Toplantılar şurada saklanacak: %@.",
+        playerNoVideo: "Oynatılacak video yok",
+        statusRecoveredHelp: "Uygulama beklenmedik şekilde durduktan sonra kurtarıldı: son birkaç saniye eksik olabilir.",
+        statusInterruptedHelp: "Bu toplantı normal şekilde bitmedi. Kaydedilen her şey klasöründe saklanıyor.",
+        trashFailed: "Toplantı Çöp Sepeti’ne taşınamadı.",
+        renameFailed: "Klasörün adı değiştirilemedi: başlık değişti, klasör adını korudu.",
+        exportFailed: "Ses dışa aktarılamadı.",
+        trimFailed: "Düzenleyici için kopya oluşturulamadı. Toplantının kendisine dokunulmadı.",
+        causeCancelled: "iptal edildi",
+        voiceTrashed: "Toplantı Çöp Sepeti’ne taşındı.",
+        // MARK: Fixes M
+        retentionHeldFormat: "%2$d günden eski %1$d toplantı: Çöp Sepeti’ne taşınsın mı?",
+        retentionHeldOneFormat: "%d günden eski 1 toplantı: Çöp Sepeti’ne taşınsın mı?",
+        retentionHeldCaption: "Otomatik Çöp Sepeti’nin kendi başına aldığından fazla: siz onaylayana kadar hiçbiri taşınmaz.",
+        renameTitleNotSaved: "Klasörün adı değişti, ancak yeni başlık kaydedilemedi.",
+        statusForeign: "meeting.json dosyası Vorssaint tarafından yazılmadı: gösterilir, hiç değiştirilmez."
     )
 }
 
@@ -1362,8 +1714,10 @@ extension ForkMeetingStrings {
         consentPledge: "Я предупрежу участников",
         consentPledgeNeeded: "Отметьте «Я предупрежу участников», чтобы продолжить.",
         consentConfirm: "Включить Встречи",
+        // MARK: Library folder and names
         folderName: "Встречи",
         untitledMeeting: "Встреча",
+        // MARK: Island, pill and bubble notices: short
         noticeStarted: "Запись начата",
         noticeResumed: "Запись продолжена",
         noticeSaved: "Встреча сохранена",
@@ -1373,6 +1727,7 @@ extension ForkMeetingStrings {
         noticeDiskLow: "Диск почти заполнен",
         noticeDisplayChanged: "Экран сменился",
         diskMinutesFormat: "Диск: ~%d мин",
+        // MARK: VoiceOver
         voiceStarted: "Запись встречи начата.",
         voicePaused: "Запись встречи приостановлена.",
         voiceResumed: "Запись встречи продолжена.",
@@ -1380,6 +1735,7 @@ extension ForkMeetingStrings {
         voiceMicrophoneFormat: "Теперь запись идёт с микрофона %@.",
         voiceMicrophoneSilent: "Микрофон не передаёт звук. Проверьте микрофон, выбранный для встреч.",
         voiceDiskLowFormat: "Диск почти заполнен. Осталось минут записи: %d.",
+        // MARK: Failures: a short summary, then what to do
         failScreenDenied: "Нет доступа к экрану",
         failScreenDeniedRemedy: "Без него ничего не записать. Разрешите Vorssaint в Системных настройках › Конфиденциальность и безопасность › Запись экрана и системного аудио.",
         failScreenRevoked: "Доступ к экрану отозван",
@@ -1536,7 +1892,77 @@ extension ForkMeetingStrings {
         detectionAlwaysUnavailable: "«Всегда» недоступно на этом Mac: встречи предлагаются, но никогда не записываются сами.",
         // MARK: Fixes L
         detectionAlwaysDelay: "Teams, Webex и Discord: запись сама начинается через 15 с после начала звонка. Zoom и Slack: как только откроется окно встречи, иначе предлагается.",
-        offerMainWindowFormat: "%@ (главное окно)"
+        offerMainWindowFormat: "%@ (главное окно)",
+        // MARK: Library
+        groupToday: "Сегодня",
+        groupYesterday: "Вчера",
+        groupUndated: "Без даты",
+        columnTitle: "Название",
+        columnDuration: "Длительность",
+        columnSize: "Размер",
+        columnApp: "Приложение",
+        columnMeetCode: "Код встречи",
+        actionRename: "Переименовать",
+        actionExportAudio: "Экспортировать звук (M4A)…",
+        actionCopyPath: "Скопировать путь",
+        actionTrash: "Переместить в Корзину",
+        actionTrim: "Обрезать в редакторе",
+        noticePathCopied: "Путь скопирован",
+        confirmTrashFormat: "Переместить «%@» в Корзину?",
+        confirmTrashMessage: "Папка встречи отправится в Корзину вместе с видео, звуком и заметками. Её можно вернуть, пока Корзина не очищена.",
+        statusRecovered: "Восстановлена",
+        statusInterruptedFormat: "Прервана: %@",
+        statusUnreadable: "Карточка не читается",
+        statusUnreadableHelp: "Не удалось прочитать её meeting.json. Он никогда не перезаписывается: видео остаётся в папке, а карточку ещё можно исправить вручную.",
+        statusLaterVersion: "Создана более новой версией Vorssaint: показывается, но не изменяется.",
+        causeCrash: "сбой",
+        causeQuit: "приложение закрыто",
+        causeDisk: "диск заполнен",
+        causePermission: "доступ отозван",
+        causeSleep: "режим сна",
+        causeFeatureOff: "функция выкл.",
+        causeCaptureStopped: "захват прерван",
+        causeFinalPass: "завершение",
+        causeUnknown: "причина неясна",
+        refusedWhileRecording: "Нельзя, пока встреча записывается или завершается.",
+        renameUnreadable: "meeting.json этой встречи не читается: её название нельзя изменить.",
+        renameFolderKept: "Папку переименовали в Finder: она сохраняет это имя, меняется только название.",
+        renameMediaKept: "Файл с новым именем уже есть в папке: видео или звук сохраняет прежнее имя.",
+        renameNamesExhausted: "Слишком много папок с таким именем: папка сохраняет своё.",
+        searchPlaceholder: "Поиск",
+        searchNoResultsFormat: "Нет встреч по запросу «%@»",
+        emptyTitle: "Встреч пока нет",
+        emptyCaption: "Каждая записанная встреча появляется здесь, в своей папке.",
+        notesPlaceholder: "Добавить заметки",
+        retentionTitle: "Автоматически в Корзину",
+        retentionNever: "Никогда",
+        retentionDaysFormat: "Через %d дн.",
+        retentionCaption: "Старые встречи отправляются в Корзину при запуске, затем раз в день. Никогда — записываемая встреча или отмеченная ⚠.",
+        retentionConfirmTitle: "Переместить старые встречи в Корзину?",
+        retentionConfirmFormat: "Встречи старше %2$d дн.: %1$d. Они остаются в Корзине, пока её не очистят.",
+        trimCaption: "Редактор открывает копию: сама встреча не меняется.",
+        trimNeedsEditor: "Редактор относится к функции «Запись экрана»: включите её в Vorssaint, чтобы обрезать встречу.",
+        trimNoVideo: "У этой встречи нет видео для обрезки.",
+        // MARK: Library effects
+        openLibrary: "Открыть встречи",
+        actionShowMeeting: "Показать",
+        actionMore: "Ещё",
+        emptyWhereFormat: "Они будут храниться здесь: %@.",
+        playerNoVideo: "Нет видео для просмотра",
+        statusRecoveredHelp: "Восстановлена после неожиданной остановки приложения: последних секунд может не хватать.",
+        statusInterruptedHelp: "Эта встреча завершилась не как обычно. Всё записанное сохранено в её папке.",
+        trashFailed: "Не удалось переместить встречу в Корзину.",
+        renameFailed: "Не удалось переименовать папку: название изменилось, а папка сохранила прежнее имя.",
+        exportFailed: "Не удалось экспортировать звук.",
+        trimFailed: "Не удалось сделать копию для редактора. Сама встреча не затронута.",
+        causeCancelled: "отменена",
+        voiceTrashed: "Встреча перемещена в Корзину.",
+        // MARK: Fixes M
+        retentionHeldFormat: "Встречи старше %2$d дн.: %1$d. Переместить их в Корзину?",
+        retentionHeldOneFormat: "Одна встреча старше %d дн.: переместить её в Корзину?",
+        retentionHeldCaption: "Это больше, чем автоочистка перемещает сама: ничего не будет перемещено без вашего подтверждения.",
+        renameTitleNotSaved: "Папка переименована, но новое название не удалось сохранить.",
+        statusForeign: "Файл meeting.json записан не Vorssaint: показывается, но не изменяется."
     )
 }
 
@@ -1627,8 +2053,10 @@ extension ForkMeetingStrings {
         consentPledge: "Avisaré a los participantes",
         consentPledgeNeeded: "Marca «Avisaré a los participantes» para continuar.",
         consentConfirm: "Activar Reuniones",
+        // MARK: Library folder and names
         folderName: "Reuniones",
         untitledMeeting: "Reunión",
+        // MARK: Island, pill and bubble notices: short
         noticeStarted: "Grabación iniciada",
         noticeResumed: "Grabación reanudada",
         noticeSaved: "Reunión guardada",
@@ -1638,6 +2066,7 @@ extension ForkMeetingStrings {
         noticeDiskLow: "Disco casi lleno",
         noticeDisplayChanged: "Pantalla cambiada",
         diskMinutesFormat: "~%d min de disco libres",
+        // MARK: VoiceOver
         voiceStarted: "Grabación de la reunión iniciada.",
         voicePaused: "Grabación de la reunión en pausa.",
         voiceResumed: "Grabación de la reunión reanudada.",
@@ -1645,6 +2074,7 @@ extension ForkMeetingStrings {
         voiceMicrophoneFormat: "La grabación usa ahora el micrófono %@.",
         voiceMicrophoneSilent: "El micrófono no envía sonido. Revisa el micrófono elegido para las reuniones.",
         voiceDiskLowFormat: "El disco está casi lleno. Minutos de grabación restantes: %d.",
+        // MARK: Failures: a short summary, then what to do
         failScreenDenied: "Acceso a pantalla denegado",
         failScreenDeniedRemedy: "Sin él no se puede grabar nada. Permite a Vorssaint en Ajustes del Sistema › Privacidad y seguridad › Grabación de pantalla y audio del sistema.",
         failScreenRevoked: "Acceso a pantalla retirado",
@@ -1801,7 +2231,77 @@ extension ForkMeetingStrings {
         detectionAlwaysUnavailable: "«Siempre» no está disponible en este Mac: las reuniones se ofrecen, nunca se graban solas.",
         // MARK: Fixes L
         detectionAlwaysDelay: "Teams, Webex y Discord: se graban solos 15 s después de empezar la llamada. Zoom y Slack: en cuanto se abre su ventana de reunión; si no, se ofrecen.",
-        offerMainWindowFormat: "%@ (ventana principal)"
+        offerMainWindowFormat: "%@ (ventana principal)",
+        // MARK: Library
+        groupToday: "Hoy",
+        groupYesterday: "Ayer",
+        groupUndated: "Sin fecha",
+        columnTitle: "Título",
+        columnDuration: "Duración",
+        columnSize: "Tamaño",
+        columnApp: "Aplicación",
+        columnMeetCode: "Código de reunión",
+        actionRename: "Renombrar",
+        actionExportAudio: "Exportar audio (M4A)…",
+        actionCopyPath: "Copiar ruta",
+        actionTrash: "Trasladar a la papelera",
+        actionTrim: "Recortar en el editor",
+        noticePathCopied: "Ruta copiada",
+        confirmTrashFormat: "¿Trasladar «%@» a la papelera?",
+        confirmTrashMessage: "La carpeta de la reunión va a la papelera con su vídeo, su audio y sus notas. Puedes sacarla mientras no vacíes la papelera.",
+        statusRecovered: "Recuperada",
+        statusInterruptedFormat: "Interrumpida: %@",
+        statusUnreadable: "Ficha ilegible",
+        statusUnreadableHelp: "No se pudo leer su meeting.json. Nunca se reescribe: el vídeo sigue en la carpeta y la ficha aún puede repararse a mano.",
+        statusLaterVersion: "Creada por una versión más reciente de Vorssaint: se muestra, nunca se modifica.",
+        causeCrash: "fallo",
+        causeQuit: "app cerrada",
+        causeDisk: "disco lleno",
+        causePermission: "sin acceso",
+        causeSleep: "reposo",
+        causeFeatureOff: "desactivación",
+        causeCaptureStopped: "captura parada",
+        causeFinalPass: "finalización",
+        causeUnknown: "causa incierta",
+        refusedWhileRecording: "No es posible mientras la reunión se graba o se finaliza.",
+        renameUnreadable: "No se puede leer el meeting.json de esta reunión: su título no puede cambiar.",
+        renameFolderKept: "La carpeta se renombró en el Finder: conserva ese nombre y solo cambia el título.",
+        renameMediaKept: "Un archivo de la carpeta ya tiene el nuevo nombre: el vídeo o el audio conserva el anterior.",
+        renameNamesExhausted: "Demasiadas carpetas tienen ya este nombre: la carpeta conserva el suyo.",
+        searchPlaceholder: "Buscar",
+        searchNoResultsFormat: "Ninguna reunión coincide con «%@»",
+        emptyTitle: "Aún no hay reuniones",
+        emptyCaption: "Cada reunión que grabes aparece aquí, en su propia carpeta.",
+        notesPlaceholder: "Añadir notas",
+        retentionTitle: "Papelera automática",
+        retentionNever: "Nunca",
+        retentionDaysFormat: "Tras %d días",
+        retentionCaption: "Las reuniones más antiguas van a la papelera al abrir la app y luego una vez al día. Nunca una que se esté grabando, ni una marcada con ⚠.",
+        retentionConfirmTitle: "¿Trasladar las reuniones antiguas a la papelera?",
+        retentionConfirmFormat: "Reuniones de más de %2$d días: %1$d. Siguen en la papelera hasta que la vacíes.",
+        trimCaption: "El editor abre una copia: la reunión en sí no se modifica.",
+        trimNeedsEditor: "El editor pertenece a Grabación de pantalla: actívala en Vorssaint para recortar una reunión.",
+        trimNoVideo: "Esta reunión no tiene vídeo que recortar.",
+        // MARK: Library effects
+        openLibrary: "Abrir reuniones",
+        actionShowMeeting: "Mostrar",
+        actionMore: "Más",
+        emptyWhereFormat: "Se guardarán en %@.",
+        playerNoVideo: "No hay vídeo que reproducir",
+        statusRecoveredHelp: "Recuperada tras un cierre inesperado de la app: pueden faltar los últimos segundos.",
+        statusInterruptedHelp: "Esta reunión no terminó con normalidad. Todo lo grabado se conserva en su carpeta.",
+        trashFailed: "No se ha podido trasladar la reunión a la papelera.",
+        renameFailed: "No se ha podido renombrar la carpeta: el título ha cambiado, la carpeta conserva su nombre.",
+        exportFailed: "No se ha podido exportar el audio.",
+        trimFailed: "No se ha podido hacer la copia para el editor. La reunión no se ha tocado.",
+        causeCancelled: "cancelada",
+        voiceTrashed: "Reunión trasladada a la papelera.",
+        // MARK: Fixes M
+        retentionHeldFormat: "%1$d reuniones de más de %2$d días: ¿trasladarlas a la papelera?",
+        retentionHeldOneFormat: "1 reunión de más de %d días: ¿trasladarla a la papelera?",
+        retentionHeldCaption: "Es más de lo que la papelera automática se lleva por sí sola: nada se traslada hasta que lo confirmes.",
+        renameTitleNotSaved: "La carpeta se ha renombrado, pero no se ha podido guardar el nuevo título.",
+        statusForeign: "Su meeting.json no lo ha escrito Vorssaint: se muestra, nunca se modifica."
     )
 }
 
@@ -1892,8 +2392,10 @@ extension ForkMeetingStrings {
         consentPledge: "Upozorním účastníkov",
         consentPledgeNeeded: "Pokračujte zaškrtnutím „Upozorním účastníkov“.",
         consentConfirm: "Zapnúť Stretnutia",
+        // MARK: Library folder and names
         folderName: "Stretnutia",
         untitledMeeting: "Stretnutie",
+        // MARK: Island, pill and bubble notices: short
         noticeStarted: "Nahrávanie spustené",
         noticeResumed: "Nahrávanie pokračuje",
         noticeSaved: "Stretnutie uložené",
@@ -1903,6 +2405,7 @@ extension ForkMeetingStrings {
         noticeDiskLow: "Disk je takmer plný",
         noticeDisplayChanged: "Obrazovka sa zmenila",
         diskMinutesFormat: "Disk: ~%d min",
+        // MARK: VoiceOver
         voiceStarted: "Nahrávanie stretnutia sa spustilo.",
         voicePaused: "Nahrávanie stretnutia je pozastavené.",
         voiceResumed: "Nahrávanie stretnutia pokračuje.",
@@ -1910,6 +2413,7 @@ extension ForkMeetingStrings {
         voiceMicrophoneFormat: "Nahrávanie teraz používa mikrofón %@.",
         voiceMicrophoneSilent: "Mikrofón neposiela žiadny zvuk. Skontrolujte mikrofón zvolený pre stretnutia.",
         voiceDiskLowFormat: "Disk je takmer plný. Zostávajúce minúty nahrávania: %d.",
+        // MARK: Failures: a short summary, then what to do
         failScreenDenied: "Obrazovka nie je povolená",
         failScreenDeniedRemedy: "Bez toho sa nedá nič nahrať. Povoľte Vorssaint v Systémových nastaveniach › Súkromie a bezpečnosť › Nahrávanie obrazovky a systémového audia.",
         failScreenRevoked: "Prístup k obrazovke odobratý",
@@ -2066,7 +2570,77 @@ extension ForkMeetingStrings {
         detectionAlwaysUnavailable: "Možnosť „Vždy“ nie je na tomto Macu k dispozícii: stretnutia sa ponúknu, nikdy sa nenahrajú samy.",
         // MARK: Fixes L
         detectionAlwaysDelay: "Teams, Webex a Discord: nahrávajú sa samy 15 s po začiatku hovoru. Zoom a Slack: hneď ako sa otvorí ich okno schôdze, inak sa ponúknu.",
-        offerMainWindowFormat: "%@ (hlavné okno)"
+        offerMainWindowFormat: "%@ (hlavné okno)",
+        // MARK: Library
+        groupToday: "Dnes",
+        groupYesterday: "Včera",
+        groupUndated: "Bez dátumu",
+        columnTitle: "Názov",
+        columnDuration: "Dĺžka",
+        columnSize: "Veľkosť",
+        columnApp: "Aplikácia",
+        columnMeetCode: "Kód stretnutia",
+        actionRename: "Premenovať",
+        actionExportAudio: "Exportovať zvuk (M4A)…",
+        actionCopyPath: "Kopírovať cestu",
+        actionTrash: "Presunúť do koša",
+        actionTrim: "Orezať v editore",
+        noticePathCopied: "Cesta skopírovaná",
+        confirmTrashFormat: "Presunúť „%@“ do koša?",
+        confirmTrashMessage: "Priečinok stretnutia ide do koša aj s videom, zvukom a poznámkami. Môžete ho vrátiť, kým kôš nevyprázdnite.",
+        statusRecovered: "Obnovené",
+        statusInterruptedFormat: "Prerušené: %@",
+        statusUnreadable: "Záznam nečitateľný",
+        statusUnreadableHelp: "Jeho meeting.json sa nepodarilo prečítať. Nikdy sa neprepisuje: video zostáva v priečinku a záznam sa dá ešte opraviť ručne.",
+        statusLaterVersion: "Vytvorené novšou verziou Vorssaint: zobrazuje sa, nikdy sa nemení.",
+        causeCrash: "pád",
+        causeQuit: "koniec aplikácie",
+        causeDisk: "plný disk",
+        causePermission: "prístup odobratý",
+        causeSleep: "spánok",
+        causeFeatureOff: "funkcia vypnutá",
+        causeCaptureStopped: "záznam zastavený",
+        causeFinalPass: "dokončovanie",
+        causeUnknown: "neznáma príčina",
+        refusedWhileRecording: "Nedá sa, kým sa stretnutie nahráva alebo dokončuje.",
+        renameUnreadable: "meeting.json tohto stretnutia sa nedá prečítať: jeho názov sa nemôže zmeniť.",
+        renameFolderKept: "Priečinok bol premenovaný vo Finderi: ponechá si tento názov, zmení sa len titul.",
+        renameMediaKept: "Súbor v priečinku už má nový názov: video alebo zvuk si ponechá starý.",
+        renameNamesExhausted: "Príliš veľa priečinkov už má tento názov: priečinok si ponechá svoj.",
+        searchPlaceholder: "Hľadať",
+        searchNoResultsFormat: "Žiadne stretnutie nezodpovedá „%@“",
+        emptyTitle: "Zatiaľ žiadne stretnutia",
+        emptyCaption: "Každé nahraté stretnutie sa zobrazí tu, vo vlastnom priečinku.",
+        notesPlaceholder: "Pridať poznámky",
+        retentionTitle: "Automatický kôš",
+        retentionNever: "Nikdy",
+        retentionDaysFormat: "Po %d dňoch",
+        retentionCaption: "Staršie stretnutia idú do koša pri spustení a potom raz denne. Nikdy nie stretnutie, ktoré sa nahráva, ani označené ⚠.",
+        retentionConfirmTitle: "Presunúť staršie stretnutia do koša?",
+        retentionConfirmFormat: "Stretnutia staršie ako %2$d dní: %1$d. V koši zostanú, kým ho nevyprázdnite.",
+        trimCaption: "Editor otvorí kópiu: samotné stretnutie zostane nedotknuté.",
+        trimNeedsEditor: "Editor patrí k Nahrávaniu obrazovky: zapnite ho vo Vorssaint, ak chcete orezať stretnutie.",
+        trimNoVideo: "Toto stretnutie nemá video na orezanie.",
+        // MARK: Library effects
+        openLibrary: "Otvoriť stretnutia",
+        actionShowMeeting: "Zobraziť",
+        actionMore: "Ďalšie",
+        emptyWhereFormat: "Budú uložené tu: %@.",
+        playerNoVideo: "Žiadne video na prehranie",
+        statusRecoveredHelp: "Obnovené po neočakávanom zastavení aplikácie: posledné sekundy môžu chýbať.",
+        statusInterruptedHelp: "Toto stretnutie sa neskončilo normálne. Všetko nahraté zostáva v jeho priečinku.",
+        trashFailed: "Stretnutie sa nepodarilo presunúť do koša.",
+        renameFailed: "Priečinok sa nepodarilo premenovať: názov sa zmenil, priečinok si ponechal pôvodné meno.",
+        exportFailed: "Zvuk sa nepodarilo exportovať.",
+        trimFailed: "Kópiu pre editor sa nepodarilo vytvoriť. Samotné stretnutie zostalo nedotknuté.",
+        causeCancelled: "zrušené",
+        voiceTrashed: "Stretnutie bolo presunuté do koša.",
+        // MARK: Fixes M
+        retentionHeldFormat: "Stretnutia staršie ako %2$d dní: %1$d. Presunúť ich do koša?",
+        retentionHeldOneFormat: "Jedno stretnutie staršie ako %d dní: presunúť ho do koša?",
+        retentionHeldCaption: "Je to viac, než automatický kôš vezme sám: nič sa nepresunie, kým to nepotvrdíte.",
+        renameTitleNotSaved: "Priečinok sa premenoval, ale nový názov sa nepodarilo uložiť.",
+        statusForeign: "Súbor meeting.json nezapísal Vorssaint: zobrazuje sa, nikdy sa nemení."
     )
 }
 
@@ -2157,8 +2731,10 @@ extension ForkMeetingStrings {
         consentPledge: "Ich werde die Teilnehmenden informieren",
         consentPledgeNeeded: "Kreuze „Ich werde die Teilnehmenden informieren“ an, um fortzufahren.",
         consentConfirm: "Besprechungen aktivieren",
+        // MARK: Library folder and names
         folderName: "Besprechungen",
         untitledMeeting: "Besprechung",
+        // MARK: Island, pill and bubble notices: short
         noticeStarted: "Aufnahme gestartet",
         noticeResumed: "Aufnahme fortgesetzt",
         noticeSaved: "Besprechung gespeichert",
@@ -2168,6 +2744,7 @@ extension ForkMeetingStrings {
         noticeDiskLow: "Speicher fast voll",
         noticeDisplayChanged: "Bildschirm gewechselt",
         diskMinutesFormat: "~%d Min. Speicher übrig",
+        // MARK: VoiceOver
         voiceStarted: "Aufnahme der Besprechung gestartet.",
         voicePaused: "Aufnahme der Besprechung pausiert.",
         voiceResumed: "Aufnahme der Besprechung fortgesetzt.",
@@ -2175,6 +2752,7 @@ extension ForkMeetingStrings {
         voiceMicrophoneFormat: "Die Aufnahme verwendet jetzt das Mikrofon %@.",
         voiceMicrophoneSilent: "Das Mikrofon liefert keinen Ton. Prüfe das für Besprechungen gewählte Mikrofon.",
         voiceDiskLowFormat: "Der Speicher ist fast voll. Verbleibende Aufnahmeminuten: %d.",
+        // MARK: Failures: a short summary, then what to do
         failScreenDenied: "Bildschirmzugriff verweigert",
         failScreenDeniedRemedy: "Ohne ihn kann nichts gefilmt werden. Erlaube Vorssaint unter Systemeinstellungen › Datenschutz & Sicherheit › Aufnahme von Bildschirm und Systemaudio.",
         failScreenRevoked: "Bildschirmzugriff entzogen",
@@ -2331,7 +2909,77 @@ extension ForkMeetingStrings {
         detectionAlwaysUnavailable: "„Immer“ ist auf diesem Mac nicht verfügbar: Besprechungen werden angeboten, nie von selbst aufgenommen.",
         // MARK: Fixes L
         detectionAlwaysDelay: "Teams, Webex und Discord: 15 s nach Beginn des Anrufs von selbst aufgenommen. Zoom und Slack: sobald ihr Meeting-Fenster aufgeht, sonst angeboten.",
-        offerMainWindowFormat: "%@ (Hauptfenster)"
+        offerMainWindowFormat: "%@ (Hauptfenster)",
+        // MARK: Library
+        groupToday: "Heute",
+        groupYesterday: "Gestern",
+        groupUndated: "Ohne Datum",
+        columnTitle: "Titel",
+        columnDuration: "Dauer",
+        columnSize: "Größe",
+        columnApp: "Anwendung",
+        columnMeetCode: "Besprechungscode",
+        actionRename: "Umbenennen",
+        actionExportAudio: "Audio exportieren (M4A) …",
+        actionCopyPath: "Pfad kopieren",
+        actionTrash: "In den Papierkorb legen",
+        actionTrim: "Im Editor schneiden",
+        noticePathCopied: "Pfad kopiert",
+        confirmTrashFormat: "„%@“ in den Papierkorb legen?",
+        confirmTrashMessage: "Der Ordner der Besprechung kommt mit Video, Audio und Notizen in den Papierkorb. Du kannst ihn zurückholen, solange der Papierkorb nicht geleert ist.",
+        statusRecovered: "Wiederhergestellt",
+        statusInterruptedFormat: "Unterbrochen: %@",
+        statusUnreadable: "Datei unlesbar",
+        statusUnreadableHelp: "Ihre meeting.json konnte nicht gelesen werden. Sie wird nie überschrieben: Das Video bleibt im Ordner, und die Datei lässt sich noch von Hand reparieren.",
+        statusLaterVersion: "Von einer neueren Version von Vorssaint erstellt: angezeigt, nie geändert.",
+        causeCrash: "Absturz",
+        causeQuit: "App beendet",
+        causeDisk: "Speicher voll",
+        causePermission: "kein Zugriff",
+        causeSleep: "Ruhezustand",
+        causeFeatureOff: "Funktion aus",
+        causeCaptureStopped: "Aufnahmestopp",
+        causeFinalPass: "Abschluss",
+        causeUnknown: "Ursache unklar",
+        refusedWhileRecording: "Nicht möglich, solange die Besprechung aufgenommen oder abgeschlossen wird.",
+        renameUnreadable: "Die meeting.json dieser Besprechung ist unlesbar: Ihr Titel kann sich nicht ändern.",
+        renameFolderKept: "Der Ordner wurde im Finder umbenannt: Er behält diesen Namen, nur der Titel ändert sich.",
+        renameMediaKept: "Eine Datei im Ordner trägt schon den neuen Namen: Video oder Audio behält den alten.",
+        renameNamesExhausted: "Zu viele Ordner tragen schon diesen Namen: Der Ordner behält seinen.",
+        searchPlaceholder: "Suchen",
+        searchNoResultsFormat: "Keine Besprechung passt zu „%@“",
+        emptyTitle: "Noch keine Besprechungen",
+        emptyCaption: "Jede Besprechung, die du aufnimmst, erscheint hier in ihrem eigenen Ordner.",
+        notesPlaceholder: "Notizen hinzufügen",
+        retentionTitle: "Automatischer Papierkorb",
+        retentionNever: "Nie",
+        retentionDaysFormat: "Nach %d Tagen",
+        retentionCaption: "Ältere Besprechungen kommen beim Start und dann einmal am Tag in den Papierkorb. Nie eine, die gerade aufgenommen wird, und keine mit ⚠.",
+        retentionConfirmTitle: "Ältere Besprechungen in den Papierkorb legen?",
+        retentionConfirmFormat: "Besprechungen älter als %2$d Tage: %1$d. Sie bleiben im Papierkorb, bis er geleert wird.",
+        trimCaption: "Der Editor öffnet eine Kopie: Die Besprechung selbst bleibt unverändert.",
+        trimNeedsEditor: "Der Editor gehört zur Bildschirmaufnahme: Schalte sie in Vorssaint ein, um eine Besprechung zu schneiden.",
+        trimNoVideo: "Diese Besprechung hat kein Video zum Schneiden.",
+        // MARK: Library effects
+        openLibrary: "Besprechungen öffnen",
+        actionShowMeeting: "Zeigen",
+        actionMore: "Mehr",
+        emptyWhereFormat: "Sie werden hier abgelegt: %@.",
+        playerNoVideo: "Kein Video zum Abspielen",
+        statusRecoveredHelp: "Nach einem unerwarteten Ende der App wiederhergestellt: Die letzten Sekunden können fehlen.",
+        statusInterruptedHelp: "Diese Besprechung wurde nicht normal beendet. Alles Aufgenommene bleibt in ihrem Ordner.",
+        trashFailed: "Die Besprechung konnte nicht in den Papierkorb gelegt werden.",
+        renameFailed: "Der Ordner konnte nicht umbenannt werden: Der Titel hat sich geändert, der Ordner behält seinen Namen.",
+        exportFailed: "Das Audio konnte nicht exportiert werden.",
+        trimFailed: "Die Kopie für den Editor konnte nicht erstellt werden. Die Besprechung selbst bleibt unverändert.",
+        causeCancelled: "abgebrochen",
+        voiceTrashed: "Besprechung in den Papierkorb gelegt.",
+        // MARK: Fixes M
+        retentionHeldFormat: "%1$d Besprechungen älter als %2$d Tage: in den Papierkorb legen?",
+        retentionHeldOneFormat: "1 Besprechung älter als %d Tage: in den Papierkorb legen?",
+        retentionHeldCaption: "Mehr, als der automatische Papierkorb von sich aus nimmt: Nichts wird verschoben, bevor du bestätigst.",
+        renameTitleNotSaved: "Der Ordner wurde umbenannt, aber der neue Titel konnte nicht gesichert werden.",
+        statusForeign: "Die meeting.json stammt nicht von Vorssaint: angezeigt, nie geändert."
     )
 }
 
@@ -2422,8 +3070,10 @@ extension ForkMeetingStrings {
         consentPledge: "J’informerai les participants",
         consentPledgeNeeded: "Cochez «\u{00A0}J’informerai les participants\u{00A0}» pour continuer.",
         consentConfirm: "Activer Réunions",
+        // MARK: Library folder and names
         folderName: "Réunions",
         untitledMeeting: "Réunion",
+        // MARK: Island, pill and bubble notices: short
         noticeStarted: "Enregistrement démarré",
         noticeResumed: "Enregistrement repris",
         noticeSaved: "Réunion enregistrée",
@@ -2433,6 +3083,7 @@ extension ForkMeetingStrings {
         noticeDiskLow: "Disque presque plein",
         noticeDisplayChanged: "Écran changé",
         diskMinutesFormat: "~%d min de disque",
+        // MARK: VoiceOver
         voiceStarted: "Enregistrement de la réunion démarré.",
         voicePaused: "Enregistrement de la réunion en pause.",
         voiceResumed: "Enregistrement de la réunion repris.",
@@ -2440,6 +3091,7 @@ extension ForkMeetingStrings {
         voiceMicrophoneFormat: "L’enregistrement utilise maintenant le micro %@.",
         voiceMicrophoneSilent: "Le micro n’envoie aucun son. Vérifiez le micro choisi pour les réunions.",
         voiceDiskLowFormat: "Le disque est presque plein. Minutes d’enregistrement restantes\u{00A0}: %d.",
+        // MARK: Failures: a short summary, then what to do
         failScreenDenied: "Accès à l’écran refusé",
         failScreenDeniedRemedy: "Sans lui, rien ne peut être filmé. Autorisez Vorssaint dans Réglages Système › Confidentialité et sécurité › Enregistrement de l’écran et de l’audio du système.",
         failScreenRevoked: "Accès à l’écran retiré",
@@ -2596,7 +3248,77 @@ extension ForkMeetingStrings {
         detectionAlwaysUnavailable: "«\u{00A0}Toujours\u{00A0}» n’est pas disponible sur ce Mac\u{00A0}: les réunions sont proposées, jamais enregistrées d’elles-mêmes.",
         // MARK: Fixes L
         detectionAlwaysDelay: "Teams, Webex et Discord\u{00A0}: enregistrés seuls 15\u{00A0}s après le début de l’appel. Zoom et Slack\u{00A0}: dès que leur fenêtre de réunion s’ouvre, sinon proposés.",
-        offerMainWindowFormat: "%@ (fenêtre principale)"
+        offerMainWindowFormat: "%@ (fenêtre principale)",
+        // MARK: Library
+        groupToday: "Aujourd’hui",
+        groupYesterday: "Hier",
+        groupUndated: "Sans date",
+        columnTitle: "Titre",
+        columnDuration: "Durée",
+        columnSize: "Taille",
+        columnApp: "Application",
+        columnMeetCode: "Code de réunion",
+        actionRename: "Renommer",
+        actionExportAudio: "Exporter l’audio (M4A)…",
+        actionCopyPath: "Copier le chemin",
+        actionTrash: "Placer dans la corbeille",
+        actionTrim: "Couper dans l’éditeur",
+        noticePathCopied: "Chemin copié",
+        confirmTrashFormat: "Mettre «\u{00A0}%@\u{00A0}» à la Corbeille\u{00A0}?",
+        confirmTrashMessage: "Le dossier de la réunion part à la Corbeille avec sa vidéo, son audio et ses notes. Vous pouvez l’en sortir tant que la Corbeille n’est pas vidée.",
+        statusRecovered: "Récupérée",
+        statusInterruptedFormat: "Interrompue\u{00A0}: %@",
+        statusUnreadable: "Fiche illisible",
+        statusUnreadableHelp: "Son meeting.json n’a pas pu être lu. Il n’est jamais réécrit\u{00A0}: la vidéo reste dans le dossier, et la fiche peut encore être réparée à la main.",
+        statusLaterVersion: "Créée par une version plus récente de Vorssaint\u{00A0}: affichée, jamais modifiée.",
+        causeCrash: "plantage",
+        causeQuit: "app quittée",
+        causeDisk: "disque plein",
+        causePermission: "accès retiré",
+        causeSleep: "mise en veille",
+        causeFeatureOff: "désactivation",
+        causeCaptureStopped: "capture coupée",
+        causeFinalPass: "finalisation",
+        causeUnknown: "cause inconnue",
+        refusedWhileRecording: "Impossible tant que la réunion s’enregistre ou se finalise.",
+        renameUnreadable: "Le meeting.json de cette réunion est illisible\u{00A0}: son titre ne peut pas changer.",
+        renameFolderKept: "Le dossier a été renommé dans le Finder\u{00A0}: il garde ce nom, et seul le titre change.",
+        renameMediaKept: "Un fichier du dossier porte déjà le nouveau nom\u{00A0}: la vidéo ou l’audio garde l’ancien.",
+        renameNamesExhausted: "Trop de dossiers portent déjà ce nom\u{00A0}: le dossier garde le sien.",
+        searchPlaceholder: "Rechercher",
+        searchNoResultsFormat: "Aucune réunion ne correspond à «\u{00A0}%@\u{00A0}»",
+        emptyTitle: "Aucune réunion enregistrée",
+        emptyCaption: "Chaque réunion que vous enregistrez arrive ici, dans son propre dossier.",
+        notesPlaceholder: "Ajouter des notes",
+        retentionTitle: "Corbeille automatique",
+        retentionNever: "Jamais",
+        retentionDaysFormat: "Après %d\u{00A0}jours",
+        retentionCaption: "Les réunions plus anciennes partent à la Corbeille au lancement, puis une fois par jour. Jamais une réunion en cours d’enregistrement, ni une réunion marquée ⚠.",
+        retentionConfirmTitle: "Mettre les réunions anciennes à la Corbeille\u{00A0}?",
+        retentionConfirmFormat: "Réunions de plus de %2$d\u{00A0}jours\u{00A0}: %1$d. Elles restent dans la Corbeille tant qu’elle n’est pas vidée.",
+        trimCaption: "L’éditeur ouvre une copie\u{00A0}: la réunion elle-même reste intacte.",
+        trimNeedsEditor: "L’éditeur appartient à Enregistrement de l’écran\u{00A0}: activez-le dans Vorssaint pour couper une réunion.",
+        trimNoVideo: "Cette réunion n’a pas de vidéo à couper.",
+        // MARK: Library effects
+        openLibrary: "Ouvrir les réunions",
+        actionShowMeeting: "Afficher",
+        actionMore: "Plus",
+        emptyWhereFormat: "Elles seront rangées dans %@.",
+        playerNoVideo: "Aucune vidéo à lire",
+        statusRecoveredHelp: "Récupérée après un arrêt imprévu de l’app\u{00A0}: ses dernières secondes peuvent manquer.",
+        statusInterruptedHelp: "Cette réunion ne s’est pas terminée normalement. Tout ce qui a été enregistré est gardé dans son dossier.",
+        trashFailed: "La réunion n’a pas pu être mise à la Corbeille.",
+        renameFailed: "Le dossier n’a pas pu être renommé\u{00A0}: le titre a changé, le dossier garde son nom.",
+        exportFailed: "L’audio n’a pas pu être exporté.",
+        trimFailed: "La copie pour l’éditeur n’a pas pu être faite. La réunion elle-même reste intacte.",
+        causeCancelled: "annulée",
+        voiceTrashed: "Réunion mise à la Corbeille.",
+        // MARK: Fixes M
+        retentionHeldFormat: "%1$d\u{00A0}réunions de plus de %2$d\u{00A0}jours\u{00A0}: les mettre à la Corbeille\u{00A0}?",
+        retentionHeldOneFormat: "1\u{00A0}réunion de plus de %d\u{00A0}jours\u{00A0}: la mettre à la Corbeille\u{00A0}?",
+        retentionHeldCaption: "C’est plus que ce que la Corbeille automatique prend d’elle-même\u{00A0}: rien ne part avant votre accord.",
+        renameTitleNotSaved: "Le dossier a été renommé, mais son nouveau titre n’a pas pu être enregistré.",
+        statusForeign: "Son meeting.json n’a pas été écrit par Vorssaint\u{00A0}: affichée, jamais modifiée."
     )
 }
 
@@ -2687,8 +3409,10 @@ extension ForkMeetingStrings {
         consentPledge: "Avviserò i partecipanti",
         consentPledgeNeeded: "Spunta «Avviserò i partecipanti» per continuare.",
         consentConfirm: "Attiva Riunioni",
+        // MARK: Library folder and names
         folderName: "Riunioni",
         untitledMeeting: "Riunione",
+        // MARK: Island, pill and bubble notices: short
         noticeStarted: "Registrazione avviata",
         noticeResumed: "Registrazione ripresa",
         noticeSaved: "Riunione salvata",
@@ -2698,6 +3422,7 @@ extension ForkMeetingStrings {
         noticeDiskLow: "Disco quasi pieno",
         noticeDisplayChanged: "Schermo cambiato",
         diskMinutesFormat: "~%d min di disco",
+        // MARK: VoiceOver
         voiceStarted: "Registrazione della riunione avviata.",
         voicePaused: "Registrazione della riunione in pausa.",
         voiceResumed: "Registrazione della riunione ripresa.",
@@ -2705,6 +3430,7 @@ extension ForkMeetingStrings {
         voiceMicrophoneFormat: "La registrazione ora usa il microfono %@.",
         voiceMicrophoneSilent: "Il microfono non invia alcun suono. Controlla il microfono scelto per le riunioni.",
         voiceDiskLowFormat: "Il disco è quasi pieno. Minuti di registrazione rimasti: %d.",
+        // MARK: Failures: a short summary, then what to do
         failScreenDenied: "Accesso allo schermo negato",
         failScreenDeniedRemedy: "Senza di esso non si può riprendere nulla. Autorizza Vorssaint in Impostazioni di Sistema › Privacy e sicurezza › Registrazione schermo e audio di sistema.",
         failScreenRevoked: "Accesso allo schermo tolto",
@@ -2861,7 +3587,77 @@ extension ForkMeetingStrings {
         detectionAlwaysUnavailable: "«Sempre» non è disponibile su questo Mac: le riunioni vengono proposte, mai registrate da sole.",
         // MARK: Fixes L
         detectionAlwaysDelay: "Teams, Webex e Discord: registrati da soli 15 s dopo l’inizio della chiamata. Zoom e Slack: appena si apre la loro finestra della riunione, altrimenti proposti.",
-        offerMainWindowFormat: "%@ (finestra principale)"
+        offerMainWindowFormat: "%@ (finestra principale)",
+        // MARK: Library
+        groupToday: "Oggi",
+        groupYesterday: "Ieri",
+        groupUndated: "Senza data",
+        columnTitle: "Titolo",
+        columnDuration: "Durata",
+        columnSize: "Dimensione",
+        columnApp: "Applicazione",
+        columnMeetCode: "Codice riunione",
+        actionRename: "Rinomina",
+        actionExportAudio: "Esporta audio (M4A)…",
+        actionCopyPath: "Copia percorso",
+        actionTrash: "Sposta nel Cestino",
+        actionTrim: "Taglia nell’editor",
+        noticePathCopied: "Percorso copiato",
+        confirmTrashFormat: "Spostare “%@” nel Cestino?",
+        confirmTrashMessage: "La cartella della riunione va nel Cestino con il video, l’audio e le note. Puoi recuperarla finché il Cestino non viene svuotato.",
+        statusRecovered: "Recuperata",
+        statusInterruptedFormat: "Interrotta: %@",
+        statusUnreadable: "Scheda illeggibile",
+        statusUnreadableHelp: "Il suo meeting.json non è stato letto. Non viene mai riscritto: il video resta nella cartella e la scheda si può ancora riparare a mano.",
+        statusLaterVersion: "Creata da una versione più recente di Vorssaint: mostrata, mai modificata.",
+        causeCrash: "arresto anomalo",
+        causeQuit: "app chiusa",
+        causeDisk: "disco pieno",
+        causePermission: "accesso revocato",
+        causeSleep: "Mac in stop",
+        causeFeatureOff: "disattivazione",
+        causeCaptureStopped: "cattura fermata",
+        causeFinalPass: "finalizzazione",
+        causeUnknown: "causa ignota",
+        refusedWhileRecording: "Non è possibile mentre la riunione viene registrata o finalizzata.",
+        renameUnreadable: "Il meeting.json di questa riunione è illeggibile: il suo titolo non può cambiare.",
+        renameFolderKept: "La cartella è stata rinominata nel Finder: mantiene quel nome, cambia solo il titolo.",
+        renameMediaKept: "Un file nella cartella ha già il nuovo nome: il video o l’audio mantiene quello vecchio.",
+        renameNamesExhausted: "Troppe cartelle hanno già questo nome: la cartella mantiene il suo.",
+        searchPlaceholder: "Cerca",
+        searchNoResultsFormat: "Nessuna riunione corrisponde a “%@”",
+        emptyTitle: "Ancora nessuna riunione",
+        emptyCaption: "Ogni riunione che registri compare qui, nella sua cartella.",
+        notesPlaceholder: "Aggiungi note",
+        retentionTitle: "Cestino automatico",
+        retentionNever: "Mai",
+        retentionDaysFormat: "Dopo %d giorni",
+        retentionCaption: "Le riunioni più vecchie vanno nel Cestino all’avvio, poi una volta al giorno. Mai una in registrazione, né una segnata con ⚠.",
+        retentionConfirmTitle: "Spostare le riunioni vecchie nel Cestino?",
+        retentionConfirmFormat: "Riunioni con più di %2$d giorni: %1$d. Restano nel Cestino finché non viene svuotato.",
+        trimCaption: "L’editor apre una copia: la riunione stessa resta intatta.",
+        trimNeedsEditor: "L’editor fa parte di Registrazione schermo: attivala in Vorssaint per tagliare una riunione.",
+        trimNoVideo: "Questa riunione non ha un video da tagliare.",
+        // MARK: Library effects
+        openLibrary: "Apri riunioni",
+        actionShowMeeting: "Mostra",
+        actionMore: "Altro",
+        emptyWhereFormat: "Verranno conservate qui: %@.",
+        playerNoVideo: "Nessun video da riprodurre",
+        statusRecoveredHelp: "Recuperata dopo un arresto imprevisto dell’app: potrebbero mancare gli ultimi secondi.",
+        statusInterruptedHelp: "Questa riunione non è terminata normalmente. Tutto ciò che è stato registrato resta nella sua cartella.",
+        trashFailed: "Impossibile spostare la riunione nel Cestino.",
+        renameFailed: "Impossibile rinominare la cartella: il titolo è cambiato, la cartella mantiene il suo nome.",
+        exportFailed: "Impossibile esportare l’audio.",
+        trimFailed: "Impossibile creare la copia per l’editor. La riunione non è stata toccata.",
+        causeCancelled: "annullata",
+        voiceTrashed: "Riunione spostata nel Cestino.",
+        // MARK: Fixes M
+        retentionHeldFormat: "%1$d riunioni con più di %2$d giorni: spostarle nel Cestino?",
+        retentionHeldOneFormat: "1 riunione con più di %d giorni: spostarla nel Cestino?",
+        retentionHeldCaption: "È più di quanto il Cestino automatico sposti da solo: nulla viene spostato finché non confermi.",
+        renameTitleNotSaved: "La cartella è stata rinominata, ma non è stato possibile salvare il nuovo titolo.",
+        statusForeign: "Il suo meeting.json non è stato scritto da Vorssaint: mostrata, mai modificata."
     )
 }
 
@@ -2952,8 +3748,10 @@ extension ForkMeetingStrings {
         consentPledge: "参加者に知らせます",
         consentPledgeNeeded: "続けるには「参加者に知らせます」をチェックしてください。",
         consentConfirm: "ミーティングをオンにする",
+        // MARK: Library folder and names
         folderName: "ミーティング",
         untitledMeeting: "ミーティング",
+        // MARK: Island, pill and bubble notices: short
         noticeStarted: "録画を開始しました",
         noticeResumed: "録画を再開しました",
         noticeSaved: "ミーティングを保存しました",
@@ -2963,6 +3761,7 @@ extension ForkMeetingStrings {
         noticeDiskLow: "ディスクの空きがわずかです",
         noticeDisplayChanged: "ディスプレイが変わりました",
         diskMinutesFormat: "ディスク残り約%d分",
+        // MARK: VoiceOver
         voiceStarted: "ミーティングの録画を開始しました。",
         voicePaused: "ミーティングの録画を一時停止しました。",
         voiceResumed: "ミーティングの録画を再開しました。",
@@ -2970,6 +3769,7 @@ extension ForkMeetingStrings {
         voiceMicrophoneFormat: "録画に使うマイクが「%@」に変わりました。",
         voiceMicrophoneSilent: "マイクから音が届いていません。ミーティング用に選んだマイクを確認してください。",
         voiceDiskLowFormat: "ディスクの空きがわずかです。あと約%d分録画できます。",
+        // MARK: Failures: a short summary, then what to do
         failScreenDenied: "画面収録が許可されていません",
         failScreenDeniedRemedy: "許可がないと何も録画できません。システム設定 › プライバシーとセキュリティ › 画面とシステムオーディオ収録で Vorssaint を許可してください。",
         failScreenRevoked: "画面収録の許可が取り消されました",
@@ -3126,7 +3926,77 @@ extension ForkMeetingStrings {
         detectionAlwaysUnavailable: "この Mac では「常に録画」は使えません。会議は提案されるだけで、自動では録画されません。",
         // MARK: Fixes L
         detectionAlwaysDelay: "Teams、Webex、Discord：通話開始から 15 秒で自動的に録画します。Zoom と Slack：ミーティングウインドウが開いたらすぐに録画し、開かなければ提案します。",
-        offerMainWindowFormat: "%@（メインウインドウ）"
+        offerMainWindowFormat: "%@（メインウインドウ）",
+        // MARK: Library
+        groupToday: "今日",
+        groupYesterday: "昨日",
+        groupUndated: "日付なし",
+        columnTitle: "タイトル",
+        columnDuration: "長さ",
+        columnSize: "サイズ",
+        columnApp: "アプリ",
+        columnMeetCode: "ミーティングコード",
+        actionRename: "名前を変更",
+        actionExportAudio: "オーディオを書き出す（M4A）…",
+        actionCopyPath: "パスをコピー",
+        actionTrash: "ゴミ箱に入れる",
+        actionTrim: "エディタでカット",
+        noticePathCopied: "パスをコピーしました",
+        confirmTrashFormat: "“%@”をゴミ箱に入れますか？",
+        confirmTrashMessage: "ミーティングのフォルダが、ビデオ、オーディオ、メモと一緒にゴミ箱に移動します。ゴミ箱を空にするまでは元に戻せます。",
+        statusRecovered: "復元済み",
+        statusInterruptedFormat: "中断：%@",
+        statusUnreadable: "記録を読み込めません",
+        statusUnreadableHelp: "meeting.jsonを読み込めませんでした。このファイルは書き換えられません。ビデオはフォルダに残り、記録は手作業で修復できます。",
+        statusLaterVersion: "新しいバージョンのVorssaintで作成：表示のみで、変更されません。",
+        causeCrash: "クラッシュ",
+        causeQuit: "アプリ終了",
+        causeDisk: "ディスクがいっぱい",
+        causePermission: "アクセス取り消し",
+        causeSleep: "スリープ",
+        causeFeatureOff: "機能オフ",
+        causeCaptureStopped: "キャプチャ停止",
+        causeFinalPass: "仕上げ処理",
+        causeUnknown: "原因不明",
+        refusedWhileRecording: "このミーティングの収録中または仕上げ処理中はできません。",
+        renameUnreadable: "このミーティングのmeeting.jsonを読み込めないため、タイトルを変更できません。",
+        renameFolderKept: "フォルダはFinderで名前が変更されています。フォルダ名はそのままで、タイトルだけが変わります。",
+        renameMediaKept: "フォルダ内に新しい名前のファイルがすでにあります。ビデオまたはオーディオは元の名前のままです。",
+        renameNamesExhausted: "この名前のフォルダが多すぎるため、フォルダ名はそのままです。",
+        searchPlaceholder: "検索",
+        searchNoResultsFormat: "“%@”に一致するミーティングはありません",
+        emptyTitle: "ミーティングはまだありません",
+        emptyCaption: "収録したミーティングは、それぞれのフォルダとともにここに表示されます。",
+        notesPlaceholder: "メモを追加",
+        retentionTitle: "自動でゴミ箱へ",
+        retentionNever: "しない",
+        retentionDaysFormat: "%d日後",
+        retentionCaption: "古いミーティングは起動時と、その後1日1回ゴミ箱に移動します。収録中のものや⚠が付いたものは移動しません。",
+        retentionConfirmTitle: "古いミーティングをゴミ箱に入れますか？",
+        retentionConfirmFormat: "%2$d日より古いミーティング：%1$d件。ゴミ箱を空にするまではゴミ箱に残ります。",
+        trimCaption: "エディタはコピーを開きます。ミーティング自体は変更されません。",
+        trimNeedsEditor: "エディタは「画面収録」の機能です。ミーティングをカットするには、Vorssaintで画面収録をオンにしてください。",
+        trimNoVideo: "このミーティングにはカットするビデオがありません。",
+        // MARK: Library effects
+        openLibrary: "ミーティングを開く",
+        actionShowMeeting: "表示",
+        actionMore: "その他",
+        emptyWhereFormat: "保存先：%@",
+        playerNoVideo: "再生できるビデオがありません",
+        statusRecoveredHelp: "アプリが予期せず停止したあとに復元されました。最後の数秒が欠けている可能性があります。",
+        statusInterruptedHelp: "このミーティングは正常に終了しませんでした。収録した内容はすべてフォルダに残っています。",
+        trashFailed: "ミーティングをゴミ箱に入れられませんでした。",
+        renameFailed: "フォルダの名前を変更できませんでした。タイトルは変わりましたが、フォルダの名前はそのままです。",
+        exportFailed: "オーディオを書き出せませんでした。",
+        trimFailed: "エディタ用のコピーを作成できませんでした。ミーティング自体は変更されていません。",
+        causeCancelled: "キャンセル済み",
+        voiceTrashed: "ミーティングをゴミ箱に入れました。",
+        // MARK: Fixes M
+        retentionHeldFormat: "%2$d日より古いミーティングが%1$d件あります。ゴミ箱に入れますか？",
+        retentionHeldOneFormat: "%d日より古いミーティングが1件あります。ゴミ箱に入れますか？",
+        retentionHeldCaption: "自動でゴミ箱へ移す量を超えています。確認するまで何も移動しません。",
+        renameTitleNotSaved: "フォルダの名前は変更されましたが、新しいタイトルを保存できませんでした。",
+        statusForeign: "このmeeting.jsonはVorssaintが書いたものではありません：表示のみで、変更されません。"
     )
 }
 
@@ -3217,8 +4087,10 @@ extension ForkMeetingStrings {
         consentPledge: "참가자에게 알리겠습니다",
         consentPledgeNeeded: "계속하려면 ‘참가자에게 알리겠습니다’를 선택하세요.",
         consentConfirm: "회의 켜기",
+        // MARK: Library folder and names
         folderName: "회의",
         untitledMeeting: "회의",
+        // MARK: Island, pill and bubble notices: short
         noticeStarted: "녹화 시작됨",
         noticeResumed: "녹화 재개됨",
         noticeSaved: "회의 저장됨",
@@ -3228,6 +4100,7 @@ extension ForkMeetingStrings {
         noticeDiskLow: "디스크 공간 부족",
         noticeDisplayChanged: "디스플레이 변경됨",
         diskMinutesFormat: "디스크 약 %d분 남음",
+        // MARK: VoiceOver
         voiceStarted: "회의 녹화를 시작했습니다.",
         voicePaused: "회의 녹화를 일시 정지했습니다.",
         voiceResumed: "회의 녹화를 재개했습니다.",
@@ -3235,6 +4108,7 @@ extension ForkMeetingStrings {
         voiceMicrophoneFormat: "이제 %@ 마이크로 녹음합니다.",
         voiceMicrophoneSilent: "마이크에서 소리가 들어오지 않습니다. 회의용으로 선택한 마이크를 확인하세요.",
         voiceDiskLowFormat: "디스크 공간이 거의 없습니다. 남은 녹화 시간(분): %d.",
+        // MARK: Failures: a short summary, then what to do
         failScreenDenied: "화면 녹화가 허용되지 않음",
         failScreenDeniedRemedy: "허용하지 않으면 아무것도 녹화할 수 없습니다. 시스템 설정 › 개인정보 보호 및 보안 › 화면 및 시스템 오디오 녹음에서 Vorssaint를 허용하세요.",
         failScreenRevoked: "화면 녹화 권한이 철회됨",
@@ -3391,7 +4265,77 @@ extension ForkMeetingStrings {
         detectionAlwaysUnavailable: "이 Mac에서는 ‘항상’을 사용할 수 없습니다. 회의는 제안만 되고 자동으로 녹화되지 않습니다.",
         // MARK: Fixes L
         detectionAlwaysDelay: "Teams, Webex, Discord: 통화 시작 15초 후 자동으로 녹화합니다. Zoom과 Slack: 회의 윈도우가 열리면 바로 녹화하고, 아니면 제안합니다.",
-        offerMainWindowFormat: "%@ (메인 윈도우)"
+        offerMainWindowFormat: "%@ (메인 윈도우)",
+        // MARK: Library
+        groupToday: "오늘",
+        groupYesterday: "어제",
+        groupUndated: "날짜 없음",
+        columnTitle: "제목",
+        columnDuration: "길이",
+        columnSize: "크기",
+        columnApp: "앱",
+        columnMeetCode: "회의 코드",
+        actionRename: "이름 변경",
+        actionExportAudio: "오디오 내보내기(M4A)…",
+        actionCopyPath: "경로 복사",
+        actionTrash: "휴지통으로 이동",
+        actionTrim: "편집기에서 자르기",
+        noticePathCopied: "경로 복사됨",
+        confirmTrashFormat: "‘%@’을(를) 휴지통으로 이동할까요?",
+        confirmTrashMessage: "회의 폴더가 비디오, 오디오, 메모와 함께 휴지통으로 이동합니다. 휴지통을 비우기 전까지는 되돌릴 수 있습니다.",
+        statusRecovered: "복구됨",
+        statusInterruptedFormat: "중단됨: %@",
+        statusUnreadable: "기록을 읽을 수 없음",
+        statusUnreadableHelp: "meeting.json을 읽을 수 없습니다. 이 파일은 다시 쓰지 않습니다. 비디오는 폴더에 남아 있고, 기록은 직접 고칠 수 있습니다.",
+        statusLaterVersion: "더 최신 버전의 Vorssaint에서 만든 회의입니다. 표시만 하고 변경하지 않습니다.",
+        causeCrash: "충돌",
+        causeQuit: "앱 종료",
+        causeDisk: "디스크 가득 참",
+        causePermission: "접근 권한 해제",
+        causeSleep: "잠자기",
+        causeFeatureOff: "기능 꺼짐",
+        causeCaptureStopped: "캡처 중지",
+        causeFinalPass: "마무리",
+        causeUnknown: "원인 불명",
+        refusedWhileRecording: "이 회의를 녹화하거나 마무리하는 동안에는 할 수 없습니다.",
+        renameUnreadable: "이 회의의 meeting.json을 읽을 수 없어 제목을 바꿀 수 없습니다.",
+        renameFolderKept: "폴더 이름이 Finder에서 바뀌었습니다. 폴더 이름은 그대로 두고 제목만 바뀝니다.",
+        renameMediaKept: "폴더에 새 이름의 파일이 이미 있습니다. 비디오나 오디오는 원래 이름을 유지합니다.",
+        renameNamesExhausted: "이 이름의 폴더가 너무 많아 폴더 이름을 그대로 둡니다.",
+        searchPlaceholder: "검색",
+        searchNoResultsFormat: "‘%@’와(과) 일치하는 회의가 없습니다",
+        emptyTitle: "아직 회의가 없습니다",
+        emptyCaption: "녹화한 회의는 각자의 폴더와 함께 여기에 나타납니다.",
+        notesPlaceholder: "메모 추가",
+        retentionTitle: "자동 휴지통",
+        retentionNever: "안 함",
+        retentionDaysFormat: "%d일 후",
+        retentionCaption: "오래된 회의는 실행할 때, 그 후 하루에 한 번 휴지통으로 이동합니다. 녹화 중인 회의나 ⚠ 표시가 있는 회의는 이동하지 않습니다.",
+        retentionConfirmTitle: "오래된 회의를 휴지통으로 이동할까요?",
+        retentionConfirmFormat: "%2$d일이 지난 회의: %1$d개. 휴지통을 비우기 전까지 휴지통에 남아 있습니다.",
+        trimCaption: "편집기는 사본을 엽니다. 회의 자체는 바뀌지 않습니다.",
+        trimNeedsEditor: "편집기는 화면 기록 기능에 속합니다. 회의를 자르려면 Vorssaint에서 화면 기록을 켜세요.",
+        trimNoVideo: "이 회의에는 자를 비디오가 없습니다.",
+        // MARK: Library effects
+        openLibrary: "회의 열기",
+        actionShowMeeting: "보기",
+        actionMore: "더 보기",
+        emptyWhereFormat: "보관 위치: %@",
+        playerNoVideo: "재생할 비디오 없음",
+        statusRecoveredHelp: "앱이 예기치 않게 중단된 후 복구되었습니다. 마지막 몇 초가 빠졌을 수 있습니다.",
+        statusInterruptedHelp: "이 회의는 정상적으로 끝나지 않았습니다. 녹화된 내용은 모두 폴더에 보관되어 있습니다.",
+        trashFailed: "회의를 휴지통으로 이동할 수 없습니다.",
+        renameFailed: "폴더 이름을 변경할 수 없습니다. 제목은 바뀌었지만 폴더는 원래 이름을 유지합니다.",
+        exportFailed: "오디오를 내보낼 수 없습니다.",
+        trimFailed: "편집기용 사본을 만들 수 없습니다. 회의 자체는 변경되지 않았습니다.",
+        causeCancelled: "취소됨",
+        voiceTrashed: "회의를 휴지통으로 이동했습니다.",
+        // MARK: Fixes M
+        retentionHeldFormat: "%2$d일이 지난 회의 %1$d개: 휴지통으로 이동할까요?",
+        retentionHeldOneFormat: "%d일이 지난 회의 1개: 휴지통으로 이동할까요?",
+        retentionHeldCaption: "자동 휴지통이 스스로 옮기는 양보다 많습니다. 확인하기 전까지는 아무것도 이동하지 않습니다.",
+        renameTitleNotSaved: "폴더 이름은 변경되었지만 새 제목을 저장할 수 없습니다.",
+        statusForeign: "이 meeting.json은 Vorssaint가 작성한 것이 아닙니다. 표시만 하고 변경하지 않습니다."
     )
 }
 
@@ -3482,8 +4426,10 @@ extension ForkMeetingStrings {
         consentPledge: "Я попереджу учасників",
         consentPledgeNeeded: "Позначте «Я попереджу учасників», щоб продовжити.",
         consentConfirm: "Увімкнути Зустрічі",
+        // MARK: Library folder and names
         folderName: "Зустрічі",
         untitledMeeting: "Зустріч",
+        // MARK: Island, pill and bubble notices: short
         noticeStarted: "Запис розпочато",
         noticeResumed: "Запис продовжено",
         noticeSaved: "Зустріч збережено",
@@ -3493,6 +4439,7 @@ extension ForkMeetingStrings {
         noticeDiskLow: "Диск майже заповнений",
         noticeDisplayChanged: "Екран змінено",
         diskMinutesFormat: "Диск: ~%d хв",
+        // MARK: VoiceOver
         voiceStarted: "Запис зустрічі розпочато.",
         voicePaused: "Запис зустрічі призупинено.",
         voiceResumed: "Запис зустрічі продовжено.",
@@ -3500,6 +4447,7 @@ extension ForkMeetingStrings {
         voiceMicrophoneFormat: "Тепер запис іде з мікрофона %@.",
         voiceMicrophoneSilent: "Мікрофон не передає звуку. Перевірте мікрофон, вибраний для зустрічей.",
         voiceDiskLowFormat: "Диск майже заповнений. Залишилося хвилин запису: %d.",
+        // MARK: Failures: a short summary, then what to do
         failScreenDenied: "Немає доступу до екрана",
         failScreenDeniedRemedy: "Без нього нічого не записати. Дозвольте Vorssaint у Системних параметрах › Приватність і безпека › Записування системного звуку й екрана.",
         failScreenRevoked: "Доступ до екрана відкликано",
@@ -3629,7 +4577,7 @@ extension ForkMeetingStrings {
         offerNameHidden: "Назву сховано при показі",
         pillStopCancels: "Скасувати запис і перемістити в Смітник",
         voiceMeetingBack: "Зустріч триває: запис не зупиниться.",
-        noticeDiscardedTrash: "Скасовано · у Смітнику",
+        noticeDiscardedTrash: "Скасовано · в Смітнику",
         noticeDiscardedDeleted: "Скасовано · видалено",
         noticeDiscardKept: "Скасовано · тека лишилася",
         noticeDiscardKeptDetail: "Лишається серед зустрічей",
@@ -3656,7 +4604,77 @@ extension ForkMeetingStrings {
         detectionAlwaysUnavailable: "«Завжди» недоступне на цьому Mac: зустрічі пропонуються, але ніколи не записуються самі.",
         // MARK: Fixes L
         detectionAlwaysDelay: "Teams, Webex і Discord: запис сам починається через 15 с після початку дзвінка. Zoom і Slack: щойно відкриється вікно зустрічі, інакше пропонується.",
-        offerMainWindowFormat: "%@ (головне вікно)"
+        offerMainWindowFormat: "%@ (головне вікно)",
+        // MARK: Library
+        groupToday: "Сьогодні",
+        groupYesterday: "Учора",
+        groupUndated: "Без дати",
+        columnTitle: "Назва",
+        columnDuration: "Тривалість",
+        columnSize: "Розмір",
+        columnApp: "Застосунок",
+        columnMeetCode: "Код зустрічі",
+        actionRename: "Перейменувати",
+        actionExportAudio: "Експортувати звук (M4A)…",
+        actionCopyPath: "Скопіювати шлях",
+        actionTrash: "Перемістити в Смітник",
+        actionTrim: "Обрізати в редакторі",
+        noticePathCopied: "Шлях скопійовано",
+        confirmTrashFormat: "Перемістити «%@» в Смітник?",
+        confirmTrashMessage: "Папка зустрічі піде в Смітник разом із відео, звуком і нотатками. Її можна повернути, доки Смітник не очищено.",
+        statusRecovered: "Відновлено",
+        statusInterruptedFormat: "Перервано: %@",
+        statusUnreadable: "Картка не читається",
+        statusUnreadableHelp: "Не вдалося прочитати її meeting.json. Він ніколи не перезаписується: відео лишається в папці, а картку ще можна виправити вручну.",
+        statusLaterVersion: "Створено новішою версією Vorssaint: показується, але не змінюється.",
+        causeCrash: "збій",
+        causeQuit: "вихід із програми",
+        causeDisk: "диск заповнено",
+        causePermission: "доступ відкликано",
+        causeSleep: "режим сну",
+        causeFeatureOff: "функцію вимкн.",
+        causeCaptureStopped: "запис спинено",
+        causeFinalPass: "завершення",
+        causeUnknown: "причина неясна",
+        refusedWhileRecording: "Не можна, доки зустріч записується або завершується.",
+        renameUnreadable: "meeting.json цієї зустрічі не читається: її назву не можна змінити.",
+        renameFolderKept: "Папку перейменовано у Finder: вона зберігає це ім’я, змінюється лише назва.",
+        renameMediaKept: "Файл із новим ім’ям уже є в папці: відео чи звук зберігає попереднє.",
+        renameNamesExhausted: "Забагато папок із таким ім’ям: папка зберігає своє.",
+        searchPlaceholder: "Пошук",
+        searchNoResultsFormat: "Немає зустрічей за запитом «%@»",
+        emptyTitle: "Зустрічей ще немає",
+        emptyCaption: "Кожна записана зустріч з’являється тут, у власній папці.",
+        notesPlaceholder: "Додати нотатки",
+        retentionTitle: "Автоматично в Смітник",
+        retentionNever: "Ніколи",
+        retentionDaysFormat: "Через %d дн.",
+        retentionCaption: "Старіші зустрічі йдуть в Смітник під час запуску, потім раз на день. Ніколи — та, що записується, чи позначена ⚠.",
+        retentionConfirmTitle: "Перемістити старі зустрічі в Смітник?",
+        retentionConfirmFormat: "Зустрічі, старші за %2$d дн.: %1$d. Вони лишаються в Смітнику, доки його не очистять.",
+        trimCaption: "Редактор відкриває копію: сама зустріч лишається незмінною.",
+        trimNeedsEditor: "Редактор належить до функції «Запис екрана»: увімкніть її у Vorssaint, щоб обрізати зустріч.",
+        trimNoVideo: "Ця зустріч не має відео для обрізання.",
+        // MARK: Library effects
+        openLibrary: "Відкрити зустрічі",
+        actionShowMeeting: "Показати",
+        actionMore: "Більше",
+        emptyWhereFormat: "Вони зберігатимуться тут: %@.",
+        playerNoVideo: "Немає відео для відтворення",
+        statusRecoveredHelp: "Відновлено після неочікуваної зупинки програми: останніх секунд може бракувати.",
+        statusInterruptedHelp: "Ця зустріч завершилася не як зазвичай. Усе записане збережено в її папці.",
+        trashFailed: "Не вдалося перемістити зустріч в Смітник.",
+        renameFailed: "Не вдалося перейменувати папку: назва змінилася, а папка зберегла попереднє ім’я.",
+        exportFailed: "Не вдалося експортувати звук.",
+        trimFailed: "Не вдалося створити копію для редактора. Саму зустріч не змінено.",
+        causeCancelled: "скасовано",
+        voiceTrashed: "Зустріч переміщено в Смітник.",
+        // MARK: Fixes M
+        retentionHeldFormat: "Зустрічі, старші за %2$d дн.: %1$d. Перемістити їх в Смітник?",
+        retentionHeldOneFormat: "Одна зустріч, старша за %d дн.: перемістити її в Смітник?",
+        retentionHeldCaption: "Це більше, ніж автоочищення переміщує саме: нічого не буде переміщено без вашого підтвердження.",
+        renameTitleNotSaved: "Папку перейменовано, але нову назву не вдалося зберегти.",
+        statusForeign: "Файл meeting.json записано не Vorssaint: показується, але не змінюється."
     )
 }
 
@@ -3747,8 +4765,10 @@ extension ForkMeetingStrings {
         consentPledge: "我会告知参与者",
         consentPledgeNeeded: "勾选“我会告知参与者”以继续。",
         consentConfirm: "打开会议",
+        // MARK: Library folder and names
         folderName: "会议",
         untitledMeeting: "会议",
+        // MARK: Island, pill and bubble notices: short
         noticeStarted: "已开始录制",
         noticeResumed: "已恢复录制",
         noticeSaved: "会议已保存",
@@ -3758,6 +4778,7 @@ extension ForkMeetingStrings {
         noticeDiskLow: "磁盘几乎已满",
         noticeDisplayChanged: "显示器已更换",
         diskMinutesFormat: "磁盘约剩 %d 分钟",
+        // MARK: VoiceOver
         voiceStarted: "已开始录制会议。",
         voicePaused: "会议录制已暂停。",
         voiceResumed: "会议录制已恢复。",
@@ -3765,6 +4786,7 @@ extension ForkMeetingStrings {
         voiceMicrophoneFormat: "现在使用麦克风“%@”录制。",
         voiceMicrophoneSilent: "麦克风没有传来声音。请检查为会议选择的麦克风。",
         voiceDiskLowFormat: "磁盘几乎已满。剩余可录制分钟数：%d。",
+        // MARK: Failures: a short summary, then what to do
         failScreenDenied: "未允许屏幕录制",
         failScreenDeniedRemedy: "没有该权限就无法录制任何内容。请在“系统设置”›“隐私与安全性”›“屏幕与系统音频录制”中允许 Vorssaint。",
         failScreenRevoked: "屏幕录制权限已撤销",
@@ -3921,7 +4943,77 @@ extension ForkMeetingStrings {
         detectionAlwaysUnavailable: "此 Mac 上无法使用“总是”：会议只会被提议，不会自动录制。",
         // MARK: Fixes L
         detectionAlwaysDelay: "Teams、Webex 和 Discord：通话开始 15 秒后自动录制。Zoom 和 Slack：会议窗口一打开就录制，否则提议录制。",
-        offerMainWindowFormat: "%@（主窗口）"
+        offerMainWindowFormat: "%@（主窗口）",
+        // MARK: Library
+        groupToday: "今天",
+        groupYesterday: "昨天",
+        groupUndated: "无日期",
+        columnTitle: "标题",
+        columnDuration: "时长",
+        columnSize: "大小",
+        columnApp: "应用",
+        columnMeetCode: "会议代码",
+        actionRename: "重新命名",
+        actionExportAudio: "导出音频（M4A）…",
+        actionCopyPath: "拷贝路径",
+        actionTrash: "移到废纸篓",
+        actionTrim: "在编辑器中剪辑",
+        noticePathCopied: "已拷贝路径",
+        confirmTrashFormat: "要将“%@”移到废纸篓吗？",
+        confirmTrashMessage: "会议文件夹会连同视频、音频和备注一起移到废纸篓。清倒废纸篓之前都可以放回。",
+        statusRecovered: "已恢复",
+        statusInterruptedFormat: "已中断：%@",
+        statusUnreadable: "记录无法读取",
+        statusUnreadableHelp: "无法读取它的 meeting.json。该文件不会被改写：视频仍在文件夹中，记录仍可手动修复。",
+        statusLaterVersion: "由更新版本的 Vorssaint 创建：仅显示，不会更改。",
+        causeCrash: "崩溃",
+        causeQuit: "应用已退出",
+        causeDisk: "磁盘已满",
+        causePermission: "权限被撤销",
+        causeSleep: "睡眠",
+        causeFeatureOff: "功能已关闭",
+        causeCaptureStopped: "捕获已停止",
+        causeFinalPass: "收尾处理",
+        causeUnknown: "原因不明",
+        refusedWhileRecording: "会议录制或收尾处理期间无法执行此操作。",
+        renameUnreadable: "无法读取此会议的 meeting.json：无法更改它的标题。",
+        renameFolderKept: "此文件夹已在访达中重新命名：它保留该名称，只有标题会更改。",
+        renameMediaKept: "文件夹中已有使用新名称的文件：视频或音频保留原来的名称。",
+        renameNamesExhausted: "使用此名称的文件夹太多：文件夹保留自己的名称。",
+        searchPlaceholder: "搜索",
+        searchNoResultsFormat: "没有与“%@”匹配的会议",
+        emptyTitle: "还没有会议",
+        emptyCaption: "你录制的每个会议都会显示在这里，各有自己的文件夹。",
+        notesPlaceholder: "添加备注",
+        retentionTitle: "自动移到废纸篓",
+        retentionNever: "永不",
+        retentionDaysFormat: "%d 天后",
+        retentionCaption: "较早的会议会在启动时移到废纸篓，之后每天一次。正在录制的会议或标有 ⚠ 的会议永远不会移走。",
+        retentionConfirmTitle: "要将较早的会议移到废纸篓吗？",
+        retentionConfirmFormat: "超过 %2$d 天的会议：%1$d 个。清倒废纸篓之前它们会一直留在废纸篓中。",
+        trimCaption: "编辑器会打开一份副本：会议本身保持不变。",
+        trimNeedsEditor: "编辑器属于“屏幕录制”功能：请在 Vorssaint 中打开它才能剪辑会议。",
+        trimNoVideo: "此会议没有可剪辑的视频。",
+        // MARK: Library effects
+        openLibrary: "打开会议",
+        actionShowMeeting: "显示",
+        actionMore: "更多",
+        emptyWhereFormat: "存放位置：%@",
+        playerNoVideo: "没有可播放的视频",
+        statusRecoveredHelp: "在 App 意外停止后恢复：最后几秒可能缺失。",
+        statusInterruptedHelp: "此会议未正常结束。录制的所有内容都保留在其文件夹中。",
+        trashFailed: "无法将会议移到废纸篓。",
+        renameFailed: "无法重新命名文件夹：标题已更改，文件夹保留原名。",
+        exportFailed: "无法导出音频。",
+        trimFailed: "无法创建供编辑器使用的副本。会议本身未被改动。",
+        causeCancelled: "已取消",
+        voiceTrashed: "会议已移到废纸篓。",
+        // MARK: Fixes M
+        retentionHeldFormat: "%1$d 个会议超过 %2$d 天：要移到废纸篓吗？",
+        retentionHeldOneFormat: "1 个会议超过 %d 天：要移到废纸篓吗？",
+        retentionHeldCaption: "超过了自动移到废纸篓一次会处理的数量：在你确认之前不会移动任何会议。",
+        renameTitleNotSaved: "文件夹已重新命名，但无法存储新标题。",
+        statusForeign: "此 meeting.json 并非由 Vorssaint 写入：仅显示，不会更改。"
     )
 }
 
@@ -4012,8 +5104,10 @@ extension ForkMeetingStrings {
         consentPledge: "我會告知與會者",
         consentPledgeNeeded: "勾選「我會告知與會者」以繼續。",
         consentConfirm: "開啟會議",
+        // MARK: Library folder and names
         folderName: "會議",
         untitledMeeting: "會議",
+        // MARK: Island, pill and bubble notices: short
         noticeStarted: "已開始錄製",
         noticeResumed: "已繼續錄製",
         noticeSaved: "會議已儲存",
@@ -4023,6 +5117,7 @@ extension ForkMeetingStrings {
         noticeDiskLow: "磁碟空間快用完了",
         noticeDisplayChanged: "顯示器已變更",
         diskMinutesFormat: "磁碟約剩 %d 分鐘",
+        // MARK: VoiceOver
         voiceStarted: "已開始錄製會議。",
         voicePaused: "會議錄製已暫停。",
         voiceResumed: "會議錄製已繼續。",
@@ -4030,6 +5125,7 @@ extension ForkMeetingStrings {
         voiceMicrophoneFormat: "現在使用麥克風「%@」錄製。",
         voiceMicrophoneSilent: "麥克風沒有傳來聲音。請檢查為會議選擇的麥克風。",
         voiceDiskLowFormat: "磁碟空間快用完了。剩餘可錄製分鐘數：%d。",
+        // MARK: Failures: a short summary, then what to do
         failScreenDenied: "未允許螢幕錄製",
         failScreenDeniedRemedy: "沒有此權限就無法錄製任何內容。請在「系統設定」›「隱私權與安全性」›「螢幕與系統音訊錄製」中允許 Vorssaint。",
         failScreenRevoked: "螢幕錄製權限已撤銷",
@@ -4186,7 +5282,77 @@ extension ForkMeetingStrings {
         detectionAlwaysUnavailable: "此 Mac 無法使用「一律」：會議只會被提議，不會自動錄製。",
         // MARK: Fixes L
         detectionAlwaysDelay: "Teams、Webex 和 Discord：通話開始 15 秒後自動錄製。Zoom 和 Slack：會議視窗一打開就錄製，否則提議錄製。",
-        offerMainWindowFormat: "%@（主視窗）"
+        offerMainWindowFormat: "%@（主視窗）",
+        // MARK: Library
+        groupToday: "今天",
+        groupYesterday: "昨天",
+        groupUndated: "無日期",
+        columnTitle: "標題",
+        columnDuration: "長度",
+        columnSize: "大小",
+        columnApp: "應用程式",
+        columnMeetCode: "會議代碼",
+        actionRename: "重新命名",
+        actionExportAudio: "輸出音訊（M4A）⋯",
+        actionCopyPath: "拷貝路徑",
+        actionTrash: "丟到垃圾桶",
+        actionTrim: "在編輯器中剪輯",
+        noticePathCopied: "已拷貝路徑",
+        confirmTrashFormat: "要將「%@」丟到垃圾桶嗎？",
+        confirmTrashMessage: "會議資料夾會連同影片、音訊和備註一起丟到垃圾桶。清空垃圾桶之前都可以放回。",
+        statusRecovered: "已復原",
+        statusInterruptedFormat: "已中斷：%@",
+        statusUnreadable: "記錄無法讀取",
+        statusUnreadableHelp: "無法讀取它的 meeting.json。該檔案不會被改寫：影片仍在資料夾中，記錄仍可手動修復。",
+        statusLaterVersion: "由較新版本的 Vorssaint 建立：僅顯示，不會變更。",
+        causeCrash: "當機",
+        causeQuit: "App 已結束",
+        causeDisk: "磁碟已滿",
+        causePermission: "權限已撤銷",
+        causeSleep: "睡眠",
+        causeFeatureOff: "功能已關閉",
+        causeCaptureStopped: "擷取已停止",
+        causeFinalPass: "收尾處理",
+        causeUnknown: "原因不明",
+        refusedWhileRecording: "會議錄製或收尾處理期間無法執行此操作。",
+        renameUnreadable: "無法讀取此會議的 meeting.json：無法變更它的標題。",
+        renameFolderKept: "此資料夾已在 Finder 中重新命名：它保留該名稱，只有標題會變更。",
+        renameMediaKept: "資料夾中已有使用新名稱的檔案：影片或音訊保留原本的名稱。",
+        renameNamesExhausted: "使用此名稱的資料夾太多：資料夾保留自己的名稱。",
+        searchPlaceholder: "搜尋",
+        searchNoResultsFormat: "沒有符合「%@」的會議",
+        emptyTitle: "還沒有會議",
+        emptyCaption: "你錄製的每個會議都會顯示在這裡，各有自己的資料夾。",
+        notesPlaceholder: "加入備註",
+        retentionTitle: "自動丟到垃圾桶",
+        retentionNever: "永不",
+        retentionDaysFormat: "%d 天後",
+        retentionCaption: "較舊的會議會在啟動時丟到垃圾桶，之後每天一次。正在錄製的會議或標示 ⚠ 的會議永遠不會丟掉。",
+        retentionConfirmTitle: "要將較舊的會議丟到垃圾桶嗎？",
+        retentionConfirmFormat: "超過 %2$d 天的會議：%1$d 個。清空垃圾桶之前它們會一直留在垃圾桶中。",
+        trimCaption: "編輯器會打開一份拷貝：會議本身保持不變。",
+        trimNeedsEditor: "編輯器屬於「螢幕錄製」功能：請在 Vorssaint 中開啟它才能剪輯會議。",
+        trimNoVideo: "此會議沒有可剪輯的影片。",
+        // MARK: Library effects
+        openLibrary: "打開會議",
+        actionShowMeeting: "顯示",
+        actionMore: "更多",
+        emptyWhereFormat: "存放位置：%@",
+        playerNoVideo: "沒有可播放的影片",
+        statusRecoveredHelp: "在 App 意外停止後復原：最後幾秒可能缺少。",
+        statusInterruptedHelp: "此會議未正常結束。錄製的所有內容都保留在其資料夾中。",
+        trashFailed: "無法將會議丟到垃圾桶。",
+        renameFailed: "無法重新命名資料夾：標題已變更，資料夾保留原名稱。",
+        exportFailed: "無法輸出音訊。",
+        trimFailed: "無法建立供編輯器使用的拷貝。會議本身未被更動。",
+        causeCancelled: "已取消",
+        voiceTrashed: "會議已丟到垃圾桶。",
+        // MARK: Fixes M
+        retentionHeldFormat: "%1$d 個會議超過 %2$d 天：要丟到垃圾桶嗎？",
+        retentionHeldOneFormat: "1 個會議超過 %d 天：要丟到垃圾桶嗎？",
+        retentionHeldCaption: "超過自動丟到垃圾桶一次會處理的數量：在你確認之前不會移動任何會議。",
+        renameTitleNotSaved: "資料夾已重新命名，但無法儲存新標題。",
+        statusForeign: "此 meeting.json 並非由 Vorssaint 寫入：僅顯示，不會變更。"
     )
 }
 
@@ -4277,8 +5443,10 @@ extension ForkMeetingStrings {
         consentPledge: "我會通知與會者",
         consentPledgeNeeded: "剔選「我會通知與會者」以繼續。",
         consentConfirm: "開啟會議",
+        // MARK: Library folder and names
         folderName: "會議",
         untitledMeeting: "會議",
+        // MARK: Island, pill and bubble notices: short
         noticeStarted: "已開始錄製",
         noticeResumed: "已恢復錄製",
         noticeSaved: "會議已儲存",
@@ -4288,6 +5456,7 @@ extension ForkMeetingStrings {
         noticeDiskLow: "磁碟空間差不多用完",
         noticeDisplayChanged: "顯示器已變更",
         diskMinutesFormat: "磁碟約剩 %d 分鐘",
+        // MARK: VoiceOver
         voiceStarted: "已開始錄製會議。",
         voicePaused: "會議錄製已暫停。",
         voiceResumed: "會議錄製已恢復。",
@@ -4295,6 +5464,7 @@ extension ForkMeetingStrings {
         voiceMicrophoneFormat: "現在使用咪高風「%@」錄製。",
         voiceMicrophoneSilent: "咪高風沒有傳來聲音。請檢查為會議選擇的咪高風。",
         voiceDiskLowFormat: "磁碟空間差不多用完。剩餘可錄製分鐘數：%d。",
+        // MARK: Failures: a short summary, then what to do
         failScreenDenied: "未允許螢幕錄製",
         failScreenDeniedRemedy: "沒有此權限就無法錄製任何內容。請在「系統設定」›「私隱與保安」›「螢幕與系統音訊錄製」中允許 Vorssaint。",
         failScreenRevoked: "螢幕錄製權限已撤銷",
@@ -4451,6 +5621,76 @@ extension ForkMeetingStrings {
         detectionAlwaysUnavailable: "此 Mac 無法使用「一律」：會議只會被提議，不會自動錄製。",
         // MARK: Fixes L
         detectionAlwaysDelay: "Teams、Webex 和 Discord：通話開始 15 秒後自動錄製。Zoom 和 Slack：會議視窗一打開便錄製，否則提議錄製。",
-        offerMainWindowFormat: "%@（主視窗）"
+        offerMainWindowFormat: "%@（主視窗）",
+        // MARK: Library
+        groupToday: "今天",
+        groupYesterday: "昨天",
+        groupUndated: "無日期",
+        columnTitle: "標題",
+        columnDuration: "長度",
+        columnSize: "大小",
+        columnApp: "應用程式",
+        columnMeetCode: "會議代碼",
+        actionRename: "重新命名",
+        actionExportAudio: "輸出音訊（M4A）⋯",
+        actionCopyPath: "複製路徑",
+        actionTrash: "移至垃圾桶",
+        actionTrim: "在編輯器中剪輯",
+        noticePathCopied: "已複製路徑",
+        confirmTrashFormat: "要將「%@」移至垃圾桶嗎？",
+        confirmTrashMessage: "會議資料夾會連同影片、音訊和備註一起移至垃圾桶。清空垃圾桶之前都可以放回。",
+        statusRecovered: "已復原",
+        statusInterruptedFormat: "已中斷：%@",
+        statusUnreadable: "記錄無法讀取",
+        statusUnreadableHelp: "無法讀取它的 meeting.json。該檔案不會被改寫：影片仍在資料夾中，記錄仍可手動修復。",
+        statusLaterVersion: "由較新版本的 Vorssaint 建立：僅顯示，不會變更。",
+        causeCrash: "當機",
+        causeQuit: "App 已結束",
+        causeDisk: "磁碟已滿",
+        causePermission: "權限已撤銷",
+        causeSleep: "睡眠",
+        causeFeatureOff: "功能已關閉",
+        causeCaptureStopped: "擷取已停止",
+        causeFinalPass: "收尾處理",
+        causeUnknown: "原因不明",
+        refusedWhileRecording: "會議錄製或收尾處理期間無法執行此操作。",
+        renameUnreadable: "無法讀取此會議的 meeting.json：無法變更它的標題。",
+        renameFolderKept: "此資料夾已在 Finder 中重新命名：它保留該名稱，只有標題會變更。",
+        renameMediaKept: "資料夾中已有使用新名稱的檔案：影片或音訊保留原本的名稱。",
+        renameNamesExhausted: "使用此名稱的資料夾太多：資料夾保留自己的名稱。",
+        searchPlaceholder: "搜尋",
+        searchNoResultsFormat: "沒有符合「%@」的會議",
+        emptyTitle: "還沒有會議",
+        emptyCaption: "你錄製的每個會議都會顯示在這裡，各有自己的資料夾。",
+        notesPlaceholder: "加入備註",
+        retentionTitle: "自動移至垃圾桶",
+        retentionNever: "永不",
+        retentionDaysFormat: "%d 天後",
+        retentionCaption: "較舊的會議會在啟動時移至垃圾桶，之後每天一次。正在錄製的會議或標示 ⚠ 的會議永遠不會移走。",
+        retentionConfirmTitle: "要將較舊的會議移至垃圾桶嗎？",
+        retentionConfirmFormat: "超過 %2$d 天的會議：%1$d 個。清空垃圾桶之前它們會一直留在垃圾桶中。",
+        trimCaption: "編輯器會開啟一份副本：會議本身保持不變。",
+        trimNeedsEditor: "編輯器屬於「螢幕錄製」功能：請在 Vorssaint 中開啟它才能剪輯會議。",
+        trimNoVideo: "此會議沒有可剪輯的影片。",
+        // MARK: Library effects
+        openLibrary: "開啟會議",
+        actionShowMeeting: "顯示",
+        actionMore: "更多",
+        emptyWhereFormat: "存放位置：%@",
+        playerNoVideo: "沒有可播放的影片",
+        statusRecoveredHelp: "在 App 意外停止後復原：最後幾秒可能缺少。",
+        statusInterruptedHelp: "此會議未正常結束。錄製的所有內容都保留在其資料夾中。",
+        trashFailed: "無法將會議移至垃圾桶。",
+        renameFailed: "無法重新命名資料夾：標題已變更，資料夾保留原名稱。",
+        exportFailed: "無法輸出音訊。",
+        trimFailed: "無法建立供編輯器使用的副本。會議本身未被更動。",
+        causeCancelled: "已取消",
+        voiceTrashed: "會議已移至垃圾桶。",
+        // MARK: Fixes M
+        retentionHeldFormat: "%1$d 個會議超過 %2$d 天：要移至垃圾桶嗎？",
+        retentionHeldOneFormat: "1 個會議超過 %d 天：要移至垃圾桶嗎？",
+        retentionHeldCaption: "超過自動移至垃圾桶一次會處理的數量：在你確認之前不會移動任何會議。",
+        renameTitleNotSaved: "資料夾已重新命名，但無法儲存新標題。",
+        statusForeign: "此 meeting.json 並非由 Vorssaint 寫入：僅顯示，不會變更。"
     )
 }
