@@ -360,6 +360,8 @@ final class ForkMeetingPresenter {
         let done = outcome == .done
         let title = done ? text.noticeSummaryReady : text.noticeSummaryFailed
         announce(title)
+        // A result, like a transcript's: silenced with it on the page.
+        guard ForkMeetingNotifyEvent.isOn(.results) else { return }
         let shown = present({ dismiss in
             ForkMeetingCard(symbol: done ? "text.append" : "exclamationmark.bubble.fill", tint: done ? .green : .orange,
                             title: title, lines: [],

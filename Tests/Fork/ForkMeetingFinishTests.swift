@@ -10,6 +10,7 @@ enum ForkMeetingFinishTests {
     static func run(_ suite: TestSuite) {
         markers(suite)
         soundOnly(suite)
+        notifications(suite)
     }
 
     private static func markers(_ suite: TestSuite) {
@@ -53,5 +54,13 @@ enum ForkMeetingFinishTests {
                             && !ForkMeetingIslandRules.hidesPill(indicator: .auto, islandShowsRecording: false, look: look),
                          "without picture, the pill steps aside for the island's strip just as with one")
         }
+    }
+
+    private static func notifications(_ suite: TestSuite) {
+        let allOff: (ForkMeetingNotifyEvent) -> Bool = { _ in false }
+        suite.expect(ForkMeetingNotifyEvent.event(of: .marked) == nil && ForkMeetingNotifyEvent.shows(.marked, isOn: allOff),
+                     "a moment marked answers a press: no switch silences it")
+        suite.expect(ForkMeetingNotifyEvent.allCases.count == 5,
+                     "five switches on the page: the summary's word follows the transcripts' and exports' one")
     }
 }

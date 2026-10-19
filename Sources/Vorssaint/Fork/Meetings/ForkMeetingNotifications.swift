@@ -13,7 +13,8 @@ import Foundation
 /// without a part of it, and being told is the only way not to lose a
 /// meeting without knowing. Nor is the meeting's sound lost for the rest of
 /// a recording, nor the word that answers a click (Never, Always, Cancel,
-/// the announcement copied): that one is the click's, not an event's.
+/// the announcement copied, a moment marked): that one is the click's, not
+/// an event's.
 enum ForkMeetingNotifyEvent: CaseIterable, Equatable {
     /// The offer when a call is detected, and its grey reminder.
     case offers
@@ -24,7 +25,8 @@ enum ForkMeetingNotifyEvent: CaseIterable, Equatable {
     /// The warnings during a recording: the disk getting full, the
     /// microphone silent or changed, the window closed, the display changed.
     case warnings
-    /// A transcript ready or failed, an automatic export that failed.
+    /// A transcript or a summary ready or failed, an automatic export that
+    /// failed.
     case results
 
     var key: String {
