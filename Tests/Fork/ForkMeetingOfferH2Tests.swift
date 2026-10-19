@@ -9,6 +9,7 @@ import Foundation
 enum ForkMeetingOfferH2Tests {
     static func run(_ suite: TestSuite) {
         shares(suite)
+        microphone(suite)
     }
 
     private static let zero = Date(timeIntervalSinceReferenceDate: 800_000_000)
@@ -42,5 +43,27 @@ enum ForkMeetingOfferH2Tests {
             !$0.offerNameHidden.isEmpty && $0.offerNameHidden.count <= 28
         }
         suite.expect(fits, "the hidden name's line fits in 28 characters in every language")
+    }
+
+    // MARK: - H2.2 The app's microphone
+
+    private static func microphone(_ suite: TestSuite) {
+        suite.expect(ForkMeetingOfferInput.of(.meeting, meetingInput: "AirPodsUID") == .meetingApp("AirPodsUID"),
+                     "« Automatique » names the input the meeting's app records from")
+        suite.expect(ForkMeetingOfferInput.of(.meeting, meetingInput: nil) == .system
+                        && ForkMeetingOfferInput.of(.meeting, meetingInput: "") == .system,
+                     "an app that records no input leaves the system's, as the start does")
+        suite.expect(ForkMeetingOfferInput.of(.system, meetingInput: "AirPodsUID") == .system
+                        && ForkMeetingOfferInput.of(.builtIn, meetingInput: "AirPodsUID") == .builtIn
+                        && ForkMeetingOfferInput.of(.device("USB"), meetingInput: "AirPodsUID") == .chosen("USB")
+                        && ForkMeetingOfferInput.of(.off, meetingInput: "AirPodsUID") == .off,
+                     "any other choice names its own microphone, whatever the app uses")
+        let microphones = [
+            ForkMeetingMicSignal(appBundle: "com.google.Chrome", appPID: 100, pid: 200, inputDevice: "AirPodsUID"),
+        ]
+        let meeting = meet()
+        suite.expect(ForkMeetingOfferInput.of(.meeting, meetingInput: ForkMeetingDetectionSupport.meetingInput(
+                        for: meeting, in: microphones)) == .meetingApp("AirPodsUID"),
+                     "the offer and the start read the same input: Chrome's AudioService's")
     }
 }

@@ -267,7 +267,7 @@ extension ForkMeetingPresenter {
             icon: Self.icon(for: candidate), settings: settings,
             windowApp: Self.appName(pid: candidate.pid, bundle: candidate.windowBundle),
             soundApp: Self.appName(pid: nil, bundle: candidate.appBundle),
-            microphone: Self.microphone(settings.microphone),
+            microphone: Self.microphone(settings.microphone, meetingInput: service.meetingMicrophone(for: candidate)),
             consentReminder: UserDefaults.standard.bool(forKey: ForkDefaultsKey.meetingsConsentReminder),
             seenInShares: inIsland && ForkMeetingIsland.showsInCaptures)
         let actions = OfferActions(record: { service.acceptOffer() }, notNow: { service.dismissOffer(.thisTime) },
@@ -513,19 +513,23 @@ extension ForkMeetingPresenter {
         return (FileManager.default.displayName(atPath: url.path) as NSString).deletingPathExtension
     }
 
-    /// The microphone a start would record, by name.
-    private static func microphone(_ stored: String) -> ForkMeetingOfferMicrophone {
-        let choice = ForkMeetingMicrophoneChoice(stored: stored)
-        if choice == .off { return .off }
+    /// The microphone a start would record, by name: for "Automatic", the
+    /// input the meeting's app records from (`meetingInput`), else the
+    /// system's.
+    private static func microphone(_ stored: String, meetingInput: String?) -> ForkMeetingOfferMicrophone {
+        let input = ForkMeetingOfferInput.of(ForkMeetingMicrophoneChoice(stored: stored), meetingInput: meetingInput)
+        if input == .off { return .off }
         switch AVCaptureDevice.authorizationStatus(for: .audio) {
         case .denied, .restricted: return .denied
         default: break
         }
+        let system = { ForkDictationAudioDevices.captureDevice(for: ForkDictationAudioDevices.systemChoice) }
         let device: AVCaptureDevice?
-        switch choice {
-        case .meeting, .system: device = ForkDictationAudioDevices.captureDevice(for: ForkDictationAudioDevices.systemChoice)
+        switch input {
+        case .system: device = system()
         case .builtIn: device = ForkDictationAudioDevices.captureDevice(for: ForkDictationAudioDevices.builtInChoice)
-        case let .device(uid): device = ForkDictationAudioDevices.captureDevice(for: uid)
+        case let .chosen(uid): device = ForkDictationAudioDevices.captureDevice(for: uid)
+        case let .meetingApp(uid): device = AVCaptureDevice(uniqueID: uid) ?? system()
         case .off: device = nil
         }
         return device.map { .named($0.localizedName) } ?? .off

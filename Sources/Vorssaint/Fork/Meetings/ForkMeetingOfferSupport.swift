@@ -102,6 +102,33 @@ enum ForkMeetingOfferMicrophone: Equatable {
     case denied
 }
 
+/// The input an offer names for the Meetings page's microphone: the one
+/// its start would record.
+enum ForkMeetingOfferInput: Equatable {
+    case off
+    case system
+    case builtIn
+    /// Chosen on the page, by its unique ID.
+    case chosen(String)
+    /// "Meeting microphone (auto)": the input the meeting's app records
+    /// from, by its unique ID, as the start asks the recorder for it.
+    case meetingApp(String)
+
+    /// "Automatic" names the meeting app's own input when the app records
+    /// one, else the system's, as its start does.
+    static func of(_ choice: ForkMeetingMicrophoneChoice, meetingInput: String?) -> ForkMeetingOfferInput {
+        switch choice {
+        case .meeting:
+            guard let meetingInput, !meetingInput.isEmpty else { return .system }
+            return .meetingApp(meetingInput)
+        case .system: return .system
+        case .builtIn: return .builtIn
+        case let .device(uid): return .chosen(uid)
+        case .off: return .off
+        }
+    }
+}
+
 /// The offer's words, put together from the meeting and the settings.
 enum ForkMeetingOfferText {
     /// The sound a start of this meeting records: a provider whose calls
