@@ -183,7 +183,7 @@ enum ForkMeetingFixesH1Tests {
                         && verdict("Meet: abc-defg-hij") == .meeting(code: codeA, name: nil)
                         && verdict("abc-defg-hij – Google Meet") == .meeting(code: codeA, name: nil)
                         && verdict("Point hebdo – abc-defg-hij – Google Meet") == .meeting(code: codeA, name: "Point hebdo")
-                        && verdict("abc-defg-hij") == .meeting(code: codeA, name: nil),
+                        && verdict("abc-defg-hij") == .none,
                      "Meet's own titles keep their code: « Meet – x – code », « Meet - code », « Meet: code », « code – Google Meet »")
         suite.expect(verdict("Meet – Bitcoin hits all-time-low") == .meeting(code: nil, name: "Bitcoin hits all-time-low"),
                      "in a Meet title, a word inside the name is not its code either")
@@ -301,7 +301,10 @@ enum ForkMeetingFixesH1Tests {
         live.send(.captureStarted(token1, folder: folder), 3)
         live.readEvery3s(from: 6, to: 99, windows: [chrome("Meet – " + codeA)])
         _ = live.take()
-        // ⌘W: the tab goes, the next Meet opens in another one.
+        // ⌘W: the tab goes with its call, Chrome's microphone closes; the
+        // next Meet opens in another tab, and the microphone with it.
+        live.read(100, microphones: [])
+        live.read(101, microphones: [chromeMicrophone])
         live.readEvery3s(from: 102, to: 117, windows: [chrome("Meet – " + codeB, window: 8)])
         suite.expect(countdowns(live.take()).isEmpty, "the first meeting has its 20 s")
         live.readEvery3s(from: 120, to: 123, windows: [chrome("Meet – " + codeB, window: 8)])
@@ -333,10 +336,13 @@ enum ForkMeetingFixesH1Tests {
         _ = resolver.resolve(ForkMeetingReading(at: at(0), windows: [chrome("Meet – " + codeA)]))
         _ = resolver.resolve(ForkMeetingReading(at: at(3), windows: [chrome("Meet – " + codeB)]))
         let left = resolver.resolve(ForkMeetingReading(at: at(6), windows: [chrome("Vous avez quitté la réunion")]))
-        suite.expect(left.ended == [meetB] && left.candidates.map(\.identity) == [meetA],
-                     "two calls in two tabs of a window: the end page ends the one it showed, not the other")
+        suite.expect(left.ended.isEmpty && Set(left.candidates.map(\.identity)) == [meetA, meetB],
+                     "two calls in two tabs of a window, the microphone still open: the end page ends neither (J.I2)")
         let still = resolver.resolve(ForkMeetingReading(at: at(9), windows: [chrome("Vous avez quitté la réunion")]))
-        suite.expect(still.ended.isEmpty, "a page that stays ends nothing more")
+        suite.expect(still.ended.isEmpty, "nor while the page stays, the microphone open")
+        _ = resolver.resolve(ForkMeetingReading(at: at(10), microphones: []))
+        let free = resolver.resolve(ForkMeetingReading(at: at(12), windows: [chrome("Vous avez quitté la réunion")]))
+        suite.expect(free.ended == [meetA, meetB], "the microphone free, the page still there: both end at that reading")
 
         var freed = ForkMeetingResolver(ownPID: ownPID)
         _ = freed.resolve(ForkMeetingReading(at: at(-5), microphones: [chromeMicrophone]))
@@ -351,7 +357,11 @@ enum ForkMeetingFixesH1Tests {
         _ = alone.resolve(ForkMeetingReading(at: at(0), windows: [chrome("Meet – " + codeA)]))
         _ = alone.resolve(ForkMeetingReading(at: at(3), windows: [chrome("Gmail")]))
         let back = alone.resolve(ForkMeetingReading(at: at(6), windows: [chrome("Vous avez quitté la réunion")]))
-        suite.expect(back.ended == [meetA], "a window's only meeting ends with its end page, whatever tab was in front")
+        suite.expect(back.ended.isEmpty, "a window's only meeting: its end page with the microphone open ends nothing yet")
+        _ = alone.resolve(ForkMeetingReading(at: at(7), microphones: []))
+        let over = alone.resolve(ForkMeetingReading(at: at(9), windows: [chrome("Vous avez quitté la réunion")]))
+        suite.expect(over.ended == [meetA],
+                     "the microphone free, it ends with its end page, whatever tab was in front")
     }
 
     // MARK: - H1.4, H1.5, H1.6, H1.7

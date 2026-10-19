@@ -33,12 +33,14 @@ struct ForkMeetingResolution: Equatable {
 /// - A meeting **lives** while one of its windows shows it (hidden,
 ///   minimized or on another Space) **or** while its app uses a microphone:
 ///   a Meet tab in the background lives on its browser's microphone, unless
-///   another meeting of that browser shows (two Meet in a row: the
-///   microphone is the new one's).
+///   another meeting of that browser shows with its code, the microphone
+///   opened again since (two Meet in a row: the microphone is the new
+///   one's). A title without a code, or another Meet's waiting room on the
+///   same microphone, never takes it from a call going on.
 /// - It **probably ends** when both have been gone for 20 s, or at once when
-///   its window says the call is over. Of two meetings in the tabs of one
-///   window, the page ends the one it showed last, or one whose microphone
-///   is free too: the other tab may still be in its own call.
+///   its window says the call is over and its microphone is free: an end
+///   page with the microphone still open leaves it to the 20 s (another tab
+///   may still be in its own call).
 /// - Without Screen Recording no title can be read: a meeting in a browser
 ///   ends.
 /// - Our own process is never a signal: our dictation and our recording
@@ -78,6 +80,9 @@ struct ForkMeetingResolver {
         var meetCode: String?
         /// The last window reading showed it.
         var windowSeen = false
+        /// When the browser's microphone run it was last shown with began:
+        /// a run begun later is another meeting's.
+        var microphoneRun: Date?
         var windowReadings = 0
         var firstWindowAt: Date?
         var microphoneReadings = 0
@@ -102,9 +107,6 @@ struct ForkMeetingResolver {
     private var calendar: [ForkMeetingCalendarHint] = []
     /// Set-aside meetings, with when they ended (`nil` while alive).
     private var silenced: [ForkMeetingIdentity: Date?] = [:]
-    /// The windows that showed an end page at the last window reading: a
-    /// page that stays ends nothing more.
-    private var exitsShown = Set<UInt32>()
 
     init(table: ForkMeetingProviderTable = .current, ownPID: Int32 = ProcessInfo.processInfo.processIdentifier,
          policies: ForkMeetingPolicies = ForkMeetingPolicies(json: ForkMeetingPolicies.defaultJSON),
@@ -131,7 +133,6 @@ struct ForkMeetingResolver {
         microphoneSince = [:]
         calendar = []
         silenced = [:]
-        exitsShown = []
     }
 
     /// Takes a reading (a source left `nil` keeps what it said last; none at
@@ -210,10 +211,13 @@ struct ForkMeetingResolver {
                     // The same window, its code gone from the title ("Meet –
                     // Point hebdo" after "Meet – Point hebdo – abc-defg-hij"):
                     // still that meeting, never a new one to offer.
+                    // Only under the name it had: another title in that
+                    // window (another tab, another page) is not that meeting.
                     var identity = Self.identity(provider, window: window, code: code)
                     var adopted = false
-                    if code == nil, let same = tracks.values.first(where: {
+                    if code == nil, let name, let same = tracks.values.first(where: {
                         $0.provider == provider && $0.windowID == window.windowID && $0.meetCode != nil
+                            && $0.titleName == name
                     }) {
                         identity = same.identity
                     } else if code != nil, tracks[identity] == nil, let same = tracks.values.first(where: {
@@ -255,26 +259,20 @@ struct ForkMeetingResolver {
             track.windowBundle = sighting.window.bundle
             track.titleName = sighting.name ?? track.titleName
             track.meetCode = sighting.code ?? track.meetCode
+            // The browser's microphone run it is seen with now.
+            if track.provider.kind == .web, let run = microphoneSince[track.family] { track.microphoneRun = run }
             tracks[identity] = track
         }
 
-        // An end page counts when it appears.
-        let freshExits = exits.subtracting(exitsShown)
-        exitsShown = exits
-        // The meetings each window showed, for an end page that window shows.
-        var inWindow: [UInt32: Int] = [:]
-        for track in tracks.values { if let windowID = track.windowID { inWindow[windowID, default: 0] += 1 } }
         var ended: [ForkMeetingIdentity] = []
         for (identity, var track) in tracks where sightings[identity] == nil {
-            // Its window says the call is over: its meeting, or, when two
-            // tabs of that window held one each, the one it showed at the
-            // last reading, or one whose microphone is free as well. The
-            // other tab's meeting, its microphone still on, has its 20 s like
-            // any meeting out of sight.
-            let shownLast = track.windowSeen
+            // Its window says the call is over and its microphone is free:
+            // it ends now, or at the first reading the page still shows once
+            // the microphone is. With the microphone still open (another tab
+            // may be in its own call), the 20 s decide, as for any meeting
+            // out of sight.
             track.windowSeen = false
-            if let windowID = track.windowID, freshExits.contains(windowID),
-               inWindow[windowID, default: 0] < 2 || shownLast || !microphoneOpen(track) {
+            if let windowID = track.windowID, exits.contains(windowID), !microphoneOpen(track) {
                 tracks[identity] = nil
                 if track.bornAt != nil { ended.append(identity) }
                 continue
@@ -298,7 +296,6 @@ struct ForkMeetingResolver {
     /// born said as ended.
     private mutating func forgetWebMeetings() -> [ForkMeetingIdentity] {
         var ended: [ForkMeetingIdentity] = []
-        exitsShown = []
         for (identity, track) in tracks where track.provider.kind == .web {
             tracks[identity] = nil
             if track.bornAt != nil { ended.append(identity) }
@@ -335,12 +332,9 @@ struct ForkMeetingResolver {
             if silenced.keys.contains(identity) { silenced[identity] = .some(nil) }
             tracks[identity] = track
         }
-        // The browsers' meetings showing now: their browser's microphone is theirs.
-        let shown = Set(tracks.values.filter { $0.provider.kind == .web && $0.bornAt != nil && $0.windowSeen }
-            .map(\.identity))
         var ended: [ForkMeetingIdentity] = []
         for (identity, var track) in tracks where track.bornAt != nil {
-            let alive = track.windowSeen || keepsAlive(track, shown: shown)
+            let alive = track.windowSeen || keepsAlive(track)
             if alive {
                 track.absentSince = nil
             } else {
@@ -396,12 +390,20 @@ struct ForkMeetingResolver {
         return now.timeIntervalSince(since) >= tuning.microphoneSettle
     }
 
-    /// A web meeting out of sight lives on its browser's microphone while no
-    /// other meeting of that browser shows; an app's on its own process's.
-    private func keepsAlive(_ track: Track, shown: Set<ForkMeetingIdentity>) -> Bool {
+    /// A web meeting out of sight lives on its browser's microphone, unless
+    /// another meeting of that browser shows with its code and the
+    /// microphone opened again since this one was last shown with it: the
+    /// run is the newer call's. A title without a code, which any page may
+    /// carry, or another Meet's waiting room on the same run never takes it.
+    /// An app's lives on its own process's.
+    private func keepsAlive(_ track: Track) -> Bool {
         guard microphoneOpen(track) else { return false }
-        guard track.provider.kind == .web else { return true }
-        return !shown.contains { $0 != track.identity && tracks[$0]?.family == track.family }
+        guard track.provider.kind == .web, let run = microphoneSince[track.family] else { return true }
+        if let held = track.microphoneRun, run <= held { return true }
+        return !tracks.values.contains {
+            $0.identity != track.identity && $0.family == track.family && $0.bornAt != nil && $0.windowSeen
+                && $0.meetCode != nil
+        }
     }
 
     private func onMicrophone(at now: Date) -> Set<ForkMeetingIdentity> {

@@ -17,6 +17,10 @@ enum ForkMeetingFixesJTests {
 
     static func run(_ suite: TestSuite) {
         alwaysNeedsACode(suite)
+        anotherTitleNeverTakesTheCall(suite)
+        anotherTitleIsNotTheMeeting(suite)
+        endPagesWithTheMicrophoneOpen(suite)
+        meetTitlesOnly(suite)
     }
 
     // MARK: - Fixtures
@@ -195,5 +199,127 @@ enum ForkMeetingFixesJTests {
         let offered = named.take()
         suite.expect(starts(offered).isEmpty && offers(offered).count == 1,
                      "« Meet – Point hebdo » without its code is only offered")
+    }
+
+    // MARK: - J.I1 (probes P2b, P4)
+
+    /// A recording goes on while another tab of the browser is in front: a
+    /// title without a code, or another Meet's waiting room on the same
+    /// microphone, never takes the call's microphone.
+    private static func anotherTitleNeverTakesTheCall(_ suite: TestSuite) {
+        var named = recordingA()
+        named.readEvery3s(from: 33, to: 120, windows: [chrome("Meet – Point hebdo", window: 8)])
+        let namedEffects = named.take()
+        suite.expect(countdowns(namedEffects).isEmpty && !stops(namedEffects) && named.machine.activeSession != nil,
+                     "P2b: « Meet – Point hebdo » in front for 90 s, the call's microphone open: no countdown, no stop")
+
+        var waiting = recordingA()
+        waiting.readEvery3s(from: 33, to: 120, windows: [chrome("Meet – " + codeB, window: 8)])
+        let waitingEffects = waiting.take()
+        suite.expect(countdowns(waitingEffects).isEmpty && !stops(waitingEffects),
+                     "P4: another Meet's waiting room in front, the same microphone run: the call goes on being recorded")
+
+        // ⌘W: the call's tab gone, its microphone with it; the next Meet
+        // opens it again.
+        var next = recordingA()
+        next.read(31, microphones: [])
+        next.read(32, microphones: [chromeMicrophone])
+        next.readEvery3s(from: 33, to: 60, windows: [chrome("Meet – " + codeB, window: 8)])
+        suite.expect(countdowns(next.take()) == [at(69)],
+                     "the microphone opened again for a Meet with its code: that one has it, the first ends 20 s later")
+    }
+
+    // MARK: - J.I4 (probe P2c)
+
+    /// Another title in the meeting's window (the tab changed) neither
+    /// renames the meeting nor keeps it alive.
+    private static func anotherTitleIsNotTheMeeting(_ suite: TestSuite) {
+        var live = Live()
+        live.read(-5, microphones: [chromeMicrophone])
+        live.read(0, windows: [chrome("Meet – " + codeA)])
+        live.readEvery3s(from: 3, to: 30, windows: [chrome(video)])
+        // The video, the microphone open, may be offered as a page of its
+        // own (the page's lookalike warning): never as that meeting.
+        let names = offers(live.take()).filter { $0.candidate.identity == meetA }.map(\.candidate.name)
+        suite.expect(!names.isEmpty && names.allSatisfy { $0 == "Google Meet · " + codeA },
+                     "P2c: the meeting's offer keeps its name when the tab shows a video called « Meet - … »: \(names)")
+        suite.expect(live.candidates.first(where: { $0.identity == meetA })?.titleName == nil,
+                     "and the meeting is not renamed after it")
+
+        var closed = recordingA()
+        closed.read(31, microphones: [])
+        closed.readEvery3s(from: 33, to: 60, windows: [chrome(video)])
+        suite.expect(countdowns(closed.take()) == [at(69)],
+                     "⌘W then the video in that window: the meeting is not kept alive by it, it ends 20 s later")
+
+        var resolver = ForkMeetingResolver(ownPID: ownPID)
+        _ = resolver.resolve(ForkMeetingReading(at: at(-5), microphones: [chromeMicrophone]))
+        _ = resolver.resolve(ForkMeetingReading(at: at(0), windows: [chrome("Meet – Point hebdo – " + codeA)]))
+        let same = resolver.resolve(ForkMeetingReading(at: at(3), windows: [chrome("Meet – Point hebdo")]))
+        suite.expect(same.candidates.map(\.identity) == [meetA],
+                     "its code gone, the same name in the same window: still that meeting")
+    }
+
+    // MARK: - J.I2 (probes P3, P6)
+
+    private static func endPagesWithTheMicrophoneOpen(_ suite: TestSuite) {
+        var open = recordingA()
+        open.read(33, windows: [chrome("Vous avez quitté la réunion")])
+        open.readEvery3s(from: 36, to: 120, windows: [chrome("Vous avez quitté la réunion")])
+        let openEffects = open.take()
+        suite.expect(countdowns(openEffects).isEmpty && open.machine.activeSession != nil,
+                     "P3: an end page in front, the microphone still open (another tab's call): nothing ends, the 20 s decide")
+
+        var gmail = recordingA()
+        gmail.read(33, windows: [chrome("Re: the meeting has ended - alice@gmail.com - Gmail")])
+        suite.expect(countdowns(gmail.take()).isEmpty,
+                     "P6: an e-mail called « Re: the meeting has ended » ends nothing")
+        suite.expect(verdict("Re: the meeting has ended - alice@gmail.com - Gmail") == .none
+                        && verdict("Compte rendu : la réunion est terminée - Gmail") == .none,
+                     "an end sentence is read only in a Meet title, or as the whole title")
+        suite.expect(verdict("Meet – Vous avez quitté la réunion") == .exit && verdict("You left the meeting") == .exit
+                        && verdict("You left the meeting – " + codeA) == .exit,
+                     "Meet's own end pages still end the meeting")
+
+        var left = recordingA()
+        left.read(32.5, microphones: [])
+        left.read(33, windows: [chrome("Vous avez quitté la réunion")])
+        suite.expect(countdowns(left.take()) == [at(48)], "the call left, its microphone closed: the countdown starts at once")
+    }
+
+    // MARK: - J.M1 (probe P5)
+
+    private static func meetTitlesOnly(_ suite: TestSuite) {
+        let expected: [(String, ForkMeetingTitleVerdict)] = [
+            ("Meet the team – Acme", .none),
+            ("Meet-up Paris – Eventbrite", .none),
+            ("Meetup - Paris JS", .none),
+            ("meet.google.com - Google Search", .none),
+            ("meet.google.com/abc-defg-hij - Google Search", .none),
+            ("abc-defg-hij - Recherche Google", .none),
+            ("Meet - abc-defg-hij", .meeting(code: codeA, name: nil)),
+            ("Meet: abc-defg-hij", .meeting(code: codeA, name: nil)),
+            ("Meet - Bad Bunny - YouTube", .meeting(code: nil, name: "Bad Bunny - YouTube")),
+            ("Meet: The Parents (2000) - IMDb", .none),
+            ("Meet – fix-auth-bug – GitHub", .meeting(code: nil, name: "fix-auth-bug – GitHub")),
+            ("Zoom vs Google Meet", .none),
+            ("one-time-pad", .none),
+            ("abc-defg-hij", .none),
+            ("Meet-the-Press - NBC", .none),
+            ("Meet—Point hebdo", .none),
+            ("Re: the meeting has ended - alice@gmail.com - Gmail", .none),
+            ("MEET – Point hebdo", .meeting(code: nil, name: "Point hebdo")),
+            ("Meet – Point hebdo – abc-defg-hij", .meeting(code: codeA, name: "Point hebdo")),
+            ("Point hebdo – abc-defg-hij – Google Meet", .meeting(code: codeA, name: "Point hebdo")),
+            ("Point hebdo–Google Meet", .none),
+        ]
+        let wrong = expected.filter { verdict($0.0) != $0.1 }.map { "\($0.0) → \(verdict($0.0))" }
+        suite.expect(wrong.isEmpty, "Meet's format only: a space, a dash, a space, its code as the last part: \(wrong)")
+
+        var eventbrite = Live()
+        eventbrite.read(-5, microphones: [chromeMicrophone])
+        eventbrite.readEvery3s(from: 0, to: 60, windows: [chrome("Meet-up Paris – Eventbrite")])
+        suite.expect(offers(eventbrite.take()).isEmpty,
+                     "P5: « Meet-up Paris – Eventbrite », the microphone open: never offered as « up Paris – Eventbrite »")
     }
 }

@@ -554,8 +554,9 @@ enum ForkMeetingDetectionTests {
         p.read(800, windows: [other])
         suite.expect(!p.take().contains(.hideEndingSoon) && p.machine.activeSession != nil,
                      "recording: another tab in front changes nothing, the microphone keeps the meeting alive")
-        p.read(900, windows: [left])
-        suite.expect(p.take().contains(.showEndingSoon(until: at(915))), "the end page starts the countdown at once")
+        p.read(900, windows: [left], microphones: [])
+        suite.expect(p.take().contains(.showEndingSoon(until: at(915))),
+                     "the end page, the microphone closed with the call, starts the countdown at once")
         p.read(915)
         let stopped = p.take()
         suite.expect(stopped.contains(.stopCapture(token1)) && patches(stopped) == [Patch(stopReason: .meetingEnded)],

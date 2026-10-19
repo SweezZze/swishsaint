@@ -277,10 +277,12 @@ enum ForkMeetingDetectionBehaviorTests {
         live.readEvery3s(from: 402, to: 1797, windows: [chrome("Meet – " + codeA, onScreen: false)])
         suite.expect(live.take() == [], "the window on another Space keeps its title: nothing changes either")
 
+        // Leaving the call closes Chrome's microphone with it (J.I2: an end
+        // page with the microphone still open leaves it to the 20 s).
+        live.read(1799.5, microphones: [])
         live.read(1800, windows: [chrome("Vous avez quitté la réunion")])
         suite.expect(live.take() == [.showEndingSoon(until: at(1815)), .announce(.endingSoon(seconds: 15))],
                      "\"Vous avez quitté la réunion\": \"Meeting over? Stopping in 15 s\" at once, still recording")
-        live.read(1800.5, microphones: [])
         live.readEvery3s(from: 1803, to: 1812, windows: [chrome("Vous avez quitté la réunion")])
         live.clock(until: 1814)
         suite.expect(live.take() == [] && live.machine.activeSession != nil,
@@ -411,7 +413,9 @@ enum ForkMeetingDetectionBehaviorTests {
         let afterA = live.take()
         suite.expect(afterA == [] && live.machine.activeSession?.meeting == meetB,
                      "the other meeting's end stops nothing and starts no countdown")
-        live.read(123, windows: [chrome("Meet", window: 7), chrome("Vous avez quitté la réunion", window: 8)])
+        // Its call left, Chrome's microphone closes (J.I2).
+        live.read(123, windows: [chrome("Meet", window: 7), chrome("Vous avez quitté la réunion", window: 8)],
+                  microphones: [])
         suite.expect(countdowns(live.take()) == [at(138)], "its own meeting's end starts the countdown")
         live.clock(until: 138)
         suite.expect(stops(live.take()), "and stops it 15 s later")
@@ -453,7 +457,10 @@ enum ForkMeetingDetectionBehaviorTests {
         let both = [chrome("Meet – " + codeA, window: 7), chrome("Meet – " + codeB, window: 8)]
         live.readEvery3s(from: 6, to: 300, windows: both)
         suite.expect(live.take() == [], "a second meeting during the recording: nothing shown, nothing stopped")
-        live.read(303, windows: [chrome("Vous avez quitté la réunion", window: 7), chrome("Meet – " + codeB, window: 8)])
+        // The first call left, the microphone closes: the second Meet only
+        // waits in its room (a call there would keep the first alive, J.I1).
+        live.read(303, windows: [chrome("Vous avez quitté la réunion", window: 7), chrome("Meet – " + codeB, window: 8)],
+                  microphones: [])
         live.clock(until: 318)
         live.send(.writerFinished(token1, .finished(recordedSeconds: nil)), 319)
         suite.expect(offers(live.take()).isEmpty, "nor while the first one stops and closes")
@@ -608,8 +615,8 @@ enum ForkMeetingDetectionBehaviorTests {
         live.send(.accept(request()), 33)
         live.send(.captureStarted(token1, folder: folder), 34)
         live.readEvery3s(from: 36, to: 99, windows: [chrome("Meet – " + codeA)])
+        live.read(99.5, microphones: [])
         live.read(100, windows: [chrome("Vous avez quitté la réunion")])
-        live.read(100.5, microphones: [])
         _ = live.take()
         live.send(.continueRecording, 105)
         suite.expect(live.take() == [.hideEndingSoon, .announce(.continued)], "Continue takes the countdown away")
@@ -619,10 +626,10 @@ enum ForkMeetingDetectionBehaviorTests {
         live.read(132, microphones: [chromeMicrophone])
         live.readEvery3s(from: 133, to: 397, windows: [chrome("Meet – " + codeA)])
         suite.expect(live.take() == [], "rejoined, the meeting is its own again: nothing is offered")
+        live.read(399.5, microphones: [])
         live.read(400, windows: [chrome("Vous avez quitté la réunion")])
         suite.expect(live.take() == [.showEndingSoon(until: at(415)), .announce(.endingSoon(seconds: 15))],
                      "its next end starts a new countdown")
-        live.read(401, microphones: [])
         live.clock(until: 415)
         let stopped = live.take()
         suite.expect(stopped.contains(.writeSidecar(folder, Patch(stopReason: .meetingEnded))) && stops(stopped),
@@ -639,8 +646,8 @@ enum ForkMeetingDetectionBehaviorTests {
             live.send(.accept(request()), 33)
             live.send(.captureStarted(token1, folder: folder), 36)
             live.readEvery3s(from: 39, to: 99, windows: [chrome("Meet – " + codeA)])
+            live.read(99.5, microphones: [])
             live.read(100, windows: [chrome("Vous avez quitté la réunion")])
-            live.read(100.5, microphones: [])
             _ = live.take()
             return live
         }

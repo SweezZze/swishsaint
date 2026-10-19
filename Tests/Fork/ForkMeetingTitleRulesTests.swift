@@ -26,9 +26,9 @@ enum ForkMeetingTitleRulesTests {
     private static func meetingTitles(_ suite: TestSuite) {
         let titles = ["Meet - abc-defg-hij", "Meet – abc-defg-hij", "Meet — abc-defg-hij", "Réunion équipe - Google Meet",
                       "Meet - Point hebdo", "abc-defg-hij - Google Meet", "Team sync – Google Meet", "Meet – Weekly sync",
-                      "Point hebdo — Google Meet", "abc-defg-hij", "MEET – Point hebdo", "Meet–Point hebdo"]
+                      "Point hebdo — Google Meet", "MEET – Point hebdo"]
         let missed = titles.filter { !isMeeting($0) }
-        suite.expect(missed.isEmpty, "a code, \"Meet – name\" or \"name – Google Meet\" is a meeting, with any dash: \(missed)")
+        suite.expect(missed.isEmpty, "\"Meet – code\", \"Meet – name\" or \"name – Google Meet\" is a meeting, with any dash: \(missed)")
     }
 
     private static func refusedTitles(_ suite: TestSuite) {
@@ -102,9 +102,10 @@ enum ForkMeetingTitleRulesTests {
                         && verdict("Point hebdo – Google Meet") == .meeting(code: nil, name: "Point hebdo"),
                      "the meeting's name comes from either side of the title")
         suite.expect(verdict("Meet – abc-defg-hij") == .meeting(code: "abc-defg-hij", name: nil)
-                        && verdict("abc-defg-hij - Google Meet") == .meeting(code: "abc-defg-hij", name: nil)
-                        && verdict("abc-defg-hij") == .meeting(code: "abc-defg-hij", name: nil),
+                        && verdict("abc-defg-hij - Google Meet") == .meeting(code: "abc-defg-hij", name: nil),
                      "a code alone is no name")
+        suite.expect(verdict("abc-defg-hij") == .none && verdict("Meet–Point hebdo") == .none,
+                     "a bare code, outside Meet's marks, and « Meet » glued to its dash are no meeting (J.M1)")
         suite.expect(verdict("Meet – Point hebdo – abc-defg-hij") == .meeting(code: "abc-defg-hij", name: "Point hebdo"),
                      "the name loses the code beside it")
         suite.expect(verdict("Meet\u{00A0}–  Point   hebdo ") == .meeting(code: nil, name: "Point hebdo"),
