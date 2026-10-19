@@ -12,7 +12,9 @@ import UniformTypeIdentifiers
 ///
 /// The disk is the truth: every action ends with a new scan, and so does
 /// every change the Finder makes, seen through `ForkMeetingFolderWatch`
-/// while the window is open, and only then.
+/// while the window is open, and only then: closed, nothing watches and
+/// nothing scans, whatever completes after. A change inside one meeting's
+/// folder (a note saved, a meeting finishing) reads that folder alone.
 ///
 /// Main thread only.
 final class ForkMeetingLibraryModel: ObservableObject {
@@ -50,8 +52,14 @@ final class ForkMeetingLibraryModel: ObservableObject {
     private var edits = ForkMeetingEditCoalescer()
     private var editTimer: DispatchSourceTimer?
     private var watch: ForkMeetingFolderWatch?
+    /// Between `start` and `stop`: the window is open.
+    private(set) var isOpen = false
     private var scanning = false
-    private var scanAgain = false
+    /// Asked while a scan ran: one more, of everything or of some folders.
+    private var scanAgain: ForkMeetingLibrary.Rescan?
+    /// Scans of every folder since the window opened, for the recipe
+    /// harness.
+    private(set) var fullScans = 0
     /// Renames done since the last scan, old name to new, so the selection
     /// follows them.
     private var renamed: [String: String] = [:]
@@ -139,15 +147,19 @@ final class ForkMeetingLibraryModel: ObservableObject {
     /// The window opened: a scan now, then one after every change of the
     /// folder. `focus` selects that meeting once it is listed.
     func start(focus: URL? = nil) {
+        isOpen = true
         root = store.root()
         if let focus { selection = focus.standardizedFileURL.lastPathComponent }
         rewatch()
         refresh()
     }
 
-    /// The window closed: what was typed is written, nothing watches.
+    /// The window closed: what was typed is written, nothing watches, and
+    /// nothing scans again until it opens.
     func stop() {
         flushEdits()
+        isOpen = false
+        scanAgain = nil
         watch?.stop()
         watch = nil
     }
@@ -156,36 +168,51 @@ final class ForkMeetingLibraryModel: ObservableObject {
     func focusTitle() { titleFocus += 1 }
 
     private func rewatch() {
+        guard isOpen else { return }
         let path = root.path
         guard watch?.path != path else { return }
         watch?.stop()
-        watch = ForkMeetingFolderWatch(path: path) { [weak self] in self?.refresh() }
+        watch = ForkMeetingFolderWatch(path: path) { [weak self] rescan in self?.refresh(rescan) }
         watch?.start()
     }
 
     /// A scan, one at a time: a change during a scan asks for one more.
-    func refresh() {
+    /// Only while the window is open.
+    func refresh(_ rescan: ForkMeetingLibrary.Rescan = .all) {
+        guard isOpen else { return }
         guard !scanning else {
-            scanAgain = true
+            scanAgain = scanAgain?.merged(with: rescan) ?? rescan
             return
         }
+        // Some folders are read alone only once the list holds the rest.
+        var only: Set<String>?
+        if case let .folders(names) = rescan, loaded { only = names }
+        if only == nil { fullScans += 1 }
         scanning = true
         root = store.root()
         let before = ForkMeetingLibrary.order(groups)
         let generation = changes
-        store.scanLibrary(writing: writing()) { [weak self] scan in
+        store.scanLibrary(writing: writing(), only: only) { [weak self] scan in
             guard let self else { return }
             self.scanning = false
-            guard generation == self.changes else {
-                // A rename landed meanwhile: this read is older than what
-                // the window shows.
-                self.refresh()
+            guard self.isOpen else { return }
+            guard generation == self.changes, scan.root == self.root else {
+                // A rename landed meanwhile, or the folder moved: this read
+                // is older than what the window shows.
+                self.refresh(.all)
                 return
             }
             self.root = scan.root
             self.rootExists = scan.rootExists
-            self.entries = scan.entries
-            self.probes = scan.probes
+            if let only = scan.only {
+                self.entries = ForkMeetingLibrary.merged(self.entries, scanned: only, with: scan.entries)
+                var probes = self.probes.filter { !only.contains($0.key) }
+                probes.merge(scan.probes) { _, new in new }
+                self.probes = probes
+            } else {
+                self.entries = scan.entries
+                self.probes = scan.probes
+            }
             self.loaded = true
             let after = ForkMeetingLibrary.order(self.groups)
             self.selection = ForkMeetingLibrary.keptSelection(self.selection, renamed: self.renamed,
@@ -193,9 +220,9 @@ final class ForkMeetingLibraryModel: ObservableObject {
                 ?? after.first
             self.renamed = [:]
             if scan.rootExists { self.rewatch() }
-            if self.scanAgain {
-                self.scanAgain = false
-                self.refresh()
+            if let again = self.scanAgain {
+                self.scanAgain = nil
+                self.refresh(again)
             }
         }
     }
@@ -451,17 +478,24 @@ final class ForkMeetingLibraryModel: ObservableObject {
 /// a folder renamed, added or sent to the Trash in the Finder, a note
 /// written, a meeting finishing. Changes are gathered for a quarter of a
 /// second before the window scans again, so a burst of writes (a final
-/// pass, a rename moving three files) costs one scan.
+/// pass, a rename moving three files) costs one scan; what changed is said
+/// (`ForkMeetingLibrary.rescan`), so a note saved reads its folder alone.
 final class ForkMeetingFolderWatch {
     let path: String
-    private let onChange: () -> Void
+    private let onChange: (ForkMeetingLibrary.Rescan) -> Void
     private var stream: FSEventStreamRef?
     private var pending: DispatchWorkItem?
+    /// Gathered during the quarter of a second.
+    private var gathered: ForkMeetingLibrary.Rescan?
+    /// FSEvents names the real path: a meetings folder reached through a
+    /// symbolic link (`/tmp`) is compared as it resolves.
+    private let realPath: String
     static let debounce: TimeInterval = 0.25
 
-    init(path: String, onChange: @escaping () -> Void) {
+    init(path: String, onChange: @escaping (ForkMeetingLibrary.Rescan) -> Void) {
         self.path = path
         self.onChange = onChange
+        realPath = URL(fileURLWithPath: path).resolvingSymlinksInPath().path
     }
 
     deinit { stop() }
@@ -472,9 +506,20 @@ final class ForkMeetingFolderWatch {
         guard stream == nil, FileManager.default.fileExists(atPath: path) else { return }
         var context = FSEventStreamContext(version: 0, info: Unmanaged.passUnretained(self).toOpaque(),
                                            retain: nil, release: nil, copyDescription: nil)
-        let callback: FSEventStreamCallback = { _, info, _, _, _, _ in
+        let callback: FSEventStreamCallback = { _, info, count, paths, flags, _ in
             guard let info else { return }
-            Unmanaged<ForkMeetingFolderWatch>.fromOpaque(info).takeUnretainedValue().changed()
+            let names = paths.assumingMemoryBound(to: UnsafePointer<CChar>.self)
+            var changed: [String] = []
+            var everything = false
+            // Events dropped, or a folder to read through: all of it.
+            let whole = FSEventStreamEventFlags(kFSEventStreamEventFlagMustScanSubDirs | kFSEventStreamEventFlagUserDropped
+                                                | kFSEventStreamEventFlagKernelDropped | kFSEventStreamEventFlagRootChanged)
+            for index in 0..<count {
+                changed.append(String(cString: names[index]))
+                if flags[index] & whole != 0 { everything = true }
+            }
+            Unmanaged<ForkMeetingFolderWatch>.fromOpaque(info).takeUnretainedValue()
+                .changed(everything ? .all : nil, paths: changed)
         }
         guard let stream = FSEventStreamCreate(kCFAllocatorDefault, callback, &context, [path] as CFArray,
                                                FSEventStreamEventId(kFSEventStreamEventIdSinceNow), 0.2,
@@ -491,6 +536,7 @@ final class ForkMeetingFolderWatch {
     func stop() {
         pending?.cancel()
         pending = nil
+        gathered = nil
         guard let stream else { return }
         FSEventStreamStop(stream)
         FSEventStreamInvalidate(stream)
@@ -499,9 +545,15 @@ final class ForkMeetingFolderWatch {
     }
 
     /// Main queue (the stream's).
-    private func changed() {
+    private func changed(_ forced: ForkMeetingLibrary.Rescan?, paths: [String]) {
+        let rescan = forced ?? ForkMeetingLibrary.rescan(paths: paths, root: realPath)
+        gathered = gathered?.merged(with: rescan) ?? rescan
         pending?.cancel()
-        let work = DispatchWorkItem { [weak self] in self?.onChange() }
+        let work = DispatchWorkItem { [weak self] in
+            guard let self, let rescan = self.gathered else { return }
+            self.gathered = nil
+            self.onChange(rescan)
+        }
         pending = work
         DispatchQueue.main.asyncAfter(deadline: .now() + Self.debounce, execute: work)
     }

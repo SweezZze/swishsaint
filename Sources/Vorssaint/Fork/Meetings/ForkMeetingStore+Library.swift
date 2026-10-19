@@ -27,6 +27,9 @@ extension ForkMeetingStore {
         let entries: [ForkMeetingLibraryEntry]
         /// What was measured of each row's playable file, by folder name.
         let probes: [String: ForkMeetingProbeCache.Probe]
+        /// The folders this scan read, when it read only some
+        /// (`ForkMeetingLibrary.Rescan`); `nil`: all of them.
+        var only: Set<String>? = nil
     }
 
     enum LibraryFailure: Error, Equatable {
@@ -68,16 +71,20 @@ extension ForkMeetingStore {
     ///   or finishing, from its service, besides the ones it holds locked.
     /// - `probing`: the videos are measured (length, tracks); the automatic
     ///   bin needs none of it.
-    func scanLibrary(writing: Set<String> = [], probing: Bool = true,
+    /// - `only`: these folders alone, the others left as the caller has
+    ///   them.
+    func scanLibrary(writing: Set<String> = [], probing: Bool = true, only: Set<String>? = nil,
                      completion: @escaping (LibraryScan) -> Void) {
         let root = self.root()
         Task.detached(priority: .utility) { [self] in
-            let scan = await libraryScan(root: root, writing: writing, probing: probing)
+            var scan = await libraryScan(root: root, writing: writing, probing: probing, only: only)
+            scan.only = only
             callbackQueue.async { completion(scan) }
         }
     }
 
-    private func libraryScan(root: URL, writing: Set<String>, probing: Bool) async -> LibraryScan {
+    private func libraryScan(root: URL, writing: Set<String>, probing: Bool,
+                             only: Set<String>? = nil) async -> LibraryScan {
         let manager = FileManager.default
         var isDirectory: ObjCBool = false
         guard manager.fileExists(atPath: root.path, isDirectory: &isDirectory), isDirectory.boolValue,
@@ -87,7 +94,7 @@ extension ForkMeetingStore {
         var entries: [ForkMeetingLibraryEntry] = []
         var probes: [String: ForkMeetingProbeCache.Probe] = [:]
         var measured = Set<String>()
-        for name in names.sorted() where !name.hasPrefix(".") {
+        for name in names.sorted() where !name.hasPrefix(".") && only?.contains(name) != false {
             let folder = root.appendingPathComponent(name, isDirectory: true)
             guard let first = libraryEntry(folder, writing: writing) else { continue }
             var probe: ForkMeetingProbeCache.Probe?
@@ -99,7 +106,8 @@ extension ForkMeetingStore {
             if let probe { probes[name] = probe }
             entries.append(probe?.seconds == nil ? first.entry : first.measured(probe?.seconds) ?? first.entry)
         }
-        if probing { ForkMeetingLibraryProbes.shared.keep(only: measured) }
+        // A partial scan saw only some files: the others' measures stay.
+        if probing, only == nil { ForkMeetingLibraryProbes.shared.keep(only: measured) }
         return LibraryScan(root: root, rootExists: true, entries: entries, probes: probes)
     }
 

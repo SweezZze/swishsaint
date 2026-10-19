@@ -99,6 +99,51 @@ enum ForkMeetingAudioExport {
     }
 }
 
+// MARK: - Reading the folder again
+
+extension ForkMeetingLibrary {
+    /// What the window reads again after a change: every folder, or only
+    /// those that changed. A note saved, a meeting finishing, touch one
+    /// meeting's folder: reading it alone keeps typing in a library of
+    /// hundreds of meetings from reading them all twice a second.
+    enum Rescan: Equatable {
+        case all
+        case folders(Set<String>)
+
+        /// Two asks gathered while a scan runs.
+        func merged(with other: Rescan) -> Rescan {
+            switch (self, other) {
+            case let (.folders(one), .folders(two)): return .folders(one.union(two))
+            default: return .all
+            }
+        }
+    }
+
+    /// The meeting folders FSEvents names (`paths`, as it reports them,
+    /// directories with or without their final slash) under `root`: a
+    /// change inside a meeting's folder is that folder's; a change of the
+    /// meetings folder itself (a folder added, renamed, sent to the Trash)
+    /// or anywhere else is everything's.
+    static func rescan(paths: [String], root: String) -> Rescan {
+        let base = root.hasSuffix("/") ? String(root.dropLast()) : root
+        var folders = Set<String>()
+        for path in paths {
+            guard path.hasPrefix(base + "/") else { return .all }
+            let inside = path.dropFirst(base.count + 1).split(separator: "/", omittingEmptySubsequences: true)
+            guard let first = inside.first else { return .all }
+            folders.insert(String(first))
+        }
+        return folders.isEmpty ? .all : .folders(folders)
+    }
+
+    /// The rows after a scan of `scanned` folders alone: theirs replaced
+    /// by what the scan found (none for a folder gone), the others kept.
+    static func merged(_ entries: [ForkMeetingLibraryEntry], scanned names: Set<String>,
+                       with found: [ForkMeetingLibraryEntry]) -> [ForkMeetingLibraryEntry] {
+        (entries.filter { !names.contains($0.folderName) } + found).sorted { $0.folderName < $1.folderName }
+    }
+}
+
 // MARK: - Selection
 
 extension ForkMeetingLibrary {

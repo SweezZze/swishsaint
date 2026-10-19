@@ -19,6 +19,7 @@ enum ForkMeetingFixesMTests {
         renameTable(suite)
         renamedRow(suite)
         lock(suite)
+        rescans(suite)
         texts(suite)
     }
 
@@ -270,6 +271,36 @@ enum ForkMeetingFixesMTests {
                         && ForkMeetingRename.folderLags(folderName: "2026-10-18 10h02 — point acme",
                                                         startedAt: date(2026, 10, 18), title: "Point Acme", calendar: paris),
                      "committing the title renames a folder that lags behind it, even with nothing typed; never one filed by hand")
+    }
+
+    // MARK: - M.3 Reading again only what changed
+
+    private static func rescans(_ suite: TestSuite) {
+        let root = "/Users/x/Movies/Réunions"
+        suite.expect(ForkMeetingLibrary.rescan(paths: ["\(root)/\(folder)/"], root: root) == .folders([folder])
+                        && ForkMeetingLibrary.rescan(paths: ["\(root)/\(folder)"], root: root + "/") == .folders([folder]),
+                     "a note saved in a meeting's folder reads that folder alone")
+        suite.expect(ForkMeetingLibrary.rescan(paths: ["\(root)/A/", "\(root)/B/.recording.mp4"], root: root) == .folders(["A", "B"]),
+                     "changes in two meetings read those two")
+        suite.expect(ForkMeetingLibrary.rescan(paths: ["\(root)/A/", "\(root)/"], root: root) == .all
+                        && ForkMeetingLibrary.rescan(paths: [root], root: root) == .all
+                        && ForkMeetingLibrary.rescan(paths: ["/Users/x/Movies/Other/A/"], root: root) == .all
+                        && ForkMeetingLibrary.rescan(paths: [], root: root) == .all,
+                     "a folder added, renamed or gone in the meetings folder, or anything unexpected, reads everything")
+        suite.expect(ForkMeetingLibrary.Rescan.folders(["A"]).merged(with: .folders(["B"])) == .folders(["A", "B"])
+                        && ForkMeetingLibrary.Rescan.folders(["A"]).merged(with: .all) == .all
+                        && ForkMeetingLibrary.Rescan.all.merged(with: .folders(["B"])) == .all,
+                     "asks gathered while a scan runs add up; one for everything wins")
+        let rows = [meeting(), meeting(), meeting()].enumerated().compactMap { index, sidecar in
+            entry(sidecar, folderName: "f\(index)")
+        }
+        guard rows.count == 3, let fresh = entry(meeting(title: "Nouveau"), folderName: "f1") else {
+            suite.expect(false, "the rows are built")
+            return
+        }
+        let merged = ForkMeetingLibrary.merged(rows, scanned: ["f1", "f2"], with: [fresh])
+        suite.expect(merged.map(\.folderName) == ["f0", "f1"] && merged[1].title == "Nouveau" && merged[0] == rows[0],
+                     "a folder read again replaces its row, one gone leaves the list, the others stay as they were")
     }
 
     // MARK: - M.m The lock of another copy
