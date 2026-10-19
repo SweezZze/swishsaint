@@ -18,7 +18,10 @@ struct ForkMeetingLibraryList: View {
                 .padding(.horizontal, 10)
                 .padding(.vertical, 8)
             let groups = model.groups
-            if groups.isEmpty {
+            if groups.isEmpty && !model.loaded {
+                // Before the first scan: nothing to say yet.
+                Spacer()
+            } else if groups.isEmpty {
                 Text(text.searchNoResults(model.query))
                     .font(.callout)
                     .foregroundStyle(.secondary)

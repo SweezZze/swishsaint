@@ -202,6 +202,16 @@ extension ForkMeetingStore {
         queue.async { [self] in renameTable.forget(path) }
     }
 
+    /// Waits, at most `seconds`, for everything asked of the store's queue
+    /// so far. `false`: it was still busy. Off the store's queue.
+    @discardableResult
+    func drain(within seconds: TimeInterval) -> Bool {
+        dispatchPrecondition(condition: .notOnQueue(queue))
+        let done = DispatchSemaphore(value: 0)
+        queue.async { done.signal() }
+        return done.wait(timeout: .now() + seconds) == .success
+    }
+
     // MARK: - Title and notes
 
     /// Applies a library edit to the folder's `meeting.json`, after every

@@ -20,6 +20,10 @@ final class ForkMeetingLibraryWindow: NSObject, NSWindowDelegate {
     private var keyMonitor: Any?
     private var keepsAppRegular = false
 
+    /// What a quit waits for the notes still on their way to the disk:
+    /// behind a sweep's move to the Trash or a final pass's write, never
+    /// more.
+    static let quitWait: TimeInterval = 2
     static let defaultSize = NSSize(width: 940, height: 660)
     static let minimumSize = NSSize(width: 720, height: 440)
 
@@ -28,12 +32,12 @@ final class ForkMeetingLibraryWindow: NSObject, NSWindowDelegate {
     private override init() {
         super.init()
         // A quit with a note still waiting for its half second: written
-        // before the app goes.
+        // before the app goes, for as long as a quit can wait.
         NotificationCenter.default.addObserver(forName: NSApplication.willTerminateNotification, object: nil,
                                                queue: .main) { [weak self] _ in
             guard let model = self?.model else { return }
             model.stop()
-            model.store.queue.sync {}
+            _ = model.store.drain(within: Self.quitWait)
         }
     }
 
