@@ -1,0 +1,101 @@
+name: Fork · Note de mise à jour
+
+# Chaque PR porte, dans son corps, la petite phrase de son auteur qui s'affichera dans la
+# fenêtre de mise à jour de l'app (fork/release-notes.sh la lit au moment de la release) :
+#
+#   ## Note de mise à jour
+#   <!-- update-note -->
+#   J'ai corrigé un bug sur l'historique du presse-papiers.
+#   <!-- /update-note -->
+#
+# Sans note : le label « pas-de-note » (PR sans effet pour les utilisateurs : CI, docs, outils).
+# Pas de note demandée aux synchros avec l'officiel ni aux robots. Voir .claude/CLAUDE.md.
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened, labeled, unlabeled]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: fork-update-note-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  note:
+    name: Note de mise à jour
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          sparse-checkout: fork/authors.tsv
+          sparse-checkout-cone-mode: false
+
+      - name: Vérifier la note
+        env:
+          # Jamais inline dans le script : le corps et le titre viennent de l'auteur de la PR.
+          BODY: ${{ github.event.pull_request.body }}
+          TITLE: ${{ github.event.pull_request.title }}
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+          AUTHOR: ${{ github.event.pull_request.user.login }}
+          AUTHOR_TYPE: ${{ github.event.pull_request.user.type }}
+          LABELS: ${{ toJSON(github.event.pull_request.labels.*.name) }}
+        run: |
+          case "$HEAD_REF" in
+            sync/upstream-* | *sync-upstream*) echo "Synchro avec l'officiel : pas de note demandée."; exit 0 ;;
+          esac
+          case "$TITLE" in
+            "sync(upstream):"*) echo "Synchro avec l'officiel : pas de note demandée."; exit 0 ;;
+          esac
+          if [ "$AUTHOR_TYPE" = Bot ]; then
+            echo "PR ouverte par un robot : pas de note demandée."
+            exit 0
+          fi
+          if printf '%s' "$LABELS" | jq -e 'index("pas-de-note") != null' >/dev/null; then
+            echo "Label « pas-de-note » : cette PR ne change rien pour les utilisateurs."
+            exit 0
+          fi
+
+          if ! awk -F '\t' -v login="$AUTHOR" '!/^#/ && tolower($1) == tolower(login) { found = 1 } END { exit !found }' fork/authors.tsv; then
+            echo "::warning title=Auteur absent de fork/authors.tsv::« $AUTHOR » n'est pas dans fork/authors.tsv : ajoute la ligne « $AUTHOR<TAB>Prénom » pour que la note s'affiche sous ton prénom (sinon : le prénom du nom de branche feat/<prénom>-…, ou ton pseudo)."
+          fi
+
+          # Même lecture que fork/release-notes.sh : le texte entre les deux marqueurs, sans commentaires.
+          note="$(python3 -c '
+          import os, re
+          match = re.search(r"<!--\s*update-note\s*-->(.*?)<!--\s*/update-note\s*-->", os.environ.get("BODY") or "", re.S)
+          if match:
+              text = re.sub(r"<!--.*?-->", "", match.group(1), flags=re.S)
+              for line in text.splitlines():
+                  line = line.strip()
+                  for bullet in ("- ", "* ", "• "):
+                      if line.startswith(bullet):
+                          line = line[len(bullet):].strip()
+                  if line:
+                      print(line)
+          ')"
+          if [ -n "$note" ]; then
+            echo "Note de mise à jour :"
+            printf '%s\n' "$note" | sed 's/^/  · /'
+            exit 0
+          fi
+
+          {
+            echo "### Note de mise à jour manquante"
+            echo
+            echo "Ajoute dans le corps de la PR (bouton « Edit » de la description), avec **tes mots**, une petite phrase sur ce que tu as fait :"
+            echo
+            echo '```'
+            echo "## Note de mise à jour"
+            echo "<!-- update-note -->"
+            echo "J'ai corrigé un bug sur l'historique du presse-papiers."
+            echo "<!-- /update-note -->"
+            echo '```'
+            echo
+            echo "Elle s'affichera sous ton prénom dans la fenêtre de mise à jour que tout le monde recevra."
+            echo "Si la PR ne change rien pour les utilisateurs (CI, docs, outils), mets plutôt le label \`pas-de-note\`."
+          } >> "$GITHUB_STEP_SUMMARY"
+          echo "::error title=Note de mise à jour manquante::Le corps de la PR n'a pas de bloc <!-- update-note --> … <!-- /update-note --> rempli. Colle « ## Note de mise à jour », puis « <!-- update-note --> », ta phrase (« J'ai … »), et « <!-- /update-note --> ». PR sans effet pour les utilisateurs : label « pas-de-note ». Détails dans le résumé du job."
+          exit 1
