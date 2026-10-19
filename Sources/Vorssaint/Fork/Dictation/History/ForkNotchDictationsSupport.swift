@@ -78,15 +78,15 @@ enum ForkNotchDictationsSupport {
     }
 
     /// The clipboard's own shortcut and menu while the island keeps the
-    /// Dictations tab: they show the clipboard. With the tab in view, it
-    /// switches in place (`handled`), where the official route would close
-    /// the island or leave it on the dictations; otherwise the official
-    /// route opens the page, now on the clipboard. A clipboard that opens in
-    /// its own window is left to it.
-    static func clipboardRoute(tab: ForkNotchDictationsTab, tabInView: Bool,
+    /// Dictations tab: they show the clipboard. The shortcut's toggle, with
+    /// the tab in view, switches in place (`handled`), where the official
+    /// route would close the island; otherwise the official route opens the
+    /// page, now on the clipboard. A clipboard that opens in its own window
+    /// is left to it.
+    static func clipboardRoute(tab: ForkNotchDictationsTab, toggle: Bool, tabInView: Bool,
                                routesToIsland: Bool) -> (tab: ForkNotchDictationsTab, handled: Bool) {
         guard routesToIsland, tab == .dictations else { return (tab, false) }
-        return (.clipboard, tabInView)
+        return (.clipboard, toggle && tabInView)
     }
 
     /// The clipboard page's keys first. Space listens while nothing is typed
@@ -176,12 +176,7 @@ enum ForkNotchDictationsSupport {
     /// written with `String(describing:)`), nil when it cannot be read back.
     static func failure(stored: String?) -> ForkDictationFailure? {
         guard let stored else { return nil }
-        let simple: [ForkDictationFailure] = [
-            .accessibilityMissing, .microphoneDenied, .microphoneMutedInVorssaint, .microphoneSilent, .captureFailed,
-            .speechDenied, .speechUnavailableInBuild, .languageUnavailable, .modelMissing, .modelDamaged,
-            .transcriptionFailed,
-        ]
-        if let failure = simple.first(where: { String(describing: $0) == stored }) { return failure }
+        if let failure = storableFailures.first(where: { String(describing: $0) == stored }) { return failure }
         guard stored.hasPrefix("secureInput(") else { return nil }
         // secureInput(app: Optional("Terminal")) or secureInput(app: nil).
         guard let open = stored.range(of: "Optional(\""),
@@ -191,5 +186,36 @@ enum ForkNotchDictationsSupport {
             .replacingOccurrences(of: "\\\"", with: "\"")
             .replacingOccurrences(of: "\\\\", with: "\\")
         return .secureInput(app: app)
+    }
+
+    /// One of each failure a dictation can keep, `secureInput` without its app.
+    static var storableFailures: [ForkDictationFailure] {
+        var failures: [ForkDictationFailure] = []
+        var next = failure(after: nil)
+        while let failure = next {
+            failures.append(failure)
+            next = self.failure(after: failure)
+        }
+        return failures
+    }
+
+    /// Walks the failures one by one. The switch names every case, so the
+    /// compiler asks for a new one here.
+    private static func failure(after failure: ForkDictationFailure?) -> ForkDictationFailure? {
+        switch failure {
+        case nil: return .accessibilityMissing
+        case .accessibilityMissing?: return .microphoneDenied
+        case .microphoneDenied?: return .microphoneMutedInVorssaint
+        case .microphoneMutedInVorssaint?: return .microphoneSilent
+        case .microphoneSilent?: return .captureFailed
+        case .captureFailed?: return .secureInput(app: nil)
+        case .secureInput?: return .speechDenied
+        case .speechDenied?: return .speechUnavailableInBuild
+        case .speechUnavailableInBuild?: return .languageUnavailable
+        case .languageUnavailable?: return .modelMissing
+        case .modelMissing?: return .modelDamaged
+        case .modelDamaged?: return .transcriptionFailed
+        case .transcriptionFailed?: return nil
+        }
     }
 }

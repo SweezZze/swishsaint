@@ -1200,7 +1200,7 @@ final class ClipboardHistoryService: ObservableObject {
     }
 
     func toggleHistoryWindow() {
-        if ForkNotchDictations.showsClipboardTab() { return } // FORK(notch-dictation6)
+        if ForkNotchDictations.showsClipboardTab(toggle: true) { return } // FORK(notch-dictation6)
         if NotchSupport.routesClipboardWindow(), NotchService.shared.showClipboard(toggle: true) { return }
         if panel?.isVisible == true {
             hideHistoryWindow()
@@ -1210,7 +1210,7 @@ final class ClipboardHistoryService: ObservableObject {
     }
 
     func showHistoryWindow(preferNotch: Bool = true) {
-        if preferNotch, ForkNotchDictations.showsClipboardTab() { return } // FORK(notch-dictation6)
+        if preferNotch, ForkNotchDictations.showsClipboardTab(toggle: false) { return } // FORK(notch-dictation6)
         if preferNotch, NotchSupport.routesClipboardWindow(), NotchService.shared.showClipboard() { return }
         let panel = ensurePanel()
         rememberPasteTarget()

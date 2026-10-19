@@ -131,11 +131,11 @@ final class ForkNotchDictations: ObservableObject {
     }
 
     /// Something the island shows over its page: a detail, Explore, the
-    /// app panel or the Command Bar.
+    /// app panel, the Command Bar or the capture controls.
     private static var islandCovered: Bool {
         let island = NotchService.shared
         return island.showingAppPanel || island.showingSections || island.showingCommandBar
-            || island.selectedMetric != nil
+            || island.selectedMetric != nil || island.captureControls != nil
     }
 
     /// Opens the history: the Dictations tab of the island's clipboard page,
@@ -186,13 +186,14 @@ final class ForkNotchDictations: ObservableObject {
     }
 
     /// The clipboard history's shortcut and menu (seam `notch-dictation6`):
-    /// on the Dictations tab they show the clipboard. True when that is done
-    /// here, in place.
-    static func showsClipboardTab() -> Bool {
-        guard Thread.isMainThread else { return false }
+    /// on the Dictations tab they show the clipboard. True when the
+    /// shortcut's toggle is done here, in place; the menu's opening goes on
+    /// through the official route, which gives the island the keyboard.
+    static func showsClipboardTab(toggle: Bool) -> Bool {
+        guard Thread.isMainThread, shared.tab == .dictations, ForkFeature.dictation.isEnabled else { return false }
         let island = NotchService.shared
         let route = ForkNotchDictationsSupport.clipboardRoute(
-            tab: shared.tab,
+            tab: shared.tab, toggle: toggle,
             tabInView: ForkNotchDictationsSupport.showsClipboardPage(expanded: island.expanded,
                                                                      onClipboardPage: island.selected == .clipboard,
                                                                      covered: islandCovered),

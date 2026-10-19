@@ -1847,8 +1847,8 @@ final class NotchService: ObservableObject {
     }
 
     func select(_ module: NotchModule) {
-        ForkNotchDictations.pageChosen() // FORK(notch-dictation7)
         guard modules.contains(module) else { return }
+        ForkNotchDictations.pageChosen() // FORK(notch-dictation7)
         open(module)
     }
 

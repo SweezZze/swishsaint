@@ -46,14 +46,17 @@ enum ForkNotchDictationsTests {
                         && !Support.showsClipboardPage(expanded: true, onClipboardPage: false, covered: false)
                         && !Support.showsClipboardPage(expanded: true, onClipboardPage: true, covered: true),
                      "the tab is chosen only once the island did open on its page; otherwise the window shows it")
-        let inPlace = Support.clipboardRoute(tab: .dictations, tabInView: true, routesToIsland: true)
+        let inPlace = Support.clipboardRoute(tab: .dictations, toggle: true, tabInView: true, routesToIsland: true)
         suite.expect(inPlace.tab == .clipboard && inPlace.handled,
                      "the clipboard's shortcut on the Dictations tab switches to the clipboard instead of closing")
-        let covered = Support.clipboardRoute(tab: .dictations, tabInView: false, routesToIsland: true)
+        let opening = Support.clipboardRoute(tab: .dictations, toggle: false, tabInView: true, routesToIsland: true)
+        suite.expect(opening.tab == .clipboard && !opening.handled,
+                     "the clipboard's menu switches the tab and still opens the page the official way")
+        let covered = Support.clipboardRoute(tab: .dictations, toggle: true, tabInView: false, routesToIsland: true)
         suite.expect(covered.tab == .clipboard && !covered.handled,
                      "under Explore or a detail, the official route opens the page, now on the clipboard")
-        let window = Support.clipboardRoute(tab: .dictations, tabInView: true, routesToIsland: false)
-        let clipboard = Support.clipboardRoute(tab: .clipboard, tabInView: true, routesToIsland: true)
+        let window = Support.clipboardRoute(tab: .dictations, toggle: true, tabInView: true, routesToIsland: false)
+        let clipboard = Support.clipboardRoute(tab: .clipboard, toggle: true, tabInView: true, routesToIsland: true)
         suite.expect(window.tab == .dictations && !window.handled && clipboard.tab == .clipboard && !clipboard.handled,
                      "a clipboard opening in its own window, or already shown, is the official route's")
         suite.expect(Support.controlAvailable(dictationEnabled: true, clipboardPageShown: true)
@@ -129,6 +132,9 @@ enum ForkNotchDictationsTests {
         ]
         suite.expect(failures.allSatisfy { Support.failure(stored: String(describing: $0)) == $0 },
                      "a failed card says the failure kept with it")
+        suite.expect(Support.storableFailures.count == 12
+                        && Support.storableFailures.allSatisfy { Support.failure(stored: String(describing: $0)) == $0 },
+                     "every failure the history keeps is read back")
         suite.expect(Support.failure(stored: nil) == nil && Support.failure(stored: "somethingNew") == nil,
                      "an unknown failure falls back to the generic words")
         let text = ForkDictationStrings.strings(.enUS)

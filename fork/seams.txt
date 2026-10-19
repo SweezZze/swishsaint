@@ -22,4 +22,4 @@ notch-dictation3   Sources/Vorssaint/UI/Notch/NotchControlsView.swift          #
 notch-dictation4   Sources/Vorssaint/Services/Notch/NotchService.swift         # dictée : bouton rapide « Dictées » ; clic sur la notice d'une dictée → onglet Dictées
 notch-dictation5   Sources/Vorssaint/UI/Settings/NotchSettings.swift           # dictée : raison et lien du bouton « Dictées » tant que la Dictée est coupée (sinon la règle officielle de la page Presse-papiers)
 notch-dictation6   Sources/Vorssaint/Services/Clipboard/ClipboardHistoryService.swift  # dictée : raccourci et menu de l'historique du presse-papiers sur l'onglet Dictées → reviennent à l'onglet Presse-papiers (showClipboard est extrait par les tests officiels)
-notch-dictation7   Sources/Vorssaint/Services/Notch/NotchService.swift         # dictée : Explorer et les boutons qui choisissent la page Presse-papiers montrent son onglet Presse-papiers
+notch-dictation7   Sources/Vorssaint/Services/Notch/NotchService.swift         # dictée : Explorer et les boutons qui choisissent la page Presse-papiers montrent son onglet Presse-papiers (après le guard de select)
