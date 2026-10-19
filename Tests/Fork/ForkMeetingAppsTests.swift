@@ -567,9 +567,9 @@ enum ForkMeetingAppsTests {
                        shown(3, pid: zoomPID, 1200, 800), shown(4, pid: zoomPID, 2000, 100),
                        shown(5, pid: zoomPID, 1900, 1200, layer: 3), shown(6, pid: zoomPID, 1900, 1200, alpha: 0)]
         let zoom = candidate("zoom:500#1", pid: zoomPID, appBundle: "us.zoom.xos")
-        suite.expect(Support.window(for: zoom, in: windows, ownPID: ownPID) == 3,
-                     "an app found by its microphone is filmed in its largest ordinary window, never another app's")
-        suite.expect(Support.window(for: zoom, in: windows, ownPID: ownPID, excluded: [3]) == 2,
+        suite.expect(Support.window(for: zoom, in: windows, ownPID: ownPID) == 2,
+                     "an app found by its microphone is filmed in its ordinary window most in front, never another app's")
+        suite.expect(Support.window(for: zoom, in: windows, ownPID: ownPID, excluded: [2]) == 3,
                      "a window left out is never filmed")
         var titled = zoom
         titled.windowID = 9

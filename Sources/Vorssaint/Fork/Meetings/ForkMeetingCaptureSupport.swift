@@ -14,6 +14,11 @@ struct ForkMeetingWindowCandidate: Equatable {
     /// In points, top-left origin, as the window list gives it.
     var bounds: CGRect
     var ownerIsRegularApp: Bool
+    /// On screen now; else minimized, hidden, on another Space, or never
+    /// shown (an app's spare windows).
+    var onScreen = true
+    /// It has a title (Screen Recording allowed): one never shown has none.
+    var titled = true
 }
 
 /// A display and its frame, in the same space as `ForkMeetingWindowCandidate.bounds`.

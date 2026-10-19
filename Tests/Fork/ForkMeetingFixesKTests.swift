@@ -22,6 +22,7 @@ enum ForkMeetingFixesKTests {
         faceTimeIsOnlyOffered(suite)
         aWebCallLivesOnItsMicrophone(suite)
         aChannelCalledHuddle(suite)
+        theAppsOwnWindow(suite)
     }
 
     // MARK: - Fixtures
@@ -367,5 +368,34 @@ enum ForkMeetingFixesKTests {
         }
         suite.expect(ended == [identity("slack:300#1")],
                      "its microphone gone, the channel still open: the call ends after 20 s")
+    }
+
+    // MARK: - K.I5, K.I6: the app's own window, wherever it is
+
+    private static func theAppsOwnWindow(_ suite: TestSuite) {
+        func window(_ id: UInt32, pid: Int32, _ width: CGFloat, _ height: CGFloat, onScreen: Bool = true,
+                    titled: Bool = true) -> ForkMeetingWindowCandidate {
+            ForkMeetingWindowCandidate(id: id, pid: pid, layer: 0, alpha: 1,
+                                       bounds: CGRect(x: 0, y: 0, width: width, height: height), ownerIsRegularApp: true,
+                                       onScreen: onScreen, titled: titled)
+        }
+        // Probe P2's windows: Slack's small preferences in front of its main window.
+        var test = Live(#"{"slack":"ask"}"#)
+        test.read(0, windows: [slackWindow("Alice (DM) - Acme - Slack", id: 9)], microphones: [slackMicrophone])
+        test.read(2, microphones: [slackMicrophone])
+        guard let slack = test.lastResolution.candidates.first else { return suite.expect(false, "Slack's call is seen") }
+        let list = [window(1, pid: 42, 1600, 1000), window(10, pid: slackPID, 600, 500), window(9, pid: slackPID, 1400, 900)]
+        suite.expect(ForkMeetingAppsSupport.window(for: slack, in: list, ownPID: ownPID) == 10,
+                     "a call found by its microphone is filmed in its app's window most in front, not its largest")
+        let away = [window(1, pid: 42, 1600, 1000), window(20, pid: slackPID, 1400, 900, onScreen: false, titled: false),
+                    window(21, pid: slackPID, 1400, 900, onScreen: false)]
+        suite.expect(ForkMeetingAppsSupport.window(for: slack, in: away, ownPID: ownPID) == 21,
+                     "minimized or on another Space, its titled window is filmed; a spare one never shown is not")
+        suite.expect(ForkMeetingAppsSupport.window(for: slack, in: [window(1, pid: 42, 1600, 1000)], ownPID: ownPID) == nil,
+                     "no window of its own: the display is filmed, never the other app's window in front")
+        let french = ForkMeetingStrings.strings(.fr)
+        let line = ForkMeetingOfferText.capture(target: .window, windowApp: "Slack", hasWindow: false, sound: .app,
+                                                soundApp: "Slack", microphone: .named("AirPods"), strings: french)
+        suite.expect(line.hasPrefix("Écran entier"), "and its offer says so: « \(line) »")
     }
 }

@@ -338,11 +338,11 @@ extension ForkMeetingService {
             // left out anyway.
             let excluded = presenter.windowNumbers.compactMap { CGWindowID(exactly: $0) }
             // A detected meeting is filmed in its own window (an app found
-            // by its microphone, its largest one), its app heard, and
+            // by its microphone, its own most in front), its app heard, and
             // "Meeting microphone (auto)" records the input its app uses.
             let meeting = config.meeting
             let window = meeting.flatMap {
-                ForkMeetingAppsSupport.window(for: $0, in: ForkMeetingRecorder.onScreenWindows(),
+                ForkMeetingAppsSupport.window(for: $0, in: ForkMeetingRecorder.meetingWindows(),
                                               ownPID: ProcessInfo.processInfo.processIdentifier,
                                               excluded: Set(excluded))
             }
