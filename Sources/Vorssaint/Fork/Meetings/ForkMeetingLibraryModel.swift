@@ -24,7 +24,14 @@ final class ForkMeetingLibraryModel: ObservableObject {
     @Published private(set) var rootExists = true
     /// The first scan answered: until then the window shows no empty state.
     @Published private(set) var loaded = false
-    @Published var query = ""
+    /// A new search lets go of a selection it leaves out; a row changed
+    /// under the search (a note typed, a rename) stays selected and shown.
+    @Published var query = "" {
+        didSet {
+            guard query != oldValue, let selection, !filtered.contains(where: { $0.folderName == selection }) else { return }
+            self.selection = ForkMeetingLibrary.order(groups).first
+        }
+    }
     @Published var selection: String? {
         didSet { if selection != oldValue { note = nil } }
     }
@@ -65,6 +72,9 @@ final class ForkMeetingLibraryModel: ObservableObject {
     private var renamed: [String: String] = [:]
     /// A title committed while its folder was busy, by folder.
     private var deferredTitles: [String: String] = [:]
+    /// The title a lagging folder was last renamed after without typing,
+    /// by meeting (`catchUpFolder`).
+    private var caughtUp: [String: String] = [:]
     /// Counts the changes this window made to the folders and already
     /// shows (a rename): a scan begun before one reads the disk as it was,
     /// and is read again rather than shown.
@@ -109,10 +119,17 @@ final class ForkMeetingLibraryModel: ObservableObject {
         ForkMeetingLibrary.groups(filtered, now: now(), calendar: calendar)
     }
 
-    /// The selected meeting, as long as the search keeps it in the list.
+    /// The selected meeting, even when what was just typed in it no longer
+    /// matches the search: only a new search lets it go (`query`).
     var selectedEntry: ForkMeetingLibraryEntry? {
         guard let selection else { return nil }
-        return filtered.first { $0.folderName == selection }
+        return entries.first { $0.folderName == selection }
+    }
+
+    /// Every row in the list's order, the search aside: what a scan keeps
+    /// the selection among.
+    private var everyRow: [String] {
+        ForkMeetingLibrary.order(ForkMeetingLibrary.groups(entries, now: now(), calendar: calendar))
     }
 
     func folderURL(_ entry: ForkMeetingLibraryEntry) -> URL {
@@ -140,6 +157,16 @@ final class ForkMeetingLibraryModel: ObservableObject {
     func folderLagsTitle(_ entry: ForkMeetingLibraryEntry) -> Bool {
         ForkMeetingRename.folderLags(folderName: entry.folderName, startedAt: entry.startedAt, title: entry.title,
                                      calendar: calendar)
+    }
+
+    /// Once per meeting and title: a folder that cannot take its title
+    /// (fifty of that name, a disk that refuses) is not retried at every
+    /// leaving of the field.
+    func catchUpFolder(_ entry: ForkMeetingLibraryEntry) -> Bool {
+        let title = entry.title ?? ""
+        guard folderLagsTitle(entry), caughtUp[entry.identity] != title else { return false }
+        caughtUp[entry.identity] = title
+        return true
     }
 
     // MARK: - Opening and closing
@@ -170,7 +197,9 @@ final class ForkMeetingLibraryModel: ObservableObject {
     private func rewatch() {
         guard isOpen else { return }
         let path = root.path
-        guard watch?.path != path else { return }
+        // A meetings folder made since the window opened (the first
+        // meeting): watched itself from now on, not its parent.
+        if let watch, watch.path == path, watch.watchesItself || !FileManager.default.fileExists(atPath: path) { return }
         watch?.stop()
         watch = ForkMeetingFolderWatch(path: path) { [weak self] rescan in self?.refresh(rescan) }
         watch?.start()
@@ -190,7 +219,7 @@ final class ForkMeetingLibraryModel: ObservableObject {
         if only == nil { fullScans += 1 }
         scanning = true
         root = store.root()
-        let before = ForkMeetingLibrary.order(groups)
+        let before = everyRow
         let generation = changes
         store.scanLibrary(writing: writing(), only: only) { [weak self] scan in
             guard let self else { return }
@@ -214,10 +243,10 @@ final class ForkMeetingLibraryModel: ObservableObject {
                 self.probes = scan.probes
             }
             self.loaded = true
-            let after = ForkMeetingLibrary.order(self.groups)
+            let after = self.everyRow
             self.selection = ForkMeetingLibrary.keptSelection(self.selection, renamed: self.renamed,
                                                               before: before, after: after)
-                ?? after.first
+                ?? ForkMeetingLibrary.order(self.groups).first
             self.renamed = [:]
             if scan.rootExists { self.rewatch() }
             if let again = self.scanAgain {
@@ -269,7 +298,9 @@ final class ForkMeetingLibraryModel: ObservableObject {
     /// meanwhile is found by the store (`ForkMeetingRenameTable`).
     private func write(_ due: [(folder: String, edit: ForkMeetingSidecarEdit)]) {
         for (folder, edit) in due {
-            store.applyEdit(edit, in: root.appendingPathComponent(folder, isDirectory: true)) { [weak self] result in
+            let id = entries.first { $0.folderName == folder }?.id
+            store.applyEdit(edit, in: root.appendingPathComponent(folder, isDirectory: true), expecting: id) {
+                [weak self] result in
                 guard let self, case .failure(.meetingInProgress) = result else { return }
                 self.say(self.strings.refusedWhileRecording)
             }
@@ -507,10 +538,21 @@ final class ForkMeetingFolderWatch {
 
     deinit { stop() }
 
-    /// Main thread. A folder that does not exist yet is not watched: the
-    /// window scans again once a meeting made it.
+    /// The stream watches `path` itself; `false`: its nearest parent, while
+    /// it does not exist yet.
+    private(set) var watchesItself = false
+
+    /// Main thread. A folder that does not exist yet is watched through its
+    /// nearest parent: the first meeting makes it, and the window scans.
     func start() {
-        guard stream == nil, FileManager.default.fileExists(atPath: path) else { return }
+        guard stream == nil else { return }
+        var watched = path
+        while !FileManager.default.fileExists(atPath: watched) {
+            let parent = (watched as NSString).deletingLastPathComponent
+            guard parent != watched, !parent.isEmpty else { return }
+            watched = parent
+        }
+        watchesItself = watched == path
         var context = FSEventStreamContext(version: 0, info: Unmanaged.passUnretained(self).toOpaque(),
                                            retain: nil, release: nil, copyDescription: nil)
         let callback: FSEventStreamCallback = { _, info, count, paths, flags, _ in
@@ -528,7 +570,7 @@ final class ForkMeetingFolderWatch {
             Unmanaged<ForkMeetingFolderWatch>.fromOpaque(info).takeUnretainedValue()
                 .changed(everything ? .all : nil, paths: changed)
         }
-        guard let stream = FSEventStreamCreate(kCFAllocatorDefault, callback, &context, [path] as CFArray,
+        guard let stream = FSEventStreamCreate(kCFAllocatorDefault, callback, &context, [watched] as CFArray,
                                                FSEventStreamEventId(kFSEventStreamEventIdSinceNow), 0.2,
                                                FSEventStreamCreateFlags(kFSEventStreamCreateFlagWatchRoot)) else { return }
         FSEventStreamSetDispatchQueue(stream, .main)
@@ -594,6 +636,8 @@ final class ForkMeetingRetentionSweep: ObservableObject {
     private var timer: Timer?
     private var lastSweep: Date?
     private var first: DispatchWorkItem?
+    /// The sweep running, stopped when the feature turns off.
+    private var running: ForkMeetingSweepStop?
 
     init(store: ForkMeetingStore = .shared, defaults: UserDefaults = .standard) {
         self.store = store
@@ -610,6 +654,8 @@ final class ForkMeetingRetentionSweep: ObservableObject {
             first?.cancel()
             first = nil
             held = nil
+            running?.cancel()
+            running = nil
             return
         }
         guard timer == nil else { return }
@@ -636,9 +682,17 @@ final class ForkMeetingRetentionSweep: ObservableObject {
                completion: ((ForkMeetingRetention.Sweep) -> Void)? = nil) {
         lastSweep = now
         let days = self.days
+        running?.cancel()
+        let stop = ForkMeetingSweepStop()
+        running = stop
         store.sweepRetention(days: days, now: now, writing: ForkMeetingService.shared.writingFolders,
-                             confirmed: confirmed) { [weak self] outcome in
+                             confirmed: confirmed, stop: stop) { [weak self] outcome in
             guard let self else { return }
+            if self.running === stop { self.running = nil }
+            guard !stop.isCancelled else {
+                completion?(outcome)
+                return
+            }
             switch outcome {
             case let .held(count): self.held = Held(count: count, days: days)
             case .nothing, .trash: self.held = nil

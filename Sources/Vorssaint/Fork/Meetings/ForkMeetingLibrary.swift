@@ -92,6 +92,10 @@ struct ForkMeetingLibraryEntry: Equatable {
     /// The playable file's date on the disk, as the store read it: it can
     /// only make the meeting younger for the automatic bin.
     let videoModified: Date?
+    /// The folder's file number on its volume, as the store read it: a
+    /// rename keeps it, a copy (the Finder's Duplicate, same `meeting.json`
+    /// and same id) has its own.
+    let folderFile: UInt64?
 
     /// `nil` for a folder without `meeting.json`: what tells a meeting
     /// folder from any other folder in the same place is its sidecar.
@@ -101,6 +105,7 @@ struct ForkMeetingLibraryEntry: Equatable {
     ///   live: it is interrupted until the recovery runs.
     /// - `videoSeconds`: the final video's length, when the store probed it.
     /// - `videoModified`: the date of the file the row plays.
+    /// - `folderFile`: the folder's file number.
     init?(folderName: String,
           sidecar: Result<ForkMeetingSidecar, ForkMeetingSidecarFault>,
           contents: ForkMeetingFolder.Contents,
@@ -109,12 +114,14 @@ struct ForkMeetingLibraryEntry: Equatable {
           videoSeconds: Double? = nil,
           folderCreated: Date? = nil,
           videoModified: Date? = nil,
+          folderFile: UInt64? = nil,
           calendar: Calendar = .current) {
         guard contents.hasSidecar else { return nil }
         if case .failure(.absent) = sidecar { return nil }
         self.folderName = folderName
         self.bytes = bytes
         self.videoModified = videoModified
+        self.folderFile = folderFile
         video = contents.video
         audio = contents.audio
         let stamped = ForkMeetingLibrary.stampDate(folderName, calendar: calendar)
@@ -204,9 +211,10 @@ struct ForkMeetingLibraryEntry: Equatable {
         }
     }
 
-    /// What the detail is kept by through a rename: the meeting's id, which
-    /// no rename changes; the folder's name for a record without one.
-    var identity: String { id.map { "id:\($0.uuidString)" } ?? "folder:\(folderName)" }
+    /// What the detail is kept by through a rename: the folder's file
+    /// number, which a rename keeps and a copy does not (two folders may
+    /// carry the same id); its name when the store could not read it.
+    var identity: String { folderFile.map { "file:\($0)" } ?? "folder:\(folderName)" }
 
     /// The same row once the store renamed its folder, its media and its
     /// title (`ForkMeetingStore.RenameResult`), before the next scan says

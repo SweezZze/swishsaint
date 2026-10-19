@@ -51,6 +51,12 @@ extension ForkMeetingSidecar {
     /// app, a script, by hand): listed, never rewritten from the library,
     /// never judged by the automatic bin.
     var isWrittenByMeetings: Bool { schema != nil && id != nil }
+
+    /// The name this record gives its folder and media (its start and its
+    /// title), whatever the folder is called now.
+    func recordedName(calendar: Calendar = .current) -> String? {
+        startedAt.map { ForkMeetingFolder.name(startedAt: $0, title: title, calendar: calendar) }
+    }
 }
 
 // MARK: - Renaming
@@ -172,7 +178,8 @@ enum ForkMeetingRename {
         switch ForkMeetingFolder.reserve(base: desired, forRename: true, occupant: occupant) {
         case let .create(name):
             plan.folder = ForkMeetingFolder.Move(from: folderName, to: name)
-            plan.media = ForkMeetingFolder.mediaRenames(from: folderName, to: name, names: names)
+            plan.media = ForkMeetingFolder.mediaRenames(from: folderName, to: name, names: names,
+                                                        alsoNamed: meeting.recordedName(calendar: calendar))
         case .adopt, .exhausted:
             plan.folderKept = .namesExhausted
         }
@@ -183,29 +190,47 @@ enum ForkMeetingRename {
 /// Where the library's writes go while folders are renamed: a note saved
 /// half a second after it was typed may reach the store's queue after the
 /// rename it was typed during, addressed to the folder's old name. The
-/// store keeps, on its queue, each move it made (old path to new) until the
-/// window has learnt the new name and sends nothing to the old one any
-/// more; a write for a moved folder lands in the folder where it now is.
+/// store keeps, on its queue, each move it made (old path to new, and the
+/// folder's file number) until the window has learnt the new name, or for
+/// `lifetime` at most; a write for a moved folder lands in the folder where
+/// it now is, never in another folder that took its old name since (its
+/// file number differs), and the store checks the meeting's id there too.
 struct ForkMeetingRenameTable: Equatable {
-    private(set) var moves: [String: String] = [:]
+    /// Long past any write the window could still send to an old name.
+    static let lifetime: TimeInterval = 30
 
-    mutating func record(from old: String, to new: String) {
+    struct Move: Equatable {
+        let to: String
+        /// The folder's file number, when the disk gave it.
+        let file: UInt64?
+    }
+
+    private(set) var moves: [String: Move] = [:]
+
+    mutating func record(from old: String, to new: String, file: UInt64? = nil) {
         guard old != new else { return }
-        moves[old] = new
-        // A folder renamed back to a name it had: no loop.
-        moves[new] = nil
+        moves[old] = Move(to: new, file: file)
+        // The same folder renamed back to a name it had: no loop.
+        if let back = moves[new], back.to == old, back.file == file { moves[new] = nil }
     }
 
     /// Where a write addressed to `path` goes: its folder's name now,
-    /// through every rename since.
-    func resolve(_ path: String) -> String {
+    /// through every rename since. `fileAt` reads the file number at a
+    /// path: a folder still at the path asked, the very one that was moved
+    /// (renamed back), is written where it is.
+    func resolve(_ path: String, fileAt: (String) -> UInt64? = { _ in nil }) -> String {
         var current = path
         var seen: Set<String> = [path]
-        while let next = moves[current], seen.insert(next).inserted { current = next }
+        while let move = moves[current], seen.insert(move.to).inserted {
+            if let file = move.file, fileAt(current) == file { break }
+            current = move.to
+        }
         return current
     }
 
-    mutating func forget(_ old: String) {
+    /// `to`: only the move to there, not one recorded since.
+    mutating func forget(_ old: String, to: String? = nil) {
+        guard to == nil || moves[old]?.to == to else { return }
         moves[old] = nil
     }
 }

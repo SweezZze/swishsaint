@@ -54,10 +54,10 @@ enum ForkMeetingFixesMTests {
     }
 
     private static func entry(_ sidecar: ForkMeetingSidecar, folderName: String = folder,
-                              videoModified: Date? = nil) -> ForkMeetingLibraryEntry? {
+                              videoModified: Date? = nil, folderFile: UInt64? = nil) -> ForkMeetingLibraryEntry? {
         ForkMeetingLibraryEntry(folderName: folderName, sidecar: .success(sidecar),
                                 contents: contents(folderName: folderName), videoModified: videoModified,
-                                calendar: paris)
+                                folderFile: folderFile, calendar: paris)
     }
 
     private static func decoded(_ json: String) -> ForkMeetingSidecar? {
@@ -183,6 +183,22 @@ enum ForkMeetingFixesMTests {
         } else {
             suite.expect(false, "the meeting with a clip beside it can be renamed")
         }
+        // Cut short after the folder's move: the folder has the new name, the
+        // media still the one the record gives.
+        let died = ForkMeetingFolder.mediaRenames(from: new, to: new + " encore", names: names, alsoNamed: old)
+        let diedRow = ForkMeetingFolder.contents(of: names, folderName: new, alsoNamed: old)
+        suite.expect(died.moves.first == ForkMeetingFolder.Move(from: "\(old).mp4", to: "\(new) encore.mp4")
+                        && diedRow.video == "\(old).mp4",
+                     "after a rename cut short, the meeting's own video is still found by the name its record gives")
+        var record = meeting(startedAt: date(2026, 10, 19, 11, 30), title: "Point")
+        record.titleSource = .user
+        if case let .success(again) = ForkMeetingRename.plan(title: "Point encore", folderName: new, sidecar: .success(record),
+                                                             names: names, live: false, calendar: paris,
+                                                             occupant: { _ in .free }) {
+            suite.expect(again.media.moves.first?.from == "\(old).mp4", "and the next rename moves that one")
+        } else {
+            suite.expect(false, "the meeting cut short can be renamed again")
+        }
         let byHand = ForkMeetingFolder.mediaRenames(from: old, to: new, names: ["Rush.mp4", "meeting.json"])
         suite.expect(byHand.moves == [ForkMeetingFolder.Move(from: "Rush.mp4", to: "\(new).mp4")],
                      "a video renamed by hand, alone in its folder, still follows the folder")
@@ -227,13 +243,29 @@ enum ForkMeetingFixesMTests {
                      "a note sent to the old name while the folder moved lands in the renamed folder")
         table.record(from: "/M/b", to: "/M/c")
         suite.expect(table.resolve("/M/a") == "/M/c", "through two renames in a row")
-        table.record(from: "/M/c", to: "/M/a")
-        suite.expect(table.resolve("/M/a") == "/M/a" && table.resolve("/M/b") == "/M/a",
-                     "a folder renamed back to an old name never loops")
-        table.forget("/M/b")
-        table.forget("/M/c")
-        suite.expect(table.moves.isEmpty && table.resolve("/M/b") == "/M/b",
-                     "once the window writes to the new name, the old one is free again for another folder")
+        table.forget("/M/a")
+        table.forget("/M/b", to: "/M/elsewhere")
+        suite.expect(table.resolve("/M/a") == "/M/a" && table.resolve("/M/b") == "/M/c",
+                     "once the window writes to the new name, the old one is free again; a later move is not forgotten for an older one")
+        table.forget("/M/b", to: "/M/c")
+        suite.expect(table.moves.isEmpty, "and the store forgets each move by itself in the end")
+
+        // The same folder (file 7) renamed a, b, c, then back to a.
+        var back = ForkMeetingRenameTable()
+        back.record(from: "/M/a", to: "/M/b", file: 7)
+        back.record(from: "/M/b", to: "/M/c", file: 7)
+        back.record(from: "/M/c", to: "/M/a", file: 7)
+        let atA: (String) -> UInt64? = { $0 == "/M/a" ? 7 : nil }
+        suite.expect(back.resolve("/M/a", fileAt: atA) == "/M/a" && back.resolve("/M/b", fileAt: atA) == "/M/a"
+                        && back.resolve("/M/c", fileAt: atA) == "/M/a",
+                     "a folder renamed back to an old name is written where it is, without a loop")
+        // Alpha (file 1) renamed Delta, then Gamma (file 2) renamed Alpha:
+        // a note late for Alpha goes to Delta, never into Gamma.
+        var taken = ForkMeetingRenameTable()
+        taken.record(from: "/M/Alpha", to: "/M/Delta", file: 1)
+        taken.record(from: "/M/Gamma", to: "/M/Alpha", file: 2)
+        suite.expect(taken.resolve("/M/Alpha", fileAt: { $0 == "/M/Alpha" ? 2 : ($0 == "/M/Delta" ? 1 : nil) }) == "/M/Delta",
+                     "a note for a renamed meeting never lands in the meeting that took its old name since")
         var same = ForkMeetingRenameTable()
         same.record(from: "/M/a", to: "/M/a")
         suite.expect(same.moves.isEmpty, "a rename that kept the name records nothing")
@@ -242,7 +274,8 @@ enum ForkMeetingFixesMTests {
     private static func renamedRow(_ suite: TestSuite) {
         let old = "2026-10-18 10h02 — Weekly sync"
         let new = "2026-10-18 10h02 — Point Acme"
-        guard let row = entry(meeting(), folderName: old) else {
+        let shared = meeting()
+        guard let row = entry(shared, folderName: old, folderFile: 41) else {
             suite.expect(false, "the row is built")
             return
         }
@@ -253,13 +286,17 @@ enum ForkMeetingFixesMTests {
                      "a renamed row shows its new folder, its media under the names they now have, and its title")
         suite.expect(moved.identity == row.identity && moved.id == row.id && moved.notes == row.notes,
                      "it is the same meeting for the detail: its fields, focus and player stay")
+        // The Finder's Duplicate: the same meeting.json, the same id, another folder.
+        if let copy = entry(shared, folderName: old + " copie", folderFile: 42) {
+            suite.expect(copy.id == row.id && copy.identity != row.identity,
+                         "a copy of the folder is another detail, though its record carries the same id")
+        }
         suite.expect(row.renamed(to: old, media: [], title: "").title == nil
                         && row.renamed(to: old, media: [], title: nil).title == "Weekly sync",
                      "a cleared title shows the default name; a title not saved stays as it was")
-        if let unreadable = ForkMeetingLibraryEntry(folderName: old, sidecar: .failure(.corrupt("x")),
-                                                    contents: contents(folderName: old), calendar: paris) {
-            suite.expect(unreadable.identity != row.identity && unreadable.identity.contains(old),
-                         "a record without an id is kept by its folder's name")
+        if let unknown = entry(shared, folderName: old) {
+            suite.expect(unknown.identity != row.identity && unknown.identity.contains(old),
+                         "a folder whose file number could not be read is kept by its name")
         }
         suite.expect(ForkMeetingRename.folderLags(folderName: old, startedAt: date(2026, 10, 18), title: "Point Acme",
                                                   calendar: paris)
@@ -340,6 +377,12 @@ enum ForkMeetingFixesMTests {
                             && text.statusForeign.contains("meeting.json")
                      },
                      "a held sweep says how many meetings and how old, one meeting included, in every language")
+        let ukrainian = ForkMeetingStrings.strings(.uk)
+        let ukLines = [ukrainian.actionTrash, ukrainian.retentionTitle, ukrainian.retentionCaption, ukrainian.retentionConfirmTitle,
+                       ukrainian.retentionConfirmFormat, ukrainian.trashFailed, ukrainian.voiceTrashed, ukrainian.confirmTrashFormat,
+                       ukrainian.retentionHeldFormat, ukrainian.retentionHeldOneFormat, ukrainian.noticeDiscardedTrash]
+        suite.expect(ukLines.allSatisfy { !$0.contains("у Смітник") } && ukrainian.actionTrash == "Перемістити в Смітник",
+                     "in Ukrainian, the Trash is « в Смітник » throughout, as macOS writes it")
         let french = ForkMeetingStrings.strings(.fr)
         suite.expect(french.retentionHeld(count: 37, days: 30) == "37\u{00A0}réunions de plus de 30\u{00A0}jours\u{00A0}: les mettre à la Corbeille\u{00A0}?"
                         && ForkMeetingStrings.strings(.enUS).retentionHeld(count: 1, days: 30)

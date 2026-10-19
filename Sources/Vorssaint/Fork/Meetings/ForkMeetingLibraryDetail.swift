@@ -92,7 +92,7 @@ struct ForkMeetingLibraryDetail: View {
     /// Also with nothing typed when the folder lags behind the title
     /// already saved.
     private func commitTitle() {
-        guard editable, titleTyped || model.folderLagsTitle(entry) else { return }
+        guard editable, titleTyped || model.catchUpFolder(entry) else { return }
         titleTyped = false
         model.commitTitle(title, of: entry)
     }

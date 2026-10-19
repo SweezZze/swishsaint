@@ -264,7 +264,11 @@ enum ForkMeetingFolder {
         var hasAudioDraft = false
     }
 
-    static func contents(of names: [String], folderName: String) -> Contents {
+    /// `alsoNamed`: the name the media were given, when it may differ from
+    /// the folder's now (`meeting.json`'s start and title, after a rename cut
+    /// short between the folder's move and its media's): tried after the
+    /// folder's own, before any other file of the same kind.
+    static func contents(of names: [String], folderName: String, alsoNamed: String? = nil) -> Contents {
         var contents = Contents()
         var videos: [String] = []
         var audios: [String] = []
@@ -281,13 +285,16 @@ enum ForkMeetingFolder {
                 if ext == audioExtension { audios.append(name) }
             }
         }
-        contents.video = preferred(videos, stem: folderName)
-        contents.audio = preferred(audios, stem: folderName)
+        contents.video = preferred(videos, stems: [folderName, alsoNamed].compactMap { $0 })
+        contents.audio = preferred(audios, stems: [folderName, alsoNamed].compactMap { $0 })
         return contents
     }
 
-    private static func preferred(_ names: [String], stem: String) -> String? {
-        names.first { ($0 as NSString).deletingPathExtension == stem } ?? names.sorted().first
+    private static func preferred(_ names: [String], stems: [String]) -> String? {
+        for stem in stems {
+            if let named = names.first(where: { ($0 as NSString).deletingPathExtension == stem }) { return named }
+        }
+        return names.sorted().first
     }
 
     // MARK: - Renaming
@@ -324,8 +331,8 @@ enum ForkMeetingFolder {
     /// files are the ones named after the **old** folder: a clip the person
     /// saved beside them under another name never takes the meeting's. Each
     /// keeps its own extension: renaming never changes what a file holds.
-    static func mediaRenames(from old: String, to new: String, names: [String]) -> MediaRenames {
-        let found = contents(of: names, folderName: old)
+    static func mediaRenames(from old: String, to new: String, names: [String], alsoNamed: String? = nil) -> MediaRenames {
+        let found = contents(of: names, folderName: old, alsoNamed: alsoNamed)
         var result = MediaRenames()
         for media in [found.video, found.audio].compactMap({ $0 }) {
             let target = "\(new).\((media as NSString).pathExtension)"
