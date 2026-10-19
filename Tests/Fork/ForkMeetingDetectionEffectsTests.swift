@@ -38,7 +38,7 @@ enum ForkMeetingDetectionEffectsTests {
     private static func candidate(policy: ForkMeetingPolicy = .ask) -> ForkMeetingCandidate {
         ForkMeetingCandidate(identity: ForkMeetingIdentity("meet:abc-defg-hij"), provider: "meet",
                              providerName: "Google Meet", providerShortName: "Meet", titleName: "Point hebdo",
-                             meetCode: "abc-defg-hij", calendarTitle: nil, windowTitle: "Meet – Point hebdo – abc-defg-hij",
+                             meetCode: "abc-defg-hij", calendarTitle: nil,
                              appBundle: "com.google.Chrome", pid: 100, windowID: 7, windowBundle: "com.google.Chrome",
                              defaultSound: .app, policy: policy, silenced: false, bornAt: at(0))
     }

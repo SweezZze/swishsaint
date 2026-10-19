@@ -63,7 +63,6 @@ struct ForkMeetingResolver {
         var pid: Int32
         var windowID: UInt32?
         var windowBundle: String?
-        var windowTitle: String?
         var titleName: String?
         var meetCode: String?
         /// The last window reading showed it.
@@ -224,7 +223,6 @@ struct ForkMeetingResolver {
             track.pid = track.provider.kind == .web ? sighting.window.pid : track.pid
             track.windowID = sighting.window.windowID
             track.windowBundle = sighting.window.bundle
-            track.windowTitle = ForkMeetingTitleRules.cleaned(sighting.window.title)
             track.titleName = sighting.name ?? track.titleName
             track.meetCode = sighting.code ?? track.meetCode
             tracks[identity] = track
@@ -335,7 +333,7 @@ struct ForkMeetingResolver {
             return ForkMeetingCandidate(
                 identity: track.identity, provider: track.provider.id, providerName: track.provider.name,
                 providerShortName: track.provider.shortName, titleName: track.titleName, meetCode: track.meetCode,
-                calendarTitle: hint?.title, windowTitle: track.windowTitle, appBundle: track.family, pid: track.pid,
+                calendarTitle: hint?.title, appBundle: track.family, pid: track.pid,
                 windowID: track.windowID, windowBundle: track.windowBundle, defaultSound: track.provider.defaultSound,
                 policy: policy, silenced: silenced.keys.contains(track.identity), bornAt: bornAt)
         }

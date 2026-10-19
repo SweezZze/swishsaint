@@ -85,7 +85,7 @@ enum ForkMeetingDetectionBehaviorTests {
                                 policy: ForkMeetingPolicy = .ask) -> ForkMeetingCandidate {
         ForkMeetingCandidate(identity: ForkMeetingIdentity("meet:" + code), provider: "meet",
                              providerName: "Google Meet", providerShortName: "Meet", titleName: nil, meetCode: code,
-                             calendarTitle: nil, windowTitle: "Meet – " + code, appBundle: "com.google.Chrome",
+                             calendarTitle: nil, appBundle: "com.google.Chrome",
                              pid: chromePID, windowID: window, windowBundle: "com.google.Chrome", defaultSound: .app,
                              policy: policy, silenced: silenced, bornAt: at(bornAt))
     }
@@ -881,16 +881,12 @@ enum ForkMeetingDetectionBehaviorTests {
         suite.expect(live.take() == [], "notes, chats, articles and home pages in a browser are never offered")
 
         // A branch name is three, four and three letters too.
-        // let branch = "Comparing main...fix-auth-bug · octo/app · GitHub"
-        // FAILS (probable, the plan's letter is ambiguous: §6.2 says "titre avec code"): any 3-4-3 word
-        // in any browser title is taken as a Meet code (ForkMeetingTitleRules.swift:84-89, rule 1, "a code
-        // is proof enough"), and two readings make it a meeting without any microphone
-        // (ForkMeetingResolver.swift:306): a developer's GitHub tab is offered as « Google Meet · fix-auth-bug ».
-        // suite.expect(ForkMeetingTitleRules.googleMeet(branch) == .none,
-        //              "a GitHub branch name in a tab is not a Meet code")
-        // var github = Live()
-        // github.readEvery3s(from: 0, to: 30, windows: [chrome(branch)])
-        // suite.expect(offers(github.take()).isEmpty, "and a GitHub tab is never offered as a meeting")
+        let branch = "Comparing main...fix-auth-bug · octo/app · GitHub"
+        suite.expect(ForkMeetingTitleRules.googleMeet(branch) == .none,
+                     "a GitHub branch name in a tab is not a Meet code")
+        var github = Live()
+        github.readEvery3s(from: 0, to: 30, windows: [chrome(branch)])
+        suite.expect(offers(github.take()).isEmpty, "and a GitHub tab is never offered as a meeting")
     }
 
     // MARK: - fork.meetings.apps

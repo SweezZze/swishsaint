@@ -53,7 +53,7 @@ enum ForkMeetingDetectionTests {
                                   bornAt: TimeInterval = 0) -> ForkMeetingCandidate {
         ForkMeetingCandidate(identity: identity, provider: "meet", providerName: "Google Meet", providerShortName: "Meet",
                              titleName: name, meetCode: String(identity.value.dropFirst(5)), calendarTitle: nil,
-                             windowTitle: "Meet – Point hebdo", appBundle: "com.google.Chrome", pid: 100, windowID: 1,
+                             appBundle: "com.google.Chrome", pid: 100, windowID: 1,
                              windowBundle: "com.google.Chrome", defaultSound: .app, policy: policy, silenced: silenced,
                              bornAt: at(bornAt))
     }

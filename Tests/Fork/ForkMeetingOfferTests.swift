@@ -24,7 +24,7 @@ enum ForkMeetingOfferTests {
                              calendar: String? = nil, window: UInt32? = 1) -> ForkMeetingCandidate {
         ForkMeetingCandidate(identity: ForkMeetingIdentity("meet:" + (code ?? "x")), provider: "meet",
                              providerName: "Google Meet", providerShortName: "Meet", titleName: name, meetCode: code,
-                             calendarTitle: calendar, windowTitle: "Meet – Point hebdo", appBundle: "com.google.Chrome",
+                             calendarTitle: calendar, appBundle: "com.google.Chrome",
                              pid: 100, windowID: window, windowBundle: "com.google.Chrome", defaultSound: .app,
                              policy: .ask, silenced: true, bornAt: zero)
     }

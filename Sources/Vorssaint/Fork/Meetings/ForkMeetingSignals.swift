@@ -102,8 +102,6 @@ struct ForkMeetingCandidate: Equatable {
     var meetCode: String?
     /// The calendar event's title, when one links to this meeting.
     var calendarTitle: String?
-    /// The window title as read, `nil` when only the microphone is seen.
-    var windowTitle: String?
     /// The app whose sound is recorded and whose microphone keeps the meeting
     /// alive: a web app's browser, not its own bundle.
     var appBundle: String
@@ -124,10 +122,14 @@ struct ForkMeetingCandidate: Equatable {
 
     /// The name to show and to give the recording: the title's, else the
     /// calendar's, else "Google Meet · abc-defg-hij", else the provider's.
-    /// Brand names and codes are never translated, nor the middle dot.
+    /// Brand names and codes are never translated, nor the middle dot. A
+    /// page or an event chooses its own text: it is cleaned here, once, for
+    /// every place that shows or saves it (`ForkMeetingTitleRules.displayName`).
     var name: String {
-        if let titleName, !titleName.isEmpty { return titleName }
-        if let calendarTitle, !calendarTitle.isEmpty { return calendarTitle }
+        for text in [titleName, calendarTitle].compactMap({ $0 }) {
+            let name = ForkMeetingTitleRules.displayName(text)
+            if !name.isEmpty { return name }
+        }
         if let meetCode { return providerName + " · " + meetCode }
         return providerName
     }

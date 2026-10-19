@@ -81,24 +81,52 @@ enum ForkMeetingTitleRules {
         }
         if exitFragments.contains(where: normalized.contains) { return .exit }
 
-        let code = meetCode(in: normalized)
-        // 1. A code is proof enough. 2. "Meet – <name>": a named meeting
-        // without its code in the tab. 3. "<name> – Google Meet": the end
-        // tells a meeting from an article about Google Meet.
+        // 1. A code, only in Meet's own titles: three, four and three letters
+        // are everywhere else too ("all-time-low", "fix-auth-bug"). 2. "Meet –
+        // <name>": a named meeting without its code in the tab, which the
+        // resolver takes only with the browser's microphone in use. 3. "<name>
+        // – Google Meet": the end tells a meeting from an article about it.
+        let code = isMeetFormat(normalized) ? formatCode(in: normalized) : nil
         let named = afterMeetPrefix(title) ?? beforeGoogleMeetSuffix(title)
         guard code != nil || named != nil else { return .none }
         return .meeting(code: code, name: named.flatMap { meetingName($0, code: code) })
     }
 
-    /// The first `abc-defg-hij` in the text, lowercased: three letters, four,
-    /// three, between anything but letters and digits.
-    static func meetCode(in text: String) -> String? {
-        let characters = Array(text.lowercased())
+    // MARK: Fixes H1
+
+    /// A title as Google Meet writes it: "Meet – …", "Meet - …", "Meet: …",
+    /// "… – Google Meet", or its code alone. Lowercased.
+    private static func isMeetFormat(_ normalized: String) -> Bool {
+        if normalized.hasSuffix("google meet") { return true }
+        if let code = meetCode(in: normalized), code == normalized { return true }
+        guard normalized.hasPrefix("meet") else { return false }
+        let rest = normalized.dropFirst(4).drop(while: { $0 == " " })
+        guard let separator = rest.first else { return false }
+        return dashes.contains(separator) || separator == ":"
+    }
+
+    /// The first code of a Meet title that stands as a part of its own: at
+    /// the start, or after a dash or a colon ("Meet – Point hebdo –
+    /// abc-defg-hij"), never inside a sentence ("Meet – Bitcoin hits
+    /// all-time-low").
+    private static func formatCode(in normalized: String) -> String? {
+        let characters = Array(normalized)
+        for (start, code) in codes(in: characters) {
+            var before = start - 1
+            while before >= 0, characters[before] == " " { before -= 1 }
+            if before < 0 || dashes.contains(characters[before]) || characters[before] == ":" { return code }
+        }
+        return nil
+    }
+
+    /// Every `abc-defg-hij` of the text, with where it starts.
+    private static func codes(in characters: [Character]) -> [(start: Int, code: String)] {
         let groups = [3, 4, 3]
         let length = 12
-        guard characters.count >= length else { return nil }
+        guard characters.count >= length else { return [] }
         func isLetter(_ c: Character) -> Bool { c >= "a" && c <= "z" }
         func isWord(_ c: Character) -> Bool { c.isLetter || c.isNumber || c == "_" }
+        var found: [(start: Int, code: String)] = []
         for start in 0...(characters.count - length) {
             if start > 0, isWord(characters[start - 1]) { continue }
             let end = start + length
@@ -116,9 +144,39 @@ enum ForkMeetingTitleRules {
                 }
                 if !matches { break }
             }
-            if matches { return String(characters[start..<end]) }
+            if matches { found.append((start, String(characters[start..<end]))) }
         }
-        return nil
+        return found
+    }
+
+    /// The name a meeting is shown and saved with: no control or bidi
+    /// character (a page could turn its text around), every run of spaces
+    /// and line breaks one space, about 100 characters at most, cut at a
+    /// word with "…".
+    static func displayName(_ text: String) -> String {
+        let kept = String(String.UnicodeScalarView(text.unicodeScalars.compactMap { scalar -> Unicode.Scalar? in
+            if CharacterSet.whitespacesAndNewlines.contains(scalar) { return " " }
+            if scalar.properties.generalCategory == .control || bidiControls.contains(scalar.value) { return nil }
+            return scalar
+        }))
+        let name = kept.split(separator: " ").joined(separator: " ")
+        guard name.count > nameLimit else { return name }
+        let head = String(name.prefix(nameLimit))
+        let word = head.lastIndex(of: " ").map { String(head[..<$0]) }
+        let cut = word.flatMap { $0.count >= nameLimit - 20 ? $0 : nil } ?? head
+        return cut.trimmingCharacters(in: .whitespaces) + "\u{2026}"
+    }
+
+    static let nameLimit = 100
+
+    /// U+202A–202E (embeddings and overrides) and U+2066–2069 (isolates).
+    private static let bidiControls: Set<UInt32> = [0x202A, 0x202B, 0x202C, 0x202D, 0x202E,
+                                                    0x2066, 0x2067, 0x2068, 0x2069]
+
+    /// The first `abc-defg-hij` in the text, lowercased: three letters, four,
+    /// three, between anything but letters and digits.
+    static func meetCode(in text: String) -> String? {
+        codes(in: Array(text.lowercased())).first?.code
     }
 
     /// The code of the first Google Meet link in a calendar event's address,
@@ -137,11 +195,15 @@ enum ForkMeetingTitleRules {
     }
 
     /// Trimmed, every run of spaces one plain space (Chrome may give a
-    /// no-break one), curly apostrophes straight, accents composed: the
-    /// case is kept, for the name.
+    /// no-break one), curly apostrophes straight, accents composed, bidi
+    /// controls gone (a page could hide "Meet" behind one): the case is
+    /// kept, for the name.
     static func cleaned(_ title: String) -> String {
         let composed = title.precomposedStringWithCanonicalMapping.replacingOccurrences(of: "\u{2019}", with: "'")
-        return composed.split(whereSeparator: { $0.isWhitespace }).joined(separator: " ")
+        let visible = composed.unicodeScalars.contains(where: { bidiControls.contains($0.value) })
+            ? String(String.UnicodeScalarView(composed.unicodeScalars.filter { !bidiControls.contains($0.value) }))
+            : composed
+        return visible.split(whereSeparator: { $0.isWhitespace }).joined(separator: " ")
     }
 
     /// "Meet – Point hebdo" → "Point hebdo".

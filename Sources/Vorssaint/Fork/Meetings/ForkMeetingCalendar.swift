@@ -68,9 +68,12 @@ final class ForkMeetingCalendar {
         let predicate = store.predicateForEvents(withStart: now.addingTimeInterval(-Self.reach),
                                                  end: now.addingTimeInterval(Self.reach), calendars: nil)
         let hints = store.events(matching: predicate).compactMap { event -> ForkMeetingCalendarHint? in
+            // Its title as written: the meeting's name cleans it, once
+            // (`ForkMeetingCandidate.name`); one with nothing left to show
+            // names nothing.
             guard event.status != .canceled, !event.isAllDay,
                   let start = event.startDate, let end = event.endDate,
-                  let title = event.title?.trimmingCharacters(in: .whitespacesAndNewlines), !title.isEmpty else { return nil }
+                  let title = event.title, !ForkMeetingTitleRules.displayName(title).isEmpty else { return nil }
             let code = [event.url?.absoluteString, event.location, event.notes].lazy
                 .compactMap { $0.flatMap(ForkMeetingTitleRules.meetCode(inLink:)) }.first
             guard let code else { return nil }

@@ -41,8 +41,8 @@ enum ForkMeetingDetectionSupport {
     static func titleSource(title: String?, meeting: ForkMeetingCandidate?) -> ForkMeetingSidecar.TitleSource? {
         guard let title else { return nil }
         guard let meeting, title == meeting.name else { return .user }
-        if let name = meeting.titleName, !name.isEmpty { return .window }
-        if let name = meeting.calendarTitle, !name.isEmpty { return .calendar }
+        if let name = meeting.titleName, !ForkMeetingTitleRules.displayName(name).isEmpty { return .window }
+        if let name = meeting.calendarTitle, !ForkMeetingTitleRules.displayName(name).isEmpty { return .calendar }
         return .provider
     }
 
