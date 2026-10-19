@@ -604,7 +604,7 @@ struct ForkMeetingPillView: View {
                 if model.look?.showsControls == true {
                     Button(model.text.pillMark) { actions.mark() }
                 }
-                if model.look?.showsControls == true, model.context.canSwitchTarget {
+                if model.look?.showsControls == true, model.context.offersTargetSwitch {
                     Button(toggleLabel) { actions.toggleTarget() }
                 }
             }
@@ -752,7 +752,7 @@ struct ForkMeetingPillView: View {
                 pillButton(symbol: "star", color: .white, label: text.pillMark, action: actions.mark)
                     .transition(.opacity)
             }
-            if model.hovering, model.context.canSwitchTarget {
+            if model.hovering, model.context.offersTargetSwitch {
                 let window = model.context.target == .window
                 pillButton(symbol: window ? "display" : "macwindow", color: .primary,
                            label: window ? text.pillFilmDisplay : text.pillFilmTheWindow,

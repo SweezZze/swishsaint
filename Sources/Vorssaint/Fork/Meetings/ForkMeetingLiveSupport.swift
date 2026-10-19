@@ -58,6 +58,13 @@ struct ForkMeetingLiveContext: Equatable {
     /// The detected meeting's service ("Google Meet"): what the pill names
     /// under the pointer while screen shares see it.
     var providerName: String?
+
+    // MARK: Finish
+
+    /// ⧉ "Film the screen" / "Film the window", in the pill and the live
+    /// card's ⋯: only with a picture to switch. A meeting recorded for its
+    /// sound alone has none, whatever window it was offered for.
+    var offersTargetSwitch: Bool { canSwitchTarget && target.filmsPicture }
 }
 
 /// What the pill shows, decided from the machine's state and the live

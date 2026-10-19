@@ -9,6 +9,7 @@ import Foundation
 enum ForkMeetingFinishTests {
     static func run(_ suite: TestSuite) {
         markers(suite)
+        soundOnly(suite)
     }
 
     private static func markers(_ suite: TestSuite) {
@@ -19,5 +20,38 @@ enum ForkMeetingFinishTests {
         let strings = AppLanguage.allCases.map { ForkMeetingStrings.strings($0) }
         suite.expect(strings.allSatisfy { $0.voiceMarked("00:12:03").contains("00:12:03") },
                      "VoiceOver hears the time marked, in every language")
+    }
+
+    private static func soundOnly(_ suite: TestSuite) {
+        var context = ForkMeetingLiveContext()
+        context.target = .window
+        context.canSwitchTarget = true
+        suite.expect(context.offersTargetSwitch, "a filmed window offers to film the screen instead")
+        context.target = .audioOnly
+        suite.expect(!context.offersTargetSwitch,
+                     "a meeting recorded for its sound alone offers neither the screen nor the window, even with a window known")
+        context.target = .display
+        context.canSwitchTarget = false
+        suite.expect(!context.offersTargetSwitch, "nor does a display filmed without a window to come back to")
+        for language in AppLanguage.allCases {
+            let text = ForkMeetingStrings.strings(language)
+            let filmed = ForkMeetingServiceSupport.filmed(target: .audioOnly, appName: "Zoom", noWindowToFilm: false, strings: text)
+            if filmed != text.soundOnly
+                || ForkMeetingIslandRules.label(target: .audioOnly, strings: text) == text.pillRecording
+                || !ForkMeetingIslandRules.label(target: .audioOnly, strings: text).contains(text.soundOnly)
+                || ForkMeetingIslandRules.label(target: .window, strings: text) != text.pillRecording {
+                suite.expect(false, "\(language.rawValue): the card and the strip say \"sound only\" for a meeting without picture")
+                return
+            }
+        }
+        suite.expect(true, "the card and the strip say \"sound only\" for a meeting without picture, in every language")
+        let clock = ForkMeetingClock(recordedBefore: 0, runningSince: Date())
+        let states: [ForkMeetingPillState] = [.recording(clock, diskMinutesLeft: nil), .paused(clock, .user, diskMinutesLeft: nil)]
+        for state in states {
+            let look = ForkMeetingPillLook(state: state, context: context, finalizingProgress: nil, reducesMotion: false)
+            suite.expect(ForkMeetingIslandRules.hidesPill(indicator: .auto, islandShowsRecording: true, look: look)
+                            && !ForkMeetingIslandRules.hidesPill(indicator: .auto, islandShowsRecording: false, look: look),
+                         "without picture, the pill steps aside for the island's strip just as with one")
+        }
     }
 }

@@ -811,11 +811,15 @@ private struct ForkMeetingCaptureSection: View {
             .disabled(!ForkMeetingCaptureTarget(stored: target).filmsPicture)
             VStack(alignment: .leading, spacing: 2) {
                 caption(qualityCaption)
-                Text(specification)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .monospacedDigit()
-                    .textSelection(.enabled)
+                // The figures are the picture's: the sound-only choice says
+                // its own size per hour in the picker.
+                if ForkMeetingCaptureTarget(stored: target).filmsPicture {
+                    Text(specification)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .monospacedDigit()
+                        .textSelection(.enabled)
+                }
             }
         }
     }

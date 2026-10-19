@@ -395,7 +395,7 @@ struct ForkMeetingLiveCardMenu: View {
     private func items(_ text: ForkMeetingStrings) -> [NotchMenuItem] {
         let context = model.context
         var items: [NotchMenuItem] = []
-        if context.canSwitchTarget {
+        if context.offersTargetSwitch {
             let window = context.target == .window
             items.append(NotchMenuItem(title: window ? text.pillFilmDisplay : text.pillFilmTheWindow,
                                        symbol: window ? "display" : "macwindow",

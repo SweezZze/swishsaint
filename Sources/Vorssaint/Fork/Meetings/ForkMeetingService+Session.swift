@@ -100,7 +100,7 @@ extension ForkMeetingService {
     /// ⧉: the window, or the display that holds it. Not without a window to
     /// film: the pill then offers no ⧉.
     func toggleTarget() {
-        guard context.canSwitchTarget else { return }
+        guard context.offersTargetSwitch else { return }
         send(.toggleTarget)
     }
 

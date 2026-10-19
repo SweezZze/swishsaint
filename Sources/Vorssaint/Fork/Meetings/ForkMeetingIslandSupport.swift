@@ -163,6 +163,12 @@ enum ForkMeetingIslandRules {
         return spoken.isEmpty ? (formatter.string(from: 0) ?? "0") : spoken
     }
 
+    /// The strip's name for VoiceOver: "Recording", and "Sound only" after
+    /// it for a meeting recorded without picture, as the live card says.
+    static func label(target: ForkMeetingCaptureTarget, strings: ForkMeetingStrings) -> String {
+        target.filmsPicture ? strings.pillRecording : strings.pillRecording + " · " + strings.soundOnly
+    }
+
     /// What VoiceOver says of the strip after its name: "12 min, 3 sec",
     /// "12 min, 3 sec, paused", "Finishing… 42%".
     static func value(phase: ForkMeetingIslandPhase, elapsed: TimeInterval, language: AppLanguage,

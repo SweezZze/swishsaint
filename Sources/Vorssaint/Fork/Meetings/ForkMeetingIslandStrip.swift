@@ -184,7 +184,7 @@ struct ForkMeetingIslandStrip: View {
         }
         .buttonStyle(.plain)
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(text.pillRecording)
+        .accessibilityLabel(ForkMeetingIslandRules.label(target: snapshot.context.target, strings: text))
         .accessibilityValue(ForkMeetingIslandRules.value(phase: snapshot.phase, elapsed: snapshot.elapsed(at: now),
                                                          language: l10n.language, strings: text))
         .accessibilityHint(text.islandHint)
