@@ -41,22 +41,25 @@ struct ForkMeetingSettings: View {
             ForkMeetingFailureBanner(failure: failure, text: text)
         }
 
+        // What it does now and what it needs, then how a meeting is
+        // recorded and how it says so, how it starts, and what becomes of it
+        // afterwards.
         ForkMeetingRecordSection(text: text)
         ForkMeetingPermissionsSection(text: text)
-        ForkMeetingDetectionSection(text: text)
-            .disabled(!enabled)
-        ForkMeetingShortcutSection(text: text)
+        ForkMeetingCaptureSection(text: text)
             .disabled(!enabled)
         ForkMeetingIndicatorSection(text: text)
             .disabled(!enabled)
-        ForkMeetingCaptureSection(text: text)
+        ForkMeetingNotifySection(text: text)
+            .disabled(!enabled)
+        ForkMeetingShortcutSection(text: text)
+            .disabled(!enabled)
+        ForkMeetingDetectionSection(text: text)
             .disabled(!enabled)
         ForkMeetingLibrarySection(text: text)
             .disabled(!enabled)
         ForkMeetingTranscriptSection(text: text)
         ForkMeetingExportsSection(text: text)
-            .disabled(!enabled)
-        ForkMeetingNotifySection(text: text)
             .disabled(!enabled)
         ForkMeetingAdvancedSection(text: text)
             .disabled(!enabled)
