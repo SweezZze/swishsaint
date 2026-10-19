@@ -15,6 +15,7 @@ enum ForkMeetingOfferH2Tests {
         voiceOver(suite)
         discarded(suite)
         menu(suite)
+        undoCardWords(suite)
     }
 
     private static let zero = Date(timeIntervalSinceReferenceDate: 800_000_000)
@@ -226,5 +227,14 @@ enum ForkMeetingOfferH2Tests {
                         [copied.title(s), copied.detail(s) ?? ""].allSatisfy { !$0.isEmpty && $0.count <= 28 }
                      },
                      "its two lines fit in 28 characters in every language")
+    }
+
+    // MARK: - H2.11 The "Cancel" card says it started on its own
+
+    private static func undoCardWords(_ suite: TestSuite) {
+        suite.expect(french.undoAutoStarted("Meet") == "Démarré seul · Toujours pour Meet",
+                     "« Démarré seul · Toujours pour Meet »")
+        suite.expect(AppLanguage.allCases.map(ForkMeetingStrings.strings).allSatisfy { $0.undoAutoStarted("Meet").contains("Meet") },
+                     "every language names the provider")
     }
 }

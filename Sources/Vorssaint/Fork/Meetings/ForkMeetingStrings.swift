@@ -396,6 +396,12 @@ struct ForkMeetingStrings {
     let noticeAnnouncementCopied: String
     let noticeAnnouncementCopiedDetail: String
 
+    /// The "Cancel" card's line: nobody pressed Record. %@ is the provider's
+    /// short name ("Meet").
+    let undoAutoStartedFormat: String
+
+    func undoAutoStarted(_ provider: String) -> String { String(format: undoAutoStartedFormat, provider) }
+
     func offerAlways(_ provider: String) -> String { String(format: offerAlwaysFormat, provider) }
     func offerNever(_ provider: String) -> String { String(format: offerNeverFormat, provider) }
     func offerCapture(window: String, sound: String, microphone: String) -> String {
@@ -654,7 +660,8 @@ extension ForkMeetingStrings {
         voiceDiscardedDeleted: "Recording cancelled. Its folder could not go to the Trash: it is deleted.",
         voiceDiscardKept: "Recording cancelled, but its folder could be neither moved to the Trash nor deleted: it stays with your meetings.",
         noticeAnnouncementCopied: "Announcement copied",
-        noticeAnnouncementCopiedDetail: "Paste it in the meeting chat"
+        noticeAnnouncementCopiedDetail: "Paste it in the meeting chat",
+        undoAutoStartedFormat: "Started on its own · Always for %@"
     )
 }
 
@@ -898,7 +905,8 @@ extension ForkMeetingStrings {
         voiceDiscardedDeleted: "Gravação cancelada. A pasta não pôde ir para o Lixo: foi apagada.",
         voiceDiscardKept: "Gravação cancelada, mas a pasta não pôde ir para o Lixo nem ser apagada: continua com suas reuniões.",
         noticeAnnouncementCopied: "Aviso copiado",
-        noticeAnnouncementCopiedDetail: "Cole no chat da reunião"
+        noticeAnnouncementCopiedDetail: "Cole no chat da reunião",
+        undoAutoStartedFormat: "Iniciada sozinha · Sempre para %@"
     )
 }
 
@@ -1142,7 +1150,8 @@ extension ForkMeetingStrings {
         voiceDiscardedDeleted: "Kayıt iptal edildi. Klasörü Çöp Sepeti’ne taşınamadı: silindi.",
         voiceDiscardKept: "Kayıt iptal edildi, ancak klasörü Çöp Sepeti’ne taşınamadı ve silinemedi: toplantılarınızda duruyor.",
         noticeAnnouncementCopied: "Duyuru kopyalandı",
-        noticeAnnouncementCopiedDetail: "Sohbete yapıştırın"
+        noticeAnnouncementCopiedDetail: "Sohbete yapıştırın",
+        undoAutoStartedFormat: "Kendiliğinden başladı · %@ için her zaman"
     )
 }
 
@@ -1386,7 +1395,8 @@ extension ForkMeetingStrings {
         voiceDiscardedDeleted: "Запись отменена. Её папку не удалось переместить в Корзину: она удалена.",
         voiceDiscardKept: "Запись отменена, но её папку не удалось ни переместить в Корзину, ни удалить: она среди ваших встреч.",
         noticeAnnouncementCopied: "Объявление скопировано",
-        noticeAnnouncementCopiedDetail: "Вставьте его в чат встречи"
+        noticeAnnouncementCopiedDetail: "Вставьте его в чат встречи",
+        undoAutoStartedFormat: "Начата автоматически · Всегда для %@"
     )
 }
 
@@ -1630,7 +1640,8 @@ extension ForkMeetingStrings {
         voiceDiscardedDeleted: "Grabación cancelada. Su carpeta no pudo ir a la Papelera: se ha borrado.",
         voiceDiscardKept: "Grabación cancelada, pero su carpeta no se pudo mover a la Papelera ni borrar: sigue con tus reuniones.",
         noticeAnnouncementCopied: "Aviso copiado",
-        noticeAnnouncementCopiedDetail: "Pégalo en el chat"
+        noticeAnnouncementCopiedDetail: "Pégalo en el chat",
+        undoAutoStartedFormat: "Iniciada sola · Siempre para %@"
     )
 }
 
@@ -1874,7 +1885,8 @@ extension ForkMeetingStrings {
         voiceDiscardedDeleted: "Nahrávanie zrušené. Jeho priečinok nešlo presunúť do Koša: je vymazaný.",
         voiceDiscardKept: "Nahrávanie zrušené, no jeho priečinok sa nepodarilo presunúť do Koša ani vymazať: ostáva medzi stretnutiami.",
         noticeAnnouncementCopied: "Oznámenie skopírované",
-        noticeAnnouncementCopiedDetail: "Vložte ho do četu stretnutia"
+        noticeAnnouncementCopiedDetail: "Vložte ho do četu stretnutia",
+        undoAutoStartedFormat: "Spustené samo · Vždy pre %@"
     )
 }
 
@@ -2118,7 +2130,8 @@ extension ForkMeetingStrings {
         voiceDiscardedDeleted: "Aufnahme abgebrochen. Ihr Ordner konnte nicht in den Papierkorb: Er wurde gelöscht.",
         voiceDiscardKept: "Aufnahme abgebrochen, aber ihr Ordner ließ sich weder in den Papierkorb legen noch löschen: Er bleibt bei Ihren Besprechungen.",
         noticeAnnouncementCopied: "Ankündigung kopiert",
-        noticeAnnouncementCopiedDetail: "In den Chat einfügen"
+        noticeAnnouncementCopiedDetail: "In den Chat einfügen",
+        undoAutoStartedFormat: "Von selbst gestartet · Immer für %@"
     )
 }
 
@@ -2362,7 +2375,8 @@ extension ForkMeetingStrings {
         voiceDiscardedDeleted: "Enregistrement annulé. Son dossier n’a pas pu aller à la Corbeille\u{00A0}: il est supprimé.",
         voiceDiscardKept: "Enregistrement annulé, mais son dossier n’a pu être ni mis à la Corbeille ni supprimé\u{00A0}: il reste avec vos réunions.",
         noticeAnnouncementCopied: "Annonce copiée",
-        noticeAnnouncementCopiedDetail: "À coller dans la discussion"
+        noticeAnnouncementCopiedDetail: "À coller dans la discussion",
+        undoAutoStartedFormat: "Démarré seul · Toujours pour %@"
     )
 }
 
@@ -2606,7 +2620,8 @@ extension ForkMeetingStrings {
         voiceDiscardedDeleted: "Registrazione annullata. La cartella non è potuta andare nel Cestino: è stata eliminata.",
         voiceDiscardKept: "Registrazione annullata, ma la cartella non è stata spostata nel Cestino né eliminata: resta tra le tue riunioni.",
         noticeAnnouncementCopied: "Annuncio copiato",
-        noticeAnnouncementCopiedDetail: "Incollalo nella chat"
+        noticeAnnouncementCopiedDetail: "Incollalo nella chat",
+        undoAutoStartedFormat: "Avviata da sola · Sempre per %@"
     )
 }
 
@@ -2850,7 +2865,8 @@ extension ForkMeetingStrings {
         voiceDiscardedDeleted: "録画を取り消しました。フォルダをゴミ箱に移せなかったため、削除しました。",
         voiceDiscardKept: "録画を取り消しましたが、フォルダをゴミ箱に移すことも削除することもできませんでした。ミーティングのフォルダに残っています。",
         noticeAnnouncementCopied: "告知をコピーしました",
-        noticeAnnouncementCopiedDetail: "チャットに貼り付けてください"
+        noticeAnnouncementCopiedDetail: "チャットに貼り付けてください",
+        undoAutoStartedFormat: "自動で開始 · %@ では常に録画"
     )
 }
 
@@ -3094,7 +3110,8 @@ extension ForkMeetingStrings {
         voiceDiscardedDeleted: "녹화가 취소되었습니다. 폴더를 휴지통으로 옮길 수 없어 삭제했습니다.",
         voiceDiscardKept: "녹화가 취소되었지만 폴더를 휴지통으로 옮기거나 삭제하지 못했습니다. 회의 폴더에 남아 있습니다.",
         noticeAnnouncementCopied: "안내를 복사했습니다",
-        noticeAnnouncementCopiedDetail: "회의 채팅에 붙여 넣으세요"
+        noticeAnnouncementCopiedDetail: "회의 채팅에 붙여 넣으세요",
+        undoAutoStartedFormat: "자동으로 시작됨 · %@에서 항상 녹화"
     )
 }
 
@@ -3338,7 +3355,8 @@ extension ForkMeetingStrings {
         voiceDiscardedDeleted: "Запис скасовано. Його теку не вдалося перемістити в Смітник: її видалено.",
         voiceDiscardKept: "Запис скасовано, але його теку не вдалося ні перемістити в Смітник, ні видалити: вона лишається серед зустрічей.",
         noticeAnnouncementCopied: "Оголошення скопійовано",
-        noticeAnnouncementCopiedDetail: "Вставте його в чат зустрічі"
+        noticeAnnouncementCopiedDetail: "Вставте його в чат зустрічі",
+        undoAutoStartedFormat: "Розпочато автоматично · Завжди для %@"
     )
 }
 
@@ -3582,7 +3600,8 @@ extension ForkMeetingStrings {
         voiceDiscardedDeleted: "录制已取消。无法将文件夹移到废纸篓，已将其删除。",
         voiceDiscardKept: "录制已取消，但无法将其文件夹移到废纸篓或删除，它仍在会议文件夹中。",
         noticeAnnouncementCopied: "通知已复制",
-        noticeAnnouncementCopiedDetail: "粘贴到会议聊天中"
+        noticeAnnouncementCopiedDetail: "粘贴到会议聊天中",
+        undoAutoStartedFormat: "已自动开始 · %@ 总是录制"
     )
 }
 
@@ -3826,7 +3845,8 @@ extension ForkMeetingStrings {
         voiceDiscardedDeleted: "錄製已取消。無法將檔案夾丟到垃圾桶，已將其刪除。",
         voiceDiscardKept: "錄製已取消，但無法將其檔案夾丟到垃圾桶或刪除，它仍在會議檔案夾中。",
         noticeAnnouncementCopied: "通知已拷貝",
-        noticeAnnouncementCopiedDetail: "貼到會議聊天中"
+        noticeAnnouncementCopiedDetail: "貼到會議聊天中",
+        undoAutoStartedFormat: "已自動開始 · %@ 一律錄製"
     )
 }
 
@@ -4070,6 +4090,7 @@ extension ForkMeetingStrings {
         voiceDiscardedDeleted: "錄製已取消。無法將檔案夾移到垃圾桶，已將其刪除。",
         voiceDiscardKept: "錄製已取消，但無法將其檔案夾移到垃圾桶或刪除，它仍在會議檔案夾中。",
         noticeAnnouncementCopied: "通知已複製",
-        noticeAnnouncementCopiedDetail: "貼到會議聊天中"
+        noticeAnnouncementCopiedDetail: "貼到會議聊天中",
+        undoAutoStartedFormat: "已自動開始 · %@ 一律錄製"
     )
 }

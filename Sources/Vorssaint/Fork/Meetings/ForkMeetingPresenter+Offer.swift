@@ -359,17 +359,21 @@ extension ForkMeetingPresenter {
         let filmed = ForkMeetingServiceSupport.filmed(target: context.target, appName: context.appName,
                                                       noWindowToFilm: context.noWindowToFilm, strings: text)
         let announcement = context.announcement
-        return Self.undoCard(until: until, filmed: filmed, consent: announcement != nil, text: text,
+        let provider = ForkMeetingService.shared.machine.activeSession?.config.meeting
+            .map(ForkMeetingOfferText.reminderTitle)
+        return Self.undoCard(until: until, provider: provider, filmed: filmed, consent: announcement != nil, text: text,
                              cancel: { ForkMeetingService.shared.cancelAutoStart() },
                              copy: { [weak self] in if let announcement { self?.copy(announcement) } })
     }
 
-    /// "Recording started · Chrome window · [Cancel (4 s)]", with the
-    /// consent reminder and its copy button while that setting is on.
-    static func undoCard(until: Date, filmed: String, consent: Bool, text: ForkMeetingStrings,
+    /// "Recording started · Started on its own · Always for Meet · Chrome
+    /// window · [Cancel (4 s)]": nobody pressed Record, the card says why it
+    /// records. With the consent reminder and its copy button while that
+    /// setting is on.
+    static func undoCard(until: Date, provider: String?, filmed: String, consent: Bool, text: ForkMeetingStrings,
                          cancel: @escaping () -> Void, copy: @escaping () -> Void) -> ForkMeetingCard {
         var card = ForkMeetingCard(symbol: "record.circle", tint: Color(nsColor: .systemRed), title: text.noticeStarted,
-                                   lines: [filmed])
+                                   lines: [provider.map(text.undoAutoStarted), filmed].compactMap { $0 })
         let seconds = ForkMeetingOfferTiming.secondsLeft(until: until, now: Date())
         card.actions = [ForkMeetingCard.Action(title: text.undo(seconds: seconds),
                                                countdown: ForkMeetingCard.Countdown(until: until) { now in
