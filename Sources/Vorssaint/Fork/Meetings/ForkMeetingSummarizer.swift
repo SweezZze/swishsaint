@@ -101,6 +101,8 @@ final class ForkMeetingSummarizer: ObservableObject, @unchecked Sendable {
     @discardableResult
     func summarize(_ folder: URL, id: UUID?, automatic: Bool = false) -> Bool {
         dispatchPrecondition(condition: .onQueue(.main))
+        // Apple Intelligence may have come (or gone) since a page last looked.
+        refreshAvailability()
         guard enabled, isAvailable, phase(id: id, folder: folder) == .idle else { return false }
         outcomes.removeAll { $0.job.isFor(id: id, folder: folder) }
         waiting.append(Job(folder: folder, id: id, automatic: automatic, asked: Date()))
@@ -110,6 +112,7 @@ final class ForkMeetingSummarizer: ObservableObject, @unchecked Sendable {
 
     /// A transcript was just written: summarized when the setting asks.
     func transcriptWritten(_ folder: URL, id: UUID?) {
+        refreshAvailability()
         guard ForkMeetingSummary.summarizesAutomatically(
             featureOn: ForkMeetingService.shared.isWanted,
             settingOn: defaults.bool(forKey: ForkDefaultsKey.meetingsSummarize), available: isAvailable) else { return }
