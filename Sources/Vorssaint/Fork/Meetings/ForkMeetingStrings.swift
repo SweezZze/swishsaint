@@ -389,7 +389,7 @@ extension ForkMeetingStrings {
     static let enUS = ForkMeetingStrings(
         // MARK: Page
         searchKeywords: "recording, video call, call, meeting, screen, microphone",
-        pageHowTo: "Start a recording with the button or your shortcut: it goes on until you stop it. Each meeting gets its own folder.",
+        pageHowTo: "Start a recording with the button or your shortcut, or from the offer when a Google Meet is detected. A recording started by hand goes on until you stop it. Each meeting gets its own folder.",
         recordNow: "Record Now",
         stopRecording: "Stop",
         pauseRecording: "Pause",
@@ -543,7 +543,7 @@ extension ForkMeetingStrings {
         // MARK: Fixes F2
         stateStarting: "Starting…",
         pictureFrontDisplay: "Its whole display",
-        consentIntroFrontWindow: "Meetings records the window in front (or its display), its app’s sound and your microphone. Everything stays on this Mac.",
+        consentIntroFrontWindow: "Meetings records the meeting’s window (or its display), its app’s sound and your microphone. To offer a Google Meet, it reads the windows’ titles and which apps use the microphone. Everything stays on this Mac.",
         filmedWindowFormat: "%@ window",
         filmedWindowUnnamed: "Window in front",
         filmedDisplay: "Whole screen",
@@ -568,7 +568,7 @@ extension ForkMeetingStrings {
         failMasterMissingRemedy: "The file could not be finished, and no video of the recording was found in the meeting’s folder: nothing of it can be played.",
         // MARK: Detection effects
         detectionTitle: "Detection",
-        detectionCaption: "Recognizes a Google Meet meeting open in your browser, even in the background or on another desktop, and offers to record it.",
+        detectionCaption: "Recognizes a Google Meet meeting open in your browser, even behind other windows or on another desktop, and offers to record it.",
         policyAsk: "Offer",
         policyAlways: "Always",
         policyNever: "Never",
@@ -621,7 +621,7 @@ extension ForkMeetingStrings {
     static let ptBR = ForkMeetingStrings(
         // MARK: Page
         searchKeywords: "gravação, videochamada, chamada, reunião, tela, microfone",
-        pageHowTo: "Inicie uma gravação pelo botão ou pelo seu atalho: ela continua até você parar. Cada reunião ganha uma pasta própria.",
+        pageHowTo: "Inicie uma gravação pelo botão ou pelo seu atalho, ou pela oferta quando um Google Meet é detectado. Uma gravação iniciada manualmente continua até você pará-la. Cada reunião ganha uma pasta própria.",
         recordNow: "Gravar agora",
         stopRecording: "Parar",
         pauseRecording: "Pausar",
@@ -775,7 +775,7 @@ extension ForkMeetingStrings {
         // MARK: Fixes F2
         stateStarting: "Iniciando…",
         pictureFrontDisplay: "A tela inteira dela",
-        consentIntroFrontWindow: "Reuniões grava a janela da frente (ou a tela dela), o som do app dela e o seu microfone. Tudo fica neste Mac.",
+        consentIntroFrontWindow: "Reuniões grava a janela da reunião (ou a tela dela), o som do app dela e o seu microfone. Para oferecer um Google Meet, lê os títulos das janelas e quais apps usam o microfone. Tudo fica neste Mac.",
         filmedWindowFormat: "Janela do %@",
         filmedWindowUnnamed: "Janela da frente",
         filmedDisplay: "Tela inteira",
@@ -800,7 +800,7 @@ extension ForkMeetingStrings {
         failMasterMissingRemedy: "Não foi possível finalizar o arquivo, e nenhum vídeo da gravação foi encontrado na pasta da reunião: nada dela pode ser reproduzido.",
         // MARK: Detection effects
         detectionTitle: "Detecção",
-        detectionCaption: "Reconhece uma reunião do Google Meet aberta no seu navegador, mesmo em segundo plano ou em outra mesa, e oferece gravá-la.",
+        detectionCaption: "Reconhece uma reunião do Google Meet aberta no seu navegador, mesmo atrás de outras janelas ou em outra mesa, e oferece gravá-la.",
         policyAsk: "Oferecer",
         policyAlways: "Sempre",
         policyNever: "Nunca",
@@ -853,7 +853,7 @@ extension ForkMeetingStrings {
     static let tr = ForkMeetingStrings(
         // MARK: Page
         searchKeywords: "kayıt, görüntülü görüşme, arama, toplantı, ekran, mikrofon",
-        pageHowTo: "Düğmeyle veya kısayolunuzla bir kayıt başlatın: siz durdurana kadar sürer. Her toplantının kendi klasörü olur.",
+        pageHowTo: "Düğmeyle, kısayolunuzla ya da bir Google Meet algılandığında gelen öneriden bir kayıt başlatın. Elle başlatılan bir kayıt siz durdurana kadar sürer. Her toplantının kendi klasörü olur.",
         recordNow: "Şimdi kaydet",
         stopRecording: "Durdur",
         pauseRecording: "Duraklat",
@@ -1007,7 +1007,7 @@ extension ForkMeetingStrings {
         // MARK: Fixes F2
         stateStarting: "Başlatılıyor…",
         pictureFrontDisplay: "Bulunduğu ekranın tamamı",
-        consentIntroFrontWindow: "Toplantılar, öndeki pencereyi (veya ekranını), uygulamasının sesini ve mikrofonunuzu kaydeder. Her şey bu Mac’te kalır.",
+        consentIntroFrontWindow: "Toplantılar, toplantının penceresini (veya ekranını), uygulamasının sesini ve mikrofonunuzu kaydeder. Bir Google Meet önermek için pencerelerin başlıklarını ve mikrofonu hangi uygulamaların kullandığını okur. Her şey bu Mac’te kalır.",
         filmedWindowFormat: "%@ penceresi",
         filmedWindowUnnamed: "Öndeki pencere",
         filmedDisplay: "Tüm ekran",
@@ -1032,7 +1032,7 @@ extension ForkMeetingStrings {
         failMasterMissingRemedy: "Dosya tamamlanamadı ve toplantı klasöründe kaydın hiçbir videosu bulunamadı: oynatılabilecek bir şey yok.",
         // MARK: Detection effects
         detectionTitle: "Algılama",
-        detectionCaption: "Tarayıcınızda açık bir Google Meet toplantısını, arka planda ya da başka bir masaüstünde olsa bile tanır ve kaydetmeyi önerir.",
+        detectionCaption: "Tarayıcınızda açık bir Google Meet toplantısını, başka pencerelerin arkasında ya da başka bir masaüstünde olsa bile tanır ve kaydetmeyi önerir.",
         policyAsk: "Öner",
         policyAlways: "Her zaman",
         policyNever: "Asla",
@@ -1085,7 +1085,7 @@ extension ForkMeetingStrings {
     static let ru = ForkMeetingStrings(
         // MARK: Page
         searchKeywords: "запись, видеозвонок, звонок, встреча, экран, микрофон",
-        pageHowTo: "Начните запись кнопкой или своим сочетанием клавиш: она идёт, пока вы её не остановите. У каждой встречи своя папка.",
+        pageHowTo: "Начните запись кнопкой, своим сочетанием клавиш или из предложения, когда обнаружена встреча Google Meet. Запись, начатая вручную, идёт, пока вы её не остановите. У каждой встречи своя папка.",
         recordNow: "Записать сейчас",
         stopRecording: "Остановить",
         pauseRecording: "Пауза",
@@ -1239,7 +1239,7 @@ extension ForkMeetingStrings {
         // MARK: Fixes F2
         stateStarting: "Запуск…",
         pictureFrontDisplay: "Весь его экран",
-        consentIntroFrontWindow: "Встречи записывают окно на переднем плане (или его экран), звук его приложения и ваш микрофон. Всё остаётся на этом Mac.",
+        consentIntroFrontWindow: "Встречи записывают окно встречи (или его экран), звук его приложения и ваш микрофон. Чтобы предложить запись Google Meet, они читают заголовки окон и то, какие приложения используют микрофон. Всё остаётся на этом Mac.",
         filmedWindowFormat: "Окно %@",
         filmedWindowUnnamed: "Окно на переднем плане",
         filmedDisplay: "Весь экран",
@@ -1264,7 +1264,7 @@ extension ForkMeetingStrings {
         failMasterMissingRemedy: "Файл не удалось завершить, а видео записи в папке встречи не найдено: воспроизвести нечего.",
         // MARK: Detection effects
         detectionTitle: "Обнаружение",
-        detectionCaption: "Распознаёт встречу Google Meet, открытую в браузере, даже в фоне или на другом рабочем столе, и предлагает её записать.",
+        detectionCaption: "Распознаёт встречу Google Meet, открытую в браузере, даже за другими окнами или на другом рабочем столе, и предлагает её записать.",
         policyAsk: "Предлагать",
         policyAlways: "Всегда",
         policyNever: "Никогда",
@@ -1317,7 +1317,7 @@ extension ForkMeetingStrings {
     static let es = ForkMeetingStrings(
         // MARK: Page
         searchKeywords: "grabación, videollamada, llamada, reunión, pantalla, micrófono",
-        pageHowTo: "Inicia una grabación con el botón o tu atajo: sigue hasta que la detengas. Cada reunión tiene su propia carpeta.",
+        pageHowTo: "Inicia una grabación con el botón o tu atajo, o desde la oferta cuando se detecta un Google Meet. Una grabación iniciada a mano sigue hasta que la detengas. Cada reunión tiene su propia carpeta.",
         recordNow: "Grabar ahora",
         stopRecording: "Detener",
         pauseRecording: "Pausar",
@@ -1471,7 +1471,7 @@ extension ForkMeetingStrings {
         // MARK: Fixes F2
         stateStarting: "Iniciando…",
         pictureFrontDisplay: "Toda su pantalla",
-        consentIntroFrontWindow: "Reuniones graba la ventana en primer plano (o su pantalla), el sonido de su app y tu micrófono. Todo se queda en este Mac.",
+        consentIntroFrontWindow: "Reuniones graba la ventana de la reunión (o su pantalla), el sonido de su app y tu micrófono. Para ofrecer un Google Meet, lee los títulos de las ventanas y qué apps usan el micrófono. Todo se queda en este Mac.",
         filmedWindowFormat: "Ventana de %@",
         filmedWindowUnnamed: "Ventana en primer plano",
         filmedDisplay: "Pantalla entera",
@@ -1496,7 +1496,7 @@ extension ForkMeetingStrings {
         failMasterMissingRemedy: "No se pudo terminar el archivo y no se encontró ningún vídeo de la grabación en la carpeta de la reunión: no hay nada que reproducir.",
         // MARK: Detection effects
         detectionTitle: "Detección",
-        detectionCaption: "Reconoce una reunión de Google Meet abierta en tu navegador, incluso en segundo plano o en otro escritorio, y ofrece grabarla.",
+        detectionCaption: "Reconoce una reunión de Google Meet abierta en tu navegador, incluso detrás de otras ventanas o en otro escritorio, y ofrece grabarla.",
         policyAsk: "Ofrecer",
         policyAlways: "Siempre",
         policyNever: "Nunca",
@@ -1549,7 +1549,7 @@ extension ForkMeetingStrings {
     static let sk = ForkMeetingStrings(
         // MARK: Page
         searchKeywords: "nahrávanie, videohovor, hovor, stretnutie, obrazovka, mikrofón",
-        pageHowTo: "Spustite nahrávanie tlačidlom alebo svojou skratkou: pokračuje, kým ho nezastavíte. Každé stretnutie má vlastný priečinok.",
+        pageHowTo: "Spustite nahrávanie tlačidlom alebo svojou skratkou, alebo z ponuky, keď sa rozpozná Google Meet. Ručne spustené nahrávanie pokračuje, kým ho nezastavíte. Každé stretnutie má vlastný priečinok.",
         recordNow: "Nahrávať teraz",
         stopRecording: "Zastaviť",
         pauseRecording: "Pozastaviť",
@@ -1703,7 +1703,7 @@ extension ForkMeetingStrings {
         // MARK: Fixes F2
         stateStarting: "Spúšťa sa…",
         pictureFrontDisplay: "Celá jeho obrazovka",
-        consentIntroFrontWindow: "Stretnutia nahrávajú okno v popredí (alebo jeho obrazovku), zvuk jeho aplikácie a váš mikrofón. Všetko zostáva na tomto Macu.",
+        consentIntroFrontWindow: "Stretnutia nahrávajú okno stretnutia (alebo jeho obrazovku), zvuk jeho aplikácie a váš mikrofón. Aby mohli ponúknuť Google Meet, čítajú názvy okien a to, ktoré aplikácie používajú mikrofón. Všetko zostáva na tomto Macu.",
         filmedWindowFormat: "Okno aplikácie %@",
         filmedWindowUnnamed: "Okno v popredí",
         filmedDisplay: "Celá obrazovka",
@@ -1728,7 +1728,7 @@ extension ForkMeetingStrings {
         failMasterMissingRemedy: "Súbor sa nepodarilo dokončiť a v priečinku stretnutia sa nenašlo žiadne video záznamu: nič sa nedá prehrať.",
         // MARK: Detection effects
         detectionTitle: "Rozpoznávanie",
-        detectionCaption: "Rozpozná stretnutie Google Meet otvorené v prehliadači, aj na pozadí alebo na inej ploche, a ponúkne jeho nahratie.",
+        detectionCaption: "Rozpozná stretnutie Google Meet otvorené v prehliadači, aj za inými oknami alebo na inej ploche, a ponúkne jeho nahratie.",
         policyAsk: "Ponúknuť",
         policyAlways: "Vždy",
         policyNever: "Nikdy",
@@ -1781,7 +1781,7 @@ extension ForkMeetingStrings {
     static let de = ForkMeetingStrings(
         // MARK: Page
         searchKeywords: "Aufnahme, Videoanruf, Anruf, Besprechung, Bildschirm, Mikrofon",
-        pageHowTo: "Starte eine Aufnahme mit der Taste oder deinem Kurzbefehl: Sie läuft, bis du sie stoppst. Jede Besprechung bekommt einen eigenen Ordner.",
+        pageHowTo: "Starte eine Aufnahme mit der Taste oder deinem Kurzbefehl oder über das Angebot, wenn ein Google Meet erkannt wird. Eine von Hand gestartete Aufnahme läuft, bis du sie stoppst. Jede Besprechung bekommt einen eigenen Ordner.",
         recordNow: "Jetzt aufnehmen",
         stopRecording: "Stoppen",
         pauseRecording: "Pausieren",
@@ -1935,7 +1935,7 @@ extension ForkMeetingStrings {
         // MARK: Fixes F2
         stateStarting: "Wird gestartet …",
         pictureFrontDisplay: "Sein ganzer Bildschirm",
-        consentIntroFrontWindow: "Besprechungen nimmt das vorderste Fenster (oder seinen Bildschirm), den Ton seiner App und dein Mikrofon auf. Alles bleibt auf diesem Mac.",
+        consentIntroFrontWindow: "Besprechungen nimmt das Fenster der Besprechung (oder seinen Bildschirm), den Ton seiner App und dein Mikrofon auf. Um ein Google Meet anzubieten, liest es die Titel der Fenster und welche Apps das Mikrofon verwenden. Alles bleibt auf diesem Mac.",
         filmedWindowFormat: "Fenster von %@",
         filmedWindowUnnamed: "Vorderstes Fenster",
         filmedDisplay: "Ganzer Bildschirm",
@@ -1960,7 +1960,7 @@ extension ForkMeetingStrings {
         failMasterMissingRemedy: "Die Datei konnte nicht fertiggestellt werden, und im Ordner der Besprechung wurde kein Video der Aufnahme gefunden: Nichts davon lässt sich abspielen.",
         // MARK: Detection effects
         detectionTitle: "Erkennung",
-        detectionCaption: "Erkennt eine in deinem Browser geöffnete Google-Meet-Besprechung, auch im Hintergrund oder auf einem anderen Schreibtisch, und bietet an, sie aufzunehmen.",
+        detectionCaption: "Erkennt eine in deinem Browser geöffnete Google-Meet-Besprechung, auch hinter anderen Fenstern oder auf einem anderen Schreibtisch, und bietet an, sie aufzunehmen.",
         policyAsk: "Anbieten",
         policyAlways: "Immer",
         policyNever: "Nie",
@@ -2013,7 +2013,7 @@ extension ForkMeetingStrings {
     static let fr = ForkMeetingStrings(
         // MARK: Page
         searchKeywords: "enregistrement, visio, appel, réunion, écran, micro",
-        pageHowTo: "Lancez un enregistrement avec le bouton ou votre raccourci\u{00A0}: il continue jusqu’à ce que vous l’arrêtiez. Chaque réunion a son propre dossier.",
+        pageHowTo: "Lancez un enregistrement avec le bouton ou votre raccourci, ou depuis la proposition quand un Google Meet est détecté. Un enregistrement lancé à la main continue jusqu’à ce que vous l’arrêtiez. Chaque réunion a son propre dossier.",
         recordNow: "Enregistrer maintenant",
         stopRecording: "Arrêter",
         pauseRecording: "Mettre en pause",
@@ -2167,7 +2167,7 @@ extension ForkMeetingStrings {
         // MARK: Fixes F2
         stateStarting: "Démarrage…",
         pictureFrontDisplay: "Tout son écran",
-        consentIntroFrontWindow: "Réunions enregistre la fenêtre au premier plan (ou son écran), le son de son app et votre micro. Tout reste sur ce Mac.",
+        consentIntroFrontWindow: "Réunions enregistre la fenêtre de la réunion (ou son écran), le son de son app et votre micro. Pour proposer un Google Meet, elle lit les titres des fenêtres et quelles apps utilisent le micro. Tout reste sur ce Mac.",
         filmedWindowFormat: "Fenêtre\u{00A0}: %@",
         filmedWindowUnnamed: "Fenêtre au premier plan",
         filmedDisplay: "Écran entier",
@@ -2192,7 +2192,7 @@ extension ForkMeetingStrings {
         failMasterMissingRemedy: "Le fichier n’a pas pu être finalisé et aucune vidéo de l’enregistrement n’a été trouvée dans le dossier de la réunion\u{00A0}: rien n’en est lisible.",
         // MARK: Detection effects
         detectionTitle: "Détection",
-        detectionCaption: "Reconnaît une réunion Google Meet ouverte dans votre navigateur, même en arrière-plan ou sur un autre bureau, et propose de l’enregistrer.",
+        detectionCaption: "Reconnaît une réunion Google Meet ouverte dans votre navigateur, même derrière d’autres fenêtres ou sur un autre bureau, et propose de l’enregistrer.",
         policyAsk: "Proposer",
         policyAlways: "Toujours",
         policyNever: "Jamais",
@@ -2245,7 +2245,7 @@ extension ForkMeetingStrings {
     static let it = ForkMeetingStrings(
         // MARK: Page
         searchKeywords: "registrazione, videochiamata, chiamata, riunione, schermo, microfono",
-        pageHowTo: "Avvia una registrazione con il pulsante o la tua scorciatoia: continua finché non la fermi. Ogni riunione ha la sua cartella.",
+        pageHowTo: "Avvia una registrazione con il pulsante o la tua scorciatoia, oppure dalla proposta quando viene rilevato un Google Meet. Una registrazione avviata a mano continua finché non la fermi. Ogni riunione ha la sua cartella.",
         recordNow: "Registra ora",
         stopRecording: "Ferma",
         pauseRecording: "Metti in pausa",
@@ -2399,7 +2399,7 @@ extension ForkMeetingStrings {
         // MARK: Fixes F2
         stateStarting: "Avvio…",
         pictureFrontDisplay: "Tutto il suo schermo",
-        consentIntroFrontWindow: "Riunioni registra la finestra in primo piano (o il suo schermo), l’audio della sua app e il tuo microfono. Tutto resta su questo Mac.",
+        consentIntroFrontWindow: "Riunioni registra la finestra della riunione (o il suo schermo), l’audio della sua app e il tuo microfono. Per proporre un Google Meet, legge i titoli delle finestre e quali app usano il microfono. Tutto resta su questo Mac.",
         filmedWindowFormat: "Finestra di %@",
         filmedWindowUnnamed: "Finestra in primo piano",
         filmedDisplay: "Schermo intero",
@@ -2424,7 +2424,7 @@ extension ForkMeetingStrings {
         failMasterMissingRemedy: "Non è stato possibile completare il file e nella cartella della riunione non è stato trovato alcun video della registrazione: non c’è nulla da riprodurre.",
         // MARK: Detection effects
         detectionTitle: "Rilevamento",
-        detectionCaption: "Riconosce una riunione Google Meet aperta nel browser, anche in secondo piano o su un’altra scrivania, e propone di registrarla.",
+        detectionCaption: "Riconosce una riunione Google Meet aperta nel browser, anche dietro altre finestre o su un’altra scrivania, e propone di registrarla.",
         policyAsk: "Proponi",
         policyAlways: "Sempre",
         policyNever: "Mai",
@@ -2477,7 +2477,7 @@ extension ForkMeetingStrings {
     static let ja = ForkMeetingStrings(
         // MARK: Page
         searchKeywords: "録画, ビデオ通話, 通話, ミーティング, 画面, マイク",
-        pageHowTo: "ボタンまたはショートカットで録画を開始します。停止するまで続き、ミーティングごとにフォルダが作られます。",
+        pageHowTo: "ボタンかショートカット、または Google Meet を検出したときの提案から録画を開始します。手動で始めた録画は停止するまで続きます。ミーティングごとにフォルダが作られます。",
         recordNow: "今すぐ録画",
         stopRecording: "停止",
         pauseRecording: "一時停止",
@@ -2631,7 +2631,7 @@ extension ForkMeetingStrings {
         // MARK: Fixes F2
         stateStarting: "開始しています…",
         pictureFrontDisplay: "そのディスプレイ全体",
-        consentIntroFrontWindow: "「ミーティング」は、最前面のウインドウ（またはそのディスプレイ）、そのアプリの音声、あなたのマイクを録画します。すべてこのMac上に保存されます。",
+        consentIntroFrontWindow: "「ミーティング」は、ミーティングのウインドウ（またはそのディスプレイ）、そのアプリの音声、あなたのマイクを録画します。Google Meet を提案するために、ウインドウのタイトルと、どのアプリがマイクを使っているかを読み取ります。すべてこのMac上に保存されます。",
         filmedWindowFormat: "%@のウインドウ",
         filmedWindowUnnamed: "最前面のウインドウ",
         filmedDisplay: "画面全体",
@@ -2656,7 +2656,7 @@ extension ForkMeetingStrings {
         failMasterMissingRemedy: "ファイルを仕上げられず、ミーティングのフォルダに録画のビデオも見つかりませんでした。再生できるものはありません。",
         // MARK: Detection effects
         detectionTitle: "検出",
-        detectionCaption: "ブラウザで開いている Google Meet のミーティングを、バックグラウンドや別のデスクトップにあっても認識し、録画を提案します。",
+        detectionCaption: "ブラウザで開いている Google Meet のミーティングを、ほかのウインドウの後ろや別のデスクトップにあっても認識し、録画を提案します。",
         policyAsk: "提案する",
         policyAlways: "常に録画",
         policyNever: "提案しない",
@@ -2709,7 +2709,7 @@ extension ForkMeetingStrings {
     static let ko = ForkMeetingStrings(
         // MARK: Page
         searchKeywords: "녹화, 화상 통화, 통화, 회의, 화면, 마이크",
-        pageHowTo: "버튼이나 단축키로 녹화를 시작하세요. 직접 멈출 때까지 계속되며, 회의마다 폴더가 따로 만들어집니다.",
+        pageHowTo: "버튼이나 단축키로, 또는 Google Meet이 감지되었을 때 나타나는 제안에서 녹화를 시작하세요. 직접 시작한 녹화는 멈출 때까지 계속됩니다. 회의마다 폴더가 따로 만들어집니다.",
         recordNow: "지금 녹화",
         stopRecording: "중지",
         pauseRecording: "일시 정지",
@@ -2863,7 +2863,7 @@ extension ForkMeetingStrings {
         // MARK: Fixes F2
         stateStarting: "시작하는 중…",
         pictureFrontDisplay: "그 윈도우의 전체 디스플레이",
-        consentIntroFrontWindow: "회의 기능은 맨 앞 윈도우(또는 그 디스플레이), 그 앱의 소리, 내 마이크를 녹화합니다. 모든 것이 이 Mac에 남습니다.",
+        consentIntroFrontWindow: "회의 기능은 회의 윈도우(또는 그 디스플레이), 그 앱의 소리, 내 마이크를 녹화합니다. Google Meet을 제안하기 위해 윈도우 제목과 마이크를 사용하는 앱을 읽습니다. 모든 것이 이 Mac에 남습니다.",
         filmedWindowFormat: "%@ 윈도우",
         filmedWindowUnnamed: "맨 앞 윈도우",
         filmedDisplay: "전체 화면",
@@ -2888,7 +2888,7 @@ extension ForkMeetingStrings {
         failMasterMissingRemedy: "파일을 마무리하지 못했고, 회의 폴더에서 녹화 비디오를 찾지 못했습니다. 재생할 수 있는 것이 없습니다.",
         // MARK: Detection effects
         detectionTitle: "감지",
-        detectionCaption: "브라우저에 열린 Google Meet 회의를 백그라운드나 다른 데스크탑에 있어도 알아보고 녹화를 제안합니다.",
+        detectionCaption: "브라우저에 열린 Google Meet 회의를 다른 윈도우 뒤나 다른 데스크탑에 있어도 알아보고 녹화를 제안합니다.",
         policyAsk: "제안",
         policyAlways: "항상",
         policyNever: "안 함",
@@ -2941,7 +2941,7 @@ extension ForkMeetingStrings {
     static let uk = ForkMeetingStrings(
         // MARK: Page
         searchKeywords: "запис, відеодзвінок, дзвінок, зустріч, екран, мікрофон",
-        pageHowTo: "Почніть запис кнопкою або своїм поєднанням клавіш: він триває, доки ви його не зупините. Кожна зустріч має власну папку.",
+        pageHowTo: "Почніть запис кнопкою, своїм поєднанням клавіш або з пропозиції, коли виявлено зустріч Google Meet. Запис, розпочатий вручну, триває, доки ви його не зупините. Кожна зустріч має власну папку.",
         recordNow: "Записати зараз",
         stopRecording: "Зупинити",
         pauseRecording: "Призупинити",
@@ -3095,7 +3095,7 @@ extension ForkMeetingStrings {
         // MARK: Fixes F2
         stateStarting: "Запуск…",
         pictureFrontDisplay: "Увесь його екран",
-        consentIntroFrontWindow: "Зустрічі записують вікно на передньому плані (або його екран), звук його програми і ваш мікрофон. Усе лишається на цьому Mac.",
+        consentIntroFrontWindow: "Зустрічі записують вікно зустрічі (або його екран), звук його програми і ваш мікрофон. Щоб запропонувати Google Meet, вони читають заголовки вікон і те, які програми використовують мікрофон. Усе лишається на цьому Mac.",
         filmedWindowFormat: "Вікно %@",
         filmedWindowUnnamed: "Вікно на передньому плані",
         filmedDisplay: "Увесь екран",
@@ -3120,7 +3120,7 @@ extension ForkMeetingStrings {
         failMasterMissingRemedy: "Файл не вдалося завершити, а відео запису в папці зустрічі не знайдено: відтворити нічого.",
         // MARK: Detection effects
         detectionTitle: "Виявлення",
-        detectionCaption: "Розпізнає зустріч Google Meet, відкриту в браузері, навіть у фоні чи на іншому робочому столі, і пропонує її записати.",
+        detectionCaption: "Розпізнає зустріч Google Meet, відкриту в браузері, навіть за іншими вікнами чи на іншому робочому столі, і пропонує її записати.",
         policyAsk: "Пропонувати",
         policyAlways: "Завжди",
         policyNever: "Ніколи",
@@ -3173,7 +3173,7 @@ extension ForkMeetingStrings {
     static let zhHans = ForkMeetingStrings(
         // MARK: Page
         searchKeywords: "录制, 视频通话, 通话, 会议, 屏幕, 麦克风",
-        pageHowTo: "用按钮或你的快捷键开始录制：它会一直进行，直到你停止。每场会议都有自己的文件夹。",
+        pageHowTo: "用按钮或你的快捷键开始录制，或在检测到 Google Meet 时从提议中开始。手动开始的录制会一直进行，直到你停止。每场会议都有自己的文件夹。",
         recordNow: "立即录制",
         stopRecording: "停止",
         pauseRecording: "暂停",
@@ -3327,7 +3327,7 @@ extension ForkMeetingStrings {
         // MARK: Fixes F2
         stateStarting: "正在开始…",
         pictureFrontDisplay: "它所在的整个显示器",
-        consentIntroFrontWindow: "“会议”会录制最前面的窗口（或其所在显示器）、该 App 的声音和你的麦克风。所有内容都保留在这台 Mac 上。",
+        consentIntroFrontWindow: "“会议”会录制会议的窗口（或其所在显示器）、该 App 的声音和你的麦克风。为了提议录制 Google Meet，它会读取窗口标题以及哪些 App 正在使用麦克风。所有内容都保留在这台 Mac 上。",
         filmedWindowFormat: "%@ 窗口",
         filmedWindowUnnamed: "最前面的窗口",
         filmedDisplay: "整个屏幕",
@@ -3352,7 +3352,7 @@ extension ForkMeetingStrings {
         failMasterMissingRemedy: "无法完成文件，会议文件夹中也找不到录制的视频：没有可以播放的内容。",
         // MARK: Detection effects
         detectionTitle: "检测",
-        detectionCaption: "识别在浏览器中打开的 Google Meet 会议，即使它在后台或在另一个桌面上，并提议录制。",
+        detectionCaption: "识别在浏览器中打开的 Google Meet 会议，即使它在其他窗口后面或在另一个桌面上，并提议录制。",
         policyAsk: "提议",
         policyAlways: "总是",
         policyNever: "从不",
@@ -3405,7 +3405,7 @@ extension ForkMeetingStrings {
     static let zhTW = ForkMeetingStrings(
         // MARK: Page
         searchKeywords: "錄製, 視訊通話, 通話, 會議, 螢幕, 麥克風",
-        pageHowTo: "用按鈕或你的快速鍵開始錄製：它會持續到你停止為止。每場會議都有自己的資料夾。",
+        pageHowTo: "用按鈕或你的快速鍵開始錄製，或在偵測到 Google Meet 時從提議中開始。手動開始的錄製會持續到你停止為止。每場會議都有自己的資料夾。",
         recordNow: "立即錄製",
         stopRecording: "停止",
         pauseRecording: "暫停",
@@ -3559,7 +3559,7 @@ extension ForkMeetingStrings {
         // MARK: Fixes F2
         stateStarting: "正在開始…",
         pictureFrontDisplay: "它所在的整個顯示器",
-        consentIntroFrontWindow: "「會議」會錄製最前面的視窗（或其所在顯示器）、該 App 的聲音和你的麥克風。所有內容都留在這台 Mac 上。",
+        consentIntroFrontWindow: "「會議」會錄製會議的視窗（或其所在顯示器）、該 App 的聲音和你的麥克風。為了提議錄製 Google Meet，它會讀取視窗標題以及哪些 App 正在使用麥克風。所有內容都留在這台 Mac 上。",
         filmedWindowFormat: "%@ 視窗",
         filmedWindowUnnamed: "最前面的視窗",
         filmedDisplay: "整個螢幕",
@@ -3584,7 +3584,7 @@ extension ForkMeetingStrings {
         failMasterMissingRemedy: "無法完成檔案，會議資料夾中也找不到錄製的影片：沒有可以播放的內容。",
         // MARK: Detection effects
         detectionTitle: "偵測",
-        detectionCaption: "辨識瀏覽器中開啟的 Google Meet 會議，即使它在背景或另一個桌面上，並提議錄製。",
+        detectionCaption: "辨識瀏覽器中開啟的 Google Meet 會議，即使它在其他視窗後面或另一個桌面上，並提議錄製。",
         policyAsk: "提議",
         policyAlways: "一律",
         policyNever: "永不",
@@ -3637,7 +3637,7 @@ extension ForkMeetingStrings {
     static let zhHK = ForkMeetingStrings(
         // MARK: Page
         searchKeywords: "錄製, 視像通話, 通話, 會議, 螢幕, 咪高風",
-        pageHowTo: "用按鈕或你的快速鍵開始錄製：它會一直持續，直到你停止。每個會議都有自己的資料夾。",
+        pageHowTo: "用按鈕或你的快速鍵開始錄製，或在偵測到 Google Meet 時從提議中開始。手動開始的錄製會一直持續，直到你停止。每個會議都有自己的資料夾。",
         recordNow: "立即錄製",
         stopRecording: "停止",
         pauseRecording: "暫停",
@@ -3791,7 +3791,7 @@ extension ForkMeetingStrings {
         // MARK: Fixes F2
         stateStarting: "正在開始…",
         pictureFrontDisplay: "它所在的整個顯示器",
-        consentIntroFrontWindow: "「會議」會錄製最前面的視窗（或其所在顯示器）、該 App 的聲音和你的咪高風。所有內容都留在這部 Mac 上。",
+        consentIntroFrontWindow: "「會議」會錄製會議的視窗（或其所在顯示器）、該 App 的聲音和你的咪高風。為了提議錄製 Google Meet，它會讀取視窗標題以及哪些 App 正在使用咪高風。所有內容都留在這部 Mac 上。",
         filmedWindowFormat: "%@ 視窗",
         filmedWindowUnnamed: "最前面的視窗",
         filmedDisplay: "整個螢幕",
@@ -3816,7 +3816,7 @@ extension ForkMeetingStrings {
         failMasterMissingRemedy: "無法完成檔案，會議資料夾中也找不到錄製的影片：沒有可以播放的內容。",
         // MARK: Detection effects
         detectionTitle: "偵測",
-        detectionCaption: "辨認瀏覽器中開啟的 Google Meet 會議，即使它在背景或另一個桌面上，並提議錄製。",
+        detectionCaption: "辨認瀏覽器中開啟的 Google Meet 會議，即使它在其他視窗後面或另一個桌面上，並提議錄製。",
         policyAsk: "提議",
         policyAlways: "一律",
         policyNever: "永不",
