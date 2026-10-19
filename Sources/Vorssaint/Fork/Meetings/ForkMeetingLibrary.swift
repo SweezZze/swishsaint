@@ -57,14 +57,14 @@ struct ForkMeetingLibraryEntry: Equatable {
         case folderCreated
     }
 
-    /// The folder's name: unique in the meetings folder, so it is the row's
-    /// identity.
-    let folderName: String
+    /// The folder's name: unique in the meetings folder, so it is what the
+    /// list selects. A rename changes it; `identity` stays.
+    private(set) var folderName: String
     let id: UUID?
     let status: Status
     /// The title written in `meeting.json`; for a sidecar that cannot be
     /// read, what follows the stamp in the folder's name.
-    let title: String?
+    private(set) var title: String?
     let date: Date?
     let dateSource: DateSource?
     /// The sidecar's own times: only these decide a meeting's age for the
@@ -81,9 +81,9 @@ struct ForkMeetingLibraryEntry: Equatable {
     let notes: String
     /// The file the player opens: the final video, or, for an interrupted
     /// meeting, its master, readable up to its last fragment.
-    let playable: String?
-    let video: String?
-    let audio: String?
+    private(set) var playable: String?
+    private(set) var video: String?
+    private(set) var audio: String?
     /// From a later version of the app, unreadable, or not written by it:
     /// shown, never written.
     let isReadOnly: Bool
@@ -202,6 +202,30 @@ struct ForkMeetingLibraryEntry: Equatable {
         case .user, .meetingEnded: return .unknown
         default: return .stopped(reason)
         }
+    }
+
+    /// What the detail is kept by through a rename: the meeting's id, which
+    /// no rename changes; the folder's name for a record without one.
+    var identity: String { id.map { "id:\($0.uuidString)" } ?? "folder:\(folderName)" }
+
+    /// The same row once the store renamed its folder, its media and its
+    /// title (`ForkMeetingStore.RenameResult`), before the next scan says
+    /// so: the list and the detail follow at once.
+    func renamed(to folder: String, media: [ForkMeetingFolder.Move], title edited: String?) -> ForkMeetingLibraryEntry {
+        var row = self
+        row.folderName = folder
+        func follow(_ name: String?) -> String? {
+            guard let name else { return nil }
+            return media.first { $0.from == name }?.to ?? name
+        }
+        row.video = follow(video)
+        row.audio = follow(audio)
+        row.playable = follow(playable)
+        if let edited {
+            let trimmed = edited.trimmingCharacters(in: .whitespacesAndNewlines)
+            row.title = trimmed.isEmpty ? nil : trimmed
+        }
+        return row
     }
 
     /// The title a row shows: its own, or the default name of a meeting

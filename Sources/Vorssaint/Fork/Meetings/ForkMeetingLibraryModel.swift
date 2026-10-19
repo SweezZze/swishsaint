@@ -31,7 +31,9 @@ final class ForkMeetingLibraryModel: ObservableObject {
     @Published var note: String?
     /// The meeting whose move to the Trash waits for a confirmation.
     @Published var trashAsked: String?
-    /// Folders a rename or a copy works on: their actions wait.
+    /// Folders a rename or a copy works on: their actions wait, and a title
+    /// committed meanwhile is renamed once they are done (`deferredTitles`).
+    /// The fields stay editable: what is typed during a rename follows it.
     @Published private(set) var working: Set<String> = []
     /// Asks the search field to take the keyboard (⌘F).
     @Published private(set) var searchFocus = 0
@@ -53,6 +55,12 @@ final class ForkMeetingLibraryModel: ObservableObject {
     /// Renames done since the last scan, old name to new, so the selection
     /// follows them.
     private var renamed: [String: String] = [:]
+    /// A title committed while its folder was busy, by folder.
+    private var deferredTitles: [String: String] = [:]
+    /// Counts the changes this window made to the folders and already
+    /// shows (a rename): a scan begun before one reads the disk as it was,
+    /// and is read again rather than shown.
+    private var changes = 0
     private var noteExpiry: DispatchWorkItem?
 
     init(store: ForkMeetingStore = .shared, language: AppLanguage? = nil, now: @escaping () -> Date = Date.init,
@@ -93,9 +101,10 @@ final class ForkMeetingLibraryModel: ObservableObject {
         ForkMeetingLibrary.groups(filtered, now: now(), calendar: calendar)
     }
 
+    /// The selected meeting, as long as the search keeps it in the list.
     var selectedEntry: ForkMeetingLibraryEntry? {
         guard let selection else { return nil }
-        return entries.first { $0.folderName == selection }
+        return filtered.first { $0.folderName == selection }
     }
 
     func folderURL(_ entry: ForkMeetingLibraryEntry) -> URL {
@@ -108,6 +117,21 @@ final class ForkMeetingLibraryModel: ObservableObject {
 
     func isLive(_ entry: ForkMeetingLibraryEntry) -> Bool {
         entry.status.isInProgress || working.contains(entry.folderName)
+    }
+
+    /// The title and the notes can be typed: never in a meeting being
+    /// written or a record this version may not rewrite; during a rename or
+    /// a copy, yes, and what is typed follows.
+    func isEditable(_ entry: ForkMeetingLibraryEntry) -> Bool {
+        !entry.isReadOnly && !entry.status.isInProgress
+    }
+
+    /// The folder's name lags behind the title saved in `meeting.json` (a
+    /// title typed, then the window closed by a quit): committing the
+    /// field renames it even with nothing typed.
+    func folderLagsTitle(_ entry: ForkMeetingLibraryEntry) -> Bool {
+        ForkMeetingRename.folderLags(folderName: entry.folderName, startedAt: entry.startedAt, title: entry.title,
+                                     calendar: calendar)
     }
 
     // MARK: - Opening and closing
@@ -148,9 +172,16 @@ final class ForkMeetingLibraryModel: ObservableObject {
         scanning = true
         root = store.root()
         let before = ForkMeetingLibrary.order(groups)
+        let generation = changes
         store.scanLibrary(writing: writing()) { [weak self] scan in
             guard let self else { return }
             self.scanning = false
+            guard generation == self.changes else {
+                // A rename landed meanwhile: this read is older than what
+                // the window shows.
+                self.refresh()
+                return
+            }
             self.root = scan.root
             self.rootExists = scan.rootExists
             self.entries = scan.entries
@@ -207,42 +238,84 @@ final class ForkMeetingLibraryModel: ObservableObject {
         scheduleEdits()
     }
 
+    /// Addressed to the folder's name as the window knows it: one renamed
+    /// meanwhile is found by the store (`ForkMeetingRenameTable`).
     private func write(_ due: [(folder: String, edit: ForkMeetingSidecarEdit)]) {
         for (folder, edit) in due {
-            store.applyEdit(edit, in: root.appendingPathComponent(folder, isDirectory: true))
+            store.applyEdit(edit, in: root.appendingPathComponent(folder, isDirectory: true)) { [weak self] result in
+                guard let self, case .failure(.meetingInProgress) = result else { return }
+                self.say(self.strings.refusedWhileRecording)
+            }
         }
     }
 
     /// Return, or the field left: the folder and its media take the title.
+    /// While a rename or a copy works on the folder, the title waits for it
+    /// rather than be dropped.
     func commitTitle(_ title: String, of entry: ForkMeetingLibraryEntry) {
         let folder = entry.folderName
-        guard !entry.isReadOnly, !working.contains(folder) else { return }
+        guard !entry.isReadOnly else { return }
         let wanted = ForkMeetingRename.cleaned(title)
+        guard !working.contains(folder) else {
+            deferredTitles[folder] = wanted
+            return
+        }
         flushEdits(folder)
         working.insert(folder)
         store.renameMeeting(folder, title: wanted, live: writing().contains(folderURL(entry).standardizedFileURL.path)) {
             [weak self] result in
             guard let self else { return }
-            self.working.remove(folder)
+            var now = folder
             switch result {
             case let .success(done):
-                if done.folderName != folder {
-                    self.renamed[folder] = done.folderName
-                    self.edits.move(from: folder, to: done.folderName)
-                    if self.selection == folder { self.selection = done.folderName }
-                }
-                if done.folderMoveFailed || !done.mediaKept.isEmpty {
+                now = done.folderName
+                self.follow(done, from: folder)
+                if !done.titleSaved {
+                    self.say(done.folderName != folder ? self.strings.renameTitleNotSaved : self.strings.renameUnreadable)
+                } else if done.folderMoveFailed || !done.mediaKept.isEmpty {
                     self.say(done.folderMoveFailed ? self.strings.renameFailed : self.strings.renameMediaKept)
                 } else if let line = ForkMeetingLibraryText.renameNote(done.plan, strings: self.strings) {
                     self.say(line)
                 }
             case let .failure(.renameRefused(refusal)):
                 self.say(ForkMeetingLibraryText.refusal(refusal, strings: self.strings))
+            case .failure(.meetingInProgress):
+                self.say(self.strings.refusedWhileRecording)
             case .failure:
                 self.say(self.strings.renameFailed)
             }
+            self.finishWork(folder, now: now)
             self.refresh()
         }
+    }
+
+    /// A rename done: the row, its selection, its measures and what is
+    /// still being typed take the new name at once, before any scan; the
+    /// detail, kept by the meeting's id, keeps its fields, its focus and its
+    /// player.
+    private func follow(_ done: ForkMeetingStore.RenameResult, from folder: String) {
+        changes += 1
+        let title = done.titleSaved ? done.plan.edit?.title : nil
+        if let index = entries.firstIndex(where: { $0.folderName == folder }) {
+            entries[index] = entries[index].renamed(to: done.folderName, media: done.mediaMoved, title: title)
+        }
+        guard done.folderName != folder else { return }
+        renamed[folder] = done.folderName
+        edits.move(from: folder, to: done.folderName)
+        if let probe = probes.removeValue(forKey: folder) { probes[done.folderName] = probe }
+        if selection == folder { selection = done.folderName }
+        if trashAsked == folder { trashAsked = done.folderName }
+        // Everything sent to the old name is ahead of this on the store's
+        // queue: from here on, the window writes to the new one.
+        store.forgetRename(of: root.appendingPathComponent(folder, isDirectory: true))
+    }
+
+    /// The folder is free again: a title committed meanwhile is renamed now.
+    private func finishWork(_ folder: String, now: String? = nil) {
+        working.remove(folder)
+        guard let title = deferredTitles.removeValue(forKey: folder),
+              let entry = entries.first(where: { $0.folderName == (now ?? folder) }) else { return }
+        commitTitle(title, of: entry)
     }
 
     // MARK: - Actions
@@ -290,7 +363,6 @@ final class ForkMeetingLibraryModel: ObservableObject {
         pasteboard.clearContents()
         pasteboard.setString(folderURL(entry).path, forType: .string)
         say(strings.noticePathCopied)
-        Self.announce(strings.noticePathCopied)
     }
 
     /// A copy in the official editor; the meeting stays as it is.
@@ -302,7 +374,7 @@ final class ForkMeetingLibraryModel: ObservableObject {
         store.makeEditorTake(for: entry, probe: probes[folder], editorAvailable: AppFeature.screenRecorder.isAvailable,
                              live: live) { [weak self] result in
             guard let self else { return }
-            self.working.remove(folder)
+            self.finishWork(folder)
             switch result {
             case let .success(take):
                 if !ScreenRecorderService.shared.openEditor(with: take, owner: .screenRecorder) {
@@ -345,7 +417,7 @@ final class ForkMeetingLibraryModel: ObservableObject {
         let live = writing().contains(folderURL(entry).standardizedFileURL.path)
         store.exportAudio(of: entry, probe: probes[folder], live: live, to: url) { [weak self] result in
             guard let self else { return }
-            self.working.remove(folder)
+            self.finishWork(folder)
             switch result {
             case .success: NSWorkspace.shared.activateFileViewerSelecting([url])
             case .failure(.exportRefused(.meetingInProgress)): self.say(self.strings.refusedWhileRecording)
@@ -354,8 +426,9 @@ final class ForkMeetingLibraryModel: ObservableObject {
         }
     }
 
-    /// The line under the buttons, for a few seconds.
+    /// The line under the buttons, for a few seconds, and said to VoiceOver.
     func say(_ line: String) {
+        Self.announce(line)
         note = line
         noteExpiry?.cancel()
         let expiry = DispatchWorkItem { [weak self] in

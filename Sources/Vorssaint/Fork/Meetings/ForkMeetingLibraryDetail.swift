@@ -12,7 +12,9 @@ import SwiftUI
 /// within half a second (`ForkMeetingEditCoalescer`); the folder takes the
 /// title only with Return, or when the field is left. A meeting being
 /// written, or whose `meeting.json` this version may not rewrite, shows its
-/// fields read only.
+/// fields read only. The view is kept by the meeting's id
+/// (`ForkMeetingLibraryEntry.identity`): a rename changes its folder's name
+/// under it, never its fields, its focus or its player.
 struct ForkMeetingLibraryDetail: View {
     @ObservedObject var model: ForkMeetingLibraryModel
     let entry: ForkMeetingLibraryEntry
@@ -35,7 +37,7 @@ struct ForkMeetingLibraryDetail: View {
         _notes = State(initialValue: entry.notes)
     }
 
-    private var editable: Bool { !entry.isReadOnly && !model.isLive(entry) }
+    private var editable: Bool { model.isEditable(entry) }
 
     var body: some View {
         ScrollView {
@@ -87,8 +89,10 @@ struct ForkMeetingLibraryDetail: View {
         }
     }
 
+    /// Also with nothing typed when the folder lags behind the title
+    /// already saved.
     private func commitTitle() {
-        guard titleTyped, editable else { return }
+        guard editable, titleTyped || model.folderLagsTitle(entry) else { return }
         titleTyped = false
         model.commitTitle(title, of: entry)
     }
@@ -278,6 +282,12 @@ struct ForkMeetingLibraryPlayer: NSViewRepresentable {
     func updateNSView(_ view: NSView, context: Context) {
         context.coordinator.label?.stringValue = placeholder
         guard context.coordinator.url != url else { return }
+        // The same file under a new name (the meeting renamed): the player
+        // goes on where it was.
+        if let url, let playing = context.coordinator.file, !playing.isEmpty, Self.fileID(url) == playing {
+            context.coordinator.url = url
+            return
+        }
         load(context.coordinator)
     }
 
@@ -288,6 +298,7 @@ struct ForkMeetingLibraryPlayer: NSViewRepresentable {
 
     private func load(_ coordinator: Coordinator) {
         coordinator.url = url
+        coordinator.file = url.map(Self.fileID)
         coordinator.player?.player?.pause()
         let playable = url.map { FileManager.default.fileExists(atPath: $0.path) } ?? false
         coordinator.player?.player = playable ? url.map { AVPlayer(url: $0) } : nil
@@ -297,8 +308,18 @@ struct ForkMeetingLibraryPlayer: NSViewRepresentable {
 
     func makeCoordinator() -> Coordinator { Coordinator() }
 
+    /// A file's volume and number: what a rename keeps.
+    static func fileID(_ url: URL) -> [Int] {
+        guard let attributes = try? FileManager.default.attributesOfItem(atPath: url.path),
+              let file = attributes[.systemFileNumber] as? NSNumber,
+              let volume = attributes[.systemNumber] as? NSNumber else { return [] }
+        return [volume.intValue, file.intValue]
+    }
+
     final class Coordinator {
         var url: URL?
+        /// `fileID` of what plays; empty when it could not be read.
+        var file: [Int]?
         weak var player: AVPlayerView?
         weak var label: NSTextField?
     }

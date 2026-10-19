@@ -143,8 +143,10 @@ struct ForkMeetingLibraryView: View {
                         if let entry = model.selectedEntry {
                             ForkMeetingLibraryDetail(model: model, entry: entry, text: text, language: language)
                                 // A new meeting gets fresh fields: a draft
-                                // never follows the selection.
-                                .id(entry.folderName)
+                                // never follows the selection. Kept by the
+                                // meeting, not its folder's name, which a
+                                // rename changes.
+                                .id(entry.identity)
                         } else {
                             Color.clear
                         }

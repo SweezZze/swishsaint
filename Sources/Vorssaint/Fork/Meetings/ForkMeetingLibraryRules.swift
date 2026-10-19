@@ -102,6 +102,15 @@ enum ForkMeetingRename {
         var media = ForkMeetingFolder.MediaRenames()
     }
 
+    /// The folder still carries the stamp but not the title `meeting.json`
+    /// gives (`ForkMeetingFolder.renamedFolder`): a rename is owed even
+    /// though nothing was typed since.
+    static func folderLags(folderName: String, startedAt: Date?, title: String?, calendar: Calendar = .current) -> Bool {
+        guard let startedAt, let title else { return false }
+        return ForkMeetingFolder.renamedFolder(current: folderName, startedAt: startedAt, title: cleaned(title),
+                                               calendar: calendar) != nil
+    }
+
     /// What sits at a name beside the folder, as a rename sees it: the
     /// folder itself under another case of its name (APFS ignores case, so
     /// the disk answers that the name is taken) is free to take, or a change
@@ -168,6 +177,53 @@ enum ForkMeetingRename {
             plan.folderKept = .namesExhausted
         }
         return .success(plan)
+    }
+}
+
+/// Where the library's writes go while folders are renamed: a note saved
+/// half a second after it was typed may reach the store's queue after the
+/// rename it was typed during, addressed to the folder's old name. The
+/// store keeps, on its queue, each move it made (old path to new) until the
+/// window has learnt the new name and sends nothing to the old one any
+/// more; a write for a moved folder lands in the folder where it now is.
+struct ForkMeetingRenameTable: Equatable {
+    private(set) var moves: [String: String] = [:]
+
+    mutating func record(from old: String, to new: String) {
+        guard old != new else { return }
+        moves[old] = new
+        // A folder renamed back to a name it had: no loop.
+        moves[new] = nil
+    }
+
+    /// Where a write addressed to `path` goes: its folder's name now,
+    /// through every rename since.
+    func resolve(_ path: String) -> String {
+        var current = path
+        var seen: Set<String> = [path]
+        while let next = moves[current], seen.insert(next).inserted { current = next }
+        return current
+    }
+
+    mutating func forget(_ old: String) {
+        moves[old] = nil
+    }
+}
+
+/// Another copy of the app may hold a folder's lock while it records,
+/// finishes or recovers the meeting there. Asking takes a brief shared lock,
+/// which would make that copy's recovery pass by: only asked when the
+/// folder shows signs of it, the record unfinished, unreadable, or files of
+/// a recording still in it.
+enum ForkMeetingLibraryLock {
+    static func mayBeHeldElsewhere(_ sidecar: Result<ForkMeetingSidecar, ForkMeetingSidecarFault>,
+                                   contents: ForkMeetingFolder.Contents) -> Bool {
+        if contents.hasMaster || contents.hasVideoDraft || contents.hasAudioDraft { return true }
+        guard case let .success(meeting) = sidecar else { return true }
+        switch meeting.state {
+        case .recording?, .finalizing?, .interrupted?: return true
+        case .complete?, nil: return false
+        }
     }
 }
 

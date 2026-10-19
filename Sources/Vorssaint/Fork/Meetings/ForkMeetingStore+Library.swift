@@ -10,7 +10,9 @@ import os
 ///
 /// - **Every change of a folder runs on the store's queue**, after every
 ///   `meeting.json` write asked before it: a note typed just before a rename
-///   lands in the folder before it moves, never in a folder that is gone.
+///   lands in the folder before it moves, and one sent to the old name while
+///   it moved lands where it went (`renameTable`), never in a folder that is
+///   gone.
 /// - **Nothing this process records or finishes is touched** (`claim`), nor,
 ///   at the click, a folder another copy of the app holds.
 /// - A meeting only ever goes to the **Trash**: a volume without one keeps
@@ -48,6 +50,11 @@ extension ForkMeetingStore {
         let folderMoveFailed: Bool
         /// Media whose move the disk refused.
         let mediaKept: [String]
+        /// The media that did move, old name to new, inside the folder.
+        let mediaMoved: [ForkMeetingFolder.Move]
+        /// `meeting.json` took the title (or had nothing to take). `false`:
+        /// the folder may have moved, the title is not saved.
+        let titleSaved: Bool
     }
 
     private static let libraryLog = Logger(subsystem: "fork.meetings", category: "library")
@@ -161,34 +168,61 @@ extension ForkMeetingStore {
         return false
     }
 
-    /// Store queue. A meeting that is being written here, or elsewhere.
+    /// Store queue. A meeting that is being written here, or elsewhere:
+    /// the lock is asked whenever the folder shows signs of another copy at
+    /// work (`ForkMeetingLibraryLock`).
     private func isBusy(_ folder: URL, live: Bool) -> Bool {
         if live || isClaimedHere(folder) { return true }
-        guard case let .success(sidecar) = ForkMeetingSidecar.read(at: folder.appendingPathComponent(ForkMeetingFolder.sidecarName)),
-              sidecar.state == .recording || sidecar.state == .finalizing else { return false }
+        let sidecar = ForkMeetingSidecar.read(at: folder.appendingPathComponent(ForkMeetingFolder.sidecarName))
+        let names = (try? FileManager.default.contentsOfDirectory(atPath: folder.path)) ?? []
+        let contents = ForkMeetingFolder.contents(of: names, folderName: folder.lastPathComponent)
+        guard ForkMeetingLibraryLock.mayBeHeldElsewhere(sidecar, contents: contents) else { return false }
         return Self.isLockedElsewhere(folder)
+    }
+
+    /// Store queue. Where a write addressed to `folder` goes now.
+    private func resolved(_ folder: URL) -> URL {
+        let path = folder.standardizedFileURL.path
+        let now = renameTable.resolve(path)
+        return now == path ? folder : URL(fileURLWithPath: now, isDirectory: true)
+    }
+
+    /// The window writes to `folder`'s new name from now on: the move it
+    /// made is forgotten once every write sent before is done.
+    func forgetRename(of folder: URL) {
+        let path = folder.standardizedFileURL.path
+        queue.async { [self] in renameTable.forget(path) }
     }
 
     // MARK: - Title and notes
 
     /// Applies a library edit to the folder's `meeting.json`, after every
-    /// write asked before. A sidecar that does not decode, or comes from a
-    /// later version, is left as it is. `completion` on the callback queue.
-    func applyEdit(_ edit: ForkMeetingSidecarEdit, in folder: URL, completion: ((Bool) -> Void)? = nil) {
+    /// write asked before, in the folder where it is now if a rename moved
+    /// it meanwhile. A sidecar that does not decode, comes from a later
+    /// version or from another app, is left as it is; so is a meeting
+    /// another copy of the app holds (`meetingInProgress`). `completion` on
+    /// the callback queue.
+    func applyEdit(_ edit: ForkMeetingSidecarEdit, in folder: URL,
+                   completion: ((Result<Void, LibraryFailure>) -> Void)? = nil) {
         queue.async { [self] in
-            let written = writeEdit(edit, in: folder)
+            let written = writeEdit(edit, in: resolved(folder))
             if let completion { callbackQueue.async { completion(written) } }
         }
     }
 
     /// Store queue.
-    private func writeEdit(_ edit: ForkMeetingSidecarEdit, in folder: URL) -> Bool {
+    private func writeEdit(_ edit: ForkMeetingSidecarEdit, in folder: URL) -> Result<Void, LibraryFailure> {
+        guard !isBusy(folder, live: false) else {
+            Self.libraryLog.error("edit refused, the meeting is being written: \(folder.lastPathComponent, privacy: .private)")
+            return .failure(.meetingInProgress)
+        }
         let read = ForkMeetingSidecar.read(at: folder.appendingPathComponent(ForkMeetingFolder.sidecarName))
         guard let next = ForkMeetingSidecarEdit.rewriting(read, with: edit) else {
             Self.libraryLog.error("edit left out in \(folder.lastPathComponent, privacy: .private)")
-            return false
+            return .failure(.failed("meeting.json not rewritable"))
         }
-        return writeSidecar(next, in: folder) == nil
+        if let failure = writeSidecar(next, in: folder) { return .failure(.failed(failure)) }
+        return .success(())
     }
 
     // MARK: - Renaming
@@ -226,10 +260,12 @@ extension ForkMeetingStore {
         var current = folderName
         var folderMoveFailed = false
         if let move = plan.folder {
+            let to = root.appendingPathComponent(move.to, isDirectory: true)
             do {
-                try manager.moveItem(at: root.appendingPathComponent(move.from, isDirectory: true),
-                                     to: root.appendingPathComponent(move.to, isDirectory: true))
+                try manager.moveItem(at: root.appendingPathComponent(move.from, isDirectory: true), to: to)
                 current = move.to
+                // Writes still addressed to the old name land here.
+                renameTable.record(from: folder.standardizedFileURL.path, to: to.standardizedFileURL.path)
             } catch {
                 folderMoveFailed = true
                 Self.libraryLog.error("folder kept its name: \(error.localizedDescription, privacy: .private)")
@@ -237,20 +273,31 @@ extension ForkMeetingStore {
         }
         let now = root.appendingPathComponent(current, isDirectory: true)
         var mediaKept = plan.media.blocked
+        var mediaMoved: [ForkMeetingFolder.Move] = []
         if !folderMoveFailed {
             for move in plan.media.moves {
                 do {
                     try manager.moveItem(at: now.appendingPathComponent(move.from), to: now.appendingPathComponent(move.to))
+                    mediaMoved.append(move)
                 } catch {
                     mediaKept.append(move.from)
                 }
             }
         }
-        if let edit = plan.edit, !writeEdit(edit, in: now) {
-            return .failure(.failed("meeting.json not written"))
+        // The video's entry in Recent captures, when the meeting is listed
+        // there, follows it.
+        let video = ForkMeetingFolder.contents(of: names, folderName: folderName).video
+        if let video, current != folderName {
+            let moved = mediaMoved.first { $0.from == video }?.to ?? video
+            recentCaptureMoved(folder.appendingPathComponent(video), now.appendingPathComponent(moved))
+        }
+        var titleSaved = true
+        if let edit = plan.edit, case .failure = writeEdit(edit, in: now) {
+            // The folder may have moved all the same: the window follows it.
+            titleSaved = false
         }
         return .success(RenameResult(folderName: current, plan: plan, folderMoveFailed: folderMoveFailed,
-                                     mediaKept: mediaKept))
+                                     mediaKept: mediaKept, mediaMoved: mediaMoved, titleSaved: titleSaved))
     }
 
     // MARK: - Trash

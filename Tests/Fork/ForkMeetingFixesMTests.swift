@@ -16,6 +16,9 @@ enum ForkMeetingFixesMTests {
         bulk(suite)
         ownMedia(suite)
         caseOnly(suite)
+        renameTable(suite)
+        renamedRow(suite)
+        lock(suite)
         texts(suite)
     }
 
@@ -211,6 +214,87 @@ enum ForkMeetingFixesMTests {
         let other = ForkMeetingFolder.mediaRenames(from: lower, to: upper, names: names + ["\(upper).MP4"])
         suite.expect(other.blocked == ["\(lower).mp4"] && other.moves.map(\.from) == ["\(lower).m4a"],
                      "on a volume that tells cases apart, another file holding the new name still blocks the move")
+    }
+
+    // MARK: - M.2 Writes during a rename
+
+    private static func renameTable(_ suite: TestSuite) {
+        var table = ForkMeetingRenameTable()
+        suite.expect(table.resolve("/M/a") == "/M/a", "a folder never renamed is written where it is")
+        table.record(from: "/M/a", to: "/M/b")
+        suite.expect(table.resolve("/M/a") == "/M/b" && table.resolve("/M/b") == "/M/b",
+                     "a note sent to the old name while the folder moved lands in the renamed folder")
+        table.record(from: "/M/b", to: "/M/c")
+        suite.expect(table.resolve("/M/a") == "/M/c", "through two renames in a row")
+        table.record(from: "/M/c", to: "/M/a")
+        suite.expect(table.resolve("/M/a") == "/M/a" && table.resolve("/M/b") == "/M/a",
+                     "a folder renamed back to an old name never loops")
+        table.forget("/M/b")
+        table.forget("/M/c")
+        suite.expect(table.moves.isEmpty && table.resolve("/M/b") == "/M/b",
+                     "once the window writes to the new name, the old one is free again for another folder")
+        var same = ForkMeetingRenameTable()
+        same.record(from: "/M/a", to: "/M/a")
+        suite.expect(same.moves.isEmpty, "a rename that kept the name records nothing")
+    }
+
+    private static func renamedRow(_ suite: TestSuite) {
+        let old = "2026-10-18 10h02 — Weekly sync"
+        let new = "2026-10-18 10h02 — Point Acme"
+        guard let row = entry(meeting(), folderName: old) else {
+            suite.expect(false, "the row is built")
+            return
+        }
+        let moved = row.renamed(to: new, media: [ForkMeetingFolder.Move(from: "\(old).mp4", to: "\(new).mp4")],
+                                title: "Point Acme")
+        suite.expect(moved.folderName == new && moved.video == "\(new).mp4" && moved.playable == "\(new).mp4"
+                        && moved.audio == "\(old).m4a" && moved.title == "Point Acme",
+                     "a renamed row shows its new folder, its media under the names they now have, and its title")
+        suite.expect(moved.identity == row.identity && moved.id == row.id && moved.notes == row.notes,
+                     "it is the same meeting for the detail: its fields, focus and player stay")
+        suite.expect(row.renamed(to: old, media: [], title: "").title == nil
+                        && row.renamed(to: old, media: [], title: nil).title == "Weekly sync",
+                     "a cleared title shows the default name; a title not saved stays as it was")
+        if let unreadable = ForkMeetingLibraryEntry(folderName: old, sidecar: .failure(.corrupt("x")),
+                                                    contents: contents(folderName: old), calendar: paris) {
+            suite.expect(unreadable.identity != row.identity && unreadable.identity.contains(old),
+                         "a record without an id is kept by its folder's name")
+        }
+        suite.expect(ForkMeetingRename.folderLags(folderName: old, startedAt: date(2026, 10, 18), title: "Point Acme",
+                                                  calendar: paris)
+                        && !ForkMeetingRename.folderLags(folderName: new, startedAt: date(2026, 10, 18), title: "Point Acme",
+                                                         calendar: paris)
+                        && !ForkMeetingRename.folderLags(folderName: "Rangé à la main", startedAt: date(2026, 10, 18),
+                                                         title: "Point Acme", calendar: paris)
+                        && !ForkMeetingRename.folderLags(folderName: old, startedAt: nil, title: "Point Acme", calendar: paris)
+                        && ForkMeetingRename.folderLags(folderName: "2026-10-18 10h02 — point acme",
+                                                        startedAt: date(2026, 10, 18), title: "Point Acme", calendar: paris),
+                     "committing the title renames a folder that lags behind it, even with nothing typed; never one filed by hand")
+    }
+
+    // MARK: - M.m The lock of another copy
+
+    private static func lock(_ suite: TestSuite) {
+        func contents(master: Bool = false, draft: Bool = false) -> ForkMeetingFolder.Contents {
+            var names = ["\(folder).mp4", "meeting.json"]
+            if master { names.append(ForkMeetingFolder.masterName) }
+            if draft { names.append(ForkMeetingFolder.videoDraftName) }
+            return ForkMeetingFolder.contents(of: names, folderName: folder)
+        }
+        func state(_ value: ForkMeetingSidecar.State?) -> Result<ForkMeetingSidecar, ForkMeetingSidecarFault> {
+            var sidecar = meeting()
+            sidecar.state = value
+            return .success(sidecar)
+        }
+        suite.expect(ForkMeetingLibraryLock.mayBeHeldElsewhere(state(.recording), contents: contents(master: true))
+                        && ForkMeetingLibraryLock.mayBeHeldElsewhere(state(.finalizing), contents: contents())
+                        && ForkMeetingLibraryLock.mayBeHeldElsewhere(state(.interrupted), contents: contents()),
+                     "an unfinished meeting, interrupted included, is asked about before the library writes to it")
+        suite.expect(ForkMeetingLibraryLock.mayBeHeldElsewhere(state(.complete), contents: contents(master: true))
+                        && ForkMeetingLibraryLock.mayBeHeldElsewhere(state(.complete), contents: contents(draft: true))
+                        && !ForkMeetingLibraryLock.mayBeHeldElsewhere(state(.complete), contents: contents())
+                        && ForkMeetingLibraryLock.mayBeHeldElsewhere(.failure(.corrupt("x")), contents: contents()),
+                     "a complete meeting with leftovers of a recording is asked about too; a clean one is not")
     }
 
     // MARK: - Texts
