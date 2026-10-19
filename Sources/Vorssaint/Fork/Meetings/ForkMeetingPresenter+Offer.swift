@@ -351,7 +351,7 @@ extension ForkMeetingPresenter {
                              action: actions.always)]
             : []
         card.menu += [
-            NotchMenuItem(title: text.offerNever(provider), action: actions.never),
+            NotchMenuItem(title: ForkMeetingOfferText.neverTitle(candidate, strings: text), action: actions.never),
             .separator,
             NotchMenuItem(title: text.copyAnnouncement, action: actions.copyAnnouncement),
         ]

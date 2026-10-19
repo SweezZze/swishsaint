@@ -54,7 +54,8 @@ enum ForkMeetingStringsTests {
                                             .microphoneSilent, .diskLow(minutesLeft: 25), .displayChanged, .sourceGone,
                                             .discarded(.trashed), .discarded(.deleted),
                                             .discarded(.kept), .announcementCopied]
-            + names.map { .neverOffered($0) } + alwaysNames.flatMap { [.alwaysChosen($0), .askedAgain($0)] }
+            + names.map { .neverOffered($0) } + [.neverOfferedWebCalls]
+            + alwaysNames.flatMap { [.alwaysChosen($0), .askedAgain($0)] }
             + ForkMeetingFailure.all.map { .failure($0) }
         var tooLong: [String] = []
         for (language, strings) in zip(languages, allStrings) {

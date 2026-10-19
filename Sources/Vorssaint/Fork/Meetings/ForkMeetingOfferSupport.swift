@@ -357,6 +357,20 @@ enum ForkMeetingOfferText {
         candidate.providerShortName.isEmpty ? candidate.providerName : candidate.providerShortName
     }
 
+    // MARK: Fixes K
+
+    /// A call in a browser other than Google Meet (Zoom's web client,
+    /// Whereby, Jitsi Meet, Teams on the web): one choice for all of them.
+    static func isOtherWebCall(_ candidate: ForkMeetingCandidate) -> Bool {
+        candidate.provider == ForkMeetingProvider.otherWebCalls.first?.id
+    }
+
+    /// The menu's "Never": for the provider ("Never for Zoom"), or for the
+    /// other web calls together, which that choice covers.
+    static func neverTitle(_ candidate: ForkMeetingCandidate, strings s: ForkMeetingStrings) -> String {
+        isOtherWebCall(candidate) ? s.offerNeverWebCalls : s.offerNever(reminderTitle(candidate))
+    }
+
     /// "Meeting over? Stopping in 12 s", as the pill shows it.
     static func endingSoon(until: Date, now: Date, strings s: ForkMeetingStrings) -> String {
         s.endingSoonTitle + " " + s.endingSoon(seconds: ForkMeetingOfferTiming.secondsLeft(until: until, now: now))

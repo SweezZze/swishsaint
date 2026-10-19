@@ -436,6 +436,12 @@ struct ForkMeetingStrings {
     /// FaceTime's row: an iPhone call relayed to the Mac runs in FaceTime's
     /// system process too, and may be offered.
     let detectionFaceTimeRelayed: String
+    /// The offer's menu for a call in a browser other than Google Meet: one
+    /// choice for all of them (`web`), so the menu names them together.
+    let offerNeverWebCalls: String
+    /// After it: the notice (28 characters at most) and what VoiceOver says.
+    let noticeNeverWebCalls: String
+    let voiceNeverWebCalls: String
 
     func noticeAskAgain(_ provider: String) -> String { String(format: noticeAskAgainFormat, provider) }
     func voiceAskAgain(_ provider: String) -> String { String(format: voiceAskAgainFormat, provider) }
@@ -714,7 +720,10 @@ extension ForkMeetingStrings {
         noticeAskAgainFormat: "Back to Offer for %@",
         voiceAskAgainFormat: "Meetings from %@ will be offered again.",
         // MARK: Fixes K
-        detectionFaceTimeRelayed: "A phone call relayed from your iPhone may be offered too."
+        detectionFaceTimeRelayed: "A phone call relayed from your iPhone may be offered too.",
+        offerNeverWebCalls: "Never for other web calls",
+        noticeNeverWebCalls: "Other web calls: Never",
+        voiceNeverWebCalls: "Calls in a browser other than Google Meet will no longer be offered."
     )
 }
 
@@ -972,7 +981,10 @@ extension ForkMeetingStrings {
         noticeAskAgainFormat: "Oferecer de novo: %@",
         voiceAskAgainFormat: "As reuniões do %@ voltarão a ser oferecidas.",
         // MARK: Fixes K
-        detectionFaceTimeRelayed: "Uma ligação telefônica retransmitida pelo iPhone também pode ser oferecida."
+        detectionFaceTimeRelayed: "Uma ligação telefônica retransmitida pelo iPhone também pode ser oferecida.",
+        offerNeverWebCalls: "Nunca para outras chamadas na web",
+        noticeNeverWebCalls: "Outras chamadas web: Nunca",
+        voiceNeverWebCalls: "As chamadas no navegador que não sejam do Google Meet não serão mais oferecidas."
     )
 }
 
@@ -1230,7 +1242,10 @@ extension ForkMeetingStrings {
         noticeAskAgainFormat: "%@ için yine Öner",
         voiceAskAgainFormat: "%@ toplantıları yeniden önerilecek.",
         // MARK: Fixes K
-        detectionFaceTimeRelayed: "iPhone’unuzdan aktarılan bir telefon araması da önerilebilir."
+        detectionFaceTimeRelayed: "iPhone’unuzdan aktarılan bir telefon araması da önerilebilir.",
+        offerNeverWebCalls: "Diğer web görüşmeleri için asla",
+        noticeNeverWebCalls: "Diğer web görüşmeleri: Asla",
+        voiceNeverWebCalls: "Google Meet dışındaki tarayıcı görüşmeleri artık önerilmeyecek."
     )
 }
 
@@ -1488,7 +1503,10 @@ extension ForkMeetingStrings {
         noticeAskAgainFormat: "Снова «Предлагать»: %@",
         voiceAskAgainFormat: "Встречи %@ снова будут предлагаться.",
         // MARK: Fixes K
-        detectionFaceTimeRelayed: "Телефонный звонок, переданный с iPhone, тоже может быть предложен."
+        detectionFaceTimeRelayed: "Телефонный звонок, переданный с iPhone, тоже может быть предложен.",
+        offerNeverWebCalls: "Никогда для других звонков в браузере",
+        noticeNeverWebCalls: "Другие веб-звонки: Никогда",
+        voiceNeverWebCalls: "Звонки в браузере, кроме Google Meet, больше не будут предлагаться."
     )
 }
 
@@ -1746,7 +1764,10 @@ extension ForkMeetingStrings {
         noticeAskAgainFormat: "Ofrecer otra vez: %@",
         voiceAskAgainFormat: "Las reuniones de %@ se volverán a ofrecer.",
         // MARK: Fixes K
-        detectionFaceTimeRelayed: "Una llamada telefónica retransmitida desde tu iPhone también puede ofrecerse."
+        detectionFaceTimeRelayed: "Una llamada telefónica retransmitida desde tu iPhone también puede ofrecerse.",
+        offerNeverWebCalls: "Nunca para otras llamadas web",
+        noticeNeverWebCalls: "Otras llamadas web: Nunca",
+        voiceNeverWebCalls: "Las llamadas en el navegador que no sean de Google Meet ya no se ofrecerán."
     )
 }
 
@@ -2004,7 +2025,10 @@ extension ForkMeetingStrings {
         noticeAskAgainFormat: "Znova Ponúknuť pre %@",
         voiceAskAgainFormat: "Stretnutia %@ sa budú znova ponúkať.",
         // MARK: Fixes K
-        detectionFaceTimeRelayed: "Ponúknuť sa môže aj telefonický hovor presmerovaný z iPhonu."
+        detectionFaceTimeRelayed: "Ponúknuť sa môže aj telefonický hovor presmerovaný z iPhonu.",
+        offerNeverWebCalls: "Nikdy pre iné hovory na webe",
+        noticeNeverWebCalls: "Iné hovory na webe: Nikdy",
+        voiceNeverWebCalls: "Hovory v prehliadači okrem Google Meet sa už nebudú ponúkať."
     )
 }
 
@@ -2262,7 +2286,10 @@ extension ForkMeetingStrings {
         noticeAskAgainFormat: "Wieder Anbieten für %@",
         voiceAskAgainFormat: "Besprechungen von %@ werden wieder angeboten.",
         // MARK: Fixes K
-        detectionFaceTimeRelayed: "Auch ein vom iPhone weitergeleiteter Telefonanruf kann angeboten werden."
+        detectionFaceTimeRelayed: "Auch ein vom iPhone weitergeleiteter Telefonanruf kann angeboten werden.",
+        offerNeverWebCalls: "Nie für andere Anrufe im Web",
+        noticeNeverWebCalls: "Andere Web-Anrufe: Nie",
+        voiceNeverWebCalls: "Anrufe im Browser außer Google Meet werden nicht mehr angeboten."
     )
 }
 
@@ -2510,7 +2537,7 @@ extension ForkMeetingStrings {
         noticeAnnouncementCopiedDetail: "À coller dans la discussion",
         undoAutoStartedFormat: "Auto · %@\u{00A0}: Toujours",
         // MARK: Apps
-        detectionOtherWebCalls: "Autres appels sur le web",
+        detectionOtherWebCalls: "Autres visios web",
         detectionOtherWebCallsCaption: "Zoom, Whereby, Jitsi Meet ou Teams dans un navigateur\u{00A0}: proposés seulement pendant que le navigateur utilise le micro.",
         detectionUnavailable: "Pas sur ce Mac",
         detectionFaceTimeWholeMac: "FaceTime enregistre le son de tout le Mac, notifications et musique comprises.",
@@ -2520,7 +2547,10 @@ extension ForkMeetingStrings {
         noticeAskAgainFormat: "Retour à Proposer\u{00A0}: %@",
         voiceAskAgainFormat: "Les réunions %@ seront de nouveau proposées.",
         // MARK: Fixes K
-        detectionFaceTimeRelayed: "Un appel téléphonique relayé par l’iPhone peut aussi être proposé."
+        detectionFaceTimeRelayed: "Un appel téléphonique relayé par l’iPhone peut aussi être proposé.",
+        offerNeverWebCalls: "Jamais pour les autres visios web",
+        noticeNeverWebCalls: "Autres visios web\u{00A0}: Jamais",
+        voiceNeverWebCalls: "Les visios dans un navigateur autres que Google Meet ne seront plus proposées."
     )
 }
 
@@ -2778,7 +2808,10 @@ extension ForkMeetingStrings {
         noticeAskAgainFormat: "Di nuovo Proponi: %@",
         voiceAskAgainFormat: "Le riunioni di %@ saranno di nuovo proposte.",
         // MARK: Fixes K
-        detectionFaceTimeRelayed: "Anche una telefonata inoltrata dall’iPhone può essere proposta."
+        detectionFaceTimeRelayed: "Anche una telefonata inoltrata dall’iPhone può essere proposta.",
+        offerNeverWebCalls: "Mai per le altre chiamate sul web",
+        noticeNeverWebCalls: "Altre chiamate web: Mai",
+        voiceNeverWebCalls: "Le chiamate nel browser diverse da Google Meet non saranno più proposte."
     )
 }
 
@@ -3036,7 +3069,10 @@ extension ForkMeetingStrings {
         noticeAskAgainFormat: "%@ は再び「提案する」",
         voiceAskAgainFormat: "%@ のミーティングは再び提案されます。",
         // MARK: Fixes K
-        detectionFaceTimeRelayed: "iPhone から中継された電話も提案されることがあります。"
+        detectionFaceTimeRelayed: "iPhone から中継された電話も提案されることがあります。",
+        offerNeverWebCalls: "その他の Web 通話では録画しない",
+        noticeNeverWebCalls: "その他の Web 通話：提案しない",
+        voiceNeverWebCalls: "Google Meet 以外のブラウザの通話は今後提案されません。"
     )
 }
 
@@ -3294,7 +3330,10 @@ extension ForkMeetingStrings {
         noticeAskAgainFormat: "%@: 다시 제안",
         voiceAskAgainFormat: "%@ 회의가 다시 제안됩니다.",
         // MARK: Fixes K
-        detectionFaceTimeRelayed: "iPhone에서 중계된 전화 통화도 제안될 수 있습니다."
+        detectionFaceTimeRelayed: "iPhone에서 중계된 전화 통화도 제안될 수 있습니다.",
+        offerNeverWebCalls: "기타 웹 통화에서 녹화 안 함",
+        noticeNeverWebCalls: "기타 웹 통화: 안 함",
+        voiceNeverWebCalls: "Google Meet 외의 브라우저 통화는 더 이상 제안되지 않습니다."
     )
 }
 
@@ -3552,7 +3591,10 @@ extension ForkMeetingStrings {
         noticeAskAgainFormat: "Знову пропонувати: %@",
         voiceAskAgainFormat: "Зустрічі %@ знову пропонуватимуться.",
         // MARK: Fixes K
-        detectionFaceTimeRelayed: "Телефонний дзвінок, переданий з iPhone, теж може бути запропонований."
+        detectionFaceTimeRelayed: "Телефонний дзвінок, переданий з iPhone, теж може бути запропонований.",
+        offerNeverWebCalls: "Ніколи для інших дзвінків у браузері",
+        noticeNeverWebCalls: "Інші веб-дзвінки: Ніколи",
+        voiceNeverWebCalls: "Дзвінки в браузері, крім Google Meet, більше не пропонуватимуться."
     )
 }
 
@@ -3810,7 +3852,10 @@ extension ForkMeetingStrings {
         noticeAskAgainFormat: "%@ 改回“提议”",
         voiceAskAgainFormat: "将重新提议录制 %@ 会议。",
         // MARK: Fixes K
-        detectionFaceTimeRelayed: "通过 iPhone 转接的电话也可能会被提议录制。"
+        detectionFaceTimeRelayed: "通过 iPhone 转接的电话也可能会被提议录制。",
+        offerNeverWebCalls: "其他网页通话永不录制",
+        noticeNeverWebCalls: "其他网页通话：从不",
+        voiceNeverWebCalls: "将不再提议录制浏览器中除 Google Meet 以外的通话。"
     )
 }
 
@@ -4068,7 +4113,10 @@ extension ForkMeetingStrings {
         noticeAskAgainFormat: "%@ 改回「提議」",
         voiceAskAgainFormat: "將重新提議錄製 %@ 會議。",
         // MARK: Fixes K
-        detectionFaceTimeRelayed: "透過 iPhone 轉接的電話也可能會被提議錄製。"
+        detectionFaceTimeRelayed: "透過 iPhone 轉接的電話也可能會被提議錄製。",
+        offerNeverWebCalls: "其他網頁通話永不錄製",
+        noticeNeverWebCalls: "其他網頁通話：永不",
+        voiceNeverWebCalls: "將不再提議錄製瀏覽器中 Google Meet 以外的通話。"
     )
 }
 
@@ -4326,6 +4374,9 @@ extension ForkMeetingStrings {
         noticeAskAgainFormat: "%@ 改回「提議」",
         voiceAskAgainFormat: "將重新提議錄製 %@ 會議。",
         // MARK: Fixes K
-        detectionFaceTimeRelayed: "透過 iPhone 轉駁的電話也可能會被提議錄製。"
+        detectionFaceTimeRelayed: "透過 iPhone 轉駁的電話也可能會被提議錄製。",
+        offerNeverWebCalls: "其他網頁通話永不錄製",
+        noticeNeverWebCalls: "其他網頁通話：永不",
+        voiceNeverWebCalls: "將不再提議錄製瀏覽器中 Google Meet 以外的通話。"
     )
 }

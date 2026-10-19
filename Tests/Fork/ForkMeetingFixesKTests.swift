@@ -23,6 +23,7 @@ enum ForkMeetingFixesKTests {
         aWebCallLivesOnItsMicrophone(suite)
         aChannelCalledHuddle(suite)
         theAppsOwnWindow(suite)
+        neverForTheOtherWebCalls(suite)
     }
 
     // MARK: - Fixtures
@@ -397,5 +398,57 @@ enum ForkMeetingFixesKTests {
         let line = ForkMeetingOfferText.capture(target: .window, windowApp: "Slack", hasWindow: false, sound: .app,
                                                 soundApp: "Slack", microphone: .named("AirPods"), strings: french)
         suite.expect(line.hasPrefix("Écran entier"), "and its offer says so: « \(line) »")
+    }
+
+    // MARK: - K.I7: one "Never" for the other web calls, said so
+
+    /// Probe P4: "Never" from a Jitsi Meet offer covers every web call.
+    private static func neverForTheOtherWebCalls(_ suite: TestSuite) {
+        var jitsi = Live()
+        let tab = chrome("Point hebdo | Jitsi Meet")
+        jitsi.read(-5, microphones: [chromeMicrophone])
+        jitsi.read(0, windows: [tab], microphones: [chromeMicrophone])
+        jitsi.read(3, windows: [tab], microphones: [chromeMicrophone])
+        guard let offer = jitsi.offers.first else { return suite.expect(false, "the Jitsi room is offered") }
+        let english = ForkMeetingStrings.strings(.enUS)
+        let french = ForkMeetingStrings.strings(.fr)
+        suite.expect(ForkMeetingOfferText.neverTitle(offer.candidate, strings: english) == "Never for other web calls"
+                        && ForkMeetingOfferText.neverTitle(offer.candidate, strings: french)
+                            == "Jamais pour les autres visios web",
+                     "its menu says « Jamais pour les autres visios web », not « Jamais pour Jitsi Meet »")
+        jitsi.effects = []
+        jitsi.send(.dismiss(.never), 4)
+        let policy = jitsi.effects.compactMap { effect -> String? in
+            if case let .setPolicy(policy, provider) = effect { return "\(provider):\(policy.rawValue)" }
+            return nil
+        }
+        let notices = jitsi.effects.compactMap { effect -> ForkMeetingNotice? in
+            if case let .notice(notice) = effect { return notice }
+            return nil
+        }
+        suite.expect(policy == ["web:never"] && notices == [.neverOfferedWebCalls] && jitsi.said == [.neverOfferedWebCalls]
+                        && ForkMeetingNotice.neverOfferedWebCalls.title(french) == "Autres visios web\u{00A0}: Jamais"
+                        && ForkMeetingNotice.neverOfferedWebCalls.detail(french) == french.noticeNeverDetail
+                        && ForkMeetingAnnouncement.neverOfferedWebCalls.text(english)
+                            == "Calls in a browser other than Google Meet will no longer be offered.",
+                     "Never stores web:never, and says it for every web call: « Autres visios web : Jamais »")
+        let row = ForkMeetingProviderTable.current.policyRows.last
+        suite.expect(row?.id == "web" && row?.name == nil && french.detectionOtherWebCalls == "Autres visios web",
+                     "the page's row is « Autres visios web »")
+
+        var zoom = Live()
+        zoom.read(0, microphones: [zoomMicrophone])
+        zoom.read(2, microphones: [zoomMicrophone])
+        zoom.effects = []
+        zoom.send(.dismiss(.never), 3)
+        suite.expect(zoom.said == [.neverOffered("Zoom")]
+                        && zoom.offers.isEmpty
+                        && ForkMeetingOfferText.neverTitle(ForkMeetingCandidate(
+                            identity: identity("zoom:500#1"), provider: "zoom", providerName: "Zoom",
+                            providerShortName: "Zoom", appBundle: "us.zoom.xos", pid: zoomPID, defaultSound: .app,
+                            policy: .ask, silenced: false, bornAt: t0), strings: english) == "Never for Zoom",
+                     "an app's Never stays its own: « Never for Zoom »")
+        let long = AppLanguage.allCases.filter { ForkMeetingStrings.strings($0).noticeNeverWebCalls.count > 28 }
+        suite.expect(long.isEmpty, "the notice fits the island in every language: \(long)")
     }
 }

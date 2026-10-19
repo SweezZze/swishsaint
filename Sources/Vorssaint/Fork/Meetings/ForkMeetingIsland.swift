@@ -57,7 +57,7 @@ enum ForkMeetingIsland {
         case .sourceGone: return "rectangle.on.rectangle.slash"
         case .failure: return "exclamationmark.triangle.fill"
         case .soundLost: return "speaker.slash"
-        case .neverOffered: return "bell.slash"
+        case .neverOffered, .neverOfferedWebCalls: return "bell.slash"
         case .alwaysChosen: return "bolt.circle"
         case .discarded(.kept): return "exclamationmark.triangle.fill"
         case .discarded: return "trash"

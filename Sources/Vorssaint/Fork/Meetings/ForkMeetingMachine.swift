@@ -117,6 +117,8 @@ enum ForkMeetingNotice: Equatable {
     case soundLost
     /// "Never for Meet" was chosen; the provider's short name.
     case neverOffered(String)
+    /// "Never for other web calls" was chosen: one choice for them all.
+    case neverOfferedWebCalls
     /// "Always for Meet" was chosen; the provider's short name.
     case alwaysChosen(String)
     /// After "Cancel", once the folder is gone (or not).
@@ -142,6 +144,7 @@ enum ForkMeetingNotice: Equatable {
         case let .failure(failure): return failure.summary(s)
         case .soundLost: return s.noticeSoundLost
         case let .neverOffered(provider): return s.noticeNever(provider)
+        case .neverOfferedWebCalls: return s.noticeNeverWebCalls
         case let .alwaysChosen(provider): return s.offerAlways(provider)
         case .discarded(.trashed): return s.noticeDiscardedTrash
         case .discarded(.deleted): return s.noticeDiscardedDeleted
@@ -157,7 +160,7 @@ enum ForkMeetingNotice: Equatable {
         switch self {
         case let .microphone(name): return name
         case let .diskLow(minutes): return s.diskMinutes(minutes)
-        case .neverOffered, .alwaysChosen, .askedAgain: return s.noticeNeverDetail
+        case .neverOffered, .neverOfferedWebCalls, .alwaysChosen, .askedAgain: return s.noticeNeverDetail
         case .discarded(.kept): return s.noticeDiscardKeptDetail
         case .announcementCopied: return s.noticeAnnouncementCopiedDetail
         case .started, .resumed, .saved, .recovered, .microphoneSilent, .displayChanged, .sourceGone, .failure,
@@ -194,6 +197,8 @@ enum ForkMeetingAnnouncement: Equatable {
     /// once it is gone (`ForkMeetingDiscardOutcome.spokenAfterCancel`).
     case discarded
     case neverOffered(String)
+    /// "Never for other web calls".
+    case neverOfferedWebCalls
     /// The meeting came back during the countdown: it goes on, so does
     /// the recording.
     case meetingBack
@@ -226,6 +231,7 @@ enum ForkMeetingAnnouncement: Equatable {
         case .continued: return s.voiceContinued
         case .discarded: return s.voiceCancelled
         case let .neverOffered(provider): return s.voiceNever(provider)
+        case .neverOfferedWebCalls: return s.voiceNeverWebCalls
         case .meetingBack: return s.voiceMeetingBack
         case let .askedAgain(provider): return s.voiceAskAgain(provider)
         }
@@ -1034,9 +1040,12 @@ struct ForkMeetingMachine {
             case .thisTime:
                 return [.hideOffer, .silence(candidate.identity)]
             case .never:
-                return [.hideOffer, .setPolicy(.never, provider: candidate.provider),
-                        .notice(.neverOffered(candidate.providerShortName)),
-                        .announce(.neverOffered(candidate.providerShortName))]
+                // The other web calls share one choice: said for them all,
+                // never as if it were Jitsi Meet's alone.
+                let said: (ForkMeetingNotice, ForkMeetingAnnouncement) = ForkMeetingOfferText.isOtherWebCall(candidate)
+                    ? (.neverOfferedWebCalls, .neverOfferedWebCalls)
+                    : (.neverOffered(candidate.providerShortName), .neverOffered(candidate.providerShortName))
+                return [.hideOffer, .setPolicy(.never, provider: candidate.provider), .notice(said.0), .announce(said.1)]
             }
 
         case let .endProbable(identity, _):
