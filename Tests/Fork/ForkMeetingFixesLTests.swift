@@ -19,6 +19,7 @@ enum ForkMeetingFixesLTests {
         theSameAppMeetingBack(suite)
         notNowHoldsAfterAGap(suite)
         backToBackMeetings(suite)
+        aHuddleTitledWithAHyphen(suite)
     }
 
     // MARK: - Fixtures
@@ -295,5 +296,19 @@ enum ForkMeetingFixesLTests {
         suite.expect(shareEnded.isEmpty && share.last.candidates.map(\.identity) == [identity("zoom:500#1")]
                         && share.offers.allSatisfy { $0.candidate.identity == identity("zoom:500#1") },
                      "its window redrawn with the microphone on: the same meeting, followed in its new window")
+    }
+
+    // MARK: - L.I4: Slack's huddle window with a hyphen
+
+    /// Probe R2: Slack titles its windows with " - ".
+    private static func aHuddleTitledWithAHyphen(_ suite: TestSuite) {
+        let rules = ForkMeetingTitleRuleSet.slackHuddle
+        let huddles = ["Huddle - Acme - Slack", "Huddle with Alice - Acme - Slack", "Huddle: design - Acme - Slack",
+                       "Huddle – Acme – Slack", "Huddle"]
+        let others = ["huddle-notes (Channel) - Acme - Slack", "huddle (Channel) - Acme - Slack", "Slack | Huddle",
+                      "Alice (DM) - Acme - Slack", "huddles - Acme - Slack"]
+        let wrong = huddles.filter { ForkMeetingTitleRules.verdict($0, rules: rules) != .meeting(code: nil, name: nil) }
+            + others.filter { ForkMeetingTitleRules.verdict($0, rules: rules) != .none }
+        suite.expect(wrong.isEmpty, "« Huddle - Acme - Slack » is a huddle window, « huddle-notes » no huddle: \(wrong)")
     }
 }

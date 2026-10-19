@@ -46,17 +46,20 @@ extension ForkMeetingTitleRules {
         "zoom會議", "zoom網路研討會",
     ]
 
-    /// "Huddle", "Huddle: #design" or "Huddle – Acme" at the head of the
-    /// title, as Slack titles a huddle's window. Slack writes a channel's
-    /// name without its "#" ("huddle-notes (Channel) - Acme - Slack"), and a
-    /// channel's name may hold a "-": only "|" and "–" part the title, and a
-    /// channel called "huddle" or "huddle-notes" is no huddle.
+    /// "Huddle", "Huddle: #design", "Huddle with Alice" or "Huddle – Acme"
+    /// at the head of the title, as Slack titles a huddle's window ("Huddle
+    /// - Acme - Slack"). Slack writes a channel's name without its "#"
+    /// ("huddle-notes (Channel) - Acme - Slack"), and a channel's name may
+    /// hold a "-" but never a space: "|", "–" and a "-" between two spaces
+    /// part the title, and a channel called "huddle" or "huddle-notes" is
+    /// no huddle.
     private static func isHuddle(_ normalized: String) -> Bool {
         let separators: Set<Character> = ["|", "\u{2013}"]
-        guard let head = normalized.split(omittingEmptySubsequences: false, whereSeparator: separators.contains).first
+        let parted = normalized.replacingOccurrences(of: " - ", with: "|")
+        guard let head = parted.split(omittingEmptySubsequences: false, whereSeparator: separators.contains).first
         else { return false }
         let words = head.trimmingCharacters(in: .whitespaces)
-        return words == "huddle" || words.hasPrefix("huddle:")
+        return words == "huddle" || words.hasPrefix("huddle:") || words.hasPrefix("huddle with ")
     }
 
     /// Teams on the web, only on a call: the address of one (a meeting's
