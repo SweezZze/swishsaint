@@ -4,19 +4,21 @@
 import Carbon.HIToolbox
 import Foundation
 
-/// The meetings' start and stop shortcut, as a Carbon hotkey like the
-/// official Keep Awake one: unlike dictation's event tap it needs no
-/// permission at all, which suits a feature that never asks for
+/// One of the meetings' shortcuts (start and stop, pause, mark), as a Carbon
+/// hotkey like the official Keep Awake one: unlike dictation's event tap it
+/// needs no permission at all, which suits a feature that never asks for
 /// Accessibility. Installed only while the feature is on with a usable
-/// combination (`ForkMeetingService.syncHotKey`), removed otherwise.
+/// combination, and for pausing and marking while a meeting records
+/// (`ForkMeetingService.syncHotKey`); removed otherwise.
 ///
 /// Main thread only.
 final class ForkMeetingHotKey {
     /// 'SwMt'. The dispatcher hands every registered hotkey to every
     /// handler, so the signature tells ours from the official ones.
     private static let signature: OSType = 0x5377_4D74
-    private static let identifier: UInt32 = 1
 
+    /// Tells the meetings' hotkeys apart under the one signature.
+    let identifier: UInt32
     private var hotKeyRef: EventHotKeyRef?
     private var eventHandler: EventHandlerRef?
     private(set) var registered: GlobalShortcut?
@@ -24,7 +26,8 @@ final class ForkMeetingHotKey {
     private(set) var isRefused = false
     let onPress: () -> Void
 
-    init(onPress: @escaping () -> Void) {
+    init(identifier: UInt32 = 1, onPress: @escaping () -> Void) {
+        self.identifier = identifier
         self.onPress = onPress
     }
 
@@ -41,7 +44,7 @@ final class ForkMeetingHotKey {
         installHandlerIfNeeded()
         var ref: EventHotKeyRef?
         let status = RegisterEventHotKey(shortcut.carbonKeyCode, shortcut.carbonModifiers,
-                                         EventHotKeyID(signature: Self.signature, id: Self.identifier),
+                                         EventHotKeyID(signature: Self.signature, id: identifier),
                                          GetEventDispatcherTarget(), 0, &ref)
         if status == noErr, let ref {
             hotKeyRef = ref
@@ -68,12 +71,12 @@ final class ForkMeetingHotKey {
             var id = EventHotKeyID()
             GetEventParameter(event, EventParamName(kEventParamDirectObject), EventParamType(typeEventHotKeyID),
                               nil, MemoryLayout<EventHotKeyID>.size, nil, &id)
-            // Another feature's key: handed back, so the dispatcher goes on
-            // to its own handler.
-            guard id.signature == ForkMeetingHotKey.signature, id.id == ForkMeetingHotKey.identifier else {
+            // Another feature's key, or another of ours: handed back, so the
+            // dispatcher goes on to its own handler.
+            let hotKey = Unmanaged<ForkMeetingHotKey>.fromOpaque(userData).takeUnretainedValue()
+            guard id.signature == ForkMeetingHotKey.signature, id.id == hotKey.identifier else {
                 return OSStatus(eventNotHandledErr)
             }
-            let hotKey = Unmanaged<ForkMeetingHotKey>.fromOpaque(userData).takeUnretainedValue()
             DispatchQueue.main.async { hotKey.onPress() }
             return noErr
         }, 1, &spec, Unmanaged.passUnretained(self).toOpaque(), &eventHandler)

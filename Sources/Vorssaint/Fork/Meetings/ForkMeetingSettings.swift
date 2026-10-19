@@ -56,6 +56,8 @@ struct ForkMeetingSettings: View {
         ForkMeetingTranscriptSection(text: text)
         ForkMeetingExportsSection(text: text)
             .disabled(!enabled)
+        ForkMeetingNotifySection(text: text)
+            .disabled(!enabled)
         ForkMeetingAdvancedSection(text: text)
             .disabled(!enabled)
     }
@@ -146,6 +148,7 @@ private struct ForkMeetingRecordSection: View {
     let text: ForkMeetingStrings
 
     @ObservedObject private var service = ForkMeetingService.shared
+    @ObservedObject private var finalizer = ForkMeetingFinalizer.shared
     @AppStorage(ForkDefaultsKey.meetingsEnabled) private var enabled = false
     @AppStorage(ForkDefaultsKey.meetingsConsentAcknowledged) private var acknowledged = false
     @AppStorage(ForkDefaultsKey.meetingsShortcut) private var shortcutStorage = ""
@@ -184,9 +187,15 @@ private struct ForkMeetingRecordSection: View {
     }
 
     /// A meeting still finishing says so, the feature turned off or not.
+    /// Recording or paused, with the time the pill shows; finishing, with
+    /// the share of the final pass done.
     @ViewBuilder
     private var status: some View {
-        if service.isRecording && service.isPaused {
+        if service.isRecording, let clock = service.liveClock {
+            ForkMeetingLiveStatus(clock: clock, paused: service.isPaused, text: text)
+        } else if service.isBusy, !service.isStarting, !service.isRecording, let progress = finalizer.progress {
+            ForkMeetingFinishingStatus(fraction: progress.fraction, text: text)
+        } else if service.isRecording && service.isPaused {
             Label(text.statePaused, systemImage: "pause.circle.fill")
                 .font(.callout)
                 .foregroundStyle(.orange)
@@ -262,6 +271,7 @@ private struct ForkMeetingPermissionsSection: View {
                 PermissionRow(kind: .microphone)
             }
             ForkMeetingSystemAudioRow(text: text)
+            ForkMeetingNotificationsRow(text: text)
         }
     }
 }
@@ -601,12 +611,39 @@ private struct ForkMeetingCalendarRow: View {
 
 // MARK: - Shortcut
 
-/// One combination that starts a recording, or stops the one running, from
-/// any app. Refused when it cannot work, with the reason.
+/// The combinations that start or stop a recording from any app, and that
+/// pause it or mark a moment in it while it records. Each one refused when
+/// it cannot work, with the reason.
 private struct ForkMeetingShortcutSection: View {
     let text: ForkMeetingStrings
 
-    @AppStorage(ForkDefaultsKey.meetingsShortcut) private var stored = ""
+    var body: some View {
+        Section(text.shortcutTitle) {
+            ForkMeetingShortcutRow(role: .toggle, label: text.shortcutLabel, text: text)
+            caption(text.shortcutCaption)
+            ForkMeetingShortcutRow(role: .pause, label: text.shortcutPauseLabel, text: text)
+            ForkMeetingShortcutRow(role: .marker, label: text.shortcutMarkerLabel, text: text)
+            caption(text.shortcutWhileRecordingCaption)
+        }
+        // Leaving the page mid-recording must give the hotkeys back.
+        .onDisappear { ForkMeetingService.shared.setShortcutRecording(false) }
+    }
+
+    private func caption(_ string: String) -> some View {
+        Text(string)
+            .font(.caption)
+            .foregroundStyle(.secondary)
+            .fixedSize(horizontal: false, vertical: true)
+    }
+}
+
+/// One combination: its field, its ✕, and what is wrong with it.
+private struct ForkMeetingShortcutRow: View {
+    let role: ForkMeetingShortcutRole
+    let label: String
+    let text: ForkMeetingStrings
+
+    @AppStorage private var stored: String
     @AppStorage(ForkDefaultsKey.meetingsEnabled) private var enabled = false
     @ObservedObject private var service = ForkMeetingService.shared
     /// The problem of the combination just typed, or of the stored one,
@@ -614,18 +651,31 @@ private struct ForkMeetingShortcutSection: View {
     /// would make the page lag.
     @State private var problem: ForkMeetingShortcutProblem?
 
+    init(role: ForkMeetingShortcutRole, label: String, text: ForkMeetingStrings) {
+        self.role = role
+        self.label = label
+        self.text = text
+        _stored = AppStorage(wrappedValue: "", role.key)
+    }
+
     /// Shown in the field when there is no shortcut: `emptyTitle` hides it.
-    private static let placeholder = GlobalShortcut(keyCode: 15, modifiers: [.control, .option, .command])
+    private var placeholder: GlobalShortcut {
+        switch role {
+        case .toggle: return GlobalShortcut(keyCode: 15, modifiers: [.control, .option, .command])
+        case .pause: return GlobalShortcut(keyCode: 35, modifiers: [.control, .option, .command])
+        case .marker: return GlobalShortcut(keyCode: 46, modifiers: [.control, .option, .command])
+        }
+    }
 
     private var shortcut: GlobalShortcut? { ForkMeetingShortcut.decode(stored) }
 
     var body: some View {
-        Section(text.shortcutTitle) {
+        VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 8) {
-                Text(text.shortcutLabel)
+                Text(label)
                 Spacer()
                 ShortcutRecorderButton(
-                    shortcut: shortcut ?? Self.placeholder,
+                    shortcut: shortcut ?? placeholder,
                     isEnabled: enabled,
                     waitingTitle: text.shortcutPrompt,
                     emptyTitle: shortcut == nil ? text.shortcutNone : nil,
@@ -634,7 +684,7 @@ private struct ForkMeetingShortcutSection: View {
                     invalidAction: { problem = .needsModifier },
                     captureAction: { save($0) })
                     .frame(width: 140)
-                    .accessibilityLabel(text.shortcutLabel)
+                    .accessibilityLabel(label)
                 if shortcut != nil {
                     Button {
                         save(nil)
@@ -647,10 +697,6 @@ private struct ForkMeetingShortcutSection: View {
                     .accessibilityLabel(text.shortcutRemove)
                 }
             }
-            Text(text.shortcutCaption)
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
             if let warning {
                 Label(warning, systemImage: "exclamationmark.triangle.fill")
                     .font(.caption)
@@ -658,9 +704,11 @@ private struct ForkMeetingShortcutSection: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
         }
-        .onAppear { problem = shortcut.flatMap { ForkMeetingShortcut.problem(of: $0) } }
-        // Leaving the page mid-recording must give the hotkey back.
-        .onDisappear { ForkMeetingService.shared.setShortcutRecording(false) }
+        .onAppear { problem = shortcut.flatMap { ForkMeetingShortcut.problem(of: $0, role: role) } }
+    }
+
+    private var refused: Bool {
+        role == .toggle ? service.shortcutRefused : service.refusedShortcuts.contains(role)
     }
 
     private var warning: String? {
@@ -668,20 +716,20 @@ private struct ForkMeetingShortcutSection: View {
         case .reservedKey: return text.shortcutReserved
         case .needsModifier: return text.shortcutNeedsModifier
         case .conflict: return text.shortcutConflict
-        case nil: return service.shortcutRefused && shortcut != nil ? text.shortcutRefused : nil
+        case nil: return refused && shortcut != nil ? text.shortcutRefused : nil
         }
     }
 
     /// A combination that cannot work is not saved: the previous one stays,
     /// and the reason is said under the field.
     private func save(_ captured: GlobalShortcut?) {
-        if let captured, let refusal = ForkMeetingShortcut.problem(of: captured) {
+        if let captured, let refusal = ForkMeetingShortcut.problem(of: captured, role: role) {
             problem = refusal
             return
         }
         problem = nil
-        ForkMeetingShortcut.save(captured)
-        ForkMeetingService.sync()
+        ForkMeetingShortcut.save(captured, role: role)
+        ForkMeetingService.shared.shortcutChanged(role)
     }
 }
 
@@ -761,8 +809,23 @@ private struct ForkMeetingCaptureSection: View {
             }
             // The picture's quality: nothing to choose without one.
             .disabled(!ForkMeetingCaptureTarget(stored: target).filmsPicture)
-            caption(qualityCaption)
+            VStack(alignment: .leading, spacing: 2) {
+                caption(qualityCaption)
+                Text(specification)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .monospacedDigit()
+                    .textSelection(.enabled)
+            }
         }
+    }
+
+    /// "1080p · 30 fps · HEVC · 1.2 Mbit/s · ~0.6 GB/h", every figure the
+    /// writer's own.
+    private var specification: String {
+        let preset = ForkMeetingQuality(stored: quality)
+        return preset.specification(codec: ForkMeetingQualityCodec.name(for: preset), strings: text,
+                                    locale: Locale(identifier: l10n.language.rawValue))
     }
 
     private var soundCaption: String? {
@@ -803,6 +866,21 @@ private struct ForkMeetingCaptureSection: View {
             .font(.caption)
             .foregroundStyle(.secondary)
             .fixedSize(horizontal: false, vertical: true)
+    }
+}
+
+/// The codec the writer takes for a preset on this Mac: HEVC when the
+/// encoder accepts the preset's largest picture, as `ForkMeetingWriter`
+/// decides, else H.264. Asked once per preset: it opens an encoder.
+private enum ForkMeetingQualityCodec {
+    private static var known: [ForkMeetingQuality: String] = [:]
+
+    static func name(for preset: ForkMeetingQuality) -> String {
+        if let name = known[preset] { return name }
+        let box = preset.maximumBox
+        let name = RecorderWriter.hevcEncodes(width: box.width, height: box.height) ? "HEVC" : "H.264"
+        known[preset] = name
+        return name
     }
 }
 
@@ -890,17 +968,38 @@ private struct ForkMeetingLibrarySection: View {
         return ForkMeetingService.root
     }
 
+    /// A folder the person chose, not the one in Movies the first recording
+    /// saved in whichever language: that one has no ✕.
+    private var isDefault: Bool {
+        let movies = FileManager.default.urls(for: .moviesDirectory, in: .userDomainMask).first
+            ?? URL(fileURLWithPath: NSHomeDirectory()).appendingPathComponent("Movies", isDirectory: true)
+        return ForkMeetingFolder.isDefault(stored: folder, movies: movies,
+                                           names: AppLanguage.allCases.map { ForkMeetingStrings.strings($0).folderName })
+    }
+
     var body: some View {
         Section(text.libraryTitle) {
-            LabeledContent(text.folderTitle) {
+            HStack {
+                Text(text.folderTitle)
+                Spacer()
                 Text((root.url.path as NSString).abbreviatingWithTildeInPath)
+                    .foregroundStyle(.secondary)
                     .lineLimit(1)
                     .truncationMode(.middle)
                     .help(root.url.path)
                     .textSelection(.enabled)
-            }
-            HStack {
-                Spacer()
+                if !isDefault {
+                    Button {
+                        folder = ""
+                        ForkMeetingService.sync()
+                    } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .foregroundStyle(.tertiary)
+                    }
+                    .buttonStyle(.borderless)
+                    .help(text.folderReset)
+                    .accessibilityLabel(text.folderReset)
+                }
                 Button(text.folderChange, action: choose)
                 Button(text.folderOpen) { ForkMeetingService.shared.openFolder() }
             }

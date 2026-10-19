@@ -185,6 +185,7 @@ enum CommandBarCatalog {
         var entries: [CommandBarEntry] = []
         entries.append(contentsOf: actionEntries(s, language: language, bar: bar,
                                                  automationDenied: automationDenied))
+        entries.append(contentsOf: ForkMeetingCommandBar.entries()) // FORK(command-bar-meeting)
         entries.append(contentsOf: toggleEntries(s, language: language, bar: bar))
         entries.append(contentsOf: systemAnswerEntries(s, bar: bar))
         entries.append(contentsOf: settingsEntries(s, language: language, bar: bar))

@@ -35,3 +35,4 @@ notch-meeting-tile2  Sources/Vorssaint/Services/Notch/NotchSupport.swift       #
 notch-meeting-tile3  Sources/Vorssaint/UI/Notch/NotchControlsView.swift        # réunions : tuile et titre du bouton « Réunion » dans les contrôles de l'île
 notch-meeting-tile4  Sources/Vorssaint/Services/Notch/NotchService.swift       # réunions : bouton rapide « Réunion » (démarre ou arrête)
 notch-meeting-tile5  Sources/Vorssaint/UI/Settings/NotchSettings.swift         # réunions : raison et lien du bouton « Réunion » tant que Réunions est coupé
+command-bar-meeting  Sources/Vorssaint/Services/CommandBar/CommandBarCatalog.swift  # réunions : lignes de la Command Bar (enregistrer/arrêter, pause, marquer, ouvrir les réunions), construites avec les actions de l’app

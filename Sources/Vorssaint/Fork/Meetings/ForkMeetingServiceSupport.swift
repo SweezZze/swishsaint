@@ -50,6 +50,16 @@ enum ForkMeetingServiceSupport {
         asked == .hidden && finalizing ? .finalizing : asked
     }
 
+    /// The time a pill state shows, for the page's status line: none once
+    /// the meeting stops.
+    static func clock(of state: ForkMeetingPillState) -> ForkMeetingClock? {
+        switch state {
+        case let .recording(clock, _): return clock
+        case let .paused(clock, _, _): return clock
+        case .hidden, .stopping, .finalizing: return nil
+        }
+    }
+
     /// Whether the pill on its gauge may go: no final pass of a session left,
     /// and no session starting, recording or closing its file.
     static func hidesFinishedPill(machineIdle: Bool, finalizingCount: Int, pill: ForkMeetingPillState) -> Bool {

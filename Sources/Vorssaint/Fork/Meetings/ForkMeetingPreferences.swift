@@ -24,12 +24,29 @@ enum ForkMeetingShortcut {
         shortcut?.storageValue ?? ""
     }
 
-    static func load(_ defaults: UserDefaults = .standard) -> GlobalShortcut? {
-        decode(defaults.string(forKey: ForkDefaultsKey.meetingsShortcut) ?? "")
+    static func load(_ defaults: UserDefaults = .standard, role: ForkMeetingShortcutRole = .toggle) -> GlobalShortcut? {
+        decode(defaults.string(forKey: role.key) ?? "")
     }
 
-    static func save(_ shortcut: GlobalShortcut?, _ defaults: UserDefaults = .standard) {
-        defaults.set(encode(shortcut), forKey: ForkDefaultsKey.meetingsShortcut)
+    static func save(_ shortcut: GlobalShortcut?, _ defaults: UserDefaults = .standard,
+                     role: ForkMeetingShortcutRole = .toggle) {
+        defaults.set(encode(shortcut), forKey: role.key)
+    }
+
+    /// What keeps a combination from being `role`'s: the same checks as
+    /// the start's, and the page's two other combinations, which would
+    /// answer the same press.
+    static func problem(of shortcut: GlobalShortcut, role: ForkMeetingShortcutRole,
+                        defaults: UserDefaults = .standard) -> ForkMeetingShortcutProblem? {
+        problem(of: shortcut) { isTakenElsewhere($0) || usedByMeetings($0, besides: role, defaults: defaults) }
+    }
+
+    /// Another of the meetings' combinations already is this one.
+    static func usedByMeetings(_ shortcut: GlobalShortcut, besides role: ForkMeetingShortcutRole,
+                               defaults: UserDefaults = .standard) -> Bool {
+        ForkMeetingShortcutRole.allCases.contains { other in
+            other != role && load(defaults, role: other) == shortcut
+        }
     }
 
     /// What keeps a combination from starting a recording, or `nil` when it
@@ -65,6 +82,35 @@ enum ForkMeetingShortcut {
             guard case let .combo(keyCode, raw) = dictation.key else { return false }
             return GlobalShortcut(keyCode: keyCode, modifiers: GlobalShortcutModifiers(rawValue: raw)) == shortcut
         }
+    }
+}
+
+/// The Meetings page's three combinations. The start's works whenever the
+/// feature is on; pausing and marking a moment only mean something while a
+/// meeting records, so their combinations are taken from the other apps
+/// only then.
+enum ForkMeetingShortcutRole: CaseIterable, Equatable {
+    /// Starts a recording, stops it, or cancels one starting.
+    case toggle
+    /// Pauses the recording, or resumes it.
+    case pause
+    /// Marks the moment in the meeting.
+    case marker
+
+    var key: String {
+        switch self {
+        case .toggle: return ForkDefaultsKey.meetingsShortcut
+        case .pause: return ForkDefaultsKey.meetingsPauseShortcut
+        case .marker: return ForkDefaultsKey.meetingsMarkerShortcut
+        }
+    }
+
+    /// Installed only while a meeting records (paused included).
+    var onlyWhileRecording: Bool { self != .toggle }
+
+    /// Whether the combination is installed now.
+    func isInstalled(featureOn: Bool, recording: Bool) -> Bool {
+        featureOn && (!onlyWhileRecording || recording)
     }
 }
 
