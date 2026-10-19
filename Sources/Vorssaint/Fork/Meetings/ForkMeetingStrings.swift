@@ -608,6 +608,39 @@ struct ForkMeetingStrings {
     func retentionHeld(count: Int, days: Int) -> String {
         count == 1 ? String(format: retentionHeldOneFormat, days) : String(format: retentionHeldFormat, count, days)
     }
+
+    // MARK: Transcript
+
+    /// The Meetings page's section, and the detail's row.
+    let transcriptTitle: String
+    let transcribeAutomatically: String
+    let transcribeCaption: String
+    /// %d: how many languages Parakeet knows (25).
+    let transcriptLanguagesFormat: String
+    let transcriptNeedsParakeet: String
+    /// Buttons and states of the detail: short.
+    let transcriptInstall: String
+    let actionTranscribe: String
+    let actionOpenTranscript: String
+    let actionRetranscribe: String
+    /// %@: the share done ("42 %").
+    let transcriptProgressFormat: String
+    let transcriptWaiting: String
+    /// %d: the words of the transcript.
+    let transcriptWordsFormat: String
+    let transcriptNoAudio: String
+    let transcriptFailedGeneric: String
+    /// The notice of an automatic transcription: 28 characters at most.
+    let noticeTranscriptReady: String
+    let noticeTranscriptFailed: String
+    /// What starts the person's paragraphs and subtitles in the files, and the
+    /// others', separator included ("Me: ", "Moi : ").
+    let transcriptMeLabel: String
+    let transcriptOthersLabel: String
+
+    func transcriptLanguages(_ count: Int) -> String { String(format: transcriptLanguagesFormat, count) }
+    func transcriptProgress(_ share: String) -> String { String(format: transcriptProgressFormat, share) }
+    func transcriptWords(_ count: Int) -> String { String(format: transcriptWordsFormat, count) }
 }
 
 extension ForkMeetingStrings {
@@ -945,7 +978,26 @@ extension ForkMeetingStrings {
         retentionHeldOneFormat: "1 meeting older than %d days: move it to the Trash?",
         retentionHeldCaption: "More than the automatic Trash takes on its own: nothing goes until you confirm.",
         renameTitleNotSaved: "The folder was renamed, but its new title could not be saved.",
-        statusForeign: "Its meeting.json was not written by Vorssaint: shown, never changed."
+        statusForeign: "Its meeting.json was not written by Vorssaint: shown, never changed.",
+        // MARK: Transcript
+        transcriptTitle: "Transcript",
+        transcribeAutomatically: "Transcribe on this Mac after each meeting",
+        transcribeCaption: "Parakeet writes the text beside the video, a .txt and a .srt, with “Me” and “Others” apart. Nothing leaves this Mac, and the dictation’s replacements apply.",
+        transcriptLanguagesFormat: "Parakeet knows %d European languages and finds the meeting’s by itself.",
+        transcriptNeedsParakeet: "Parakeet is not installed on this Mac.",
+        transcriptInstall: "Install Parakeet",
+        actionTranscribe: "Transcribe on this Mac",
+        actionOpenTranscript: "Open Transcript",
+        actionRetranscribe: "Transcribe Again",
+        transcriptProgressFormat: "Transcribing… %@",
+        transcriptWaiting: "Waiting for its turn",
+        transcriptWordsFormat: "%d words",
+        transcriptNoAudio: "This meeting has no sound to transcribe.",
+        transcriptFailedGeneric: "The transcription failed. The meeting itself is untouched: try again.",
+        noticeTranscriptReady: "Transcript ready",
+        noticeTranscriptFailed: "Transcription failed",
+        transcriptMeLabel: "Me: ",
+        transcriptOthersLabel: "Others: "
     )
 }
 
@@ -1284,7 +1336,26 @@ extension ForkMeetingStrings {
         retentionHeldOneFormat: "1 reunião com mais de %d dias: movê-la para o Lixo?",
         retentionHeldCaption: "Mais do que o Lixo automático leva sozinho: nada sai antes de você confirmar.",
         renameTitleNotSaved: "A pasta foi renomeada, mas não foi possível salvar o novo título.",
-        statusForeign: "O meeting.json não foi escrito pelo Vorssaint: exibida, nunca alterada."
+        statusForeign: "O meeting.json não foi escrito pelo Vorssaint: exibida, nunca alterada.",
+        // MARK: Transcript
+        transcriptTitle: "Transcrição",
+        transcribeAutomatically: "Transcrever neste Mac após cada reunião",
+        transcribeCaption: "O Parakeet escreve o texto ao lado do vídeo, um .txt e um .srt, com “Eu” e “Outros” separados. Nada sai deste Mac, e as substituições do ditado são aplicadas.",
+        transcriptLanguagesFormat: "O Parakeet conhece %d idiomas europeus e encontra sozinho o da reunião.",
+        transcriptNeedsParakeet: "O Parakeet não está instalado neste Mac.",
+        transcriptInstall: "Instalar o Parakeet",
+        actionTranscribe: "Transcrever neste Mac",
+        actionOpenTranscript: "Abrir a transcrição",
+        actionRetranscribe: "Transcrever de novo",
+        transcriptProgressFormat: "Transcrevendo… %@",
+        transcriptWaiting: "Aguardando a vez",
+        transcriptWordsFormat: "%d palavras",
+        transcriptNoAudio: "Esta reunião não tem som para transcrever.",
+        transcriptFailedGeneric: "A transcrição falhou. A reunião em si não foi alterada: tente de novo.",
+        noticeTranscriptReady: "Transcrição pronta",
+        noticeTranscriptFailed: "A transcrição falhou",
+        transcriptMeLabel: "Eu: ",
+        transcriptOthersLabel: "Outros: "
     )
 }
 
@@ -1623,7 +1694,26 @@ extension ForkMeetingStrings {
         retentionHeldOneFormat: "%d günden eski 1 toplantı: Çöp Sepeti’ne taşınsın mı?",
         retentionHeldCaption: "Otomatik Çöp Sepeti’nin kendi başına aldığından fazla: siz onaylayana kadar hiçbiri taşınmaz.",
         renameTitleNotSaved: "Klasörün adı değişti, ancak yeni başlık kaydedilemedi.",
-        statusForeign: "meeting.json dosyası Vorssaint tarafından yazılmadı: gösterilir, hiç değiştirilmez."
+        statusForeign: "meeting.json dosyası Vorssaint tarafından yazılmadı: gösterilir, hiç değiştirilmez.",
+        // MARK: Transcript
+        transcriptTitle: "Metin dökümü",
+        transcribeAutomatically: "Her toplantıdan sonra bu Mac’te metne dök",
+        transcribeCaption: "Parakeet metni videonun yanına bir .txt ve bir .srt olarak yazar; “Ben” ve “Diğerleri” ayrı tutulur. Hiçbir şey bu Mac’ten çıkmaz ve dikte değiştirmeleri uygulanır.",
+        transcriptLanguagesFormat: "Parakeet %d Avrupa dilini tanır ve toplantının dilini kendisi bulur.",
+        transcriptNeedsParakeet: "Parakeet bu Mac’te yüklü değil.",
+        transcriptInstall: "Parakeet’i yükle",
+        actionTranscribe: "Bu Mac’te metne dök",
+        actionOpenTranscript: "Metni aç",
+        actionRetranscribe: "Yeniden metne dök",
+        transcriptProgressFormat: "Metne dökülüyor… %@",
+        transcriptWaiting: "Sırasını bekliyor",
+        transcriptWordsFormat: "%d sözcük",
+        transcriptNoAudio: "Bu toplantıda metne dökülecek ses yok.",
+        transcriptFailedGeneric: "Metne dökme başarısız oldu. Toplantının kendisine dokunulmadı: yeniden deneyin.",
+        noticeTranscriptReady: "Metin hazır",
+        noticeTranscriptFailed: "Metne dökme başarısız",
+        transcriptMeLabel: "Ben: ",
+        transcriptOthersLabel: "Diğerleri: "
     )
 }
 
@@ -1962,7 +2052,26 @@ extension ForkMeetingStrings {
         retentionHeldOneFormat: "Одна встреча старше %d дн.: переместить её в Корзину?",
         retentionHeldCaption: "Это больше, чем автоочистка перемещает сама: ничего не будет перемещено без вашего подтверждения.",
         renameTitleNotSaved: "Папка переименована, но новое название не удалось сохранить.",
-        statusForeign: "Файл meeting.json записан не Vorssaint: показывается, но не изменяется."
+        statusForeign: "Файл meeting.json записан не Vorssaint: показывается, но не изменяется.",
+        // MARK: Transcript
+        transcriptTitle: "Расшифровка",
+        transcribeAutomatically: "Расшифровывать на этом Mac после каждой встречи",
+        transcribeCaption: "Parakeet записывает текст рядом с видео, в файлы .txt и .srt, где «Я» и «Другие» разделены. Ничего не покидает этот Mac, а замены диктовки применяются.",
+        transcriptLanguagesFormat: "Parakeet знает %d европейских языков и сам находит язык встречи.",
+        transcriptNeedsParakeet: "Parakeet не установлен на этом Mac.",
+        transcriptInstall: "Установить Parakeet",
+        actionTranscribe: "Расшифровать на этом Mac",
+        actionOpenTranscript: "Открыть расшифровку",
+        actionRetranscribe: "Расшифровать заново",
+        transcriptProgressFormat: "Расшифровка… %@",
+        transcriptWaiting: "Ждёт своей очереди",
+        transcriptWordsFormat: "Слов: %d",
+        transcriptNoAudio: "В этой встрече нет звука для расшифровки.",
+        transcriptFailedGeneric: "Расшифровка не удалась. Сама встреча не затронута: попробуйте ещё раз.",
+        noticeTranscriptReady: "Расшифровка готова",
+        noticeTranscriptFailed: "Расшифровка не удалась",
+        transcriptMeLabel: "Я: ",
+        transcriptOthersLabel: "Другие: "
     )
 }
 
@@ -2301,7 +2410,26 @@ extension ForkMeetingStrings {
         retentionHeldOneFormat: "1 reunión de más de %d días: ¿trasladarla a la papelera?",
         retentionHeldCaption: "Es más de lo que la papelera automática se lleva por sí sola: nada se traslada hasta que lo confirmes.",
         renameTitleNotSaved: "La carpeta se ha renombrado, pero no se ha podido guardar el nuevo título.",
-        statusForeign: "Su meeting.json no lo ha escrito Vorssaint: se muestra, nunca se modifica."
+        statusForeign: "Su meeting.json no lo ha escrito Vorssaint: se muestra, nunca se modifica.",
+        // MARK: Transcript
+        transcriptTitle: "Transcripción",
+        transcribeAutomatically: "Transcribir en este Mac después de cada reunión",
+        transcribeCaption: "Parakeet escribe el texto junto al vídeo, un .txt y un .srt, con “Yo” y “Otros” por separado. Nada sale de este Mac, y se aplican los reemplazos del dictado.",
+        transcriptLanguagesFormat: "Parakeet conoce %d idiomas europeos y encuentra por sí mismo el de la reunión.",
+        transcriptNeedsParakeet: "Parakeet no está instalado en este Mac.",
+        transcriptInstall: "Instalar Parakeet",
+        actionTranscribe: "Transcribir en este Mac",
+        actionOpenTranscript: "Abrir la transcripción",
+        actionRetranscribe: "Transcribir de nuevo",
+        transcriptProgressFormat: "Transcribiendo… %@",
+        transcriptWaiting: "Esperando su turno",
+        transcriptWordsFormat: "%d palabras",
+        transcriptNoAudio: "Esta reunión no tiene sonido que transcribir.",
+        transcriptFailedGeneric: "La transcripción ha fallado. La reunión no se ha tocado: vuelve a intentarlo.",
+        noticeTranscriptReady: "Transcripción lista",
+        noticeTranscriptFailed: "La transcripción falló",
+        transcriptMeLabel: "Yo: ",
+        transcriptOthersLabel: "Otros: "
     )
 }
 
@@ -2640,7 +2768,26 @@ extension ForkMeetingStrings {
         retentionHeldOneFormat: "Jedno stretnutie staršie ako %d dní: presunúť ho do koša?",
         retentionHeldCaption: "Je to viac, než automatický kôš vezme sám: nič sa nepresunie, kým to nepotvrdíte.",
         renameTitleNotSaved: "Priečinok sa premenoval, ale nový názov sa nepodarilo uložiť.",
-        statusForeign: "Súbor meeting.json nezapísal Vorssaint: zobrazuje sa, nikdy sa nemení."
+        statusForeign: "Súbor meeting.json nezapísal Vorssaint: zobrazuje sa, nikdy sa nemení.",
+        // MARK: Transcript
+        transcriptTitle: "Prepis",
+        transcribeAutomatically: "Prepísať na tomto Macu po každom stretnutí",
+        transcribeCaption: "Parakeet zapíše text vedľa videa ako .txt a .srt, so „Ja“ a „Ostatní“ zvlášť. Nič neopustí tento Mac a použijú sa náhrady z diktovania.",
+        transcriptLanguagesFormat: "Parakeet pozná %d európskych jazykov a jazyk stretnutia nájde sám.",
+        transcriptNeedsParakeet: "Parakeet nie je na tomto Macu nainštalovaný.",
+        transcriptInstall: "Nainštalovať Parakeet",
+        actionTranscribe: "Prepísať na tomto Macu",
+        actionOpenTranscript: "Otvoriť prepis",
+        actionRetranscribe: "Prepísať znova",
+        transcriptProgressFormat: "Prepisuje sa… %@",
+        transcriptWaiting: "Čaká na svoj rad",
+        transcriptWordsFormat: "Slov: %d",
+        transcriptNoAudio: "Toto stretnutie nemá zvuk na prepis.",
+        transcriptFailedGeneric: "Prepis zlyhal. Samotné stretnutie zostalo nedotknuté: skúste to znova.",
+        noticeTranscriptReady: "Prepis je hotový",
+        noticeTranscriptFailed: "Prepis zlyhal",
+        transcriptMeLabel: "Ja: ",
+        transcriptOthersLabel: "Ostatní: "
     )
 }
 
@@ -2979,7 +3126,26 @@ extension ForkMeetingStrings {
         retentionHeldOneFormat: "1 Besprechung älter als %d Tage: in den Papierkorb legen?",
         retentionHeldCaption: "Mehr, als der automatische Papierkorb von sich aus nimmt: Nichts wird verschoben, bevor du bestätigst.",
         renameTitleNotSaved: "Der Ordner wurde umbenannt, aber der neue Titel konnte nicht gesichert werden.",
-        statusForeign: "Die meeting.json stammt nicht von Vorssaint: angezeigt, nie geändert."
+        statusForeign: "Die meeting.json stammt nicht von Vorssaint: angezeigt, nie geändert.",
+        // MARK: Transcript
+        transcriptTitle: "Transkript",
+        transcribeAutomatically: "Nach jeder Besprechung auf diesem Mac transkribieren",
+        transcribeCaption: "Parakeet schreibt den Text neben das Video, als .txt und .srt, mit „Ich“ und „Andere“ getrennt. Nichts verlässt diesen Mac, und die Ersetzungen der Diktierfunktion gelten.",
+        transcriptLanguagesFormat: "Parakeet kennt %d europäische Sprachen und erkennt die der Besprechung selbst.",
+        transcriptNeedsParakeet: "Parakeet ist auf diesem Mac nicht installiert.",
+        transcriptInstall: "Parakeet installieren",
+        actionTranscribe: "Auf dem Mac transkribieren",
+        actionOpenTranscript: "Transkript öffnen",
+        actionRetranscribe: "Erneut transkribieren",
+        transcriptProgressFormat: "Wird transkribiert… %@",
+        transcriptWaiting: "Wartet, bis es dran ist",
+        transcriptWordsFormat: "%d Wörter",
+        transcriptNoAudio: "Diese Besprechung hat keinen Ton zum Transkribieren.",
+        transcriptFailedGeneric: "Die Transkription ist fehlgeschlagen. Die Besprechung selbst bleibt unverändert: erneut versuchen.",
+        noticeTranscriptReady: "Transkript fertig",
+        noticeTranscriptFailed: "Transkription fehlgeschlagen",
+        transcriptMeLabel: "Ich: ",
+        transcriptOthersLabel: "Andere: "
     )
 }
 
@@ -3318,7 +3484,26 @@ extension ForkMeetingStrings {
         retentionHeldOneFormat: "1\u{00A0}réunion de plus de %d\u{00A0}jours\u{00A0}: la mettre à la Corbeille\u{00A0}?",
         retentionHeldCaption: "C’est plus que ce que la Corbeille automatique prend d’elle-même\u{00A0}: rien ne part avant votre accord.",
         renameTitleNotSaved: "Le dossier a été renommé, mais son nouveau titre n’a pas pu être enregistré.",
-        statusForeign: "Son meeting.json n’a pas été écrit par Vorssaint\u{00A0}: affichée, jamais modifiée."
+        statusForeign: "Son meeting.json n’a pas été écrit par Vorssaint\u{00A0}: affichée, jamais modifiée.",
+        // MARK: Transcript
+        transcriptTitle: "Transcription",
+        transcribeAutomatically: "Transcrire sur ce Mac après chaque réunion",
+        transcribeCaption: "Parakeet écrit le texte à côté de la vidéo, un .txt et un .srt, avec «\u{00A0}Moi\u{00A0}» et «\u{00A0}Participants\u{00A0}» à part. Rien ne quitte ce Mac, et les remplacements de la dictée s’appliquent.",
+        transcriptLanguagesFormat: "Parakeet connaît %d langues européennes et trouve seul celle de la réunion.",
+        transcriptNeedsParakeet: "Parakeet n’est pas installé sur ce Mac.",
+        transcriptInstall: "Installer Parakeet",
+        actionTranscribe: "Transcrire sur ce Mac",
+        actionOpenTranscript: "Ouvrir la transcription",
+        actionRetranscribe: "Retranscrire",
+        transcriptProgressFormat: "Transcription… %@",
+        transcriptWaiting: "En attente de son tour",
+        transcriptWordsFormat: "%d mots",
+        transcriptNoAudio: "Cette réunion n’a pas de son à transcrire.",
+        transcriptFailedGeneric: "La transcription a échoué. La réunion elle-même reste intacte\u{00A0}: réessayez.",
+        noticeTranscriptReady: "Transcription prête",
+        noticeTranscriptFailed: "Transcription ratée",
+        transcriptMeLabel: "Moi\u{00A0}: ",
+        transcriptOthersLabel: "Participants\u{00A0}: "
     )
 }
 
@@ -3657,7 +3842,26 @@ extension ForkMeetingStrings {
         retentionHeldOneFormat: "1 riunione con più di %d giorni: spostarla nel Cestino?",
         retentionHeldCaption: "È più di quanto il Cestino automatico sposti da solo: nulla viene spostato finché non confermi.",
         renameTitleNotSaved: "La cartella è stata rinominata, ma non è stato possibile salvare il nuovo titolo.",
-        statusForeign: "Il suo meeting.json non è stato scritto da Vorssaint: mostrata, mai modificata."
+        statusForeign: "Il suo meeting.json non è stato scritto da Vorssaint: mostrata, mai modificata.",
+        // MARK: Transcript
+        transcriptTitle: "Trascrizione",
+        transcribeAutomatically: "Trascrivi su questo Mac dopo ogni riunione",
+        transcribeCaption: "Parakeet scrive il testo accanto al video, un .txt e un .srt, con “Io” e “Altri” separati. Nulla lascia questo Mac, e si applicano le sostituzioni della dettatura.",
+        transcriptLanguagesFormat: "Parakeet conosce %d lingue europee e trova da solo quella della riunione.",
+        transcriptNeedsParakeet: "Parakeet non è installato su questo Mac.",
+        transcriptInstall: "Installa Parakeet",
+        actionTranscribe: "Trascrivi su questo Mac",
+        actionOpenTranscript: "Apri la trascrizione",
+        actionRetranscribe: "Trascrivi di nuovo",
+        transcriptProgressFormat: "Trascrizione… %@",
+        transcriptWaiting: "In attesa del suo turno",
+        transcriptWordsFormat: "%d parole",
+        transcriptNoAudio: "Questa riunione non ha audio da trascrivere.",
+        transcriptFailedGeneric: "La trascrizione non è riuscita. La riunione non è stata toccata: riprova.",
+        noticeTranscriptReady: "Trascrizione pronta",
+        noticeTranscriptFailed: "Trascrizione non riuscita",
+        transcriptMeLabel: "Io: ",
+        transcriptOthersLabel: "Altri: "
     )
 }
 
@@ -3996,7 +4200,26 @@ extension ForkMeetingStrings {
         retentionHeldOneFormat: "%d日より古いミーティングが1件あります。ゴミ箱に入れますか？",
         retentionHeldCaption: "自動でゴミ箱へ移す量を超えています。確認するまで何も移動しません。",
         renameTitleNotSaved: "フォルダの名前は変更されましたが、新しいタイトルを保存できませんでした。",
-        statusForeign: "このmeeting.jsonはVorssaintが書いたものではありません：表示のみで、変更されません。"
+        statusForeign: "このmeeting.jsonはVorssaintが書いたものではありません：表示のみで、変更されません。",
+        // MARK: Transcript
+        transcriptTitle: "文字起こし",
+        transcribeAutomatically: "ミーティングのたびにこの Mac で文字起こし",
+        transcribeCaption: "Parakeet がビデオの横にテキストを .txt と .srt で書き出し、「自分」と「他の参加者」を分けます。この Mac の外には何も送られず、音声入力の置き換えも適用されます。",
+        transcriptLanguagesFormat: "Parakeet は %d のヨーロッパ言語を認識し、ミーティングの言語を自動で判別します。",
+        transcriptNeedsParakeet: "この Mac には Parakeet がインストールされていません。",
+        transcriptInstall: "Parakeet をインストール",
+        actionTranscribe: "この Mac で文字起こし",
+        actionOpenTranscript: "文字起こしを開く",
+        actionRetranscribe: "もう一度文字起こし",
+        transcriptProgressFormat: "文字起こし中… %@",
+        transcriptWaiting: "順番を待っています",
+        transcriptWordsFormat: "%d 語",
+        transcriptNoAudio: "このミーティングには文字起こしする音声がありません。",
+        transcriptFailedGeneric: "文字起こしに失敗しました。ミーティング自体は変更されていません。もう一度お試しください。",
+        noticeTranscriptReady: "文字起こしが完了",
+        noticeTranscriptFailed: "文字起こしに失敗",
+        transcriptMeLabel: "自分：",
+        transcriptOthersLabel: "他の参加者："
     )
 }
 
@@ -4335,7 +4558,26 @@ extension ForkMeetingStrings {
         retentionHeldOneFormat: "%d일이 지난 회의 1개: 휴지통으로 이동할까요?",
         retentionHeldCaption: "자동 휴지통이 스스로 옮기는 양보다 많습니다. 확인하기 전까지는 아무것도 이동하지 않습니다.",
         renameTitleNotSaved: "폴더 이름은 변경되었지만 새 제목을 저장할 수 없습니다.",
-        statusForeign: "이 meeting.json은 Vorssaint가 작성한 것이 아닙니다. 표시만 하고 변경하지 않습니다."
+        statusForeign: "이 meeting.json은 Vorssaint가 작성한 것이 아닙니다. 표시만 하고 변경하지 않습니다.",
+        // MARK: Transcript
+        transcriptTitle: "받아쓰기",
+        transcribeAutomatically: "회의가 끝날 때마다 이 Mac에서 받아쓰기",
+        transcribeCaption: "Parakeet이 비디오 옆에 .txt와 .srt로 텍스트를 쓰고, ‘나’와 ‘다른 참가자’를 구분합니다. 이 Mac 밖으로 나가는 것은 없으며, 받아쓰기 대치어가 적용됩니다.",
+        transcriptLanguagesFormat: "Parakeet은 %d개의 유럽 언어를 알고, 회의 언어를 스스로 찾습니다.",
+        transcriptNeedsParakeet: "이 Mac에 Parakeet이 설치되어 있지 않습니다.",
+        transcriptInstall: "Parakeet 설치",
+        actionTranscribe: "이 Mac에서 받아쓰기",
+        actionOpenTranscript: "받아쓰기 열기",
+        actionRetranscribe: "다시 받아쓰기",
+        transcriptProgressFormat: "받아쓰는 중… %@",
+        transcriptWaiting: "차례를 기다리는 중",
+        transcriptWordsFormat: "%d단어",
+        transcriptNoAudio: "이 회의에는 받아쓸 소리가 없습니다.",
+        transcriptFailedGeneric: "받아쓰기에 실패했습니다. 회의 자체는 변경되지 않았습니다. 다시 시도하십시오.",
+        noticeTranscriptReady: "받아쓰기 완료",
+        noticeTranscriptFailed: "받아쓰기 실패",
+        transcriptMeLabel: "나: ",
+        transcriptOthersLabel: "다른 참가자: "
     )
 }
 
@@ -4674,7 +4916,26 @@ extension ForkMeetingStrings {
         retentionHeldOneFormat: "Одна зустріч, старша за %d дн.: перемістити її в Смітник?",
         retentionHeldCaption: "Це більше, ніж автоочищення переміщує саме: нічого не буде переміщено без вашого підтвердження.",
         renameTitleNotSaved: "Папку перейменовано, але нову назву не вдалося зберегти.",
-        statusForeign: "Файл meeting.json записано не Vorssaint: показується, але не змінюється."
+        statusForeign: "Файл meeting.json записано не Vorssaint: показується, але не змінюється.",
+        // MARK: Transcript
+        transcriptTitle: "Розшифрування",
+        transcribeAutomatically: "Розшифровувати на цьому Mac після кожної зустрічі",
+        transcribeCaption: "Parakeet записує текст поруч із відео, у файли .txt і .srt, де «Я» та «Інші» окремо. Ніщо не залишає цей Mac, а заміни диктування застосовуються.",
+        transcriptLanguagesFormat: "Parakeet знає %d європейських мов і сам визначає мову зустрічі.",
+        transcriptNeedsParakeet: "Parakeet не встановлено на цьому Mac.",
+        transcriptInstall: "Установити Parakeet",
+        actionTranscribe: "Розшифрувати на цьому Mac",
+        actionOpenTranscript: "Відкрити розшифрування",
+        actionRetranscribe: "Розшифрувати знову",
+        transcriptProgressFormat: "Розшифрування… %@",
+        transcriptWaiting: "Чекає своєї черги",
+        transcriptWordsFormat: "Слів: %d",
+        transcriptNoAudio: "У цій зустрічі немає звуку для розшифрування.",
+        transcriptFailedGeneric: "Розшифрування не вдалося. Саму зустріч не змінено: спробуйте ще раз.",
+        noticeTranscriptReady: "Розшифрування готове",
+        noticeTranscriptFailed: "Розшифрування не вдалося",
+        transcriptMeLabel: "Я: ",
+        transcriptOthersLabel: "Інші: "
     )
 }
 
@@ -5013,7 +5274,26 @@ extension ForkMeetingStrings {
         retentionHeldOneFormat: "1 个会议超过 %d 天：要移到废纸篓吗？",
         retentionHeldCaption: "超过了自动移到废纸篓一次会处理的数量：在你确认之前不会移动任何会议。",
         renameTitleNotSaved: "文件夹已重新命名，但无法存储新标题。",
-        statusForeign: "此 meeting.json 并非由 Vorssaint 写入：仅显示，不会更改。"
+        statusForeign: "此 meeting.json 并非由 Vorssaint 写入：仅显示，不会更改。",
+        // MARK: Transcript
+        transcriptTitle: "转写",
+        transcribeAutomatically: "每次会议后在此 Mac 上转写",
+        transcribeCaption: "Parakeet 会在视频旁写出文本（.txt 和 .srt），并将“我”和“其他人”分开。任何内容都不会离开此 Mac，听写的替换规则同样适用。",
+        transcriptLanguagesFormat: "Parakeet 能识别 %d 种欧洲语言，并自行判断会议所用的语言。",
+        transcriptNeedsParakeet: "此 Mac 上未安装 Parakeet。",
+        transcriptInstall: "安装 Parakeet",
+        actionTranscribe: "在此 Mac 上转写",
+        actionOpenTranscript: "打开转写",
+        actionRetranscribe: "重新转写",
+        transcriptProgressFormat: "正在转写… %@",
+        transcriptWaiting: "正在排队",
+        transcriptWordsFormat: "%d 个词",
+        transcriptNoAudio: "此会议没有可转写的声音。",
+        transcriptFailedGeneric: "转写失败。会议本身未被改动，请重试。",
+        noticeTranscriptReady: "转写已完成",
+        noticeTranscriptFailed: "转写失败",
+        transcriptMeLabel: "我：",
+        transcriptOthersLabel: "其他人："
     )
 }
 
@@ -5352,7 +5632,26 @@ extension ForkMeetingStrings {
         retentionHeldOneFormat: "1 個會議超過 %d 天：要丟到垃圾桶嗎？",
         retentionHeldCaption: "超過自動丟到垃圾桶一次會處理的數量：在你確認之前不會移動任何會議。",
         renameTitleNotSaved: "資料夾已重新命名，但無法儲存新標題。",
-        statusForeign: "此 meeting.json 並非由 Vorssaint 寫入：僅顯示，不會變更。"
+        statusForeign: "此 meeting.json 並非由 Vorssaint 寫入：僅顯示，不會變更。",
+        // MARK: Transcript
+        transcriptTitle: "轉寫",
+        transcribeAutomatically: "每次會議後在此 Mac 上轉寫",
+        transcribeCaption: "Parakeet 會在影片旁寫出文字（.txt 和 .srt），並將「我」和「其他人」分開。任何內容都不會離開此 Mac，聽寫的取代規則同樣適用。",
+        transcriptLanguagesFormat: "Parakeet 能辨識 %d 種歐洲語言，並自行判斷會議所用的語言。",
+        transcriptNeedsParakeet: "此 Mac 上未安裝 Parakeet。",
+        transcriptInstall: "安裝 Parakeet",
+        actionTranscribe: "在此 Mac 上轉寫",
+        actionOpenTranscript: "打開轉寫",
+        actionRetranscribe: "重新轉寫",
+        transcriptProgressFormat: "正在轉寫… %@",
+        transcriptWaiting: "正在排隊",
+        transcriptWordsFormat: "%d 個詞",
+        transcriptNoAudio: "此會議沒有可轉寫的聲音。",
+        transcriptFailedGeneric: "轉寫失敗。會議本身未被更動，請再試一次。",
+        noticeTranscriptReady: "轉寫已完成",
+        noticeTranscriptFailed: "轉寫失敗",
+        transcriptMeLabel: "我：",
+        transcriptOthersLabel: "其他人："
     )
 }
 
@@ -5691,6 +5990,25 @@ extension ForkMeetingStrings {
         retentionHeldOneFormat: "1 個會議超過 %d 天：要移至垃圾桶嗎？",
         retentionHeldCaption: "超過自動移至垃圾桶一次會處理的數量：在你確認之前不會移動任何會議。",
         renameTitleNotSaved: "資料夾已重新命名，但無法儲存新標題。",
-        statusForeign: "此 meeting.json 並非由 Vorssaint 寫入：僅顯示，不會變更。"
+        statusForeign: "此 meeting.json 並非由 Vorssaint 寫入：僅顯示，不會變更。",
+        // MARK: Transcript
+        transcriptTitle: "轉寫",
+        transcribeAutomatically: "每次會議後在此 Mac 上轉寫",
+        transcribeCaption: "Parakeet 會在影片旁寫出文字（.txt 和 .srt），並將「我」和「其他人」分開。任何內容都不會離開此 Mac，聽寫的取代規則同樣適用。",
+        transcriptLanguagesFormat: "Parakeet 能辨識 %d 種歐洲語言，並自行判斷會議所用的語言。",
+        transcriptNeedsParakeet: "此 Mac 上未安裝 Parakeet。",
+        transcriptInstall: "安裝 Parakeet",
+        actionTranscribe: "在此 Mac 上轉寫",
+        actionOpenTranscript: "開啟轉寫",
+        actionRetranscribe: "重新轉寫",
+        transcriptProgressFormat: "正在轉寫… %@",
+        transcriptWaiting: "正在排隊",
+        transcriptWordsFormat: "%d 個詞",
+        transcriptNoAudio: "此會議沒有可轉寫的聲音。",
+        transcriptFailedGeneric: "轉寫失敗。會議本身未被更動，請再試一次。",
+        noticeTranscriptReady: "轉寫已完成",
+        noticeTranscriptFailed: "轉寫失敗",
+        transcriptMeLabel: "我：",
+        transcriptOthersLabel: "其他人："
     )
 }

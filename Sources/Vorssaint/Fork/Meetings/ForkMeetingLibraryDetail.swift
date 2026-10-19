@@ -53,6 +53,7 @@ struct ForkMeetingLibraryDetail: View {
                     .clipShape(RoundedRectangle(cornerRadius: 8))
                 facts
                 notesField
+                ForkMeetingTranscriptRow(model: model, entry: entry, text: text)
                 actions
             }
             .padding(20)

@@ -84,6 +84,11 @@ struct ForkMeetingLibraryEntry: Equatable {
     private(set) var playable: String?
     private(set) var video: String?
     private(set) var audio: String?
+    /// The transcript beside the video (`<name>.txt`), and its subtitles.
+    private(set) var transcript: String?
+    private(set) var subtitles: String?
+    /// What `meeting.json` says of the last transcription.
+    private(set) var transcriptRecord: ForkMeetingTranscriptRecord?
     /// From a later version of the app, unreadable, or not written by it:
     /// shown, never written.
     let isReadOnly: Bool
@@ -124,6 +129,8 @@ struct ForkMeetingLibraryEntry: Equatable {
         self.folderFile = folderFile
         video = contents.video
         audio = contents.audio
+        transcript = contents.transcript
+        subtitles = contents.subtitles
         let stamped = ForkMeetingLibrary.stampDate(folderName, calendar: calendar)
         switch sidecar {
         case .failure:
@@ -152,6 +159,7 @@ struct ForkMeetingLibraryEntry: Equatable {
             notes = meeting.notes ?? ""
             isForeign = !meeting.isWrittenByMeetings
             isReadOnly = !meeting.isRewritable || isForeign
+            transcriptRecord = ForkMeetingTranscriptRecord(json: meeting.transcript)
         }
         if let startedAt {
             date = startedAt
@@ -228,6 +236,8 @@ struct ForkMeetingLibraryEntry: Equatable {
         }
         row.video = follow(video)
         row.audio = follow(audio)
+        row.transcript = follow(transcript)
+        row.subtitles = follow(subtitles)
         row.playable = follow(playable)
         if let edited {
             let trimmed = edited.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -434,18 +444,23 @@ enum ForkMeetingLibrary {
     }
 
     /// Every word of the query is somewhere in the row, in any field, in any
-    /// order. An empty query keeps every row.
+    /// order. An empty query keeps every row. `transcript`: the row's
+    /// transcript, already folded (`ForkMeetingTranscriptIndex`), searched
+    /// too.
     static func matches(_ entry: ForkMeetingLibraryEntry, query: String, strings: ForkMeetingStrings,
-                        providerName: (String) -> String? = { _ in nil }) -> Bool {
+                        providerName: (String) -> String? = { _ in nil },
+                        transcript: (ForkMeetingLibraryEntry) -> String? = { _ in nil }) -> Bool {
         let words = terms(query)
         guard !words.isEmpty else { return true }
         let text = haystack(entry, strings: strings, providerName: providerName)
-        return words.allSatisfy { text.contains($0) }
+        let said = transcript(entry)
+        return words.allSatisfy { text.contains($0) || said?.contains($0) == true }
     }
 
     static func filtered(_ entries: [ForkMeetingLibraryEntry], query: String, strings: ForkMeetingStrings,
-                         providerName: (String) -> String? = { _ in nil }) -> [ForkMeetingLibraryEntry] {
-        entries.filter { matches($0, query: query, strings: strings, providerName: providerName) }
+                         providerName: (String) -> String? = { _ in nil },
+                         transcript: (ForkMeetingLibraryEntry) -> String? = { _ in nil }) -> [ForkMeetingLibraryEntry] {
+        entries.filter { matches($0, query: query, strings: strings, providerName: providerName, transcript: transcript) }
     }
 
     // MARK: - Words on a row

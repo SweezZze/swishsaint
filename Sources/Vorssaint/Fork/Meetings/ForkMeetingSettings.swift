@@ -51,6 +51,7 @@ struct ForkMeetingSettings: View {
             .disabled(!enabled)
         ForkMeetingLibrarySection(text: text)
             .disabled(!enabled)
+        ForkMeetingTranscriptSection(text: text)
         ForkMeetingAdvancedSection(text: text)
             .disabled(!enabled)
     }

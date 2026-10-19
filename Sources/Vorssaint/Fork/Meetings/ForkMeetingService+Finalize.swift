@@ -52,6 +52,8 @@ extension ForkMeetingService {
         log.notice("\(outcome.folder.lastPathComponent, privacy: .private): \(outcome.finalPass.rawValue, privacy: .public) \(outcome.note ?? "", privacy: .private)")
         if outcome.succeeded {
             saved(outcome, recovered: false)
+            // Its transcript, when the setting asks for one (PR 6).
+            ForkMeetingTranscriber.shared.meetingSaved(outcome.folder, recovered: false)
         } else {
             revealAfterFailure(outcome.folder, readable: outcome.seconds != nil)
         }

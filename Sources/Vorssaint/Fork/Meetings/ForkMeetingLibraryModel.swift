@@ -18,7 +18,13 @@ import UniformTypeIdentifiers
 ///
 /// Main thread only.
 final class ForkMeetingLibraryModel: ObservableObject {
-    @Published private(set) var entries: [ForkMeetingLibraryEntry] = []
+    @Published private(set) var entries: [ForkMeetingLibraryEntry] = [] {
+        didSet { indexTranscripts() }
+    }
+    /// The transcripts, read once and kept in memory for the search.
+    @Published private(set) var transcripts = ForkMeetingTranscriptIndex()
+    private var indexingTranscripts = false
+    private var transcriptsAgain = false
     @Published private(set) var probes: [String: ForkMeetingProbeCache.Probe] = [:]
     @Published private(set) var root: URL
     @Published private(set) var rootExists = true
@@ -111,8 +117,10 @@ final class ForkMeetingLibraryModel: ObservableObject {
     // MARK: - What the list shows
 
     var filtered: [ForkMeetingLibraryEntry] {
-        ForkMeetingLibrary.filtered(entries, query: query, strings: strings,
-                                    providerName: ForkMeetingLibraryText.providerName)
+        let transcripts = self.transcripts
+        return ForkMeetingLibrary.filtered(entries, query: query, strings: strings,
+                                           providerName: ForkMeetingLibraryText.providerName,
+                                           transcript: { transcripts.text(folder: $0.folderName, file: $0.transcript) })
     }
 
     var groups: [ForkMeetingLibrary.Group] {
@@ -500,6 +508,75 @@ final class ForkMeetingLibraryModel: ObservableObject {
         guard let window = NSApp.keyWindow ?? NSApp.mainWindow else { return }
         NSAccessibility.post(element: window, notification: .announcementRequested,
                              userInfo: [.announcement: message, .priority: NSAccessibilityPriorityLevel.high.rawValue])
+    }
+
+    // MARK: - Transcripts
+
+    /// "Transcribe on this Mac", "Transcribe Again": queued with the
+    /// transcriber, which takes one at a time.
+    func transcribe(_ entry: ForkMeetingLibraryEntry) {
+        guard !isLive(entry) else {
+            say(strings.refusedWhileRecording)
+            return
+        }
+        ForkMeetingTranscriber.shared.transcribe(folderURL(entry), id: entry.id)
+    }
+
+    func cancelTranscript(_ entry: ForkMeetingLibraryEntry) {
+        ForkMeetingTranscriber.shared.cancel(id: entry.id, folder: folderURL(entry))
+    }
+
+    func transcriptURL(_ entry: ForkMeetingLibraryEntry) -> URL? {
+        entry.transcript.map { folderURL(entry).appendingPathComponent($0) }
+    }
+
+    /// In the app the person reads text with.
+    func openTranscript(_ entry: ForkMeetingLibraryEntry) {
+        guard let url = transcriptURL(entry), FileManager.default.fileExists(atPath: url.path) else { return }
+        NSWorkspace.shared.open(url)
+    }
+
+    /// Reads, off the main thread, the transcripts that are new or changed
+    /// since the last time (by size and date), and forgets the ones gone.
+    /// One pass at a time; a change meanwhile asks for one more.
+    private func indexTranscripts() {
+        guard !indexingTranscripts else {
+            transcriptsAgain = true
+            return
+        }
+        var files: [String: URL] = [:]
+        for entry in entries {
+            guard let name = entry.transcript else { continue }
+            files[ForkMeetingTranscriptIndex.key(folder: entry.folderName, file: name)] = folderURL(entry).appendingPathComponent(name)
+        }
+        let index = transcripts
+        indexingTranscripts = true
+        DispatchQueue.global(qos: .utility).async { [weak self] in
+            var stamps: [String: ForkMeetingTranscriptIndex.Stamp] = [:]
+            for (key, url) in files {
+                let values = try? url.resourceValues(forKeys: [.fileSizeKey, .contentModificationDateKey])
+                stamps[key] = ForkMeetingTranscriptIndex.Stamp(size: Int64(values?.fileSize ?? -1),
+                                                              modified: values?.contentModificationDate)
+            }
+            var read: [String: ForkMeetingTranscriptIndex.Item] = [:]
+            for key in index.stale(stamps) {
+                guard let url = files[key], let stamp = stamps[key],
+                      let data = try? Data(contentsOf: url, options: .mappedIfSafe),
+                      let text = String(data: data, encoding: .utf8) else { continue }
+                read[key] = ForkMeetingTranscriptIndex.Item(stamp: stamp, folded: ForkMeetingTranscriptIndex.folded(text))
+            }
+            DispatchQueue.main.async {
+                guard let self else { return }
+                self.indexingTranscripts = false
+                var next = self.transcripts
+                next.update(keeping: Set(files.keys), read: read)
+                if next != self.transcripts { self.transcripts = next }
+                if self.transcriptsAgain {
+                    self.transcriptsAgain = false
+                    self.indexTranscripts()
+                }
+            }
+        }
     }
 }
 
