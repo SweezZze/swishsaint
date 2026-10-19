@@ -264,8 +264,9 @@ extension ForkMeetingPresenter {
         let seenInShares = inIsland && ForkMeetingIsland.showsInCaptures
         let facts = OfferFacts(
             icon: Self.icon(for: candidate), settings: settings,
-            windowApp: Self.appName(pid: candidate.pid, bundle: candidate.windowBundle),
-            soundApp: Self.appName(pid: nil, bundle: candidate.appBundle),
+            windowApp: ForkMeetingAppsSupport.appName(for: candidate)
+                ?? Self.appName(pid: candidate.pid, bundle: candidate.windowBundle),
+            soundApp: ForkMeetingAppsSupport.appName(for: candidate) ?? Self.appName(pid: nil, bundle: candidate.appBundle),
             microphone: Self.microphone(settings.microphone, meetingInput: service.meetingMicrophone(for: candidate),
                                         seenInShares: seenInShares, text: text),
             consentReminder: UserDefaults.standard.bool(forKey: ForkDefaultsKey.meetingsConsentReminder),

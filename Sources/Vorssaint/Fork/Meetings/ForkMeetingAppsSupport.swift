@@ -40,4 +40,15 @@ enum ForkMeetingAppsSupport {
     static func soundOutsideApp(_ meeting: ForkMeetingCandidate) -> Bool {
         meeting.defaultSound == .all
     }
+
+    // MARK: Fixes K
+
+    /// The name a meeting app goes by in the offer and the pill: its brand
+    /// ("Zoom"), never its process's ("zoom.us"); `nil` for a meeting in a
+    /// browser, which goes by the browser's. `meeting.json` keeps the bundle.
+    static func appName(for meeting: ForkMeetingCandidate?,
+                        table: ForkMeetingProviderTable = .current) -> String? {
+        guard let meeting, table.provider(id: meeting.provider)?.kind == .app else { return nil }
+        return meeting.providerName
+    }
 }

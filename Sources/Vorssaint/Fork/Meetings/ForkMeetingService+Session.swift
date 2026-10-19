@@ -373,7 +373,8 @@ extension ForkMeetingService {
             context.recordsMicrophone = start.microphone != nil
             filmedWindow = start.window
             context.displayID = Self.displayID(of: start.window)
-            context.appName = start.appName
+            // A meeting app by its brand ("Zoom"), not its process ("zoom.us").
+            context.appName = ForkMeetingAppsSupport.appName(for: config.meeting) ?? start.appName
             // A window was asked for, none could be filmed: said at the start.
             context.noWindowToFilm = config.settings.target == .window && start.target == .display
             filmedDisplay = context.displayID ?? CGMainDisplayID()

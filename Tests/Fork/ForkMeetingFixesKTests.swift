@@ -24,6 +24,7 @@ enum ForkMeetingFixesKTests {
         aChannelCalledHuddle(suite)
         theAppsOwnWindow(suite)
         neverForTheOtherWebCalls(suite)
+        anAppByItsName(suite)
     }
 
     // MARK: - Fixtures
@@ -450,5 +451,32 @@ enum ForkMeetingFixesKTests {
                      "an app's Never stays its own: « Never for Zoom »")
         let long = AppLanguage.allCases.filter { ForkMeetingStrings.strings($0).noticeNeverWebCalls.count > 28 }
         suite.expect(long.isEmpty, "the notice fits the island in every language: \(long)")
+    }
+
+    // MARK: - K.I8: an app by its brand
+
+    private static func anAppByItsName(_ suite: TestSuite) {
+        var zoom = Live()
+        zoom.read(0, microphones: [zoomMicrophone])
+        zoom.read(2, microphones: [zoomMicrophone])
+        var web = Live()
+        web.read(-5, microphones: [chromeMicrophone])
+        web.read(0, windows: [chrome("Whereby")], microphones: [chromeMicrophone])
+        web.read(3, windows: [chrome("Whereby")], microphones: [chromeMicrophone])
+        guard let app = zoom.offers.first?.candidate, let page = web.offers.first?.candidate else {
+            return suite.expect(false, "Zoom and Whereby are offered")
+        }
+        suite.expect(ForkMeetingAppsSupport.appName(for: app) == "Zoom" && ForkMeetingAppsSupport.appName(for: page) == nil
+                        && ForkMeetingAppsSupport.appName(for: nil) == nil && app.appBundle == "us.zoom.xos",
+                     "Zoom's app is « Zoom » in the offer and the pill, not « zoom.us »; a web call keeps its browser's name")
+        let english = ForkMeetingStrings.strings(.enUS)
+        let line = ForkMeetingOfferText.capture(target: .window, windowApp: ForkMeetingAppsSupport.appName(for: app),
+                                                hasWindow: true, sound: .app,
+                                                soundApp: ForkMeetingAppsSupport.appName(for: app),
+                                                microphone: .named("AirPods"), strings: english)
+        suite.expect(line == "Window:\u{00A0}Zoom · sound:\u{00A0}Zoom · mic:\u{00A0}AirPods", "« \(line) »")
+        let filmed = ForkMeetingServiceSupport.filmed(target: .window, appName: ForkMeetingAppsSupport.appName(for: app),
+                                                      noWindowToFilm: false, strings: english)
+        suite.expect(filmed.contains("Zoom") && !filmed.contains("zoom.us"), "the pill too: « \(filmed) »")
     }
 }
