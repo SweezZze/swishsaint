@@ -301,7 +301,7 @@ enum ForkMeetingFixesKTests {
         for second in stride(from: 0.0, through: 30, by: 2) { faceTime.read(second, microphones: call) }
         let offer = faceTime.offers.first
         suite.expect(faceTime.starts.isEmpty && faceTime.offers.count == 1
-                        && offer.map(ForkMeetingOfferText.showsAlways) == false,
+                        && offer.map { ForkMeetingOfferText.showsAlways($0, microphoneSignal: true) } == false,
                      "a FaceTime call (or an iPhone's relayed) with Always stored: offered, its menu without Always")
         faceTime.effects = []
         faceTime.send(.always(request()), 31)
@@ -397,8 +397,9 @@ enum ForkMeetingFixesKTests {
                      "a call found by its microphone is filmed in its app's window most in front, not its largest")
         let away = [window(1, pid: 42, 1600, 1000), window(20, pid: slackPID, 1400, 900, onScreen: false, titled: false),
                     window(21, pid: slackPID, 1400, 900, onScreen: false)]
-        suite.expect(ForkMeetingAppsSupport.window(for: slack, in: away, ownPID: ownPID) == 21,
-                     "minimized or on another Space, its titled window is filmed; a spare one never shown is not")
+        // L.I3: only a window on screen; a titled one off screen may be closed.
+        suite.expect(ForkMeetingAppsSupport.window(for: slack, in: away, ownPID: ownPID) == nil,
+                     "no window of its app on screen: the display is filmed, never one off screen")
         suite.expect(ForkMeetingAppsSupport.window(for: slack, in: [window(1, pid: 42, 1600, 1000)], ownPID: ownPID) == nil,
                      "no window of its own: the display is filmed, never the other app's window in front")
         let french = ForkMeetingStrings.strings(.fr)

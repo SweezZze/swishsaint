@@ -495,7 +495,7 @@ enum ForkMeetingAppsTests {
         faceTime.read(-3, microphones: call)
         faceTime.read(20, microphones: call)
         suite.expect(faceTime.starts.isEmpty && faceTime.offers.map(\.candidate.identity.value) == ["facetime:600#1"]
-                        && faceTime.offers.first.map(ForkMeetingOfferText.showsAlways) == false,
+                        && faceTime.offers.first.map { ForkMeetingOfferText.showsAlways($0, microphoneSignal: true) } == false,
                      "an Always stored for FaceTime reads as Offer: its call (or an iPhone's relayed) is offered")
         faceTime.send(.accept(ForkMeetingStartRequest(settings: settings, facts: ready)), 21)
         suite.expect(faceTime.starts.first.map { ForkMeetingDetectionSupport.settings($0.settings, for: $0.meeting) }?
@@ -536,7 +536,7 @@ enum ForkMeetingAppsTests {
             let offer = page.offers.first
             suite.expect(page.starts.isEmpty && page.offers.count == 1
                             && offer?.candidate.identity.value.hasPrefix("web:") == true
-                            && offer.map(ForkMeetingOfferText.showsAlways) == false,
+                            && offer.map { ForkMeetingOfferText.showsAlways($0, microphoneSignal: true) } == false,
                          "« \(title) » in Chrome, its microphone open, Always: offered without « Always for », never started")
             guard offer != nil else { continue }
             page.effects = []

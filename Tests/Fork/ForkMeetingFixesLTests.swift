@@ -19,7 +19,9 @@ enum ForkMeetingFixesLTests {
         theSameAppMeetingBack(suite)
         notNowHoldsAfterAGap(suite)
         backToBackMeetings(suite)
+        theWindowOnScreen(suite)
         aHuddleTitledWithAHyphen(suite)
+        alwaysInTheMenuOnlyWithTheMicrophone(suite)
     }
 
     // MARK: - Fixtures
@@ -298,6 +300,51 @@ enum ForkMeetingFixesLTests {
                      "its window redrawn with the microphone on: the same meeting, followed in its new window")
     }
 
+    // MARK: - L.I3: the app's window on screen, or the whole screen
+
+    private static func theWindowOnScreen(_ suite: TestSuite) {
+        func window(_ id: UInt32, onScreen: Bool, titled: Bool = true) -> ForkMeetingWindowCandidate {
+            ForkMeetingWindowCandidate(id: id, pid: 700, layer: 0, alpha: 1, bounds: CGRect(x: 0, y: 0, width: 900, height: 900),
+                                       ownerIsRegularApp: true, onScreen: onScreen, titled: titled)
+        }
+        let teams = ForkMeetingCandidate(identity: identity("teams#1"), provider: "teams", providerName: "Microsoft Teams",
+                                         providerShortName: "Teams", appBundle: "com.microsoft.teams2", pid: 700,
+                                         defaultSound: .app, policy: .ask, silenced: false, bornAt: t0)
+        // Probe R3, as `.optionAll` really lists them: a closed window still
+        // titled before the one on screen.
+        let chosen = ForkMeetingAppsSupport.window(for: teams, in: [window(44, onScreen: false), window(60, onScreen: true)],
+                                                   ownPID: ownPID)
+        suite.expect(chosen == 60, "the app's window on screen is filmed, never one off screen listed before it")
+        let away = ForkMeetingAppsSupport.window(for: teams, in: [window(44, onScreen: false), window(45, onScreen: false)],
+                                                 ownPID: ownPID)
+        suite.expect(away == nil, "none on screen: the whole screen is filmed")
+        suite.expect(ForkMeetingAppsSupport.filmsMainWindow(teams, found: 60)
+                        && !ForkMeetingAppsSupport.filmsMainWindow(teams, found: nil),
+                     "a call found by its microphone is filmed in its app's main window")
+        var huddle = teams
+        huddle.windowID = 12
+        suite.expect(ForkMeetingAppsSupport.window(for: huddle, in: [], ownPID: ownPID) == 12
+                        && !ForkMeetingAppsSupport.filmsMainWindow(huddle, found: 12),
+                     "a meeting window of its own is filmed as it is")
+
+        let french = ForkMeetingStrings.strings(.fr)
+        let english = ForkMeetingStrings.strings(.enUS)
+        let main = ForkMeetingOfferText.capture(target: .window, windowApp: "Teams", hasWindow: true, mainWindow: true,
+                                                sound: .app, soundApp: "Teams", microphone: .named("AirPods"),
+                                                strings: french)
+        suite.expect(main.hasPrefix("Fenêtre\u{00A0}:\u{00A0}Teams (fenêtre principale) · son"),
+                     "the offer says « Fenêtre : Teams (fenêtre principale) »: \(main)")
+        let whole = ForkMeetingOfferText.capture(target: .window, windowApp: "Teams", hasWindow: false, mainWindow: false,
+                                                 sound: .app, soundApp: "Teams", microphone: .named("AirPods"),
+                                                 strings: english)
+        suite.expect(whole.hasPrefix("Whole screen"), "and « Whole screen » without one: \(whole)")
+        let missing = AppLanguage.allCases.filter {
+            let text = ForkMeetingStrings.strings($0).offerMainWindow("Teams")
+            return !text.hasPrefix("Teams") || text == "Teams" || text.contains("%")
+        }
+        suite.expect(missing.isEmpty, "every language says it is the app's main window: \(missing)")
+    }
+
     // MARK: - L.I4: Slack's huddle window with a hyphen
 
     /// Probe R2: Slack titles its windows with " - ".
@@ -310,5 +357,17 @@ enum ForkMeetingFixesLTests {
         let wrong = huddles.filter { ForkMeetingTitleRules.verdict($0, rules: rules) != .meeting(code: nil, name: nil) }
             + others.filter { ForkMeetingTitleRules.verdict($0, rules: rules) != .none }
         suite.expect(wrong.isEmpty, "« Huddle - Acme - Slack » is a huddle window, « huddle-notes » no huddle: \(wrong)")
+    }
+
+    // MARK: - L.I6: "Always" in the offer's menu only with the microphone
+
+    private static func alwaysInTheMenuOnlyWithTheMicrophone(_ suite: TestSuite) {
+        var zoom = Live(#"{"zoom":"ask"}"#)
+        zoom.read(0, windows: [zoomWindow("Zoom Meeting")])
+        zoom.read(3, windows: [zoomWindow("Zoom Meeting")])
+        guard let offer = zoom.offers.first else { return suite.expect(false, "a Zoom meeting window is offered") }
+        suite.expect(ForkMeetingOfferText.showsAlways(offer, microphoneSignal: true)
+                        && !ForkMeetingOfferText.showsAlways(offer, microphoneSignal: false),
+                     "« Always for Zoom » in the menu only on a Mac that can say which app uses the microphone")
     }
 }
