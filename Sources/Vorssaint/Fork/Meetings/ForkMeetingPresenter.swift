@@ -204,7 +204,7 @@ final class ForkMeetingPresenter {
                                      hold: Self.cardHold))
     }
 
-    /// "Meeting saved · 52 min · 410 MB [Show in Finder]": a card in the
+    /// "Meeting saved · 52 min · 410 MB [Show]": a card in the
     /// island when it is free, else the bubble, for a few seconds. Said to
     /// VoiceOver, and in a notification when neither could show it.
     /// `detail` comes from `ForkMeetingLiveText.savedDetail`.
@@ -219,8 +219,10 @@ final class ForkMeetingPresenter {
         let shown = present({ dismiss in
             ForkMeetingCard(symbol: ForkMeetingIsland.symbol(for: notice), tint: .green, title: notice.title(text),
                             lines: [detail],
-                            actions: [ForkMeetingCard.Action(title: text.actionShow, prominent: true) {
-                                NSWorkspace.shared.open(folder)
+                            actions: [ForkMeetingCard.Action(title: text.actionShowMeeting, prominent: true) {
+                                // The meeting in the library, where it can be
+                                // played, named and noted.
+                                ForkMeetingLibraryWindow.shared.show(folder: folder)
                                 dismiss()
                             }])
         }, height: Self.savedCardHeight, hold: Self.savedHold)

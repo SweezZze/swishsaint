@@ -89,7 +89,7 @@ extension ForkMeetingService {
         }
     }
 
-    /// "Meeting saved · 52 min · 410 MB [Show in Finder]", in the island or
+    /// "Meeting saved · 52 min · 410 MB [Show]", in the island or
     /// the bubble, and a notification when the app is behind. The finalizer
     /// already listed it in Recent captures.
     private func saved(_ outcome: ForkMeetingFinalizer.Outcome, recovered: Bool) {

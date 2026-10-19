@@ -147,10 +147,16 @@ private struct ForkMeetingRecordSection: View {
 
     var body: some View {
         Section {
-            Text(text.pageHowTo)
-                .font(.callout)
-                .foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
+            HStack(alignment: .top) {
+                Text(text.pageHowTo)
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                Spacer()
+                // The meetings already recorded stay at hand, the feature
+                // on or off.
+                Button(text.openLibrary) { ForkMeetingLibraryWindow.shared.show() }
+            }
             if enabled && !acknowledged {
                 HStack(alignment: .firstTextBaseline) {
                     Label(text.setupPending, systemImage: "exclamationmark.circle.fill")
@@ -828,6 +834,9 @@ private struct ForkMeetingLibrarySection: View {
     @ObservedObject private var l10n = L10n.shared
     @AppStorage(ForkDefaultsKey.meetingsFolder) private var folder = ""
     @AppStorage(ForkDefaultsKey.meetingsExtractAudio) private var extractAudio = true
+    @AppStorage(ForkDefaultsKey.meetingsRetentionDays) private var retentionDays = ForkMeetingRetention.fallback
+    /// A shorter delay waiting for its confirmation, with what it would take.
+    @State private var retentionAsked: (days: Int, count: Int)?
 
     /// Read with the setting and the language: the default folder is named
     /// in the person's language until a first recording saves it.
@@ -860,7 +869,64 @@ private struct ForkMeetingLibrarySection: View {
                         .fixedSize(horizontal: false, vertical: true)
                 }
             }
+            Picker(selection: retention) {
+                ForEach(ForkMeetingRetention.choices, id: \.self) { days in
+                    Text(days == 0 ? text.retentionNever : text.retentionDays(days)).tag(days)
+                }
+            } label: {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(text.retentionTitle)
+                    Text(text.retentionCaption)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
         }
+        .alert(text.retentionConfirmTitle, isPresented: retentionConfirming) {
+            Button(text.actionTrash, role: .destructive) {
+                guard let asked = retentionAsked else { return }
+                retentionAsked = nil
+                apply(asked.days)
+            }
+            Button(text.cancel, role: .cancel) { retentionAsked = nil }
+        } message: {
+            if let asked = retentionAsked {
+                Text(text.retentionConfirm(count: asked.count, days: asked.days))
+            }
+        }
+    }
+
+    /// Turning the bin on or shortening it asks first when meetings would
+    /// go now, with how many; anything else applies at once.
+    private var retention: Binding<Int> {
+        Binding(get: { ForkMeetingRetention.sanitized(retentionDays) }, set: { days in
+            let old = ForkMeetingRetention.sanitized(retentionDays)
+            guard days != old else { return }
+            guard days > 0, old == 0 || days < old else {
+                apply(days)
+                return
+            }
+            ForkMeetingStore.shared.retentionDue(days: days, writing: ForkMeetingService.shared.writingFolders) { due in
+                if ForkMeetingRetention.needsConfirmation(from: old, to: days, due: due.count) {
+                    retentionAsked = (days, due.count)
+                } else {
+                    apply(days)
+                }
+            }
+        })
+    }
+
+    private var retentionConfirming: Binding<Bool> {
+        Binding(get: { retentionAsked != nil }, set: { if !$0 { retentionAsked = nil } })
+    }
+
+    private func apply(_ days: Int) {
+        retentionDays = days
+        let sweep = ForkMeetingRetentionSweep.shared
+        sweep.sync(enabled: false)
+        sweep.sync(enabled: ForkMeetingService.shared.isWanted)
+        if days > 0, ForkMeetingService.shared.isWanted { sweep.sweep() }
     }
 
     /// Stored with a tilde, like the official folder lists.
