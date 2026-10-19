@@ -411,7 +411,7 @@ final class ForkMeetingPresenter {
                     dismiss()
                 })
             }
-        case .resumed, .microphone, .displayChanged, .neverOffered:
+        case .resumed, .microphone, .displayChanged, .neverOffered, .alwaysChosen:
             tint = .accentColor
         }
         return ForkMeetingCard(symbol: ForkMeetingIsland.symbol(for: notice), tint: tint, title: notice.title(text),

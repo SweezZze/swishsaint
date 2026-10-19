@@ -18,7 +18,9 @@ enum ForkMeetingDetectionSupport {
     /// folds, a countdown ends, or "Cancel" of a start "Always" made expires.
     static func clockRuns(phase: ForkMeetingMachine.Phase) -> Bool {
         switch phase {
-        case .offering, .endingSoon: return true
+        // A folded offer waits for nothing but the person.
+        case let .offering(offer): return !offer.collapsed
+        case .endingSoon: return true
         case let .recording(session), let .paused(session, _): return session.undoUntil != nil
         case .idle, .starting, .stopping: return false
         }
@@ -64,5 +66,30 @@ enum ForkMeetingDetectionSupport {
     static func freeSpaceIsStale(readAt: Date?, now: Date) -> Bool {
         guard let readAt else { return true }
         return now.timeIntervalSince(readAt) >= freeSpaceLifetime || now < readAt
+    }
+
+    // MARK: Fixes H1
+
+    /// The free space is read again this long after the last reading, so a
+    /// new one is in before the old one is too old to use.
+    static let freeSpaceRefresh: TimeInterval = 10
+    /// A reading that has not come back after this long is given up (a
+    /// volume that hangs), and another one asked.
+    static let freeSpaceTimeout: TimeInterval = 15
+
+    /// The free space an offer or "Always" is asked with: `nil`, which greys
+    /// the offer ("folder unavailable"), once the last reading is too old.
+    static func freeSpace(_ bytes: Int64?, readAt: Date?, now: Date) -> Int64? {
+        freeSpaceIsStale(readAt: readAt, now: now) ? nil : bytes
+    }
+
+    /// Whether to ask a new reading now: none under way and the last one is
+    /// 10 s old, or the one under way has hung for 15 s.
+    static func freeSpaceNeedsReading(readAt: Date?, askedAt: Date?, now: Date) -> Bool {
+        if let askedAt {
+            return now.timeIntervalSince(askedAt) >= freeSpaceTimeout || now < askedAt
+        }
+        guard let readAt else { return true }
+        return now.timeIntervalSince(readAt) >= freeSpaceRefresh || now < readAt
     }
 }

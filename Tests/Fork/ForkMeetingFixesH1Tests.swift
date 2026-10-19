@@ -22,6 +22,12 @@ enum ForkMeetingFixesH1Tests {
         endPageOfAnotherTab(suite)
         setAsideAfterAGlimpse(suite)
         codeAppearing(suite)
+        endWhileStarting(suite)
+        byHandAfterNotNow(suite)
+        alwaysChosenThenCancelled(suite)
+        cancelledThenQuit(suite)
+        foldedOfferStopsTheClock(suite)
+        staleFreeSpace(suite)
         cleanNames(suite)
         titlesGone(suite)
         pageText(suite)
@@ -379,6 +385,148 @@ enum ForkMeetingFixesH1Tests {
         let elsewhere = resolver.resolve(ForkMeetingReading(at: at(12), windows: [chrome("Meet – " + codeA),
                                                                                   chrome("Meet – " + codeB, window: 8)]))
         suite.expect(elsewhere.candidates.count == 2, "another window's code is another meeting")
+    }
+
+    private static func endWhileStarting(_ suite: TestSuite) {
+        var machine = Machine()
+        let candidate = ForkMeetingCandidate(identity: meetA, provider: "meet", providerName: "Google Meet",
+                                             providerShortName: "Meet", titleName: nil, meetCode: codeA,
+                                             calendarTitle: nil, appBundle: "com.google.Chrome", pid: chromePID,
+                                             windowID: 7, windowBundle: "com.google.Chrome", defaultSound: .app,
+                                             policy: .ask, silenced: false, bornAt: at(0))
+        machine.handle(.candidates([candidate], request()), now: at(0))
+        machine.handle(.accept(request()), now: at(1))
+        machine.handle(.endProbable(meetA, countdown: 15), now: at(1.5))
+        machine.handle(.candidates([candidate], request()), now: at(2))
+        let started = machine.handle(.captureStarted(token1, folder: folder), now: at(3))
+        suite.expect(countdowns(started).isEmpty, "its meeting back before the capture runs: no countdown")
+
+        var gone = Machine()
+        gone.handle(.candidates([candidate], request()), now: at(0))
+        gone.handle(.accept(request()), now: at(1))
+        gone.handle(.endProbable(meetA, countdown: 15), now: at(1.5))
+        let late = gone.handle(.captureStarted(token1, folder: folder), now: at(3))
+        suite.expect(countdowns(late) == [at(18)], "gone for good: the countdown starts with the capture")
+
+        var manual = Machine()
+        manual.handle(.manualStart(request()), now: at(0))
+        manual.handle(.endProbable(meetA, countdown: 15), now: at(1))
+        suite.expect(countdowns(manual.handle(.captureStarted(token1, folder: folder), now: at(2))).isEmpty,
+                     "a start by hand keeps no end")
+    }
+
+    private static func byHandAfterNotNow(_ suite: TestSuite) {
+        var live = Live()
+        live.read(-5, microphones: [chromeMicrophone])
+        live.read(0, windows: [chrome("Meet – Point hebdo – " + codeA, window: 42)])
+        live.send(.dismiss(.thisTime), 3)
+        live.readEvery3s(from: 6, to: 30, windows: [chrome("Meet – Point hebdo – " + codeA, window: 42)])
+        _ = live.take()
+        live.send(.manualStart(request()), 31)
+        let config = starts(live.take()).first
+        suite.expect(config?.origin == .manual && config?.title == "Point hebdo" && config?.meeting?.windowID == 42
+                        && config?.meeting?.appBundle == "com.google.Chrome",
+                     "Record after Not now records the meeting going on, by hand: its name, its window, its app")
+        live.send(.captureStarted(token1, folder: folder), 32)
+        live.read(60, windows: [chrome("Vous avez quitté la réunion", window: 42)])
+        live.read(61, microphones: [])
+        live.readEvery3s(from: 63, to: 300, windows: [])
+        suite.expect(countdowns(live.take()).isEmpty && live.machine.activeSession != nil,
+                     "and only the person stops it")
+
+        var nothing = Machine()
+        nothing.handle(.manualStart(request()), now: at(0))
+        if case let .starting(pending) = nothing.phase {
+            suite.expect(pending.config.meeting == nil && pending.config.title == nil,
+                         "with no meeting around, a start by hand names none")
+        } else {
+            suite.expect(false, "a start by hand starts")
+        }
+    }
+
+    // MARK: - H1.8, H1.9, H1.10
+
+    private static func alwaysChosenThenCancelled(_ suite: TestSuite) {
+        func offered() -> Live {
+            var live = Live()
+            live.read(-5, microphones: [chromeMicrophone])
+            live.read(0, windows: [chrome("Meet – " + codeA)])
+            _ = live.take()
+            return live
+        }
+        var chosen = offered()
+        chosen.send(.always(request()), 2)
+        let started = chosen.take()
+        suite.expect(started.last == .notice(.alwaysChosen("Meet")), "choosing Always says it")
+        let french = ForkMeetingStrings.strings(.fr)
+        suite.expect(ForkMeetingNotice.alwaysChosen("Meet").title(french) == "Toujours pour Meet"
+                        && ForkMeetingNotice.alwaysChosen("Meet").detail(french) == "Réglable dans Réunions",
+                     "« Toujours pour Meet · Réglable dans Réunions »")
+        let long = AppLanguage.allCases.filter { ForkMeetingNotice.alwaysChosen("FaceTime").title(.strings($0)).count > 28 }
+        suite.expect(long.isEmpty, "28 characters at most in every language: \(long)")
+        chosen.send(.captureStarted(token1, folder: folder), 3)
+        chosen.send(.cancelAutoStart, 5)
+        suite.expect(chosen.take().contains(.setPolicy(.ask, provider: "meet")) && chosen.apps.policy(for: .googleMeet) == .ask,
+                     "Cancel right after choosing Always takes the choice back")
+
+        var early = offered()
+        early.send(.always(request()), 2)
+        early.send(.cancelAutoStart, 2.5)
+        suite.expect(early.take().contains(.setPolicy(.ask, provider: "meet")), "before the capture runs, too")
+
+        var automatic = Live(apps: #"{"meet":"always"}"#)
+        automatic.read(-5, microphones: [chromeMicrophone])
+        automatic.read(0, windows: [chrome("Meet – " + codeA)])
+        automatic.send(.captureStarted(token1, folder: folder), 1)
+        automatic.send(.cancelAutoStart, 3)
+        let cancelled = automatic.take()
+        suite.expect(stops(cancelled) && !cancelled.contains(.setPolicy(.ask, provider: "meet"))
+                        && automatic.apps.policy(for: .googleMeet) == .always,
+                     "a start Always made on its own, cancelled: this meeting only, the choice stays")
+    }
+
+    private static func cancelledThenQuit(_ suite: TestSuite) {
+        var live = Live(apps: #"{"meet":"always"}"#)
+        live.read(-5, microphones: [chromeMicrophone])
+        live.read(0, windows: [chrome("Meet – " + codeA)])
+        live.send(.captureStarted(token1, folder: folder), 1)
+        live.send(.cancelAutoStart, 2)
+        live.send(.appWillTerminate, 2.1)
+        live.send(.appWillTerminate, 2.2)
+        live.send(.writerFinished(token1, .finished(recordedSeconds: 1)), 2.3)
+        let discards = live.take().filter { $0 == .discard(folder) }
+        suite.expect(discards.count == 1, "Cancel then ⌘Q: its folder is thrown away once, not twice")
+    }
+
+    private static func foldedOfferStopsTheClock(_ suite: TestSuite) {
+        var live = Live()
+        live.read(-5, microphones: [chromeMicrophone])
+        live.read(0, windows: [chrome("Meet – " + codeA)])
+        suite.expect(Support.clockRuns(phase: live.machine.phase), "an open offer: the clock ticks, to fold it")
+        live.clock(until: 20)
+        suite.expect(live.take().last == .collapseOffer && !Support.clockRuns(phase: live.machine.phase),
+                     "folded, it waits for the person only: no clock")
+    }
+
+    // MARK: - H1.12
+
+    private static func staleFreeSpace(_ suite: TestSuite) {
+        suite.expect(Support.freeSpace(1_000, readAt: at(0), now: at(14)) == 1_000
+                        && Support.freeSpace(1_000, readAt: at(0), now: at(15)) == nil
+                        && Support.freeSpace(1_000, readAt: nil, now: at(0)) == nil,
+                     "a free space read more than 15 s ago is not used")
+        suite.expect(ForkMeetingMachine.refusal(ForkMeetingStartRequest(
+                        settings: settings, facts: ForkMeetingStartFacts(freeBytes: nil, screenRecordingAllowed: true,
+                                                                         microphoneAllowed: true, officialRecorderBusy: false)))
+                        == .folderUnavailable,
+                     "without it, the offer greys out as the folder unavailable")
+        suite.expect(!Support.freeSpaceNeedsReading(readAt: at(0), askedAt: nil, now: at(9))
+                        && Support.freeSpaceNeedsReading(readAt: at(0), askedAt: nil, now: at(10))
+                        && Support.freeSpaceNeedsReading(readAt: nil, askedAt: nil, now: at(0)),
+                     "it is read again after 10 s, before it is too old")
+        suite.expect(!Support.freeSpaceNeedsReading(readAt: at(0), askedAt: at(10), now: at(24))
+                        && Support.freeSpaceNeedsReading(readAt: at(0), askedAt: at(10), now: at(25)),
+                     "a reading that hangs is waited for 15 s, then given up and asked again")
     }
 
     // MARK: - H1.14

@@ -251,8 +251,8 @@ enum ForkMeetingDetectionTests {
         var chosen = offered()
         suite.expect(chosen.handle(.always(request()), now: at(2))
                         == [.setPolicy(.always, provider: "meet"), .hideOffer,
-                            .startCapture(config(.always, candidate()), token1)],
-                     "Always for Meet from the offer writes the choice and records now")
+                            .startCapture(config(.always, candidate()), token1), .notice(.alwaysChosen("Meet"))],
+                     "Always for Meet from the offer writes the choice, records now, and says where to change it")
         chosen.handle(.captureStarted(token1, folder: folder), now: at(3))
         suite.expect(chosen.activeSession?.undoUntil == at(8), "with the same 5 s to cancel")
 

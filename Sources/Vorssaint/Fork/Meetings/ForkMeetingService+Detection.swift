@@ -21,7 +21,10 @@ struct ForkMeetingDetection {
     /// the main thread, trusted 15 s.
     var freeBytes: Int64?
     var freeBytesReadAt: Date?
-    var readingFreeBytes = false
+    /// When the reading under way was asked, and its number: one given up
+    /// after 15 s answers into nothing.
+    var freeBytesAskedAt: Date?
+    var freeBytesReading = 0
     /// The meetings whose app has used a microphone for a second, from the
     /// last resolution: "Always" starts only those.
     var onMicrophone: Set<ForkMeetingIdentity> = []
@@ -98,10 +101,13 @@ extension ForkMeetingService {
         detection.lastMicrophones = []
         detection.freeBytes = nil
         detection.freeBytesReadAt = nil
+        detection.freeBytesAskedAt = nil
         detection.onMicrophone = []
         if detectedMeeting != nil { detectedMeeting = nil }
         // An offer goes with the feature; a recording is stopped by `sync()`.
         if case .offering = machine.phase { send(.featureDisabled) }
+        // The machine forgets the meeting it saw: a start by hand names none.
+        send(.candidates([], detectionRequest()))
     }
 
     /// "Name with the calendar": read while it is on and the calendar may
@@ -147,10 +153,13 @@ extension ForkMeetingService {
 
     /// What a start would be asked with now, for an offer and for "Always":
     /// like a start by hand, with the free space last read off the main
-    /// thread, the microphone as it is allowed (never asked: nothing may
-    /// pop up on its own), and the meetings whose app uses the microphone.
+    /// thread (none once it is 15 s old: the offer greys rather than trust
+    /// it), the microphone as it is allowed (never asked: nothing may pop up
+    /// on its own), and the meetings whose app uses the microphone.
     func detectionRequest() -> ForkMeetingStartRequest {
-        var facts = ForkMeetingStartFacts(freeBytes: detection.freeBytes,
+        let free = ForkMeetingDetectionSupport.freeSpace(detection.freeBytes, readAt: detection.freeBytesReadAt,
+                                                         now: Date())
+        var facts = ForkMeetingStartFacts(freeBytes: free,
                                           screenRecordingAllowed: CGPreflightScreenCaptureAccess(),
                                           microphoneAllowed: AVCaptureDevice.authorizationStatus(for: .audio) == .authorized,
                                           officialRecorderBusy: officialRecorderBusy())
@@ -158,21 +167,26 @@ extension ForkMeetingService {
         return ForkMeetingStartRequest(settings: captureSettings(), facts: facts, title: nil)
     }
 
-    /// Reads the free space again once the last reading is old, off the
-    /// main thread: a volume may be slow, or gone.
+    /// Reads the free space again 10 s after the last reading, off the main
+    /// thread: a volume may be slow, or gone. One that hangs for 15 s is
+    /// given up and asked again; its late answer counts for nothing.
     private func refreshFreeSpace() {
-        guard detection.running, !detection.readingFreeBytes,
-              ForkMeetingDetectionSupport.freeSpaceIsStale(readAt: detection.freeBytesReadAt, now: Date()) else { return }
-        detection.readingFreeBytes = true
+        let now = Date()
+        guard detection.running,
+              ForkMeetingDetectionSupport.freeSpaceNeedsReading(readAt: detection.freeBytesReadAt,
+                                                                askedAt: detection.freeBytesAskedAt, now: now) else { return }
+        detection.freeBytesAskedAt = now
+        detection.freeBytesReading += 1
+        let reading = detection.freeBytesReading
         let generation = detection.generation
         let root = store.root()
         let freeBytes = self.freeBytes
         DispatchQueue.global(qos: .utility).async {
             let free = freeBytes(root)
             DispatchQueue.main.async { [weak self] in
-                guard let self else { return }
-                self.detection.readingFreeBytes = false
-                guard self.detection.running, generation == self.detection.generation else { return }
+                guard let self, self.detection.running, generation == self.detection.generation,
+                      reading == self.detection.freeBytesReading else { return }
+                self.detection.freeBytesAskedAt = nil
                 self.detection.freeBytes = free
                 self.detection.freeBytesReadAt = Date()
             }
@@ -317,9 +331,10 @@ extension ForkMeetingService {
 
     /// "Cancel" after a start "Always" made: once its file is closed, the
     /// folder goes to the Trash (deleted if the volume has none), off the
-    /// main thread. It was never finalized nor added to the recent captures.
+    /// main thread; while the app quits, before it ends. It was never
+    /// finalized nor added to the recent captures.
     private func discardCancelled(_ folder: URL) {
-        DispatchQueue.global(qos: .utility).async { [store, log] in
+        let discard = { [store, log] in
             store.release(folder)
             let manager = FileManager.default
             do {
@@ -331,6 +346,11 @@ extension ForkMeetingService {
                     log.error("a cancelled meeting stays: \(error.localizedDescription, privacy: .private)")
                 }
             }
+        }
+        if terminating {
+            discard()
+        } else {
+            DispatchQueue.global(qos: .utility).async(execute: discard)
         }
     }
 }

@@ -115,6 +115,8 @@ enum ForkMeetingNotice: Equatable {
     case soundLost
     /// "Never for Meet" was chosen; the provider's short name.
     case neverOffered(String)
+    /// "Always for Meet" was chosen; the provider's short name.
+    case alwaysChosen(String)
 
     /// 28 characters at most.
     func title(_ s: ForkMeetingStrings) -> String {
@@ -131,6 +133,7 @@ enum ForkMeetingNotice: Equatable {
         case let .failure(failure): return failure.summary(s)
         case .soundLost: return s.noticeSoundLost
         case let .neverOffered(provider): return s.noticeNever(provider)
+        case let .alwaysChosen(provider): return s.offerAlways(provider)
         }
     }
 
@@ -140,7 +143,7 @@ enum ForkMeetingNotice: Equatable {
         switch self {
         case let .microphone(name): return name
         case let .diskLow(minutes): return s.diskMinutes(minutes)
-        case .neverOffered: return s.noticeNeverDetail
+        case .neverOffered, .alwaysChosen: return s.noticeNeverDetail
         case .started, .resumed, .saved, .recovered, .microphoneSilent, .displayChanged, .sourceGone, .failure,
              .soundLost:
             return nil
@@ -265,7 +268,8 @@ enum ForkMeetingDismissal: Equatable {
 /// - an offer is greyed out, never started, while the official recorder
 ///   runs (or anything else would refuse the start);
 /// - a recording "Always" started can be cancelled for 5 s: its folder is
-///   deleted, never finalized;
+///   deleted, never finalized; cancelled right after "Always" was chosen in
+///   the offer, the provider is offered again ("ask");
 /// - "Always" starts on its own only a meeting whose app has used the
 ///   microphone for a second, on a screen not locked: otherwise, and once
 ///   an offer was shown, it waits for a click.
@@ -279,6 +283,12 @@ struct ForkMeetingMachine {
     struct Pending: Equatable {
         let token: ForkMeetingToken
         let config: ForkMeetingCaptureConfig
+        /// Its meeting ended meanwhile, and the countdown it was given: it
+        /// starts once the capture runs.
+        var meetingGone = false
+        var endCountdown: TimeInterval?
+        /// "Always" was chosen in the offer this start came from.
+        var choseAlways = false
 
         var origin: ForkMeetingOrigin { config.origin }
     }
@@ -310,6 +320,11 @@ struct ForkMeetingMachine {
         var undoUntil: Date?
         /// Cancelled: its folder goes once the file is closed.
         var discarded = false
+        /// Its folder was given to `.discard` already (the app quitting).
+        var discardSaid = false
+        /// "Always" was chosen in the offer it came from: "Cancel" offers
+        /// the provider again.
+        var choseAlways = false
         /// The detection said its meeting ended, and the countdown it gave:
         /// a pause or a sleep interrupts the countdown, the resume starts it
         /// again, so a meeting over during a sleep still stops.
@@ -494,6 +509,9 @@ struct ForkMeetingMachine {
     /// When the screen was last unlocked: a stream stopped by the lock is
     /// reported `externalStopGrace` late, possibly after the unlock.
     private var unlockedAt: Date?
+    /// The most recent meeting the detection sees, set aside or not: a
+    /// start by hand records it.
+    private var detected: ForkMeetingCandidate?
 
     /// A meeting is starting, recording or closing; an offer is not.
     var isBusy: Bool {
@@ -513,6 +531,11 @@ struct ForkMeetingMachine {
 
     @discardableResult
     mutating func handle(_ event: Event, now: Date) -> [Effect] {
+        switch event {
+        case let .candidates(candidates, _): detected = candidates.first
+        case .featureDisabled: detected = nil
+        default: break
+        }
         switch phase {
         case let .offering(offer): return whileOffering(event, offer: offer, now: now)
         case let .endingSoon(session, until): return whileEndingSoon(event, session: session, until: until, now: now)
@@ -525,7 +548,12 @@ struct ForkMeetingMachine {
         switch event {
         case let .manualStart(request):
             guard phase == .idle, !terminating else { return [] }
-            return start(origin: .manual, request: request)
+            // A meeting going on ("Not now", or its offer gone): recorded by
+            // hand, with its name, its window and its app's microphone,
+            // and never stopped by the detection.
+            let effects = start(origin: .manual, request: request, meeting: detected)
+            guard case .starting = phase, let detected, !detected.silenced else { return effects }
+            return [.silence(detected.identity)] + effects
 
         case let .captureStarted(token, folder, target, microphone, systemAudio, startedAt):
             guard case let .starting(pending) = phase, pending.token == token else { return [] }
@@ -534,6 +562,9 @@ struct ForkMeetingMachine {
             var session = Session(token: token, config: pending.config, folder: folder, startedAt: zero,
                                   target: target ?? setting, runningSince: zero)
             if locked { session.lockedAt = 0 }
+            session.choseAlways = pending.choseAlways
+            session.meetingGone = pending.meetingGone
+            session.endCountdown = pending.endCountdown
             let denied = pending.config.microphoneDenied
             var effects: [Effect] = [.showPill(pill(session, paused: nil))]
             if pending.origin == .always {
@@ -554,6 +585,11 @@ struct ForkMeetingMachine {
             if session.target != setting { patch.target = session.target }
             if let systemAudio, systemAudio != pending.config.settings.systemAudio { patch.systemAudio = systemAudio }
             if patch != ForkMeetingSidecarPatch() { effects.insert(.writeSidecar(folder, patch), at: 0) }
+            // Its meeting ended while the capture came up: no reading will
+            // say so again, the countdown starts now.
+            if session.meetingGone, let countdown = session.endCountdown {
+                effects += beginCountdown(session, countdown: countdown, now: now)
+            }
             return effects
 
         case let .captureFailed(token, failure):
@@ -768,9 +804,16 @@ struct ForkMeetingMachine {
                 // The sidecar first: the app may be gone before the file
                 // closes, and the next launch then knows what happened.
                 return [.writeSidecar(session.folder, patch), .stopCapture(session.token)]
-            case let .stopping(session, _):
-                // A cancelled recording is not to be recovered at the next launch.
-                guard !session.discarded else { return [.discard(session.folder)] }
+            case .stopping(var session, let reason):
+                // A cancelled recording is not to be recovered at the next
+                // launch; its folder is given once, even if the file closes
+                // before the app ends.
+                guard !session.discarded else {
+                    guard !session.discardSaid else { return [] }
+                    session.discardSaid = true
+                    phase = .stopping(session, reason)
+                    return [.discard(session.folder)]
+                }
                 return [.writeSidecar(session.folder, ForkMeetingSidecarPatch(state: .interrupted))]
             case .offering, .endingSoon:
                 return []
@@ -789,6 +832,14 @@ struct ForkMeetingMachine {
 
         case let .candidates(candidates, request):
             if phase == .idle { return offerOrStart(candidates, request: request, now: now) }
+            if case var .starting(pending) = phase {
+                // Its meeting back before the capture runs: no countdown.
+                guard pending.meetingGone, let meeting = pending.config.meeting?.identity,
+                      candidates.contains(where: { $0.identity == meeting }) else { return [] }
+                pending.meetingGone = false
+                phase = .starting(pending)
+                return []
+            }
             // During a recording a second meeting waits for its end; its own
             // meeting may come back.
             guard var session = activeSession, session.meetingGone,
@@ -804,11 +855,23 @@ struct ForkMeetingMachine {
             return [.hideUndo]
 
         case .cancelAutoStart:
-            if case let .starting(pending) = phase, pending.origin == .always { return cancel(pending) }
+            if case let .starting(pending) = phase, pending.origin == .always {
+                return cancel(pending) + Self.askAgain(pending.choseAlways, pending.config.meeting)
+            }
             guard let session = activeSession, let until = session.undoUntil, now < until else { return [] }
             return discard(session, now: now)
 
         case let .endProbable(identity, countdown):
+            // While the capture starts, the end waits for it to run.
+            if case var .starting(pending) = phase {
+                guard pending.origin != .manual, pending.config.meeting?.identity == identity, let countdown else {
+                    return []
+                }
+                pending.meetingGone = true
+                pending.endCountdown = countdown
+                phase = .starting(pending)
+                return []
+            }
             // A meeting started by hand, or another meeting, never stops
             // this one. A pause holds the countdown until the resume.
             guard var session = activeSession, session.endsWithMeeting, session.meeting == identity,
@@ -882,8 +945,13 @@ struct ForkMeetingMachine {
             return startOffered(.offered, request: request, offer: offer)
 
         case let .always(request):
-            return [.setPolicy(.always, provider: candidate.provider)]
+            let effects: [Effect] = [.setPolicy(.always, provider: candidate.provider)]
                 + startOffered(.always, request: request, offer: offer)
+            guard case var .starting(pending) = phase else { return effects }
+            // Said where to change it; "Cancel" within 5 s takes it back.
+            pending.choseAlways = true
+            phase = .starting(pending)
+            return effects + [.notice(.alwaysChosen(candidate.providerShortName))]
 
         case let .manualStart(request):
             // The Record button or the shortcut while an offer shows: a
@@ -990,6 +1058,14 @@ struct ForkMeetingMachine {
         session.stoppedAt = now
         phase = .stopping(session, .user)
         return [.hideUndo, .stopCapture(session.token), .showPill(.stopping), .announce(.discarded)]
+            + Self.askAgain(session.choseAlways, session.config.meeting)
+    }
+
+    /// "Cancel" right after "Always" was chosen in the offer: the choice
+    /// is taken back, its meetings are offered again.
+    private static func askAgain(_ choseAlways: Bool, _ meeting: ForkMeetingCandidate?) -> [Effect] {
+        guard choseAlways, let provider = meeting?.provider else { return [] }
+        return [.setPolicy(.ask, provider: provider)]
     }
 
     // MARK: - Transitions
@@ -1078,8 +1154,10 @@ struct ForkMeetingMachine {
 
     private mutating func finish(_ session: Session, result: ForkMeetingWriterResult) -> [Effect] {
         phase = .idle
-        // Cancelled: closed or not, the folder goes.
-        guard !session.discarded else { return [.discard(session.folder), .showPill(.hidden)] }
+        // Cancelled: closed or not, the folder goes, once.
+        guard !session.discarded else {
+            return session.discardSaid ? [.showPill(.hidden)] : [.discard(session.folder), .showPill(.hidden)]
+        }
         switch result {
         case let .finished(recordedSeconds):
             var patch = ForkMeetingSidecarPatch(endedAt: session.stoppedAt,

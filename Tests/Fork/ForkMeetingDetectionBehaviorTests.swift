@@ -524,8 +524,9 @@ enum ForkMeetingDetectionBehaviorTests {
         let shown = offers(live.take()).first
         live.send(.always(request()), 34)
         suite.expect(live.take() == [.setPolicy(.always, provider: "meet"), .hideOffer,
-                                     .startCapture(config(.always, shown?.candidate), token1)],
-                     "Always writes the choice, closes the offer and records now")
+                                     .startCapture(config(.always, shown?.candidate), token1),
+                                     .notice(.alwaysChosen("Meet"))],
+                     "Always writes the choice, closes the offer, records now and says « Toujours pour Meet · Réglable dans Réunions »")
         suite.expect(live.apps.policy(for: .googleMeet) == .always
                         && ForkMeetingPolicies(json: live.apps.json).policy(for: .googleMeet) == .always,
                      "the choice is written in fork.meetings.apps")
@@ -594,11 +595,8 @@ enum ForkMeetingDetectionBehaviorTests {
         live.send(.manualStart(request()), 121)
         let started = starts(live.take())
         suite.expect(started.map(\.origin) == [.manual], "a start by hand after Not now records, by hand")
-        // FAILS: from idle the machine attaches no meeting (ForkMeetingMachine.swift:519-521) and the
-        // service asks with `title: nil` (ForkMeetingService+Session.swift:55): the recording of the meeting
-        // going on is unnamed.
-        // suite.expect(started.first?.title == "Google Meet · " + codeA,
-        //              "and takes the name of the meeting going on")
+        suite.expect(started.first?.title == "Google Meet · " + codeA,
+                     "and takes the name of the meeting going on")
     }
 
     // MARK: - The countdown
@@ -694,12 +692,9 @@ enum ForkMeetingDetectionBehaviorTests {
         live.send(.captureStarted(token1, folder: folder), 34)
         live.read(34.2, microphones: [])
         live.readEvery3s(from: 36.5, to: 600, windows: [chrome("Vous avez quitté la réunion")])
-        // let effects = live.take()
-        // FAILS: `endProbable` is dropped while the capture starts (ForkMeetingMachine.swift:807, no
-        // active session in `.starting`), and the resolver never says it again: the recording of a meeting
-        // over goes on until stopped by hand.
-        // suite.expect(!countdowns(effects).isEmpty && stops(effects),
-        //              "the countdown starts once it records, and the recording stops")
+        let effects = live.take()
+        suite.expect(!countdowns(effects).isEmpty && stops(effects),
+                     "the countdown starts once it records, and the recording stops")
     }
 
     // MARK: - Refusals
