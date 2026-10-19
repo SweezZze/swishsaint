@@ -185,23 +185,23 @@ extension ForkMeetingPresenter {
             return
         }
         ui.reminder.hide()
-        let card = offerCard(offer)
+        let islandCard = offerCard(offer, inIsland: true)
         // Already in the island: changed in place.
         if let held = ui.islandCard, held.card == .offer, ForkMeetingIsland.isShowing(id: held.id) {
-            present(card, id: held.id)
+            present(islandCard, id: held.id)
             return
         }
         let surface = ForkMeetingOfferSurface.choose(folded: false, islandAvailable: ForkMeetingIsland.isAvailable,
                                                      islandTurnedAway: ui.islandTurnedAway)
         if surface == .island {
-            if presentInIsland(card, as: .offer, minimum: 96) {
+            if presentInIsland(islandCard, as: .offer, minimum: 96) {
                 hideOfferBubble(.offer)
                 return
             }
             ui.islandTurnedAway = true
         }
         removeIslandCard(.offer)
-        showOfferBubble(card, as: .offer)
+        showOfferBubble(offerCard(offer, inIsland: false), as: .offer)
     }
 
     private func showReminder(_ offer: ForkMeetingOffer) {
@@ -257,7 +257,9 @@ extension ForkMeetingPresenter {
         renderOffer()
     }
 
-    private func offerCard(_ offer: ForkMeetingOffer) -> ForkMeetingCard {
+    /// The island's card follows the official "Show in screenshots and
+    /// videos": seen in shares, it does not name the meeting.
+    private func offerCard(_ offer: ForkMeetingOffer, inIsland: Bool) -> ForkMeetingCard {
         let candidate = offer.candidate
         let service = ForkMeetingService.shared
         let settings = service.captureSettings()
@@ -266,7 +268,8 @@ extension ForkMeetingPresenter {
             windowApp: Self.appName(pid: candidate.pid, bundle: candidate.windowBundle),
             soundApp: Self.appName(pid: nil, bundle: candidate.appBundle),
             microphone: Self.microphone(settings.microphone),
-            consentReminder: UserDefaults.standard.bool(forKey: ForkDefaultsKey.meetingsConsentReminder))
+            consentReminder: UserDefaults.standard.bool(forKey: ForkDefaultsKey.meetingsConsentReminder),
+            seenInShares: inIsland && ForkMeetingIsland.showsInCaptures)
         let actions = OfferActions(record: { service.acceptOffer() }, notNow: { service.dismissOffer(.thisTime) },
                                    always: { service.alwaysForOffer() }, never: { service.dismissOffer(.never) },
                                    copyAnnouncement: { service.copyAnnouncement() }, fix: failureAction)
@@ -281,6 +284,8 @@ extension ForkMeetingPresenter {
         var soundApp: String?
         var microphone: ForkMeetingOfferMicrophone
         var consentReminder: Bool
+        /// Someone else's screen share would show the card.
+        var seenInShares = false
     }
 
     /// What the offer's buttons and menu do. `fix` runs a refusal's way out
@@ -294,7 +299,9 @@ extension ForkMeetingPresenter {
         var fix: ((ForkMeetingFailureAction) -> Void)?
     }
 
-    /// The offer's card, the same in the island and the bubble:
+    /// The offer's card, the same in the island and the bubble, but for its
+    /// name in an island seen in screen shares ("Google Meet", "Name hidden
+    /// from shares"):
     /// ```
     /// [icon] Point hebdo                              (⋯ in the island's top row)
     ///        Google Meet · abc-defg-hij
@@ -307,9 +314,11 @@ extension ForkMeetingPresenter {
                           text: ForkMeetingStrings) -> ForkMeetingCard {
         let candidate = offer.candidate
         let settings = facts.settings
-        var card = ForkMeetingCard(symbol: "video.fill", tint: .accentColor, title: candidate.name)
+        let heading = ForkMeetingOfferText.heading(candidate, seenInShares: facts.seenInShares, strings: text)
+        var card = ForkMeetingCard(symbol: "video.fill", tint: .accentColor, title: heading.title)
+        if heading.title != candidate.name { card.spokenTitle = candidate.name }
         card.icon = facts.icon
-        card.lines = [ForkMeetingOfferText.subtitle(candidate)].compactMap { $0 }
+        card.lines = [heading.subtitle].compactMap { $0 }
         card.lines.append(ForkMeetingOfferText.capture(
             target: settings.target, windowApp: facts.windowApp, hasWindow: candidate.windowID != nil,
             sound: ForkMeetingOfferText.sound(setting: settings.systemAudio, providerDefault: candidate.defaultSound),

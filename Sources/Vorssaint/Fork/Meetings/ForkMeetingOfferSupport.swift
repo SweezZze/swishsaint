@@ -172,6 +172,17 @@ enum ForkMeetingOfferText {
         return parts.isEmpty ? nil : parts.joined(separator: " · ")
     }
 
+    /// The card's title and the line under it. Where someone else's screen
+    /// share would see the card (the island, while the official "Show in
+    /// screenshots and videos" is on), it names the service alone and says
+    /// why: the meeting's name and code stay in the bubble, which no share
+    /// shows, and with VoiceOver.
+    static func heading(_ candidate: ForkMeetingCandidate, seenInShares: Bool,
+                        strings s: ForkMeetingStrings) -> (title: String, subtitle: String?) {
+        guard seenInShares else { return (candidate.name, subtitle(candidate)) }
+        return (candidate.providerName, s.offerNameHidden)
+    }
+
     /// Why a greyed offer cannot record now, in a few words.
     static func blocked(_ failure: ForkMeetingFailure, strings s: ForkMeetingStrings) -> String {
         failure == .officialRecorderBusy ? s.offerRecorderBusy : failure.summary(s)

@@ -367,6 +367,12 @@ struct ForkMeetingStrings {
     /// The microphone's value while macOS does not allow it.
     let offerMicrophoneDenied: String
 
+    // MARK: Fixes H2
+
+    /// The island's offer when the island shows in screen shares: the line
+    /// under the service's name, which stands in for the meeting's.
+    let offerNameHidden: String
+
     func offerAlways(_ provider: String) -> String { String(format: offerAlwaysFormat, provider) }
     func offerNever(_ provider: String) -> String { String(format: offerNeverFormat, provider) }
     func offerCapture(window: String, sound: String, microphone: String) -> String {
@@ -613,7 +619,9 @@ extension ForkMeetingStrings {
         // MARK: Offer UI
         offerCaptureDisplayFormat: "Whole screen · sound: %1$@ · mic: %2$@",
         offerNone: "none",
-        offerMicrophoneDenied: "not allowed"
+        offerMicrophoneDenied: "not allowed",
+        // MARK: Fixes H2
+        offerNameHidden: "Name hidden from shares"
     )
 }
 
@@ -845,7 +853,9 @@ extension ForkMeetingStrings {
         // MARK: Offer UI
         offerCaptureDisplayFormat: "Tela inteira · som: %1$@ · microfone: %2$@",
         offerNone: "nenhum",
-        offerMicrophoneDenied: "não permitido"
+        offerMicrophoneDenied: "não permitido",
+        // MARK: Fixes H2
+        offerNameHidden: "Nome oculto ao compartilhar"
     )
 }
 
@@ -1077,7 +1087,9 @@ extension ForkMeetingStrings {
         // MARK: Offer UI
         offerCaptureDisplayFormat: "Tüm ekran · ses: %1$@ · mikrofon: %2$@",
         offerNone: "yok",
-        offerMicrophoneDenied: "izin yok"
+        offerMicrophoneDenied: "izin yok",
+        // MARK: Fixes H2
+        offerNameHidden: "Paylaşımda ad gizli"
     )
 }
 
@@ -1309,7 +1321,9 @@ extension ForkMeetingStrings {
         // MARK: Offer UI
         offerCaptureDisplayFormat: "Весь экран · звук: %1$@ · микрофон: %2$@",
         offerNone: "нет",
-        offerMicrophoneDenied: "не разрешён"
+        offerMicrophoneDenied: "не разрешён",
+        // MARK: Fixes H2
+        offerNameHidden: "Имя скрыто при показе экрана"
     )
 }
 
@@ -1541,7 +1555,9 @@ extension ForkMeetingStrings {
         // MARK: Offer UI
         offerCaptureDisplayFormat: "Pantalla completa · sonido: %1$@ · micro: %2$@",
         offerNone: "ninguno",
-        offerMicrophoneDenied: "no permitido"
+        offerMicrophoneDenied: "no permitido",
+        // MARK: Fixes H2
+        offerNameHidden: "Nombre oculto al compartir"
     )
 }
 
@@ -1773,7 +1789,9 @@ extension ForkMeetingStrings {
         // MARK: Offer UI
         offerCaptureDisplayFormat: "Celá obrazovka · zvuk: %1$@ · mikrofón: %2$@",
         offerNone: "žiadny",
-        offerMicrophoneDenied: "nepovolený"
+        offerMicrophoneDenied: "nepovolený",
+        // MARK: Fixes H2
+        offerNameHidden: "Názov skrytý pri zdieľaní"
     )
 }
 
@@ -2005,7 +2023,9 @@ extension ForkMeetingStrings {
         // MARK: Offer UI
         offerCaptureDisplayFormat: "Ganzer Bildschirm · Ton: %1$@ · Mikro: %2$@",
         offerNone: "aus",
-        offerMicrophoneDenied: "nicht erlaubt"
+        offerMicrophoneDenied: "nicht erlaubt",
+        // MARK: Fixes H2
+        offerNameHidden: "Name beim Teilen verborgen"
     )
 }
 
@@ -2237,7 +2257,9 @@ extension ForkMeetingStrings {
         // MARK: Offer UI
         offerCaptureDisplayFormat: "Écran entier · son\u{00A0}: %1$@ · micro\u{00A0}: %2$@",
         offerNone: "aucun",
-        offerMicrophoneDenied: "non autorisé"
+        offerMicrophoneDenied: "non autorisé",
+        // MARK: Fixes H2
+        offerNameHidden: "Nom masqué pour les partages"
     )
 }
 
@@ -2469,7 +2491,9 @@ extension ForkMeetingStrings {
         // MARK: Offer UI
         offerCaptureDisplayFormat: "Schermo intero · audio: %1$@ · microfono: %2$@",
         offerNone: "nessuno",
-        offerMicrophoneDenied: "non consentito"
+        offerMicrophoneDenied: "non consentito",
+        // MARK: Fixes H2
+        offerNameHidden: "Nome nascosto se condividi"
     )
 }
 
@@ -2701,7 +2725,9 @@ extension ForkMeetingStrings {
         // MARK: Offer UI
         offerCaptureDisplayFormat: "画面全体 · 音声：%1$@ · マイク：%2$@",
         offerNone: "なし",
-        offerMicrophoneDenied: "未許可"
+        offerMicrophoneDenied: "未許可",
+        // MARK: Fixes H2
+        offerNameHidden: "画面共有では名前を非表示"
     )
 }
 
@@ -2933,7 +2959,9 @@ extension ForkMeetingStrings {
         // MARK: Offer UI
         offerCaptureDisplayFormat: "전체 화면 · 사운드: %1$@ · 마이크: %2$@",
         offerNone: "없음",
-        offerMicrophoneDenied: "허용 안 됨"
+        offerMicrophoneDenied: "허용 안 됨",
+        // MARK: Fixes H2
+        offerNameHidden: "화면 공유 시 이름 숨김"
     )
 }
 
@@ -3165,7 +3193,9 @@ extension ForkMeetingStrings {
         // MARK: Offer UI
         offerCaptureDisplayFormat: "Весь екран · звук: %1$@ · мікрофон: %2$@",
         offerNone: "немає",
-        offerMicrophoneDenied: "не дозволено"
+        offerMicrophoneDenied: "не дозволено",
+        // MARK: Fixes H2
+        offerNameHidden: "Назву сховано при показі"
     )
 }
 
@@ -3397,7 +3427,9 @@ extension ForkMeetingStrings {
         // MARK: Offer UI
         offerCaptureDisplayFormat: "整个屏幕 · 声音：%1$@ · 麦克风：%2$@",
         offerNone: "无",
-        offerMicrophoneDenied: "未允许"
+        offerMicrophoneDenied: "未允许",
+        // MARK: Fixes H2
+        offerNameHidden: "共享屏幕时隐藏名称"
     )
 }
 
@@ -3629,7 +3661,9 @@ extension ForkMeetingStrings {
         // MARK: Offer UI
         offerCaptureDisplayFormat: "整個螢幕 · 聲音：%1$@ · 麥克風：%2$@",
         offerNone: "無",
-        offerMicrophoneDenied: "未允許"
+        offerMicrophoneDenied: "未允許",
+        // MARK: Fixes H2
+        offerNameHidden: "分享螢幕時隱藏名稱"
     )
 }
 
@@ -3861,6 +3895,8 @@ extension ForkMeetingStrings {
         // MARK: Offer UI
         offerCaptureDisplayFormat: "整個螢幕 · 聲音：%1$@ · 咪高風：%2$@",
         offerNone: "無",
-        offerMicrophoneDenied: "未允許"
+        offerMicrophoneDenied: "未允許",
+        // MARK: Fixes H2
+        offerNameHidden: "分享螢幕時隱藏名稱"
     )
 }

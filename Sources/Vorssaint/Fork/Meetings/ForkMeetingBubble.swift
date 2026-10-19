@@ -33,6 +33,9 @@ struct ForkMeetingCard {
     var symbol: String
     var tint: Color
     var title: String
+    /// What VoiceOver says for the title, when the screen shows less: the
+    /// meeting's name behind "Google Meet" in an island seen in shares.
+    var spokenTitle: String?
     /// Under the title, each on its own lines, in secondary text.
     var lines: [String] = []
     var actions: [Action] = []
@@ -143,6 +146,7 @@ struct ForkMeetingCardView: View {
                     .font(.system(size: 13, weight: .semibold))
                     .lineLimit(2)
                     .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityLabel(card.spokenTitle ?? card.title)
                 if let countdown = card.countdownLine {
                     ForkMeetingCountdownText(countdown: countdown)
                         .font(.system(size: 11, weight: .medium).monospacedDigit())
