@@ -2,6 +2,7 @@
 // Copyright (C) 2026 Martial
 
 import AppKit
+import AVKit
 import Carbon.HIToolbox
 import SwiftUI
 
@@ -94,12 +95,21 @@ final class ForkMeetingLibraryWindow: NSObject, NSWindowDelegate {
     func windowWillClose(_ notification: Notification) {
         // The title being typed is kept, as when the field is left.
         window?.makeFirstResponder(nil)
+        // The window is kept for next time, its views with it: a meeting
+        // playing would go on being heard with nothing on screen.
+        if let content = window?.contentView { Self.pausePlayers(in: content) }
         model?.stop()
         removeKeyMonitor()
         if keepsAppRegular {
             keepsAppRegular = false
             WindowActivationPolicy.release()
         }
+    }
+
+    /// Every player under `view`, paused.
+    static func pausePlayers(in view: NSView) {
+        if let player = view as? AVPlayerView { player.player?.pause() }
+        view.subviews.forEach(pausePlayers)
     }
 
     // MARK: - Keys
