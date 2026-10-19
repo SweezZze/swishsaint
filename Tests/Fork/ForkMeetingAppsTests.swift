@@ -199,13 +199,13 @@ enum ForkMeetingAppsTests {
                         && born.candidates.first?.policy == .ask,
                      "then Zoom's microphone alone makes its meeting, named Zoom, offered, its sound Zoom's")
 
-        for (bundle, id) in [("com.microsoft.teams2", "teams"), ("com.microsoft.teams", "teams"),
-                             ("com.tinyspeck.slackmacgap", "slack"), ("Cisco-Systems.Spark", "webex"),
-                             ("com.webex.meetingmanager", "webex")] {
+        for (bundle, id) in [("com.microsoft.teams2", "teams#1"), ("com.microsoft.teams", "teams#1"),
+                             ("com.tinyspeck.slackmacgap", "slack:300#1"), ("Cisco-Systems.Spark", "webex#1"),
+                             ("com.webex.meetingmanager", "webex#1")] {
             var app = resolver()
             let signal = microphone(bundle, pid: 300)
             read(&app, 0, microphones: [signal])
-            suite.expect(ids(read(&app, 2, microphones: [signal])) == ["\(id):300#1"],
+            suite.expect(ids(read(&app, 2, microphones: [signal])) == [id],
                          "the microphone of \(bundle) makes a \(id) meeting")
         }
 
@@ -404,8 +404,8 @@ enum ForkMeetingAppsTests {
         var survived = true
         for second in stride(from: 4.0, through: 40, by: 2) {
             let resolution = read(&two, second, microphones: [teams])
-            survived = survived && resolution.candidates.map(\.identity.value).contains("teams:300#1")
-                && !resolution.ended.contains(ForkMeetingIdentity("teams:300#1"))
+            survived = survived && resolution.candidates.map(\.identity.value).contains("teams#1")
+                && !resolution.ended.contains(ForkMeetingIdentity("teams#1"))
         }
         suite.expect(survived, "two apps, two meetings: Zoom ending never ends Teams")
     }

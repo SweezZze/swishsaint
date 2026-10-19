@@ -193,6 +193,13 @@ struct ForkMeetingResolver {
                 var track = tracks[identity] ?? newTrack(identity, provider: provider,
                                                          family: microphone.appBundle ?? microphone.processBundle ?? "",
                                                          pid: pid)
+                // Of a provider's two apps, the one using the microphone is
+                // the call's: heard, and filmed.
+                let held = microphones.contains { provider.owns($0) && ($0.appPID ?? $0.pid) == track.pid }
+                if track.pid != pid, !held {
+                    track.pid = pid
+                    track.family = microphone.appBundle ?? track.family
+                }
                 if track.firstMicrophoneAt == nil { track.firstMicrophoneAt = now }
                 track.microphoneReadings += 1
                 tracks[identity] = track
@@ -336,8 +343,10 @@ struct ForkMeetingResolver {
     }
 
     /// The app process an app's meeting belongs to: one meeting at a time.
+    /// A provider of two apps (Webex and Webex Meetings, which may both hold
+    /// the microphone for one call) has one meeting at a time between them.
     static func scope(_ provider: ForkMeetingProvider, pid: Int32) -> String {
-        "\(provider.id):\(pid)"
+        provider.bundles.count > 1 ? provider.id : "\(provider.id):\(pid)"
     }
 
     /// The meeting of this app process going on, else its next one, by

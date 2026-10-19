@@ -31,7 +31,8 @@ struct ForkMeetingProvider: Equatable {
         /// `<id>:<pid>:<title>`, the title as read (Chrome's cut kept).
         case codeOrWindow
         /// `<id>:<pid>#<birth>`: one meeting at a time per app process,
-        /// each one after the other numbered (`zoom:500#2`).
+        /// each one after the other numbered (`zoom:500#2`); `<id>#<birth>`
+        /// for a provider of two apps (`webex#1`).
         case appProcess
     }
 

@@ -27,6 +27,7 @@ enum ForkMeetingFixesKTests {
         anAppByItsName(suite)
         noAlwaysBeforeMacOS14_4(suite)
         namedByTheCalendar(suite)
+        oneWebexCall(suite)
     }
 
     // MARK: - Fixtures
@@ -563,5 +564,29 @@ enum ForkMeetingFixesKTests {
         suite.expect(whereby.read(3, windows: [chrome("Whereby")], microphones: [chromeMicrophone]).candidates.first?.name
                         == "Atelier",
                      "a Whereby call in a browser too")
+    }
+
+    // MARK: - K.m: one Webex call in its two apps
+
+    /// Probe P6: one Webex call whose two apps both hold the microphone.
+    private static func oneWebexCall(_ suite: TestSuite) {
+        let spark = Microphone(appBundle: "Cisco-Systems.Spark", appPID: 300, pid: 301, processBundle: "Cisco-Systems.Spark")
+        let manager = Microphone(appBundle: "com.webex.meetingmanager", appPID: 310, pid: 311,
+                                 processBundle: "com.webex.meetingmanager")
+        var webex = Live()
+        webex.read(0, microphones: [spark, manager])
+        webex.read(2, microphones: [spark, manager])
+        webex.send(.dismiss(.thisTime), 3)
+        webex.read(4, microphones: [spark, manager])
+        webex.read(6, microphones: [manager])
+        let call = webex.read(8, microphones: [manager]).candidates
+        suite.expect(webex.offers.count == 1 && webex.offers.first?.candidate.identity == identity("webex#1")
+                        && call.map(\.identity) == [identity("webex#1")],
+                     "one Webex call in its two apps is one meeting, offered once")
+        suite.expect(call.first?.pid == 310 && call.first?.appBundle == "com.webex.meetingmanager",
+                     "the app still on the microphone is the one heard and filmed")
+        var ended: [ForkMeetingIdentity] = []
+        for second in stride(from: 10.0, through: 40, by: 2) { ended += webex.read(second, microphones: []).ended }
+        suite.expect(ended == [identity("webex#1")], "and it ends once neither uses the microphone")
     }
 }
