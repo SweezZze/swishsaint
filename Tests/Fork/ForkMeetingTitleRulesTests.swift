@@ -22,7 +22,7 @@ enum ForkMeetingTitleRulesTests {
         return false
     }
 
-    /// bran's accepted titles, in French and English, every dash.
+    /// The accepted titles, in French and English, every dash.
     private static func meetingTitles(_ suite: TestSuite) {
         let titles = ["Meet - abc-defg-hij", "Meet – abc-defg-hij", "Meet — abc-defg-hij", "Réunion équipe - Google Meet",
                       "Meet - Point hebdo", "abc-defg-hij - Google Meet", "Team sync – Google Meet", "Meet – Weekly sync",
@@ -33,7 +33,7 @@ enum ForkMeetingTitleRulesTests {
 
     private static func refusedTitles(_ suite: TestSuite) {
         let titles = [
-            // False positives bran already refused.
+            // False positives an earlier recorder already refused.
             "Slack | #meeting", "Meeting notes - Notion", "Meeting notes – Notion", "Zoom Meeting",
             "Comment démarrer avec Google Meet - Documentation", "Meetup – Paris Swift",
             // Home and waiting pages.

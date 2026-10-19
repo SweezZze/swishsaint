@@ -152,7 +152,9 @@ extension ForkMeetingService {
             switch next {
             case .manualStart, .accept, .always: starts = true
             case let .captureFailed(token, _): starts = isStarting(token)
-            case .captureStarted: runsStart = true
+            case .captureStarted:
+                runsStart = true
+                machine.voiceOver = NSWorkspace.shared.isVoiceOverEnabled
             default: break
             }
             for effect in machine.handle(next, now: Date()) {
@@ -202,6 +204,10 @@ extension ForkMeetingService {
             // gauge, whatever the next start does.
             let shown = ForkMeetingServiceSupport.pill(state, finalizing: !finalizing.isEmpty)
             presenter.apply(.showPill(shown), context: context)
+        case .announce(.discarded):
+            // Said once the folder is gone, with what became of it
+            // (`discardCancelled`): it may stay, and is never deleted then.
+            break
         case let .announce(announcement) where runsStart && context.trackSound == .noApp:
             // One sentence after the other, not two that cut each other off.
             let text = ForkMeetingStrings.current

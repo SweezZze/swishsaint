@@ -337,7 +337,6 @@ struct ForkMeetingStrings {
     /// The ⋯ button, for VoiceOver and as its tooltip.
     let offerMore: String
     /// The consent line under the meeting's name.
-    let offerConsent: String
     /// What will be recorded: the window's app, the sound's (an app, or
     /// `offerWholeMac`) and the microphone's name, in that order.
     let offerCaptureFormat: String
@@ -373,6 +372,41 @@ struct ForkMeetingStrings {
     /// The microphone's value while macOS does not allow it.
     let offerMicrophoneDenied: String
 
+    // MARK: Fixes H2
+
+    /// The island's offer when the island shows in screen shares: the line
+    /// under the service's name, which stands in for the meeting's.
+    let offerNameHidden: String
+
+    /// The pill's stop for VoiceOver and as its tooltip while "Cancel" runs
+    /// after a start "Always" made: it cancels then, as "Cancel" does.
+    let pillStopCancels: String
+
+    /// Said when the meeting comes back during "Meeting over?": the
+    /// countdown goes, the recording goes on.
+    let voiceMeetingBack: String
+
+    /// After "Cancel", once the folder is gone: the notice says where it
+    /// went (the Trash; deleted on a volume without one), or that it stayed.
+    let noticeDiscardedTrash: String
+    let noticeDiscardedDeleted: String
+    let noticeDiscardKept: String
+    let noticeDiscardKeptDetail: String
+    /// Said once the folder is gone: deleted (it could not go to the
+    /// Trash), or kept. Moved to the Trash, `voiceDiscarded` says it.
+    let voiceDiscardedDeleted: String
+    let voiceDiscardKept: String
+
+    /// After "Copy Announcement": the notice and its detail.
+    let noticeAnnouncementCopied: String
+    let noticeAnnouncementCopiedDetail: String
+
+    /// The "Cancel" card's line: nobody pressed Record. %@ is the provider's
+    /// short name ("Meet").
+    let undoAutoStartedFormat: String
+
+    func undoAutoStarted(_ provider: String) -> String { String(format: undoAutoStartedFormat, provider) }
+
     func offerAlways(_ provider: String) -> String { String(format: offerAlwaysFormat, provider) }
     func offerNever(_ provider: String) -> String { String(format: offerNeverFormat, provider) }
     func offerCapture(window: String, sound: String, microphone: String) -> String {
@@ -395,7 +429,7 @@ extension ForkMeetingStrings {
     static let enUS = ForkMeetingStrings(
         // MARK: Page
         searchKeywords: "recording, video call, call, meeting, screen, microphone",
-        pageHowTo: "Start a recording with the button or your shortcut: it goes on until you stop it. Each meeting gets its own folder.",
+        pageHowTo: "Start a recording with the button or your shortcut, or from the offer when a Google Meet is detected. A recording started by hand goes on until you stop it. Each meeting gets its own folder.",
         recordNow: "Record Now",
         stopRecording: "Stop",
         pauseRecording: "Pause",
@@ -549,7 +583,7 @@ extension ForkMeetingStrings {
         // MARK: Fixes F2
         stateStarting: "Starting…",
         pictureFrontDisplay: "Its whole display",
-        consentIntroFrontWindow: "Meetings records the window in front (or its display), its app’s sound and your microphone. Everything stays on this Mac.",
+        consentIntroFrontWindow: "Meetings records the meeting’s window (or its display), its app’s sound and your microphone. To offer a Google Meet, it reads the windows’ titles and which apps use the microphone. Everything stays on this Mac.",
         filmedWindowFormat: "%@ window",
         filmedWindowUnnamed: "Window in front",
         filmedDisplay: "Whole screen",
@@ -576,12 +610,12 @@ extension ForkMeetingStrings {
         detectionLookalike: "A web page that copies a Google Meet title exactly and uses the microphone could be offered as a meeting.",
         // MARK: Detection effects
         detectionTitle: "Detection",
-        detectionCaption: "Recognizes a Google Meet meeting open in your browser, even in the background or on another desktop, and offers to record it.",
+        detectionCaption: "Recognizes a Google Meet meeting open in your browser, even behind other windows or on another desktop, and offers to record it.",
         policyAsk: "Offer",
         policyAlways: "Always",
         policyNever: "Never",
         policyAskCaption: "Offered as soon as you join; unanswered, the offer folds after 20 seconds.",
-        policyAlwaysCaption: "Recording starts on its own when you join. Cancel within 5 seconds deletes it.",
+        policyAlwaysCaption: "Recording starts on its own when you join. Choosing Cancel within 5 seconds moves it to the Trash.",
         policyNeverCaption: "Google Meet meetings are never offered. You can still record by hand.",
         detectionTitlesOnly: "Before macOS 14.4, a meeting is recognized by its window’s title only.",
         detectionMicrophoneUnreadable: "macOS does not say here which app uses the microphone: a meeting is recognized by its window’s title only.",
@@ -601,7 +635,6 @@ extension ForkMeetingStrings {
         offerAlwaysFormat: "Always for %@",
         offerNeverFormat: "Never for %@",
         offerMore: "More options",
-        offerConsent: "Remember to tell the participants.",
         offerCaptureFormat: "Window: %1$@ · sound: %2$@ · mic: %3$@",
         offerWholeMac: "whole Mac",
         offerRecorderBusy: "A screen recording is in progress.",
@@ -613,15 +646,28 @@ extension ForkMeetingStrings {
         noticeNeverFormat: "No more offers for %@",
         noticeNeverDetail: "Change it in Meetings",
         voiceOfferFormat: "Meeting detected: %@. Do you want to record it?",
-        voiceAutoStartedFormat: "Meeting recording started on its own. To cancel it and delete the file, choose Cancel within %d seconds.",
+        voiceAutoStartedFormat: "Meeting recording started on its own. To cancel it and move it to the Trash, choose Cancel within %d seconds.",
         voiceEndingSoonFormat: "The meeting seems over. The recording stops in %d seconds unless you choose Continue.",
         voiceContinued: "The recording goes on.",
-        voiceDiscarded: "Recording cancelled. Its file is deleted.",
+        voiceDiscarded: "Recording cancelled. It goes to the Trash.",
         voiceNeverFormat: "Meetings from %@ will no longer be offered.",
         // MARK: Offer UI
         offerCaptureDisplayFormat: "Whole screen · sound: %1$@ · mic: %2$@",
         offerNone: "none",
-        offerMicrophoneDenied: "not allowed"
+        offerMicrophoneDenied: "not allowed",
+        // MARK: Fixes H2
+        offerNameHidden: "Name hidden from shares",
+        pillStopCancels: "Cancel the recording and move it to the Trash",
+        voiceMeetingBack: "The meeting goes on: the recording does not stop.",
+        noticeDiscardedTrash: "Cancelled · moved to Trash",
+        noticeDiscardedDeleted: "Cancelled · deleted",
+        noticeDiscardKept: "Cancelled · folder kept",
+        noticeDiscardKeptDetail: "It stays with your meetings",
+        voiceDiscardedDeleted: "Recording cancelled. Its folder could not go to the Trash: it is deleted.",
+        voiceDiscardKept: "Recording cancelled, but its folder could be neither moved to the Trash nor deleted: it stays with your meetings.",
+        noticeAnnouncementCopied: "Announcement copied",
+        noticeAnnouncementCopiedDetail: "Paste it in the meeting chat",
+        undoAutoStartedFormat: "Started on its own · Always for %@"
     )
 }
 
@@ -629,7 +675,7 @@ extension ForkMeetingStrings {
     static let ptBR = ForkMeetingStrings(
         // MARK: Page
         searchKeywords: "gravação, videochamada, chamada, reunião, tela, microfone",
-        pageHowTo: "Inicie uma gravação pelo botão ou pelo seu atalho: ela continua até você parar. Cada reunião ganha uma pasta própria.",
+        pageHowTo: "Inicie uma gravação pelo botão ou pelo seu atalho, ou pela oferta quando um Google Meet é detectado. Uma gravação iniciada manualmente continua até você pará-la. Cada reunião ganha uma pasta própria.",
         recordNow: "Gravar agora",
         stopRecording: "Parar",
         pauseRecording: "Pausar",
@@ -783,7 +829,7 @@ extension ForkMeetingStrings {
         // MARK: Fixes F2
         stateStarting: "Iniciando…",
         pictureFrontDisplay: "A tela inteira dela",
-        consentIntroFrontWindow: "Reuniões grava a janela da frente (ou a tela dela), o som do app dela e o seu microfone. Tudo fica neste Mac.",
+        consentIntroFrontWindow: "Reuniões grava a janela da reunião (ou a tela dela), o som do app dela e o seu microfone. Para oferecer um Google Meet, lê os títulos das janelas e quais apps usam o microfone. Tudo fica neste Mac.",
         filmedWindowFormat: "Janela do %@",
         filmedWindowUnnamed: "Janela da frente",
         filmedDisplay: "Tela inteira",
@@ -810,12 +856,12 @@ extension ForkMeetingStrings {
         detectionLookalike: "Uma página da web que copie exatamente o título de uma reunião do Google Meet e use o microfone pode ser oferecida como reunião.",
         // MARK: Detection effects
         detectionTitle: "Detecção",
-        detectionCaption: "Reconhece uma reunião do Google Meet aberta no seu navegador, mesmo em segundo plano ou em outra mesa, e oferece gravá-la.",
+        detectionCaption: "Reconhece uma reunião do Google Meet aberta no seu navegador, mesmo atrás de outras janelas ou em outra mesa, e oferece gravá-la.",
         policyAsk: "Oferecer",
         policyAlways: "Sempre",
         policyNever: "Nunca",
         policyAskCaption: "A oferta aparece assim que você entra; sem resposta, ela se recolhe após 20 segundos.",
-        policyAlwaysCaption: "A gravação começa sozinha quando você entra. Cancelar em até 5 segundos a apaga.",
+        policyAlwaysCaption: "A gravação começa sozinha quando você entra. Escolher Cancelar em até 5 segundos move a gravação para o Lixo.",
         policyNeverCaption: "As reuniões do Google Meet nunca são oferecidas. Você ainda pode gravar manualmente.",
         detectionTitlesOnly: "Antes do macOS 14.4, uma reunião é reconhecida só pelo título da janela.",
         detectionMicrophoneUnreadable: "Aqui o macOS não informa qual app usa o microfone: uma reunião é reconhecida só pelo título da janela.",
@@ -835,11 +881,10 @@ extension ForkMeetingStrings {
         offerAlwaysFormat: "Sempre para %@",
         offerNeverFormat: "Nunca para %@",
         offerMore: "Mais opções",
-        offerConsent: "Lembre-se de avisar os participantes.",
         offerCaptureFormat: "Janela: %1$@ · som: %2$@ · microfone: %3$@",
         offerWholeMac: "Mac inteiro",
         offerRecorderBusy: "Uma gravação de tela está em curso.",
-        offerReminderFormat: "Proposta de gravar %@",
+        offerReminderFormat: "Oferta de gravar %@",
         endingSoonTitle: "A reunião terminou?",
         endingSoonFormat: "Parando em %d s",
         endingSoonContinue: "Continuar",
@@ -847,15 +892,28 @@ extension ForkMeetingStrings {
         noticeNeverFormat: "Nunca mais para %@",
         noticeNeverDetail: "Ajuste em Reuniões",
         voiceOfferFormat: "Reunião detectada: %@. Quer gravá-la?",
-        voiceAutoStartedFormat: "Gravação da reunião iniciada automaticamente. Para cancelá-la e apagar o arquivo, escolha Cancelar em até %d segundos.",
+        voiceAutoStartedFormat: "Gravação da reunião iniciada automaticamente. Para cancelá-la e movê-la para o Lixo, escolha Cancelar em até %d segundos.",
         voiceEndingSoonFormat: "A reunião parece ter terminado. A gravação para em %d segundos, a menos que você escolha Continuar.",
         voiceContinued: "A gravação continua.",
-        voiceDiscarded: "Gravação cancelada. O arquivo foi apagado.",
+        voiceDiscarded: "Gravação cancelada. Ela vai para o Lixo.",
         voiceNeverFormat: "As reuniões do %@ não serão mais oferecidas.",
         // MARK: Offer UI
         offerCaptureDisplayFormat: "Tela inteira · som: %1$@ · microfone: %2$@",
         offerNone: "nenhum",
-        offerMicrophoneDenied: "não permitido"
+        offerMicrophoneDenied: "não permitido",
+        // MARK: Fixes H2
+        offerNameHidden: "Nome oculto ao compartilhar",
+        pillStopCancels: "Cancelar a gravação e movê-la para o Lixo",
+        voiceMeetingBack: "A reunião continua: a gravação não para.",
+        noticeDiscardedTrash: "Cancelada · no Lixo",
+        noticeDiscardedDeleted: "Cancelada · apagada",
+        noticeDiscardKept: "Cancelada · pasta mantida",
+        noticeDiscardKeptDetail: "Continua com suas reuniões",
+        voiceDiscardedDeleted: "Gravação cancelada. A pasta não pôde ir para o Lixo: foi apagada.",
+        voiceDiscardKept: "Gravação cancelada, mas a pasta não pôde ir para o Lixo nem ser apagada: continua com suas reuniões.",
+        noticeAnnouncementCopied: "Aviso copiado",
+        noticeAnnouncementCopiedDetail: "Cole no chat da reunião",
+        undoAutoStartedFormat: "Iniciada sozinha · Sempre para %@"
     )
 }
 
@@ -863,7 +921,7 @@ extension ForkMeetingStrings {
     static let tr = ForkMeetingStrings(
         // MARK: Page
         searchKeywords: "kayıt, görüntülü görüşme, arama, toplantı, ekran, mikrofon",
-        pageHowTo: "Düğmeyle veya kısayolunuzla bir kayıt başlatın: siz durdurana kadar sürer. Her toplantının kendi klasörü olur.",
+        pageHowTo: "Düğmeyle, kısayolunuzla ya da bir Google Meet algılandığında gelen öneriden bir kayıt başlatın. Elle başlatılan bir kayıt siz durdurana kadar sürer. Her toplantının kendi klasörü olur.",
         recordNow: "Şimdi kaydet",
         stopRecording: "Durdur",
         pauseRecording: "Duraklat",
@@ -1017,7 +1075,7 @@ extension ForkMeetingStrings {
         // MARK: Fixes F2
         stateStarting: "Başlatılıyor…",
         pictureFrontDisplay: "Bulunduğu ekranın tamamı",
-        consentIntroFrontWindow: "Toplantılar, öndeki pencereyi (veya ekranını), uygulamasının sesini ve mikrofonunuzu kaydeder. Her şey bu Mac’te kalır.",
+        consentIntroFrontWindow: "Toplantılar, toplantının penceresini (veya ekranını), uygulamasının sesini ve mikrofonunuzu kaydeder. Bir Google Meet önermek için pencerelerin başlıklarını ve mikrofonu hangi uygulamaların kullandığını okur. Her şey bu Mac’te kalır.",
         filmedWindowFormat: "%@ penceresi",
         filmedWindowUnnamed: "Öndeki pencere",
         filmedDisplay: "Tüm ekran",
@@ -1044,12 +1102,12 @@ extension ForkMeetingStrings {
         detectionLookalike: "Bir Google Meet başlığını birebir taklit eden ve mikrofonu kullanan bir web sayfası da toplantı olarak önerilebilir.",
         // MARK: Detection effects
         detectionTitle: "Algılama",
-        detectionCaption: "Tarayıcınızda açık bir Google Meet toplantısını, arka planda ya da başka bir masaüstünde olsa bile tanır ve kaydetmeyi önerir.",
+        detectionCaption: "Tarayıcınızda açık bir Google Meet toplantısını, başka pencerelerin arkasında ya da başka bir masaüstünde olsa bile tanır ve kaydetmeyi önerir.",
         policyAsk: "Öner",
         policyAlways: "Her zaman",
         policyNever: "Asla",
         policyAskCaption: "Öneri, katıldığınız anda gelir; yanıtlanmazsa 20 saniye sonra küçülür.",
-        policyAlwaysCaption: "Kayıt, katıldığınızda kendiliğinden başlar. 5 saniye içinde İptal, kaydı siler.",
+        policyAlwaysCaption: "Kayıt, katıldığınızda kendiliğinden başlar. 5 saniye içinde Vazgeç’i seçerseniz kayıt Çöp Sepeti’ne taşınır.",
         policyNeverCaption: "Google Meet toplantıları hiç önerilmez. Yine de elle kaydedebilirsiniz.",
         detectionTitlesOnly: "macOS 14.4’ten önce bir toplantı yalnızca pencere başlığından tanınır.",
         detectionMicrophoneUnreadable: "macOS burada mikrofonu hangi uygulamanın kullandığını söylemiyor: bir toplantı yalnızca pencere başlığından tanınır.",
@@ -1069,7 +1127,6 @@ extension ForkMeetingStrings {
         offerAlwaysFormat: "%@ için her zaman",
         offerNeverFormat: "%@ için asla",
         offerMore: "Diğer seçenekler",
-        offerConsent: "Katılımcıları bilgilendirmeyi unutmayın.",
         offerCaptureFormat: "Pencere: %1$@ · ses: %2$@ · mikrofon: %3$@",
         offerWholeMac: "tüm Mac",
         offerRecorderBusy: "Bir ekran kaydı sürüyor.",
@@ -1081,15 +1138,28 @@ extension ForkMeetingStrings {
         noticeNeverFormat: "%@ artık önerilmez",
         noticeNeverDetail: "Toplantılar’dan değiştirin",
         voiceOfferFormat: "Toplantı algılandı: %@. Kaydetmek ister misiniz?",
-        voiceAutoStartedFormat: "Toplantı kaydı kendiliğinden başladı. İptal edip dosyayı silmek için %d saniye içinde Vazgeç’i seçin.",
+        voiceAutoStartedFormat: "Toplantı kaydı kendiliğinden başladı. İptal edip Çöp Sepeti’ne taşımak için %d saniye içinde Vazgeç’i seçin.",
         voiceEndingSoonFormat: "Toplantı bitmiş görünüyor. Devam et’i seçmezseniz kayıt %d saniye içinde duracak.",
         voiceContinued: "Kayıt devam ediyor.",
-        voiceDiscarded: "Kayıt iptal edildi. Dosyası silindi.",
+        voiceDiscarded: "Kayıt iptal edildi. Çöp Sepeti’ne taşınıyor.",
         voiceNeverFormat: "%@ toplantıları artık önerilmeyecek.",
         // MARK: Offer UI
         offerCaptureDisplayFormat: "Tüm ekran · ses: %1$@ · mikrofon: %2$@",
         offerNone: "yok",
-        offerMicrophoneDenied: "izin yok"
+        offerMicrophoneDenied: "izin yok",
+        // MARK: Fixes H2
+        offerNameHidden: "Paylaşımda ad gizli",
+        pillStopCancels: "Kaydı iptal et ve Çöp Sepeti’ne taşı",
+        voiceMeetingBack: "Toplantı sürüyor: kayıt durmuyor.",
+        noticeDiscardedTrash: "İptal · Çöp Sepeti’nde",
+        noticeDiscardedDeleted: "İptal · silindi",
+        noticeDiscardKept: "İptal · klasör duruyor",
+        noticeDiscardKeptDetail: "Toplantılarınızda duruyor",
+        voiceDiscardedDeleted: "Kayıt iptal edildi. Klasörü Çöp Sepeti’ne taşınamadı: silindi.",
+        voiceDiscardKept: "Kayıt iptal edildi, ancak klasörü Çöp Sepeti’ne taşınamadı ve silinemedi: toplantılarınızda duruyor.",
+        noticeAnnouncementCopied: "Duyuru kopyalandı",
+        noticeAnnouncementCopiedDetail: "Sohbete yapıştırın",
+        undoAutoStartedFormat: "Kendiliğinden başladı · %@ için her zaman"
     )
 }
 
@@ -1097,7 +1167,7 @@ extension ForkMeetingStrings {
     static let ru = ForkMeetingStrings(
         // MARK: Page
         searchKeywords: "запись, видеозвонок, звонок, встреча, экран, микрофон",
-        pageHowTo: "Начните запись кнопкой или своим сочетанием клавиш: она идёт, пока вы её не остановите. У каждой встречи своя папка.",
+        pageHowTo: "Начните запись кнопкой, своим сочетанием клавиш или из предложения, когда обнаружена встреча Google Meet. Запись, начатая вручную, идёт, пока вы её не остановите. У каждой встречи своя папка.",
         recordNow: "Записать сейчас",
         stopRecording: "Остановить",
         pauseRecording: "Пауза",
@@ -1251,7 +1321,7 @@ extension ForkMeetingStrings {
         // MARK: Fixes F2
         stateStarting: "Запуск…",
         pictureFrontDisplay: "Весь его экран",
-        consentIntroFrontWindow: "Встречи записывают окно на переднем плане (или его экран), звук его приложения и ваш микрофон. Всё остаётся на этом Mac.",
+        consentIntroFrontWindow: "Встречи записывают окно встречи (или его экран), звук его приложения и ваш микрофон. Чтобы предложить запись Google Meet, они читают заголовки окон и то, какие приложения используют микрофон. Всё остаётся на этом Mac.",
         filmedWindowFormat: "Окно %@",
         filmedWindowUnnamed: "Окно на переднем плане",
         filmedDisplay: "Весь экран",
@@ -1278,12 +1348,12 @@ extension ForkMeetingStrings {
         detectionLookalike: "Веб-страница, которая точно повторяет заголовок Google Meet и использует микрофон, может быть предложена как встреча.",
         // MARK: Detection effects
         detectionTitle: "Обнаружение",
-        detectionCaption: "Распознаёт встречу Google Meet, открытую в браузере, даже в фоне или на другом рабочем столе, и предлагает её записать.",
+        detectionCaption: "Распознаёт встречу Google Meet, открытую в браузере, даже за другими окнами или на другом рабочем столе, и предлагает её записать.",
         policyAsk: "Предлагать",
         policyAlways: "Всегда",
         policyNever: "Никогда",
         policyAskCaption: "Предложение появляется, как только вы подключаетесь; без ответа оно сворачивается через 20 секунд.",
-        policyAlwaysCaption: "Запись начинается сама, когда вы подключаетесь. Отмена в течение 5 секунд удаляет её.",
+        policyAlwaysCaption: "Запись начинается сама, когда вы подключаетесь. Если выбрать «Отменить» в течение 5 секунд, она перемещается в Корзину.",
         policyNeverCaption: "Встречи Google Meet никогда не предлагаются. Записать вручную по-прежнему можно.",
         detectionTitlesOnly: "До macOS 14.4 встреча распознаётся только по заголовку окна.",
         detectionMicrophoneUnreadable: "Здесь macOS не сообщает, какое приложение использует микрофон: встреча распознаётся только по заголовку окна.",
@@ -1303,7 +1373,6 @@ extension ForkMeetingStrings {
         offerAlwaysFormat: "Всегда для %@",
         offerNeverFormat: "Никогда для %@",
         offerMore: "Другие действия",
-        offerConsent: "Не забудьте предупредить участников.",
         offerCaptureFormat: "Окно: %1$@ · звук: %2$@ · микрофон: %3$@",
         offerWholeMac: "весь Mac",
         offerRecorderBusy: "Идёт запись экрана.",
@@ -1315,15 +1384,28 @@ extension ForkMeetingStrings {
         noticeNeverFormat: "Не предлагать для %@",
         noticeNeverDetail: "Изменить в настройках встреч",
         voiceOfferFormat: "Обнаружена встреча: %@. Записать её?",
-        voiceAutoStartedFormat: "Запись встречи началась автоматически. Чтобы отменить её и удалить файл, выберите «Отменить» в течение %d секунд.",
+        voiceAutoStartedFormat: "Запись встречи началась автоматически. Чтобы отменить её и переместить в Корзину, выберите «Отменить» в течение %d секунд.",
         voiceEndingSoonFormat: "Похоже, встреча закончилась. Запись остановится через %d секунд, если не выбрать «Продолжить».",
         voiceContinued: "Запись продолжается.",
-        voiceDiscarded: "Запись отменена. Её файл удалён.",
+        voiceDiscarded: "Запись отменена. Она перемещается в Корзину.",
         voiceNeverFormat: "Встречи %@ больше не будут предлагаться.",
         // MARK: Offer UI
         offerCaptureDisplayFormat: "Весь экран · звук: %1$@ · микрофон: %2$@",
         offerNone: "нет",
-        offerMicrophoneDenied: "не разрешён"
+        offerMicrophoneDenied: "не разрешён",
+        // MARK: Fixes H2
+        offerNameHidden: "Имя скрыто при показе экрана",
+        pillStopCancels: "Отменить запись и переместить в Корзину",
+        voiceMeetingBack: "Встреча продолжается: запись не остановится.",
+        noticeDiscardedTrash: "Отменено · в Корзине",
+        noticeDiscardedDeleted: "Отменено · удалено",
+        noticeDiscardKept: "Отменено · папка осталась",
+        noticeDiscardKeptDetail: "Она среди ваших встреч",
+        voiceDiscardedDeleted: "Запись отменена. Её папку не удалось переместить в Корзину: она удалена.",
+        voiceDiscardKept: "Запись отменена, но её папку не удалось ни переместить в Корзину, ни удалить: она среди ваших встреч.",
+        noticeAnnouncementCopied: "Объявление скопировано",
+        noticeAnnouncementCopiedDetail: "Вставьте его в чат встречи",
+        undoAutoStartedFormat: "Начата автоматически · Всегда для %@"
     )
 }
 
@@ -1331,7 +1413,7 @@ extension ForkMeetingStrings {
     static let es = ForkMeetingStrings(
         // MARK: Page
         searchKeywords: "grabación, videollamada, llamada, reunión, pantalla, micrófono",
-        pageHowTo: "Inicia una grabación con el botón o tu atajo: sigue hasta que la detengas. Cada reunión tiene su propia carpeta.",
+        pageHowTo: "Inicia una grabación con el botón o tu atajo, o desde la oferta cuando se detecta un Google Meet. Una grabación iniciada a mano sigue hasta que la detengas. Cada reunión tiene su propia carpeta.",
         recordNow: "Grabar ahora",
         stopRecording: "Detener",
         pauseRecording: "Pausar",
@@ -1485,7 +1567,7 @@ extension ForkMeetingStrings {
         // MARK: Fixes F2
         stateStarting: "Iniciando…",
         pictureFrontDisplay: "Toda su pantalla",
-        consentIntroFrontWindow: "Reuniones graba la ventana en primer plano (o su pantalla), el sonido de su app y tu micrófono. Todo se queda en este Mac.",
+        consentIntroFrontWindow: "Reuniones graba la ventana de la reunión (o su pantalla), el sonido de su app y tu micrófono. Para ofrecer un Google Meet, lee los títulos de las ventanas y qué apps usan el micrófono. Todo se queda en este Mac.",
         filmedWindowFormat: "Ventana de %@",
         filmedWindowUnnamed: "Ventana en primer plano",
         filmedDisplay: "Pantalla entera",
@@ -1512,12 +1594,12 @@ extension ForkMeetingStrings {
         detectionLookalike: "Una página web que imite exactamente el título de Google Meet y use el micrófono podría ofrecerse como reunión.",
         // MARK: Detection effects
         detectionTitle: "Detección",
-        detectionCaption: "Reconoce una reunión de Google Meet abierta en tu navegador, incluso en segundo plano o en otro escritorio, y ofrece grabarla.",
+        detectionCaption: "Reconoce una reunión de Google Meet abierta en tu navegador, incluso detrás de otras ventanas o en otro escritorio, y ofrece grabarla.",
         policyAsk: "Ofrecer",
         policyAlways: "Siempre",
         policyNever: "Nunca",
         policyAskCaption: "La oferta aparece en cuanto te unes; sin respuesta, se pliega a los 20 segundos.",
-        policyAlwaysCaption: "La grabación empieza sola cuando te unes. Cancelar en los 5 segundos siguientes la borra.",
+        policyAlwaysCaption: "La grabación empieza sola cuando te unes. Si eliges Cancelar en los 5 segundos siguientes, se mueve a la Papelera.",
         policyNeverCaption: "Las reuniones de Google Meet nunca se ofrecen. Puedes seguir grabando a mano.",
         detectionTitlesOnly: "Antes de macOS 14.4, una reunión se reconoce solo por el título de su ventana.",
         detectionMicrophoneUnreadable: "Aquí macOS no indica qué app usa el micrófono: una reunión se reconoce solo por el título de su ventana.",
@@ -1537,11 +1619,10 @@ extension ForkMeetingStrings {
         offerAlwaysFormat: "Siempre para %@",
         offerNeverFormat: "Nunca para %@",
         offerMore: "Más opciones",
-        offerConsent: "Recuerda avisar a los participantes.",
         offerCaptureFormat: "Ventana: %1$@ · sonido: %2$@ · micro: %3$@",
         offerWholeMac: "todo el Mac",
         offerRecorderBusy: "Hay una grabación de pantalla en curso.",
-        offerReminderFormat: "Propuesta de grabar %@",
+        offerReminderFormat: "Oferta de grabar %@",
         endingSoonTitle: "¿Terminó la reunión?",
         endingSoonFormat: "Se detiene en %d s",
         endingSoonContinue: "Continuar",
@@ -1549,15 +1630,28 @@ extension ForkMeetingStrings {
         noticeNeverFormat: "Nunca más para %@",
         noticeNeverDetail: "Cámbialo en Reuniones",
         voiceOfferFormat: "Reunión detectada: %@. ¿Quieres grabarla?",
-        voiceAutoStartedFormat: "La grabación de la reunión empezó sola. Para cancelarla y borrar el archivo, elige Cancelar antes de %d segundos.",
+        voiceAutoStartedFormat: "La grabación de la reunión empezó sola. Para cancelarla y moverla a la Papelera, elige Cancelar en los próximos %d segundos.",
         voiceEndingSoonFormat: "La reunión parece terminada. La grabación se detiene en %d segundos, salvo que elijas Continuar.",
         voiceContinued: "La grabación continúa.",
-        voiceDiscarded: "Grabación cancelada. Su archivo se ha borrado.",
-        voiceNeverFormat: "Las reuniones de %@ ya no se propondrán.",
+        voiceDiscarded: "Grabación cancelada. Se mueve a la Papelera.",
+        voiceNeverFormat: "Las reuniones de %@ ya no se ofrecerán.",
         // MARK: Offer UI
         offerCaptureDisplayFormat: "Pantalla completa · sonido: %1$@ · micro: %2$@",
         offerNone: "ninguno",
-        offerMicrophoneDenied: "no permitido"
+        offerMicrophoneDenied: "no permitido",
+        // MARK: Fixes H2
+        offerNameHidden: "Nombre oculto al compartir",
+        pillStopCancels: "Cancelar la grabación y moverla a la Papelera",
+        voiceMeetingBack: "La reunión continúa: la grabación no se detiene.",
+        noticeDiscardedTrash: "Cancelada · en la Papelera",
+        noticeDiscardedDeleted: "Cancelada · borrada",
+        noticeDiscardKept: "Cancelada · carpeta intacta",
+        noticeDiscardKeptDetail: "Sigue con tus reuniones",
+        voiceDiscardedDeleted: "Grabación cancelada. Su carpeta no pudo ir a la Papelera: se ha borrado.",
+        voiceDiscardKept: "Grabación cancelada, pero su carpeta no se pudo mover a la Papelera ni borrar: sigue con tus reuniones.",
+        noticeAnnouncementCopied: "Aviso copiado",
+        noticeAnnouncementCopiedDetail: "Pégalo en el chat",
+        undoAutoStartedFormat: "Iniciada sola · Siempre para %@"
     )
 }
 
@@ -1565,7 +1659,7 @@ extension ForkMeetingStrings {
     static let sk = ForkMeetingStrings(
         // MARK: Page
         searchKeywords: "nahrávanie, videohovor, hovor, stretnutie, obrazovka, mikrofón",
-        pageHowTo: "Spustite nahrávanie tlačidlom alebo svojou skratkou: pokračuje, kým ho nezastavíte. Každé stretnutie má vlastný priečinok.",
+        pageHowTo: "Spustite nahrávanie tlačidlom alebo svojou skratkou, alebo z ponuky, keď sa rozpozná Google Meet. Ručne spustené nahrávanie pokračuje, kým ho nezastavíte. Každé stretnutie má vlastný priečinok.",
         recordNow: "Nahrávať teraz",
         stopRecording: "Zastaviť",
         pauseRecording: "Pozastaviť",
@@ -1719,7 +1813,7 @@ extension ForkMeetingStrings {
         // MARK: Fixes F2
         stateStarting: "Spúšťa sa…",
         pictureFrontDisplay: "Celá jeho obrazovka",
-        consentIntroFrontWindow: "Stretnutia nahrávajú okno v popredí (alebo jeho obrazovku), zvuk jeho aplikácie a váš mikrofón. Všetko zostáva na tomto Macu.",
+        consentIntroFrontWindow: "Stretnutia nahrávajú okno stretnutia (alebo jeho obrazovku), zvuk jeho aplikácie a váš mikrofón. Aby mohli ponúknuť Google Meet, čítajú názvy okien a to, ktoré aplikácie používajú mikrofón. Všetko zostáva na tomto Macu.",
         filmedWindowFormat: "Okno aplikácie %@",
         filmedWindowUnnamed: "Okno v popredí",
         filmedDisplay: "Celá obrazovka",
@@ -1746,12 +1840,12 @@ extension ForkMeetingStrings {
         detectionLookalike: "Webová stránka, ktorá presne napodobní názov Google Meet a používa mikrofón, môže byť ponúknutá ako stretnutie.",
         // MARK: Detection effects
         detectionTitle: "Rozpoznávanie",
-        detectionCaption: "Rozpozná stretnutie Google Meet otvorené v prehliadači, aj na pozadí alebo na inej ploche, a ponúkne jeho nahratie.",
+        detectionCaption: "Rozpozná stretnutie Google Meet otvorené v prehliadači, aj za inými oknami alebo na inej ploche, a ponúkne jeho nahratie.",
         policyAsk: "Ponúknuť",
         policyAlways: "Vždy",
         policyNever: "Nikdy",
         policyAskCaption: "Ponuka sa zobrazí hneď, ako sa pripojíte; bez odpovede sa po 20 sekundách zbalí.",
-        policyAlwaysCaption: "Nahrávanie sa spustí samo, keď sa pripojíte. Zrušenie do 5 sekúnd ho vymaže.",
+        policyAlwaysCaption: "Nahrávanie sa spustí samo, keď sa pripojíte. Ak do 5 sekúnd vyberiete Zrušiť, presunie sa do Koša.",
         policyNeverCaption: "Stretnutia Google Meet sa nikdy neponúkajú. Stále môžete nahrávať ručne.",
         detectionTitlesOnly: "Pred macOS 14.4 sa stretnutie rozpozná iba podľa názvu okna.",
         detectionMicrophoneUnreadable: "macOS tu neuvádza, ktorá aplikácia používa mikrofón: stretnutie sa rozpozná iba podľa názvu okna.",
@@ -1771,7 +1865,6 @@ extension ForkMeetingStrings {
         offerAlwaysFormat: "Vždy pre %@",
         offerNeverFormat: "Nikdy pre %@",
         offerMore: "Ďalšie možnosti",
-        offerConsent: "Nezabudnite upozorniť účastníkov.",
         offerCaptureFormat: "Okno: %1$@ · zvuk: %2$@ · mikrofón: %3$@",
         offerWholeMac: "celý Mac",
         offerRecorderBusy: "Prebieha nahrávanie obrazovky.",
@@ -1782,16 +1875,29 @@ extension ForkMeetingStrings {
         undoFormat: "Zrušiť (%d s)",
         noticeNeverFormat: "Už neponúkať pre %@",
         noticeNeverDetail: "Zmeníte v Stretnutiach",
-        voiceOfferFormat: "Zistené stretnutie: %@. Chcete ho nahrať?",
-        voiceAutoStartedFormat: "Nahrávanie stretnutia sa spustilo automaticky. Ak ho chcete zrušiť a vymazať súbor, do %d sekúnd vyberte Zrušiť.",
+        voiceOfferFormat: "Rozpoznané stretnutie: %@. Chcete ho nahrať?",
+        voiceAutoStartedFormat: "Nahrávanie stretnutia sa spustilo automaticky. Ak ho chcete zrušiť a presunúť do Koša, do %d sekúnd vyberte Zrušiť.",
         voiceEndingSoonFormat: "Stretnutie sa zdá skončené. Nahrávanie sa zastaví o %d sekúnd, ak nevyberiete Pokračovať.",
         voiceContinued: "Nahrávanie pokračuje.",
-        voiceDiscarded: "Nahrávanie zrušené. Jeho súbor je vymazaný.",
+        voiceDiscarded: "Nahrávanie zrušené. Presúva sa do Koša.",
         voiceNeverFormat: "Stretnutia %@ sa už nebudú ponúkať.",
         // MARK: Offer UI
         offerCaptureDisplayFormat: "Celá obrazovka · zvuk: %1$@ · mikrofón: %2$@",
         offerNone: "žiadny",
-        offerMicrophoneDenied: "nepovolený"
+        offerMicrophoneDenied: "nepovolený",
+        // MARK: Fixes H2
+        offerNameHidden: "Názov skrytý pri zdieľaní",
+        pillStopCancels: "Zrušiť nahrávanie a presunúť ho do Koša",
+        voiceMeetingBack: "Stretnutie pokračuje: nahrávanie sa nezastaví.",
+        noticeDiscardedTrash: "Zrušené · v Koši",
+        noticeDiscardedDeleted: "Zrušené · vymazané",
+        noticeDiscardKept: "Zrušené · priečinok ostal",
+        noticeDiscardKeptDetail: "Ostáva medzi stretnutiami",
+        voiceDiscardedDeleted: "Nahrávanie zrušené. Jeho priečinok nešlo presunúť do Koša: je vymazaný.",
+        voiceDiscardKept: "Nahrávanie zrušené, no jeho priečinok sa nepodarilo presunúť do Koša ani vymazať: ostáva medzi stretnutiami.",
+        noticeAnnouncementCopied: "Oznámenie skopírované",
+        noticeAnnouncementCopiedDetail: "Vložte ho do četu stretnutia",
+        undoAutoStartedFormat: "Spustené samo · Vždy pre %@"
     )
 }
 
@@ -1799,7 +1905,7 @@ extension ForkMeetingStrings {
     static let de = ForkMeetingStrings(
         // MARK: Page
         searchKeywords: "Aufnahme, Videoanruf, Anruf, Besprechung, Bildschirm, Mikrofon",
-        pageHowTo: "Starte eine Aufnahme mit der Taste oder deinem Kurzbefehl: Sie läuft, bis du sie stoppst. Jede Besprechung bekommt einen eigenen Ordner.",
+        pageHowTo: "Starte eine Aufnahme mit der Taste oder deinem Kurzbefehl oder über das Angebot, wenn ein Google Meet erkannt wird. Eine von Hand gestartete Aufnahme läuft, bis du sie stoppst. Jede Besprechung bekommt einen eigenen Ordner.",
         recordNow: "Jetzt aufnehmen",
         stopRecording: "Stoppen",
         pauseRecording: "Pausieren",
@@ -1953,7 +2059,7 @@ extension ForkMeetingStrings {
         // MARK: Fixes F2
         stateStarting: "Wird gestartet …",
         pictureFrontDisplay: "Sein ganzer Bildschirm",
-        consentIntroFrontWindow: "Besprechungen nimmt das vorderste Fenster (oder seinen Bildschirm), den Ton seiner App und dein Mikrofon auf. Alles bleibt auf diesem Mac.",
+        consentIntroFrontWindow: "Besprechungen nimmt das Fenster der Besprechung (oder seinen Bildschirm), den Ton seiner App und dein Mikrofon auf. Um ein Google Meet anzubieten, liest es die Titel der Fenster und welche Apps das Mikrofon verwenden. Alles bleibt auf diesem Mac.",
         filmedWindowFormat: "Fenster von %@",
         filmedWindowUnnamed: "Vorderstes Fenster",
         filmedDisplay: "Ganzer Bildschirm",
@@ -1980,12 +2086,12 @@ extension ForkMeetingStrings {
         detectionLookalike: "Eine Webseite, die einen Titel von Google Meet genau nachahmt und das Mikrofon nutzt, könnte als Besprechung angeboten werden.",
         // MARK: Detection effects
         detectionTitle: "Erkennung",
-        detectionCaption: "Erkennt eine in deinem Browser geöffnete Google-Meet-Besprechung, auch im Hintergrund oder auf einem anderen Schreibtisch, und bietet an, sie aufzunehmen.",
+        detectionCaption: "Erkennt eine in deinem Browser geöffnete Google-Meet-Besprechung, auch hinter anderen Fenstern oder auf einem anderen Schreibtisch, und bietet an, sie aufzunehmen.",
         policyAsk: "Anbieten",
         policyAlways: "Immer",
         policyNever: "Nie",
         policyAskCaption: "Angeboten, sobald du beitrittst; ohne Antwort klappt das Angebot nach 20 Sekunden ein.",
-        policyAlwaysCaption: "Die Aufnahme startet von selbst, wenn du beitrittst. Abbrechen innerhalb von 5 Sekunden löscht sie.",
+        policyAlwaysCaption: "Die Aufnahme startet von selbst, wenn du beitrittst. Wählst du innerhalb von 5 Sekunden Abbrechen, kommt sie in den Papierkorb.",
         policyNeverCaption: "Google-Meet-Besprechungen werden nie angeboten. Von Hand aufnehmen kannst du weiterhin.",
         detectionTitlesOnly: "Vor macOS 14.4 wird eine Besprechung nur am Titel ihres Fensters erkannt.",
         detectionMicrophoneUnreadable: "macOS verrät hier nicht, welche App das Mikrofon nutzt: Eine Besprechung wird nur am Titel ihres Fensters erkannt.",
@@ -2005,7 +2111,6 @@ extension ForkMeetingStrings {
         offerAlwaysFormat: "Immer für %@",
         offerNeverFormat: "Nie für %@",
         offerMore: "Weitere Optionen",
-        offerConsent: "Denk daran, die Teilnehmenden zu informieren.",
         offerCaptureFormat: "Fenster: %1$@ · Ton: %2$@ · Mikro: %3$@",
         offerWholeMac: "ganzer Mac",
         offerRecorderBusy: "Eine Bildschirmaufnahme läuft.",
@@ -2017,15 +2122,28 @@ extension ForkMeetingStrings {
         noticeNeverFormat: "Nie mehr für %@",
         noticeNeverDetail: "Änderbar unter Besprechungen",
         voiceOfferFormat: "Besprechung erkannt: %@. Möchtest du sie aufnehmen?",
-        voiceAutoStartedFormat: "Die Aufnahme der Besprechung hat von selbst begonnen. Um sie abzubrechen und die Datei zu löschen, wähle innerhalb von %d Sekunden Abbrechen.",
+        voiceAutoStartedFormat: "Die Aufnahme der Besprechung hat von selbst begonnen. Um sie abzubrechen und in den Papierkorb zu legen, wähle innerhalb von %d Sekunden Abbrechen.",
         voiceEndingSoonFormat: "Die Besprechung scheint vorbei. Die Aufnahme stoppt in %d Sekunden, außer du wählst Fortsetzen.",
         voiceContinued: "Die Aufnahme läuft weiter.",
-        voiceDiscarded: "Aufnahme abgebrochen. Ihre Datei wurde gelöscht.",
+        voiceDiscarded: "Aufnahme abgebrochen. Sie kommt in den Papierkorb.",
         voiceNeverFormat: "Besprechungen von %@ werden nicht mehr angeboten.",
         // MARK: Offer UI
         offerCaptureDisplayFormat: "Ganzer Bildschirm · Ton: %1$@ · Mikro: %2$@",
         offerNone: "aus",
-        offerMicrophoneDenied: "nicht erlaubt"
+        offerMicrophoneDenied: "nicht erlaubt",
+        // MARK: Fixes H2
+        offerNameHidden: "Name beim Teilen verborgen",
+        pillStopCancels: "Aufnahme abbrechen und in den Papierkorb legen",
+        voiceMeetingBack: "Die Besprechung geht weiter: Die Aufnahme stoppt nicht.",
+        noticeDiscardedTrash: "Abgebrochen · im Papierkorb",
+        noticeDiscardedDeleted: "Abgebrochen · gelöscht",
+        noticeDiscardKept: "Abgebrochen · Ordner bleibt",
+        noticeDiscardKeptDetail: "Bei Ihren Besprechungen",
+        voiceDiscardedDeleted: "Aufnahme abgebrochen. Ihr Ordner konnte nicht in den Papierkorb: Er wurde gelöscht.",
+        voiceDiscardKept: "Aufnahme abgebrochen, aber ihr Ordner ließ sich weder in den Papierkorb legen noch löschen: Er bleibt bei Ihren Besprechungen.",
+        noticeAnnouncementCopied: "Ankündigung kopiert",
+        noticeAnnouncementCopiedDetail: "In den Chat einfügen",
+        undoAutoStartedFormat: "Von selbst gestartet · Immer für %@"
     )
 }
 
@@ -2033,7 +2151,7 @@ extension ForkMeetingStrings {
     static let fr = ForkMeetingStrings(
         // MARK: Page
         searchKeywords: "enregistrement, visio, appel, réunion, écran, micro",
-        pageHowTo: "Lancez un enregistrement avec le bouton ou votre raccourci\u{00A0}: il continue jusqu’à ce que vous l’arrêtiez. Chaque réunion a son propre dossier.",
+        pageHowTo: "Lancez un enregistrement avec le bouton ou votre raccourci, ou depuis la proposition quand un Google Meet est détecté. Un enregistrement lancé à la main continue jusqu’à ce que vous l’arrêtiez. Chaque réunion a son propre dossier.",
         recordNow: "Enregistrer maintenant",
         stopRecording: "Arrêter",
         pauseRecording: "Mettre en pause",
@@ -2187,7 +2305,7 @@ extension ForkMeetingStrings {
         // MARK: Fixes F2
         stateStarting: "Démarrage…",
         pictureFrontDisplay: "Tout son écran",
-        consentIntroFrontWindow: "Réunions enregistre la fenêtre au premier plan (ou son écran), le son de son app et votre micro. Tout reste sur ce Mac.",
+        consentIntroFrontWindow: "Réunions enregistre la fenêtre de la réunion (ou son écran), le son de son app et votre micro. Pour proposer un Google Meet, elle lit les titres des fenêtres et quelles apps utilisent le micro. Tout reste sur ce Mac.",
         filmedWindowFormat: "Fenêtre\u{00A0}: %@",
         filmedWindowUnnamed: "Fenêtre au premier plan",
         filmedDisplay: "Écran entier",
@@ -2214,12 +2332,12 @@ extension ForkMeetingStrings {
         detectionLookalike: "Une page web qui imite exactement un titre Google Meet et utilise le micro pourrait être proposée comme une réunion.",
         // MARK: Detection effects
         detectionTitle: "Détection",
-        detectionCaption: "Reconnaît une réunion Google Meet ouverte dans votre navigateur, même en arrière-plan ou sur un autre bureau, et propose de l’enregistrer.",
+        detectionCaption: "Reconnaît une réunion Google Meet ouverte dans votre navigateur, même derrière d’autres fenêtres ou sur un autre bureau, et propose de l’enregistrer.",
         policyAsk: "Proposer",
         policyAlways: "Toujours",
         policyNever: "Jamais",
         policyAskCaption: "Proposée dès que vous rejoignez la réunion\u{00A0}; sans réponse, la proposition se replie au bout de 20 secondes.",
-        policyAlwaysCaption: "L’enregistrement démarre seul quand vous rejoignez la réunion. Annuler dans les 5 secondes le supprime.",
+        policyAlwaysCaption: "L’enregistrement démarre seul quand vous rejoignez la réunion. Choisir Annuler dans les 5 secondes le met à la Corbeille.",
         policyNeverCaption: "Les réunions Google Meet ne sont jamais proposées. Vous pouvez toujours enregistrer à la main.",
         detectionTitlesOnly: "Avant macOS 14.4, une réunion est reconnue au titre de sa fenêtre seulement.",
         detectionMicrophoneUnreadable: "Ici, macOS ne dit pas quelle app utilise le micro\u{00A0}: une réunion est reconnue au titre de sa fenêtre seulement.",
@@ -2239,7 +2357,6 @@ extension ForkMeetingStrings {
         offerAlwaysFormat: "Toujours pour %@",
         offerNeverFormat: "Jamais pour %@",
         offerMore: "Plus d’options",
-        offerConsent: "Pensez à prévenir les participants.",
         offerCaptureFormat: "Fenêtre\u{00A0}: %1$@ · son\u{00A0}: %2$@ · micro\u{00A0}: %3$@",
         offerWholeMac: "tout le Mac",
         offerRecorderBusy: "Un enregistrement d’écran est en cours.",
@@ -2248,18 +2365,31 @@ extension ForkMeetingStrings {
         endingSoonFormat: "Arrêt dans %d s",
         endingSoonContinue: "Continuer",
         undoFormat: "Annuler (%d s)",
-        noticeNeverFormat: "Plus proposé pour %@",
+        noticeNeverFormat: "%@ n’est plus proposé",
         noticeNeverDetail: "Réglable dans Réunions",
         voiceOfferFormat: "Réunion détectée\u{00A0}: %@. Voulez-vous l’enregistrer\u{00A0}?",
-        voiceAutoStartedFormat: "Enregistrement de la réunion démarré automatiquement. Pour l’annuler et supprimer le fichier, choisissez Annuler dans les %d secondes.",
+        voiceAutoStartedFormat: "Enregistrement de la réunion démarré automatiquement. Pour l’annuler et le mettre à la Corbeille, choisissez Annuler dans les %d secondes.",
         voiceEndingSoonFormat: "La réunion semble terminée. L’enregistrement s’arrête dans %d secondes, sauf si vous choisissez Continuer.",
         voiceContinued: "L’enregistrement continue.",
-        voiceDiscarded: "Enregistrement annulé. Son fichier est supprimé.",
+        voiceDiscarded: "Enregistrement annulé. Il est mis à la Corbeille.",
         voiceNeverFormat: "Les réunions %@ ne seront plus proposées.",
         // MARK: Offer UI
         offerCaptureDisplayFormat: "Écran entier · son\u{00A0}: %1$@ · micro\u{00A0}: %2$@",
         offerNone: "aucun",
-        offerMicrophoneDenied: "non autorisé"
+        offerMicrophoneDenied: "non autorisé",
+        // MARK: Fixes H2
+        offerNameHidden: "Nom masqué pour les partages",
+        pillStopCancels: "Annuler l’enregistrement et le mettre à la Corbeille",
+        voiceMeetingBack: "La réunion continue\u{00A0}: l’enregistrement ne s’arrête pas.",
+        noticeDiscardedTrash: "Annulé · mis à la Corbeille",
+        noticeDiscardedDeleted: "Annulé · supprimé",
+        noticeDiscardKept: "Annulé · dossier non jeté",
+        noticeDiscardKeptDetail: "Il reste avec vos réunions",
+        voiceDiscardedDeleted: "Enregistrement annulé. Son dossier n’a pas pu aller à la Corbeille\u{00A0}: il est supprimé.",
+        voiceDiscardKept: "Enregistrement annulé, mais son dossier n’a pu être ni mis à la Corbeille ni supprimé\u{00A0}: il reste avec vos réunions.",
+        noticeAnnouncementCopied: "Annonce copiée",
+        noticeAnnouncementCopiedDetail: "À coller dans la discussion",
+        undoAutoStartedFormat: "Démarré seul · Toujours pour %@"
     )
 }
 
@@ -2267,7 +2397,7 @@ extension ForkMeetingStrings {
     static let it = ForkMeetingStrings(
         // MARK: Page
         searchKeywords: "registrazione, videochiamata, chiamata, riunione, schermo, microfono",
-        pageHowTo: "Avvia una registrazione con il pulsante o la tua scorciatoia: continua finché non la fermi. Ogni riunione ha la sua cartella.",
+        pageHowTo: "Avvia una registrazione con il pulsante o la tua scorciatoia, oppure dalla proposta quando viene rilevato un Google Meet. Una registrazione avviata a mano continua finché non la fermi. Ogni riunione ha la sua cartella.",
         recordNow: "Registra ora",
         stopRecording: "Ferma",
         pauseRecording: "Metti in pausa",
@@ -2421,7 +2551,7 @@ extension ForkMeetingStrings {
         // MARK: Fixes F2
         stateStarting: "Avvio…",
         pictureFrontDisplay: "Tutto il suo schermo",
-        consentIntroFrontWindow: "Riunioni registra la finestra in primo piano (o il suo schermo), l’audio della sua app e il tuo microfono. Tutto resta su questo Mac.",
+        consentIntroFrontWindow: "Riunioni registra la finestra della riunione (o il suo schermo), l’audio della sua app e il tuo microfono. Per proporre un Google Meet, legge i titoli delle finestre e quali app usano il microfono. Tutto resta su questo Mac.",
         filmedWindowFormat: "Finestra di %@",
         filmedWindowUnnamed: "Finestra in primo piano",
         filmedDisplay: "Schermo intero",
@@ -2448,12 +2578,12 @@ extension ForkMeetingStrings {
         detectionLookalike: "Una pagina web che imita esattamente un titolo di Google Meet e usa il microfono potrebbe essere proposta come riunione.",
         // MARK: Detection effects
         detectionTitle: "Rilevamento",
-        detectionCaption: "Riconosce una riunione Google Meet aperta nel browser, anche in secondo piano o su un’altra scrivania, e propone di registrarla.",
+        detectionCaption: "Riconosce una riunione Google Meet aperta nel browser, anche dietro altre finestre o su un’altra scrivania, e propone di registrarla.",
         policyAsk: "Proponi",
         policyAlways: "Sempre",
         policyNever: "Mai",
         policyAskCaption: "Proposta appena entri; senza risposta, la proposta si chiude dopo 20 secondi.",
-        policyAlwaysCaption: "La registrazione parte da sola quando entri. Annulla entro 5 secondi la elimina.",
+        policyAlwaysCaption: "La registrazione parte da sola quando entri. Scegliere Annulla entro 5 secondi la sposta nel Cestino.",
         policyNeverCaption: "Le riunioni Google Meet non vengono mai proposte. Puoi comunque registrare a mano.",
         detectionTitlesOnly: "Prima di macOS 14.4, una riunione è riconosciuta solo dal titolo della sua finestra.",
         detectionMicrophoneUnreadable: "Qui macOS non dice quale app usa il microfono: una riunione è riconosciuta solo dal titolo della sua finestra.",
@@ -2473,7 +2603,6 @@ extension ForkMeetingStrings {
         offerAlwaysFormat: "Sempre per %@",
         offerNeverFormat: "Mai per %@",
         offerMore: "Altre opzioni",
-        offerConsent: "Ricorda di avvisare i partecipanti.",
         offerCaptureFormat: "Finestra: %1$@ · audio: %2$@ · microfono: %3$@",
         offerWholeMac: "tutto il Mac",
         offerRecorderBusy: "È in corso una registrazione dello schermo.",
@@ -2485,15 +2614,28 @@ extension ForkMeetingStrings {
         noticeNeverFormat: "Mai più per %@",
         noticeNeverDetail: "Modificabile in Riunioni",
         voiceOfferFormat: "Riunione rilevata: %@. Vuoi registrarla?",
-        voiceAutoStartedFormat: "La registrazione della riunione è partita da sola. Per annullarla ed eliminare il file, scegli Annulla entro %d secondi.",
+        voiceAutoStartedFormat: "La registrazione della riunione è partita da sola. Per annullarla e spostarla nel Cestino, scegli Annulla entro %d secondi.",
         voiceEndingSoonFormat: "La riunione sembra finita. La registrazione si ferma tra %d secondi, a meno che tu non scelga Continua.",
         voiceContinued: "La registrazione continua.",
-        voiceDiscarded: "Registrazione annullata. Il file è stato eliminato.",
+        voiceDiscarded: "Registrazione annullata. Viene spostata nel Cestino.",
         voiceNeverFormat: "Le riunioni di %@ non saranno più proposte.",
         // MARK: Offer UI
         offerCaptureDisplayFormat: "Schermo intero · audio: %1$@ · microfono: %2$@",
         offerNone: "nessuno",
-        offerMicrophoneDenied: "non consentito"
+        offerMicrophoneDenied: "non consentito",
+        // MARK: Fixes H2
+        offerNameHidden: "Nome nascosto se condividi",
+        pillStopCancels: "Annulla la registrazione e spostala nel Cestino",
+        voiceMeetingBack: "La riunione continua: la registrazione non si ferma.",
+        noticeDiscardedTrash: "Annullata · nel Cestino",
+        noticeDiscardedDeleted: "Annullata · eliminata",
+        noticeDiscardKept: "Annullata · cartella rimasta",
+        noticeDiscardKeptDetail: "Resta tra le tue riunioni",
+        voiceDiscardedDeleted: "Registrazione annullata. La cartella non è potuta andare nel Cestino: è stata eliminata.",
+        voiceDiscardKept: "Registrazione annullata, ma la cartella non è stata spostata nel Cestino né eliminata: resta tra le tue riunioni.",
+        noticeAnnouncementCopied: "Annuncio copiato",
+        noticeAnnouncementCopiedDetail: "Incollalo nella chat",
+        undoAutoStartedFormat: "Avviata da sola · Sempre per %@"
     )
 }
 
@@ -2501,7 +2643,7 @@ extension ForkMeetingStrings {
     static let ja = ForkMeetingStrings(
         // MARK: Page
         searchKeywords: "録画, ビデオ通話, 通話, ミーティング, 画面, マイク",
-        pageHowTo: "ボタンまたはショートカットで録画を開始します。停止するまで続き、ミーティングごとにフォルダが作られます。",
+        pageHowTo: "ボタンかショートカット、または Google Meet を検出したときの提案から録画を開始します。手動で始めた録画は停止するまで続きます。ミーティングごとにフォルダが作られます。",
         recordNow: "今すぐ録画",
         stopRecording: "停止",
         pauseRecording: "一時停止",
@@ -2655,7 +2797,7 @@ extension ForkMeetingStrings {
         // MARK: Fixes F2
         stateStarting: "開始しています…",
         pictureFrontDisplay: "そのディスプレイ全体",
-        consentIntroFrontWindow: "「ミーティング」は、最前面のウインドウ（またはそのディスプレイ）、そのアプリの音声、あなたのマイクを録画します。すべてこのMac上に保存されます。",
+        consentIntroFrontWindow: "「ミーティング」は、ミーティングのウインドウ（またはそのディスプレイ）、そのアプリの音声、あなたのマイクを録画します。Google Meet を提案するために、ウインドウのタイトルと、どのアプリがマイクを使っているかを読み取ります。すべてこのMac上に保存されます。",
         filmedWindowFormat: "%@のウインドウ",
         filmedWindowUnnamed: "最前面のウインドウ",
         filmedDisplay: "画面全体",
@@ -2682,12 +2824,12 @@ extension ForkMeetingStrings {
         detectionLookalike: "Google Meet のタイトルをそのまま真似てマイクを使う Web ページも、ミーティングとして提案されることがあります。",
         // MARK: Detection effects
         detectionTitle: "検出",
-        detectionCaption: "ブラウザで開いている Google Meet のミーティングを、バックグラウンドや別のデスクトップにあっても認識し、録画を提案します。",
+        detectionCaption: "ブラウザで開いている Google Meet のミーティングを、ほかのウインドウの後ろや別のデスクトップにあっても認識し、録画を提案します。",
         policyAsk: "提案する",
         policyAlways: "常に録画",
         policyNever: "提案しない",
         policyAskCaption: "参加するとすぐに提案します。応答がなければ 20 秒後に小さくたたまれます。",
-        policyAlwaysCaption: "参加すると録画が自動で始まります。5 秒以内に取り消すと削除されます。",
+        policyAlwaysCaption: "参加すると録画が自動で始まります。5 秒以内に「キャンセル」を選ぶとゴミ箱に移動します。",
         policyNeverCaption: "Google Meet のミーティングは提案しません。手動での録画はいつでもできます。",
         detectionTitlesOnly: "macOS 14.4 より前は、ミーティングをウインドウのタイトルだけで認識します。",
         detectionMicrophoneUnreadable: "この Mac では、どのアプリがマイクを使っているか macOS から取得できません。ミーティングはウインドウのタイトルだけで認識します。",
@@ -2707,7 +2849,6 @@ extension ForkMeetingStrings {
         offerAlwaysFormat: "%@ では常に録画",
         offerNeverFormat: "%@ では録画しない",
         offerMore: "その他のオプション",
-        offerConsent: "参加者に知らせることを忘れずに。",
         offerCaptureFormat: "ウインドウ：%1$@ · 音声：%2$@ · マイク：%3$@",
         offerWholeMac: "Mac 全体",
         offerRecorderBusy: "画面収録が進行中です。",
@@ -2719,15 +2860,28 @@ extension ForkMeetingStrings {
         noticeNeverFormat: "%@ はもう提案しません",
         noticeNeverDetail: "「ミーティング」で変更できます",
         voiceOfferFormat: "ミーティングを検出しました：%@。録画しますか？",
-        voiceAutoStartedFormat: "ミーティングの録画が自動的に開始されました。取り消してファイルを削除するには、%d 秒以内に「キャンセル」を選んでください。",
+        voiceAutoStartedFormat: "ミーティングの録画が自動的に開始されました。取り消してゴミ箱に移動するには、%d 秒以内に「キャンセル」を選んでください。",
         voiceEndingSoonFormat: "ミーティングが終了したようです。「続ける」を選ばない場合、%d 秒後に録画を停止します。",
         voiceContinued: "録画を続けます。",
-        voiceDiscarded: "録画を取り消しました。ファイルは削除されました。",
+        voiceDiscarded: "録画を取り消しました。ゴミ箱に移動します。",
         voiceNeverFormat: "%@ のミーティングは今後提案されません。",
         // MARK: Offer UI
         offerCaptureDisplayFormat: "画面全体 · 音声：%1$@ · マイク：%2$@",
         offerNone: "なし",
-        offerMicrophoneDenied: "未許可"
+        offerMicrophoneDenied: "未許可",
+        // MARK: Fixes H2
+        offerNameHidden: "画面共有では名前を非表示",
+        pillStopCancels: "録画を取り消してゴミ箱に入れる",
+        voiceMeetingBack: "ミーティングは続いています。録画は停止しません。",
+        noticeDiscardedTrash: "取り消し · ゴミ箱に移動",
+        noticeDiscardedDeleted: "取り消し · 削除済み",
+        noticeDiscardKept: "取り消し · フォルダは未削除",
+        noticeDiscardKeptDetail: "ミーティングのフォルダに残っています",
+        voiceDiscardedDeleted: "録画を取り消しました。フォルダをゴミ箱に移せなかったため、削除しました。",
+        voiceDiscardKept: "録画を取り消しましたが、フォルダをゴミ箱に移すことも削除することもできませんでした。ミーティングのフォルダに残っています。",
+        noticeAnnouncementCopied: "告知をコピーしました",
+        noticeAnnouncementCopiedDetail: "チャットに貼り付けてください",
+        undoAutoStartedFormat: "自動で開始 · %@ では常に録画"
     )
 }
 
@@ -2735,7 +2889,7 @@ extension ForkMeetingStrings {
     static let ko = ForkMeetingStrings(
         // MARK: Page
         searchKeywords: "녹화, 화상 통화, 통화, 회의, 화면, 마이크",
-        pageHowTo: "버튼이나 단축키로 녹화를 시작하세요. 직접 멈출 때까지 계속되며, 회의마다 폴더가 따로 만들어집니다.",
+        pageHowTo: "버튼이나 단축키로, 또는 Google Meet이 감지되었을 때 나타나는 제안에서 녹화를 시작하세요. 직접 시작한 녹화는 멈출 때까지 계속됩니다. 회의마다 폴더가 따로 만들어집니다.",
         recordNow: "지금 녹화",
         stopRecording: "중지",
         pauseRecording: "일시 정지",
@@ -2889,7 +3043,7 @@ extension ForkMeetingStrings {
         // MARK: Fixes F2
         stateStarting: "시작하는 중…",
         pictureFrontDisplay: "그 윈도우의 전체 디스플레이",
-        consentIntroFrontWindow: "회의 기능은 맨 앞 윈도우(또는 그 디스플레이), 그 앱의 소리, 내 마이크를 녹화합니다. 모든 것이 이 Mac에 남습니다.",
+        consentIntroFrontWindow: "회의 기능은 회의 윈도우(또는 그 디스플레이), 그 앱의 소리, 내 마이크를 녹화합니다. Google Meet을 제안하기 위해 윈도우 제목과 마이크를 사용하는 앱을 읽습니다. 모든 것이 이 Mac에 남습니다.",
         filmedWindowFormat: "%@ 윈도우",
         filmedWindowUnnamed: "맨 앞 윈도우",
         filmedDisplay: "전체 화면",
@@ -2916,16 +3070,16 @@ extension ForkMeetingStrings {
         detectionLookalike: "Google Meet 제목을 그대로 흉내 내고 마이크를 사용하는 웹 페이지도 회의로 제안될 수 있습니다.",
         // MARK: Detection effects
         detectionTitle: "감지",
-        detectionCaption: "브라우저에 열린 Google Meet 회의를 백그라운드나 다른 데스크탑에 있어도 알아보고 녹화를 제안합니다.",
+        detectionCaption: "브라우저에 열린 Google Meet 회의를 다른 윈도우 뒤나 다른 데스크탑에 있어도 알아보고 녹화를 제안합니다.",
         policyAsk: "제안",
         policyAlways: "항상",
         policyNever: "안 함",
         policyAskCaption: "참여하자마자 제안합니다. 응답이 없으면 20초 뒤 접힙니다.",
-        policyAlwaysCaption: "참여하면 녹화가 자동으로 시작됩니다. 5초 안에 취소하면 삭제됩니다.",
+        policyAlwaysCaption: "참여하면 녹화가 자동으로 시작됩니다. 5초 안에 취소를 선택하면 휴지통으로 이동합니다.",
         policyNeverCaption: "Google Meet 회의는 제안하지 않습니다. 직접 녹화는 언제든 할 수 있습니다.",
         detectionTitlesOnly: "macOS 14.4 이전에는 회의를 윈도우 제목으로만 알아봅니다.",
         detectionMicrophoneUnreadable: "이 Mac에서는 macOS가 어떤 앱이 마이크를 쓰는지 알려 주지 않아 회의를 윈도우 제목으로만 알아봅니다.",
-        detectionNeedsScreenRecording: "화면 기록 권한이 없으면 윈도우 제목을 읽을 수 없어 Google Meet 회의를 알아보지 못합니다.",
+        detectionNeedsScreenRecording: "화면 녹화 권한이 없으면 윈도우 제목을 읽을 수 없어 Google Meet 회의를 알아보지 못합니다.",
         detectedFormat: "감지된 회의: %@",
         calendarNaming: "캘린더로 이름 붙이기",
         calendarNamingCaption: "회의 링크가 들어 있는 캘린더 일정의 이름을 녹화에 붙입니다. 일정은 이 Mac에만 보관됩니다.",
@@ -2941,7 +3095,6 @@ extension ForkMeetingStrings {
         offerAlwaysFormat: "%@에서 항상 녹화",
         offerNeverFormat: "%@에서 녹화 안 함",
         offerMore: "기타 옵션",
-        offerConsent: "참가자에게 알리는 것을 잊지 마세요.",
         offerCaptureFormat: "윈도우: %1$@ · 사운드: %2$@ · 마이크: %3$@",
         offerWholeMac: "Mac 전체",
         offerRecorderBusy: "화면 녹화가 진행 중입니다.",
@@ -2950,18 +3103,31 @@ extension ForkMeetingStrings {
         endingSoonFormat: "%d초 후 중지",
         endingSoonContinue: "계속",
         undoFormat: "취소(%d초)",
-        noticeNeverFormat: "%@ 더 이상 제안 안 함",
+        noticeNeverFormat: "%@ 회의 더 이상 제안 안 함",
         noticeNeverDetail: "회의 설정에서 변경 가능",
         voiceOfferFormat: "회의가 감지되었습니다: %@. 녹화하시겠습니까?",
-        voiceAutoStartedFormat: "회의 녹화가 자동으로 시작되었습니다. 취소하고 파일을 삭제하려면 %d초 안에 취소를 선택하세요.",
+        voiceAutoStartedFormat: "회의 녹화가 자동으로 시작되었습니다. 취소하고 휴지통으로 옮기려면 %d초 안에 취소를 선택하세요.",
         voiceEndingSoonFormat: "회의가 끝난 것 같습니다. 계속을 선택하지 않으면 %d초 후 녹화가 중지됩니다.",
         voiceContinued: "녹화를 계속합니다.",
-        voiceDiscarded: "녹화가 취소되었습니다. 파일이 삭제되었습니다.",
+        voiceDiscarded: "녹화가 취소되었습니다. 휴지통으로 이동합니다.",
         voiceNeverFormat: "%@ 회의는 더 이상 제안되지 않습니다.",
         // MARK: Offer UI
         offerCaptureDisplayFormat: "전체 화면 · 사운드: %1$@ · 마이크: %2$@",
         offerNone: "없음",
-        offerMicrophoneDenied: "허용 안 됨"
+        offerMicrophoneDenied: "허용 안 됨",
+        // MARK: Fixes H2
+        offerNameHidden: "화면 공유 시 이름 숨김",
+        pillStopCancels: "녹화를 취소하고 휴지통으로 이동",
+        voiceMeetingBack: "회의가 계속됩니다. 녹화는 중지되지 않습니다.",
+        noticeDiscardedTrash: "취소됨 · 휴지통으로 이동",
+        noticeDiscardedDeleted: "취소됨 · 삭제됨",
+        noticeDiscardKept: "취소됨 · 폴더가 남아 있음",
+        noticeDiscardKeptDetail: "회의 폴더에 남아 있습니다",
+        voiceDiscardedDeleted: "녹화가 취소되었습니다. 폴더를 휴지통으로 옮길 수 없어 삭제했습니다.",
+        voiceDiscardKept: "녹화가 취소되었지만 폴더를 휴지통으로 옮기거나 삭제하지 못했습니다. 회의 폴더에 남아 있습니다.",
+        noticeAnnouncementCopied: "안내를 복사했습니다",
+        noticeAnnouncementCopiedDetail: "회의 채팅에 붙여 넣으세요",
+        undoAutoStartedFormat: "자동으로 시작됨 · %@에서 항상 녹화"
     )
 }
 
@@ -2969,7 +3135,7 @@ extension ForkMeetingStrings {
     static let uk = ForkMeetingStrings(
         // MARK: Page
         searchKeywords: "запис, відеодзвінок, дзвінок, зустріч, екран, мікрофон",
-        pageHowTo: "Почніть запис кнопкою або своїм поєднанням клавіш: він триває, доки ви його не зупините. Кожна зустріч має власну папку.",
+        pageHowTo: "Почніть запис кнопкою, своїм поєднанням клавіш або з пропозиції, коли виявлено зустріч Google Meet. Запис, розпочатий вручну, триває, доки ви його не зупините. Кожна зустріч має власну папку.",
         recordNow: "Записати зараз",
         stopRecording: "Зупинити",
         pauseRecording: "Призупинити",
@@ -3123,7 +3289,7 @@ extension ForkMeetingStrings {
         // MARK: Fixes F2
         stateStarting: "Запуск…",
         pictureFrontDisplay: "Увесь його екран",
-        consentIntroFrontWindow: "Зустрічі записують вікно на передньому плані (або його екран), звук його програми і ваш мікрофон. Усе лишається на цьому Mac.",
+        consentIntroFrontWindow: "Зустрічі записують вікно зустрічі (або його екран), звук його програми і ваш мікрофон. Щоб запропонувати Google Meet, вони читають заголовки вікон і те, які програми використовують мікрофон. Усе лишається на цьому Mac.",
         filmedWindowFormat: "Вікно %@",
         filmedWindowUnnamed: "Вікно на передньому плані",
         filmedDisplay: "Увесь екран",
@@ -3150,12 +3316,12 @@ extension ForkMeetingStrings {
         detectionLookalike: "Вебсторінка, яка точно повторює заголовок Google Meet і використовує мікрофон, може бути запропонована як зустріч.",
         // MARK: Detection effects
         detectionTitle: "Виявлення",
-        detectionCaption: "Розпізнає зустріч Google Meet, відкриту в браузері, навіть у фоні чи на іншому робочому столі, і пропонує її записати.",
+        detectionCaption: "Розпізнає зустріч Google Meet, відкриту в браузері, навіть за іншими вікнами чи на іншому робочому столі, і пропонує її записати.",
         policyAsk: "Пропонувати",
         policyAlways: "Завжди",
         policyNever: "Ніколи",
         policyAskCaption: "Пропозиція з’являється, щойно ви приєднуєтеся; без відповіді вона згортається через 20 секунд.",
-        policyAlwaysCaption: "Запис починається сам, коли ви приєднуєтеся. Скасування протягом 5 секунд видаляє його.",
+        policyAlwaysCaption: "Запис починається сам, коли ви приєднуєтеся. Якщо вибрати «Скасувати» протягом 5 секунд, його буде переміщено в Смітник.",
         policyNeverCaption: "Зустрічі Google Meet ніколи не пропонуються. Записати вручну, як і раніше, можна.",
         detectionTitlesOnly: "До macOS 14.4 зустріч розпізнається лише за заголовком вікна.",
         detectionMicrophoneUnreadable: "Тут macOS не повідомляє, яка програма використовує мікрофон: зустріч розпізнається лише за заголовком вікна.",
@@ -3175,7 +3341,6 @@ extension ForkMeetingStrings {
         offerAlwaysFormat: "Завжди для %@",
         offerNeverFormat: "Ніколи для %@",
         offerMore: "Інші дії",
-        offerConsent: "Не забудьте попередити учасників.",
         offerCaptureFormat: "Вікно: %1$@ · звук: %2$@ · мікрофон: %3$@",
         offerWholeMac: "увесь Mac",
         offerRecorderBusy: "Триває запис екрана.",
@@ -3187,15 +3352,28 @@ extension ForkMeetingStrings {
         noticeNeverFormat: "Не пропонувати для %@",
         noticeNeverDetail: "Можна змінити в «Зустрічах»",
         voiceOfferFormat: "Виявлено зустріч: %@. Записати її?",
-        voiceAutoStartedFormat: "Запис зустрічі почався автоматично. Щоб скасувати його й видалити файл, виберіть «Скасувати» протягом %d секунд.",
+        voiceAutoStartedFormat: "Запис зустрічі почався автоматично. Щоб скасувати його й перемістити в Смітник, виберіть «Скасувати» протягом %d секунд.",
         voiceEndingSoonFormat: "Схоже, зустріч завершилася. Запис зупиниться через %d секунд, якщо не вибрати «Продовжити».",
         voiceContinued: "Запис триває.",
-        voiceDiscarded: "Запис скасовано. Його файл видалено.",
+        voiceDiscarded: "Запис скасовано. Його буде переміщено в Смітник.",
         voiceNeverFormat: "Зустрічі %@ більше не пропонуватимуться.",
         // MARK: Offer UI
         offerCaptureDisplayFormat: "Весь екран · звук: %1$@ · мікрофон: %2$@",
         offerNone: "немає",
-        offerMicrophoneDenied: "не дозволено"
+        offerMicrophoneDenied: "не дозволено",
+        // MARK: Fixes H2
+        offerNameHidden: "Назву сховано при показі",
+        pillStopCancels: "Скасувати запис і перемістити в Смітник",
+        voiceMeetingBack: "Зустріч триває: запис не зупиниться.",
+        noticeDiscardedTrash: "Скасовано · у Смітнику",
+        noticeDiscardedDeleted: "Скасовано · видалено",
+        noticeDiscardKept: "Скасовано · тека лишилася",
+        noticeDiscardKeptDetail: "Лишається серед зустрічей",
+        voiceDiscardedDeleted: "Запис скасовано. Його теку не вдалося перемістити в Смітник: її видалено.",
+        voiceDiscardKept: "Запис скасовано, але його теку не вдалося ні перемістити в Смітник, ні видалити: вона лишається серед зустрічей.",
+        noticeAnnouncementCopied: "Оголошення скопійовано",
+        noticeAnnouncementCopiedDetail: "Вставте його в чат зустрічі",
+        undoAutoStartedFormat: "Розпочато автоматично · Завжди для %@"
     )
 }
 
@@ -3203,7 +3381,7 @@ extension ForkMeetingStrings {
     static let zhHans = ForkMeetingStrings(
         // MARK: Page
         searchKeywords: "录制, 视频通话, 通话, 会议, 屏幕, 麦克风",
-        pageHowTo: "用按钮或你的快捷键开始录制：它会一直进行，直到你停止。每场会议都有自己的文件夹。",
+        pageHowTo: "用按钮或你的快捷键开始录制，或在检测到 Google Meet 时从提议中开始。手动开始的录制会一直进行，直到你停止。每场会议都有自己的文件夹。",
         recordNow: "立即录制",
         stopRecording: "停止",
         pauseRecording: "暂停",
@@ -3357,7 +3535,7 @@ extension ForkMeetingStrings {
         // MARK: Fixes F2
         stateStarting: "正在开始…",
         pictureFrontDisplay: "它所在的整个显示器",
-        consentIntroFrontWindow: "“会议”会录制最前面的窗口（或其所在显示器）、该 App 的声音和你的麦克风。所有内容都保留在这台 Mac 上。",
+        consentIntroFrontWindow: "“会议”会录制会议的窗口（或其所在显示器）、该 App 的声音和你的麦克风。为了提议录制 Google Meet，它会读取窗口标题以及哪些 App 正在使用麦克风。所有内容都保留在这台 Mac 上。",
         filmedWindowFormat: "%@ 窗口",
         filmedWindowUnnamed: "最前面的窗口",
         filmedDisplay: "整个屏幕",
@@ -3384,12 +3562,12 @@ extension ForkMeetingStrings {
         detectionLookalike: "完全模仿 Google Meet 标题并使用麦克风的网页，也可能被提议为会议。",
         // MARK: Detection effects
         detectionTitle: "检测",
-        detectionCaption: "识别在浏览器中打开的 Google Meet 会议，即使它在后台或在另一个桌面上，并提议录制。",
+        detectionCaption: "识别在浏览器中打开的 Google Meet 会议，即使它在其他窗口后面或在另一个桌面上，并提议录制。",
         policyAsk: "提议",
         policyAlways: "总是",
         policyNever: "从不",
         policyAskCaption: "一加入会议就会提议；无人回应时，提议会在 20 秒后收起。",
-        policyAlwaysCaption: "加入会议时自动开始录制。5 秒内取消会删除这段录制。",
+        policyAlwaysCaption: "加入会议时自动开始录制。5 秒内选择“取消”会将这段录制移到废纸篓。",
         policyNeverCaption: "从不提议 Google Meet 会议。你仍可手动录制。",
         detectionTitlesOnly: "在 macOS 14.4 之前，只能通过窗口标题识别会议。",
         detectionMicrophoneUnreadable: "在这台 Mac 上，macOS 不提供哪个 App 正在使用麦克风：只能通过窗口标题识别会议。",
@@ -3409,7 +3587,6 @@ extension ForkMeetingStrings {
         offerAlwaysFormat: "%@ 总是录制",
         offerNeverFormat: "%@ 永不录制",
         offerMore: "更多选项",
-        offerConsent: "记得告知参与者。",
         offerCaptureFormat: "窗口：%1$@ · 声音：%2$@ · 麦克风：%3$@",
         offerWholeMac: "整台 Mac",
         offerRecorderBusy: "正在进行屏幕录制。",
@@ -3421,15 +3598,28 @@ extension ForkMeetingStrings {
         noticeNeverFormat: "不再为 %@ 提议",
         noticeNeverDetail: "可在“会议”设置中更改",
         voiceOfferFormat: "检测到会议：%@。要录制吗？",
-        voiceAutoStartedFormat: "会议录制已自动开始。如需取消并删除文件，请在 %d 秒内选择“取消”。",
+        voiceAutoStartedFormat: "会议录制已自动开始。如需取消并移到废纸篓，请在 %d 秒内选择“取消”。",
         voiceEndingSoonFormat: "会议似乎已结束。除非你选择“继续”，录制将在 %d 秒后停止。",
         voiceContinued: "录制继续。",
-        voiceDiscarded: "录制已取消，文件已删除。",
+        voiceDiscarded: "录制已取消，将移到废纸篓。",
         voiceNeverFormat: "将不再提议录制 %@ 会议。",
         // MARK: Offer UI
         offerCaptureDisplayFormat: "整个屏幕 · 声音：%1$@ · 麦克风：%2$@",
         offerNone: "无",
-        offerMicrophoneDenied: "未允许"
+        offerMicrophoneDenied: "未允许",
+        // MARK: Fixes H2
+        offerNameHidden: "共享屏幕时隐藏名称",
+        pillStopCancels: "取消录制并移到废纸篓",
+        voiceMeetingBack: "会议仍在进行，录制不会停止。",
+        noticeDiscardedTrash: "已取消 · 已移到废纸篓",
+        noticeDiscardedDeleted: "已取消 · 已删除",
+        noticeDiscardKept: "已取消 · 文件夹仍在",
+        noticeDiscardKeptDetail: "仍在会议文件夹中",
+        voiceDiscardedDeleted: "录制已取消。无法将文件夹移到废纸篓，已将其删除。",
+        voiceDiscardKept: "录制已取消，但无法将其文件夹移到废纸篓或删除，它仍在会议文件夹中。",
+        noticeAnnouncementCopied: "通知已复制",
+        noticeAnnouncementCopiedDetail: "粘贴到会议聊天中",
+        undoAutoStartedFormat: "已自动开始 · %@ 总是录制"
     )
 }
 
@@ -3437,7 +3627,7 @@ extension ForkMeetingStrings {
     static let zhTW = ForkMeetingStrings(
         // MARK: Page
         searchKeywords: "錄製, 視訊通話, 通話, 會議, 螢幕, 麥克風",
-        pageHowTo: "用按鈕或你的快速鍵開始錄製：它會持續到你停止為止。每場會議都有自己的資料夾。",
+        pageHowTo: "用按鈕或你的快速鍵開始錄製，或在偵測到 Google Meet 時從提議中開始。手動開始的錄製會持續到你停止為止。每場會議都有自己的資料夾。",
         recordNow: "立即錄製",
         stopRecording: "停止",
         pauseRecording: "暫停",
@@ -3591,7 +3781,7 @@ extension ForkMeetingStrings {
         // MARK: Fixes F2
         stateStarting: "正在開始…",
         pictureFrontDisplay: "它所在的整個顯示器",
-        consentIntroFrontWindow: "「會議」會錄製最前面的視窗（或其所在顯示器）、該 App 的聲音和你的麥克風。所有內容都留在這台 Mac 上。",
+        consentIntroFrontWindow: "「會議」會錄製會議的視窗（或其所在顯示器）、該 App 的聲音和你的麥克風。為了提議錄製 Google Meet，它會讀取視窗標題以及哪些 App 正在使用麥克風。所有內容都留在這台 Mac 上。",
         filmedWindowFormat: "%@ 視窗",
         filmedWindowUnnamed: "最前面的視窗",
         filmedDisplay: "整個螢幕",
@@ -3618,12 +3808,12 @@ extension ForkMeetingStrings {
         detectionLookalike: "完全模仿 Google Meet 標題並使用麥克風的網頁，也可能被提議為會議。",
         // MARK: Detection effects
         detectionTitle: "偵測",
-        detectionCaption: "辨識瀏覽器中開啟的 Google Meet 會議，即使它在背景或另一個桌面上，並提議錄製。",
+        detectionCaption: "辨識瀏覽器中開啟的 Google Meet 會議，即使它在其他視窗後面或另一個桌面上，並提議錄製。",
         policyAsk: "提議",
         policyAlways: "一律",
         policyNever: "永不",
         policyAskCaption: "一加入會議就會提議；無人回應時，提議會在 20 秒後收合。",
-        policyAlwaysCaption: "加入會議時自動開始錄製。5 秒內取消會刪除這段錄製。",
+        policyAlwaysCaption: "加入會議時自動開始錄製。5 秒內選擇「取消」會將這段錄製移到垃圾桶。",
         policyNeverCaption: "永不提議 Google Meet 會議。你仍可手動錄製。",
         detectionTitlesOnly: "在 macOS 14.4 之前，只能透過視窗標題辨識會議。",
         detectionMicrophoneUnreadable: "在這台 Mac 上，macOS 不提供哪個 App 正在使用麥克風：只能透過視窗標題辨識會議。",
@@ -3643,7 +3833,6 @@ extension ForkMeetingStrings {
         offerAlwaysFormat: "%@ 一律錄製",
         offerNeverFormat: "%@ 永不錄製",
         offerMore: "更多選項",
-        offerConsent: "記得告知與會者。",
         offerCaptureFormat: "視窗：%1$@ · 聲音：%2$@ · 麥克風：%3$@",
         offerWholeMac: "整台 Mac",
         offerRecorderBusy: "正在進行螢幕錄製。",
@@ -3655,15 +3844,28 @@ extension ForkMeetingStrings {
         noticeNeverFormat: "不再為 %@ 提議",
         noticeNeverDetail: "可在「會議」設定中更改",
         voiceOfferFormat: "偵測到會議：%@。要錄製嗎？",
-        voiceAutoStartedFormat: "會議錄製已自動開始。如要取消並刪除檔案，請在 %d 秒內選擇「取消」。",
+        voiceAutoStartedFormat: "會議錄製已自動開始。如要取消並移到垃圾桶，請在 %d 秒內選擇「取消」。",
         voiceEndingSoonFormat: "會議似乎已結束。除非你選擇「繼續」，錄製將在 %d 秒後停止。",
         voiceContinued: "錄製繼續。",
-        voiceDiscarded: "錄製已取消，檔案已刪除。",
+        voiceDiscarded: "錄製已取消，將移到垃圾桶。",
         voiceNeverFormat: "將不再提議錄製 %@ 會議。",
         // MARK: Offer UI
         offerCaptureDisplayFormat: "整個螢幕 · 聲音：%1$@ · 麥克風：%2$@",
         offerNone: "無",
-        offerMicrophoneDenied: "未允許"
+        offerMicrophoneDenied: "未允許",
+        // MARK: Fixes H2
+        offerNameHidden: "分享螢幕時隱藏名稱",
+        pillStopCancels: "取消錄製並丟到垃圾桶",
+        voiceMeetingBack: "會議仍在進行，錄製不會停止。",
+        noticeDiscardedTrash: "已取消 · 已丟到垃圾桶",
+        noticeDiscardedDeleted: "已取消 · 已刪除",
+        noticeDiscardKept: "已取消 · 檔案夾仍在",
+        noticeDiscardKeptDetail: "仍在會議檔案夾中",
+        voiceDiscardedDeleted: "錄製已取消。無法將檔案夾丟到垃圾桶，已將其刪除。",
+        voiceDiscardKept: "錄製已取消，但無法將其檔案夾丟到垃圾桶或刪除，它仍在會議檔案夾中。",
+        noticeAnnouncementCopied: "通知已拷貝",
+        noticeAnnouncementCopiedDetail: "貼到會議聊天中",
+        undoAutoStartedFormat: "已自動開始 · %@ 一律錄製"
     )
 }
 
@@ -3671,7 +3873,7 @@ extension ForkMeetingStrings {
     static let zhHK = ForkMeetingStrings(
         // MARK: Page
         searchKeywords: "錄製, 視像通話, 通話, 會議, 螢幕, 咪高風",
-        pageHowTo: "用按鈕或你的快速鍵開始錄製：它會一直持續，直到你停止。每個會議都有自己的資料夾。",
+        pageHowTo: "用按鈕或你的快速鍵開始錄製，或在偵測到 Google Meet 時從提議中開始。手動開始的錄製會一直持續，直到你停止。每個會議都有自己的資料夾。",
         recordNow: "立即錄製",
         stopRecording: "停止",
         pauseRecording: "暫停",
@@ -3825,7 +4027,7 @@ extension ForkMeetingStrings {
         // MARK: Fixes F2
         stateStarting: "正在開始…",
         pictureFrontDisplay: "它所在的整個顯示器",
-        consentIntroFrontWindow: "「會議」會錄製最前面的視窗（或其所在顯示器）、該 App 的聲音和你的咪高風。所有內容都留在這部 Mac 上。",
+        consentIntroFrontWindow: "「會議」會錄製會議的視窗（或其所在顯示器）、該 App 的聲音和你的咪高風。為了提議錄製 Google Meet，它會讀取視窗標題以及哪些 App 正在使用咪高風。所有內容都留在這部 Mac 上。",
         filmedWindowFormat: "%@ 視窗",
         filmedWindowUnnamed: "最前面的視窗",
         filmedDisplay: "整個螢幕",
@@ -3852,16 +4054,16 @@ extension ForkMeetingStrings {
         detectionLookalike: "完全模仿 Google Meet 標題並使用麥克風的網頁，也可能被提議為會議。",
         // MARK: Detection effects
         detectionTitle: "偵測",
-        detectionCaption: "辨認瀏覽器中開啟的 Google Meet 會議，即使它在背景或另一個桌面上，並提議錄製。",
+        detectionCaption: "辨認瀏覽器中開啟的 Google Meet 會議，即使它在其他視窗後面或另一個桌面上，並提議錄製。",
         policyAsk: "提議",
         policyAlways: "一律",
         policyNever: "永不",
         policyAskCaption: "一加入會議便會提議；沒有回應時，提議會在 20 秒後收起。",
-        policyAlwaysCaption: "加入會議時自動開始錄製。5 秒內取消會刪除這段錄製。",
+        policyAlwaysCaption: "加入會議時自動開始錄製。5 秒內選擇「取消」會將這段錄製移至垃圾桶。",
         policyNeverCaption: "永不提議 Google Meet 會議。你仍可手動錄製。",
         detectionTitlesOnly: "在 macOS 14.4 之前，只能透過視窗標題辨認會議。",
         detectionMicrophoneUnreadable: "在這部 Mac 上，macOS 不提供哪個 App 正在使用咪高風：只能透過視窗標題辨認會議。",
-        detectionNeedsScreenRecording: "沒有螢幕錄影權限便無法讀取視窗標題：無法辨認任何 Google Meet 會議。",
+        detectionNeedsScreenRecording: "沒有螢幕錄製權限便無法讀取視窗標題：無法辨認任何 Google Meet 會議。",
         detectedFormat: "偵測到會議：%@",
         calendarNaming: "用日曆命名",
         calendarNamingCaption: "包含會議連結的日曆行程會為錄製命名。行程只會保留在這部 Mac 上。",
@@ -3877,7 +4079,6 @@ extension ForkMeetingStrings {
         offerAlwaysFormat: "%@ 一律錄製",
         offerNeverFormat: "%@ 永不錄製",
         offerMore: "更多選項",
-        offerConsent: "記得通知與會者。",
         offerCaptureFormat: "視窗：%1$@ · 聲音：%2$@ · 咪高風：%3$@",
         offerWholeMac: "整部 Mac",
         offerRecorderBusy: "正在進行螢幕錄製。",
@@ -3889,14 +4090,27 @@ extension ForkMeetingStrings {
         noticeNeverFormat: "不再為 %@ 提議",
         noticeNeverDetail: "可在「會議」設定中更改",
         voiceOfferFormat: "偵測到會議：%@。要錄製嗎？",
-        voiceAutoStartedFormat: "會議錄製已自動開始。如要取消並刪除檔案，請在 %d 秒內選擇「取消」。",
+        voiceAutoStartedFormat: "會議錄製已自動開始。如要取消並移至垃圾桶，請在 %d 秒內選擇「取消」。",
         voiceEndingSoonFormat: "會議似乎已完結。除非你選擇「繼續」，錄製將在 %d 秒後停止。",
         voiceContinued: "錄製繼續。",
-        voiceDiscarded: "錄製已取消，檔案已刪除。",
+        voiceDiscarded: "錄製已取消，將移至垃圾桶。",
         voiceNeverFormat: "將不再提議錄製 %@ 會議。",
         // MARK: Offer UI
         offerCaptureDisplayFormat: "整個螢幕 · 聲音：%1$@ · 咪高風：%2$@",
         offerNone: "無",
-        offerMicrophoneDenied: "未允許"
+        offerMicrophoneDenied: "未允許",
+        // MARK: Fixes H2
+        offerNameHidden: "分享螢幕時隱藏名稱",
+        pillStopCancels: "取消錄製並移到垃圾桶",
+        voiceMeetingBack: "會議仍在進行，錄製不會停止。",
+        noticeDiscardedTrash: "已取消 · 已移到垃圾桶",
+        noticeDiscardedDeleted: "已取消 · 已刪除",
+        noticeDiscardKept: "已取消 · 檔案夾仍在",
+        noticeDiscardKeptDetail: "仍在會議檔案夾中",
+        voiceDiscardedDeleted: "錄製已取消。無法將檔案夾移到垃圾桶，已將其刪除。",
+        voiceDiscardKept: "錄製已取消，但無法將其檔案夾移到垃圾桶或刪除，它仍在會議檔案夾中。",
+        noticeAnnouncementCopied: "通知已複製",
+        noticeAnnouncementCopiedDetail: "貼到會議聊天中",
+        undoAutoStartedFormat: "已自動開始 · %@ 一律錄製"
     )
 }

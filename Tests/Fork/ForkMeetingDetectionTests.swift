@@ -240,7 +240,7 @@ enum ForkMeetingDetectionTests {
                      "Cancel within 5 s stops it")
         let closed = machine.handle(.writerFinished(token1, .finished(recordedSeconds: 3)), now: at(5))
         suite.expect(closed == [.discard(folder), .showPill(.hidden)] && !finalizes(closed) && machine.phase == .idle,
-                     "and deletes its folder once the file is closed: nothing is finalized or kept")
+                     "and sends its folder to the Trash once the file is closed: nothing is finalized or kept")
 
         var late = recording(.always, candidate(policy: .always))
         suite.expect(late.handle(.tick, now: at(4)).isEmpty && late.handle(.tick, now: at(5)) == [.hideUndo],
@@ -265,7 +265,7 @@ enum ForkMeetingDetectionTests {
         var quitting = recording(.always, candidate(policy: .always))
         quitting.handle(.cancelAutoStart, now: at(2))
         suite.expect(quitting.handle(.appWillTerminate, now: at(3)) == [.discard(folder)],
-                     "a cancelled recording is deleted even when the app quits, never recovered at the next launch")
+                     "a cancelled recording goes to the Trash even when the app quits, never recovered at the next launch")
 
         var manual = recording(.offered)
         suite.expect(manual.handle(.cancelAutoStart, now: at(1)).isEmpty,
@@ -295,9 +295,9 @@ enum ForkMeetingDetectionTests {
 
         var back = recording()
         back.handle(.endProbable(meetA, countdown: 15), now: at(600))
-        suite.expect(back.handle(.candidates([candidate(silenced: true)], request()), now: at(605)) == [.hideEndingSoon]
-                        && isRecording(back),
-                     "its meeting back (the microphone, the tab) takes the countdown away")
+        suite.expect(back.handle(.candidates([candidate(silenced: true)], request()), now: at(605))
+                        == [.hideEndingSoon, .announce(.meetingBack)] && isRecording(back),
+                     "its meeting back (the microphone, the tab) takes the countdown away, and says so")
 
         var off = recording()
         suite.expect(off.handle(.endProbable(meetA, countdown: nil), now: at(600)).isEmpty && isRecording(off),
@@ -412,7 +412,7 @@ enum ForkMeetingDetectionTests {
                      "a newer meeting takes the place of the offer: one offer at a time, for the most recent")
         var renamed = offered()
         var titled = candidate(silenced: true)
-        titled.calendarTitle = "Point Opah"
+        titled.calendarTitle = "Point hebdo"
         suite.expect(renamed.handle(.candidates([titled], request()), now: at(3)).first?.isShowOffer == true,
                      "an offer whose meeting changed shows again")
         var off = offered()
@@ -605,7 +605,7 @@ enum ForkMeetingDetectionTests {
                      },
                      "VoiceOver has its own sentence for the offer, Always, the countdown and Cancel, in every language")
         suite.expect(ForkMeetingNotice.neverOffered("Meet").detail(french) == "Réglable dans Réunions"
-                        && ForkMeetingNotice.neverOffered("Meet").title(french) == "Plus proposé pour Meet",
+                        && ForkMeetingNotice.neverOffered("Meet").title(french) == "Meet n’est plus proposé",
                      "after Never, the notice says where to change it")
     }
 

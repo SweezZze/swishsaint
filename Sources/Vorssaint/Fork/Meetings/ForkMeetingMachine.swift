@@ -117,6 +117,10 @@ enum ForkMeetingNotice: Equatable {
     case neverOffered(String)
     /// "Always for Meet" was chosen; the provider's short name.
     case alwaysChosen(String)
+    /// After "Cancel", once the folder is gone (or not).
+    case discarded(ForkMeetingDiscardOutcome)
+    /// "Copy Announcement": it is in the pasteboard.
+    case announcementCopied
 
     /// 28 characters at most.
     func title(_ s: ForkMeetingStrings) -> String {
@@ -134,6 +138,10 @@ enum ForkMeetingNotice: Equatable {
         case .soundLost: return s.noticeSoundLost
         case let .neverOffered(provider): return s.noticeNever(provider)
         case let .alwaysChosen(provider): return s.offerAlways(provider)
+        case .discarded(.trashed): return s.noticeDiscardedTrash
+        case .discarded(.deleted): return s.noticeDiscardedDeleted
+        case .discarded(.kept): return s.noticeDiscardKept
+        case .announcementCopied: return s.noticeAnnouncementCopied
         }
     }
 
@@ -144,8 +152,10 @@ enum ForkMeetingNotice: Equatable {
         case let .microphone(name): return name
         case let .diskLow(minutes): return s.diskMinutes(minutes)
         case .neverOffered, .alwaysChosen: return s.noticeNeverDetail
+        case .discarded(.kept): return s.noticeDiscardKeptDetail
+        case .announcementCopied: return s.noticeAnnouncementCopiedDetail
         case .started, .resumed, .saved, .recovered, .microphoneSilent, .displayChanged, .sourceGone, .failure,
-             .soundLost:
+             .soundLost, .discarded:
             return nil
         }
     }
@@ -176,6 +186,9 @@ enum ForkMeetingAnnouncement: Equatable {
     case continued
     case discarded
     case neverOffered(String)
+    /// The meeting came back during the countdown: it goes on, so does
+    /// the recording.
+    case meetingBack
 
     func text(_ s: ForkMeetingStrings) -> String {
         switch self {
@@ -202,6 +215,7 @@ enum ForkMeetingAnnouncement: Equatable {
         case .continued: return s.voiceContinued
         case .discarded: return s.voiceDiscarded
         case let .neverOffered(provider): return s.voiceNever(provider)
+        case .meetingBack: return s.voiceMeetingBack
         }
     }
 }
@@ -267,17 +281,22 @@ enum ForkMeetingDismissal: Equatable {
 ///   once the recording is over;
 /// - an offer is greyed out, never started, while the official recorder
 ///   runs (or anything else would refuse the start);
-/// - a recording "Always" started can be cancelled for 5 s: its folder is
-///   deleted, never finalized; cancelled right after "Always" was chosen in
-///   the offer, the provider is offered again ("ask");
+/// - a recording "Always" started can be cancelled for 5 s: its folder goes
+///   to the Trash, never finalized; cancelled right after "Always" was
+///   chosen in the offer, the provider is offered again ("ask");
 /// - "Always" starts on its own only a meeting whose app has used the
 ///   microphone for a second, on a screen not locked: otherwise, and once
 ///   an offer was shown, it waits for a click.
 struct ForkMeetingMachine {
     /// An unanswered offer folds after this long.
     static let offerCollapse: TimeInterval = 20
-    /// How long "Cancel" deletes a recording "Always" started.
+    /// How long "Cancel" can still send a recording "Always" started to the
+    /// Trash.
     static let undoWindow: TimeInterval = 5
+    /// With VoiceOver: time to hear the start said, then reach "Cancel".
+    static let undoWindowVoiceOver: TimeInterval = 15
+
+    static func undoWindow(voiceOver: Bool) -> TimeInterval { voiceOver ? undoWindowVoiceOver : undoWindow }
 
     /// A start asked, the capture not running yet.
     struct Pending: Equatable {
@@ -316,7 +335,7 @@ struct ForkMeetingMachine {
         /// Seconds recorded when the screen locked, while it stays locked.
         var lockedAt: TimeInterval?
         var stoppedAt: Date?
-        /// Until when "Cancel" deletes a recording "Always" started.
+        /// Until when "Cancel" sends a recording "Always" started to the Trash.
         var undoUntil: Date?
         /// Cancelled: its folder goes once the file is closed.
         var discarded = false
@@ -496,7 +515,8 @@ struct ForkMeetingMachine {
         /// "Meeting over? Stopping in 15 s [Continue]".
         case showEndingSoon(until: Date)
         case hideEndingSoon
-        /// Deletes a cancelled recording's folder, once its file is closed.
+        /// Sends a cancelled recording's folder to the Trash, once its file is
+        /// closed.
         case discard(URL)
     }
 
@@ -512,6 +532,9 @@ struct ForkMeetingMachine {
     /// The most recent meeting the detection sees, set aside or not: a
     /// start by hand records it.
     private var detected: ForkMeetingCandidate?
+    /// VoiceOver runs, as the service read it before the start's answer:
+    /// "Cancel" stays `undoWindowVoiceOver`.
+    var voiceOver = false
 
     /// A meeting is starting, recording or closing; an offer is not.
     var isBusy: Bool {
@@ -570,10 +593,11 @@ struct ForkMeetingMachine {
             if pending.origin == .always {
                 // Started on its own: "Recording started · Cancel (5 s)"
                 // stands in for the start notice.
-                session.undoUntil = now.addingTimeInterval(Self.undoWindow)
+                let window = Self.undoWindow(voiceOver: voiceOver)
+                session.undoUntil = now.addingTimeInterval(window)
                 if denied { effects.append(.notice(.failure(.microphoneDenied))) }
-                effects += [.showUndo(until: now.addingTimeInterval(Self.undoWindow)),
-                            .announce(.autoStarted(seconds: Int(Self.undoWindow), withoutMicrophone: denied))]
+                effects += [.showUndo(until: now.addingTimeInterval(window)),
+                            .announce(.autoStarted(seconds: Int(window), withoutMicrophone: denied))]
             } else {
                 effects += [.notice(denied ? .failure(.microphoneDenied) : .started),
                             .announce(denied ? .startedWithoutMicrophone : .started)]
@@ -1026,7 +1050,7 @@ struct ForkMeetingMachine {
             var back = session
             back.meetingGone = false
             phase = .recording(back)
-            return [.hideEndingSoon]
+            return [.hideEndingSoon, .announce(.meetingBack)]
         case .endProbable:
             return []
         case .tick where now >= until:

@@ -408,10 +408,10 @@ enum ForkMeetingResolverTests {
 
     private static func naming(_ suite: TestSuite) {
         var r = resolver()
-        let hint = ForkMeetingCalendarHint(title: "Point Opah", meetCode: code, startsAt: at(-60), endsAt: at(3600))
+        let hint = ForkMeetingCalendarHint(title: "Point hebdo", meetCode: code, startsAt: at(-60), endsAt: at(3600))
         microphones(&r, -5, [chromeMicrophone])
         let named = r.resolve(ForkMeetingReading(at: at(0), windows: [chrome("Meet – \(code)")], calendar: [hint]))
-        suite.expect(named.candidates.first?.name == "Point Opah" && named.candidates.first?.calendarTitle == "Point Opah",
+        suite.expect(named.candidates.first?.name == "Point hebdo" && named.candidates.first?.calendarTitle == "Point hebdo",
                      "a meeting without a name in its title takes its calendar event's")
         let titled = windows(&r, 3, [chrome("Meet – Revue – \(code)")])
         suite.expect(titled.candidates.first?.name == "Revue", "the title's own name comes first")
