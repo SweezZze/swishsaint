@@ -180,7 +180,8 @@ enum ForkMeetingAppsTests {
             ("Zoom review: the best video app | The Verge", .zoomWeb), ("How to use Zoom - Wikipedia", .zoomWeb),
             ("Zoom Video Communications – Wikipédia", .zoomWeb), ("Zoom in on the map", .zoomWeb),
             ("Whereby vs Zoom | Blog", .whereby), ("Jitsi Meet review", .jitsiMeet), (" | Jitsi Meet", .jitsiMeet),
-            ("Microsoft Teams review", .teamsWeb), ("Chat | Microsoft Teams", .teamsWeb),
+            ("Microsoft Teams review", .teamsWeb), (" | Microsoft Teams", .teamsWeb),
+            ("Teams tips | Microsoft Teams Blog", .teamsWeb),
         ]
         suite.expect(articles.allSatisfy { verdict($0.0, $0.1) == .none },
                      "an article about Zoom, Whereby, Jitsi or Teams is no call")

@@ -30,6 +30,7 @@ enum ForkMeetingFixesKTests {
         oneWebexCall(suite)
         tenNewTapsAtMost(suite)
         thePageRows(suite)
+        teamsOnTheWeb(suite)
     }
 
     // MARK: - Fixtures
@@ -641,5 +642,28 @@ enum ForkMeetingFixesKTests {
         suite.expect(s(.tr).policyNeverCaption.hasPrefix("“Asla”") && s(.ja).policyNeverCaption.hasPrefix("「提案しない」")
                         && s(.ptBR).policyNeverCaption.hasPrefix("Um serviço definido como “Nunca”"),
                      "Never's caption quotes the choice's own word")
+    }
+
+    // MARK: - K.m: Teams on the web by its pages' titles
+
+    private static func teamsOnTheWeb(_ suite: TestSuite) {
+        let rules = ForkMeetingTitleRuleSet.teamsWeb
+        suite.expect(["Réunion | Microsoft Teams", "Meeting with Alice | Microsoft Teams", "Chat | Microsoft Teams",
+                      "https://teams.microsoft.com/v2/"]
+                        .allSatisfy { ForkMeetingTitleRules.verdict($0, rules: rules) == .meeting(code: nil, name: nil) }
+                        && ["Microsoft Teams", " | Microsoft Teams", "Microsoft Teams review", "Teams tips | Microsoft Teams Blog"]
+                            .allSatisfy { ForkMeetingTitleRules.verdict($0, rules: rules) == .none },
+                     "Teams on the web: « <page> | Microsoft Teams », or its address")
+        let tab = chrome("Réunion | Microsoft Teams")
+        var silent = Live()
+        for second in stride(from: 0.0, through: 30, by: 3) { silent.read(second, windows: [tab]) }
+        suite.expect(silent.offers.isEmpty, "without the browser's microphone, nothing")
+        var call = Live()
+        call.read(-5, microphones: [chromeMicrophone])
+        call.read(0, windows: [tab], microphones: [chromeMicrophone])
+        call.read(3, windows: [tab], microphones: [chromeMicrophone])
+        suite.expect(call.offers.map(\.candidate.name) == ["Microsoft Teams"]
+                        && call.offers.first?.candidate.provider == "web",
+                     "with it, a Teams call in the browser is offered, one of the other web calls")
     }
 }

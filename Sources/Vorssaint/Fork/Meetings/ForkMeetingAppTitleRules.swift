@@ -19,7 +19,7 @@ extension ForkMeetingTitleRules {
             return normalized == "zoom" || zoomMeetingTitles.contains(normalized) ? .meeting(code: nil, name: nil) : .none
         case .whereby: return normalized == "whereby" ? .meeting(code: nil, name: nil) : .none
         case .jitsiMeet: return jitsiMeet(cleaned(title), normalized: normalized)
-        case .teamsWeb: return normalized.contains("teams.microsoft.com") ? .meeting(code: nil, name: nil) : .none
+        case .teamsWeb: return isTeamsWeb(normalized) ? .meeting(code: nil, name: nil) : .none
         }
     }
 
@@ -57,6 +57,16 @@ extension ForkMeetingTitleRules {
         else { return false }
         let words = head.trimmingCharacters(in: .whitespaces)
         return words == "huddle" || words.hasPrefix("huddle:")
+    }
+
+    /// Teams on the web: its address in the title, or "<page> | Microsoft
+    /// Teams" as its pages are titled. Its chat is titled so too: like every
+    /// web call, it needs the browser's microphone in use.
+    private static func isTeamsWeb(_ normalized: String) -> Bool {
+        if normalized.contains("teams.microsoft.com") { return true }
+        let suffix = "| microsoft teams"
+        guard normalized.hasSuffix(suffix) else { return false }
+        return !normalized.dropLast(suffix.count).trimmingCharacters(in: .whitespaces).isEmpty
     }
 
     /// "Jitsi Meet" alone, or "<room> | Jitsi Meet" as its rooms are titled:
