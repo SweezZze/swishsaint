@@ -359,12 +359,20 @@ extension ForkMeetingStore {
     }
 
     /// Drafts of a transcription cut short (the app quit while it wrote):
-    /// removed on the store's queue, where no transcript is ever half
-    /// written between two blocks.
+    /// removed on the store's queue, where no transcript of this copy is
+    /// ever half written between two blocks, and only once old enough that
+    /// no other copy of the app is writing them.
     private func removeTranscriptDrafts(_ drafts: [String], in folder: URL) {
         guard !drafts.isEmpty else { return }
         queue.async {
-            for draft in drafts { try? FileManager.default.removeItem(at: folder.appendingPathComponent(draft)) }
+            let manager = FileManager.default
+            for draft in drafts {
+                let url = folder.appendingPathComponent(draft)
+                let modified = (try? manager.attributesOfItem(atPath: url.path))?[.modificationDate] as? Date
+                if ForkMeetingTranscript.isAbandonedDraft(draft, modified: modified, now: Date()) {
+                    try? manager.removeItem(at: url)
+                }
+            }
         }
     }
 

@@ -28,6 +28,7 @@ enum ForkMeetingFixesOTests {
         finalPass(suite)
         texts(suite)
         names(suite)
+        secondReview(suite)
     }
 
     private static func word(_ text: String, _ start: Double, _ end: Double) -> ForkParakeetWord {
@@ -547,5 +548,74 @@ enum ForkMeetingFixesOTests {
             for name in banned where text.contains(name) { found.append("\(file): \(name)") }
         }
         suite.expect(found.isEmpty, "the transcript's data and tests name no real person or company: \(found)")
+    }
+
+    // MARK: - Second review
+
+    private static func secondReview(_ suite: TestSuite) {
+        let now = Date(timeIntervalSince1970: 1_792_400_000)
+        suite.expect(ForkMeetingTranscript.nextRetry([nil, now.addingTimeInterval(-5), now.addingTimeInterval(20),
+                                                      now.addingTimeInterval(10)], now: now) == now.addingTimeInterval(10)
+                        && ForkMeetingTranscript.nextRetry([now.addingTimeInterval(-1), nil], now: now) == nil,
+                     "the retry timer waits for the soonest job still put off, never loops on one due but held")
+
+        let record = ForkMeetingTranscriptRecord(json: .object([
+            "state": .string("done"),
+            "files": .array([.string("a.mp4"), .string("a.TXT"), .string("a.srt"), .string("meeting.json"), .string("a.m4a")]),
+        ]))
+        suite.expect(record?.files == ["a.TXT", "a.srt"],
+                     "a corrupt list in meeting.json never makes the video, the audio or meeting.json this app's transcript")
+        let guarded = ForkMeetingTranscript.placement(source: "a.mp4", folderName: "a", names: ["a.mp4", "a.m4a", "b.txt"],
+                                                      ours: ["a.mp4", "a.m4a", "b.txt"])
+        suite.expect(guarded.stale == ["b.txt"], "nor is it ever removed as a former transcript")
+
+        suite.expect(ForkMeetingTranscript.kept(["a.txt", "a.srt", "a.mp4"], present: ["A.SRT", "a.mp4"]) == ["a.srt"],
+                     "a failure record keeps the transcript's names still in the folder")
+
+        let cased = ForkMeetingTranscript.placement(source: "Point.mp4", folderName: "Point",
+                                                    names: ["Point.mp4", "point.TXT", "POINT.srt"], ours: ["Point.txt", "Point.srt"])
+        suite.expect(cased == ForkMeetingTranscript.Placement(text: "Point.txt", subtitles: "Point.srt", stale: []),
+                     "this app's own files are told without case, as APFS does: replaced in place, not taken for hers")
+        let renamedCase = ForkMeetingTranscript.placement(source: "New.mp4", folderName: "New",
+                                                          names: ["New.mp4", "old.TXT", "old.srt"], ours: ["Old.txt", "Old.srt"])
+        suite.expect(renamedCase.stale == ["Old.txt", "Old.srt"], "and removed without case when former")
+
+        let draft = ForkMeetingTranscript.draftName("a.txt")
+        suite.expect(!ForkMeetingTranscript.isAbandonedDraft(draft, modified: now.addingTimeInterval(-60), now: now)
+                        && ForkMeetingTranscript.isAbandonedDraft(draft, modified: now.addingTimeInterval(-301), now: now)
+                        && !ForkMeetingTranscript.isAbandonedDraft(draft, modified: nil, now: now)
+                        && !ForkMeetingTranscript.isAbandonedDraft(".x.draft", modified: .distantPast, now: now),
+                     "a draft is cleaned only past 5 minutes: another copy of the app may be writing it")
+
+        suite.expect(ForkMeetingTranscript.tracks(enabled: nil, count: 3, keptMasterTracks: false)
+                        == ForkMeetingTranscript.Tracks(meeting: 1, microphone: 2)
+                        && ForkMeetingTranscript.tracks(enabled: nil, count: 2, keptMasterTracks: true)
+                        == ForkMeetingTranscript.Tracks(meeting: 0, microphone: 1)
+                        && ForkMeetingTranscript.tracks(enabled: nil, count: 1, keptMasterTracks: false)
+                        == ForkMeetingTranscript.Tracks(meeting: 0, microphone: nil)
+                        && ForkMeetingTranscript.tracks(enabled: [true, true], count: 2, keptMasterTracks: false)
+                        == ForkMeetingTranscript.Tracks(meeting: 0, microphone: 1),
+                     "an unreadable flag falls back on meeting.json's final pass; a readable one wins")
+
+        // 301.5 s of speakers: the last 1.5 s join the five minutes before.
+        let count = 30_150
+        var meeting = [Float](repeating: 1e-7, count: count), micro = meeting
+        var them: [ForkParakeetWord] = [], me: [ForkParakeetWord] = []
+        let gain = powf(10, -1.9)
+        for turn in 0..<26 {
+            let start = Double(turn) * 12
+            them.append(word("mot\(turn)", start, start + 0.5))
+            fill(&meeting, start, min(301.5, start + 10), 0.01)
+            fill(&micro, start + 0.12, min(301.5, start + 10.12), gain * 0.01)
+            me.append(word("mot\(turn)", start + 0.12, start + 0.62))
+        }
+        them.append(word("fin", 300.6, 301))
+        fill(&meeting, 300.5, 301.5, 0.01)
+        fill(&micro, 300.62, 301.5, gain * 0.01)
+        me.append(word("fin", 300.72, 301.1))
+        let report = ForkMeetingEcho.filter(micro: me, meeting: them, microEnvelope: ForkMeetingEnvelope(meanSquares: micro),
+                                            meetingEnvelope: ForkMeetingEnvelope(meanSquares: meeting))
+        suite.expect(report.slices.count == 1 && report.slices[0] != nil && report.echo.contains(me.count - 1),
+                     "a meeting of 301.5 s is one slice: the echo of its last seconds goes too")
     }
 }

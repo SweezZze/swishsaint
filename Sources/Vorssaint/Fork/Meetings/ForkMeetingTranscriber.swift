@@ -240,7 +240,9 @@ final class ForkMeetingTranscriber: ObservableObject {
     private func scheduleRetry() {
         retryTimer?.cancel()
         retryTimer = nil
-        guard enabled, let soonest = waiting.compactMap(\.notBefore).min() else { return }
+        // A job already due but held (a recording, a final pass) is woken by
+        // `didChange`: only the ones still put off need the timer.
+        guard enabled, let soonest = ForkMeetingTranscript.nextRetry(waiting.map(\.notBefore), now: Date()) else { return }
         let timer = DispatchWorkItem { [weak self] in
             self?.retryTimer = nil
             self?.startNext()
@@ -339,7 +341,8 @@ final class ForkMeetingTranscriber: ObservableObject {
         DispatchQueue.main.async { [weak self] in self?.identified(id) }
         let url = source.folder.appendingPathComponent(source.file)
         guard let audio = ForkMeetingTrackSource.audioTracks(of: url) else { return .failure(.unreadable) }
-        guard let tracks = ForkMeetingTranscript.tracks(enabled: audio.enabled) else {
+        guard let tracks = ForkMeetingTranscript.tracks(enabled: audio.enabled, count: audio.tracks.count,
+                                                        keptMasterTracks: source.keptMasterTracks) else {
             return .failure(.noAudio)
         }
         let order = [tracks.meeting] + (tracks.microphone.map { [$0] } ?? [])
@@ -445,8 +448,9 @@ final class ForkMeetingTrackSource: ForkParakeetSampleSource {
         let asset: AVURLAsset
         let tracks: [AVAssetTrack]
         /// The final pass leaves its mix alone enabled
-        /// (`ForkMeetingTranscript.tracks(enabled:)`).
-        let enabled: [Bool]
+        /// (`ForkMeetingTranscript.tracks(enabled:)`); `nil` when a flag
+        /// could not be read.
+        let enabled: [Bool]?
         let duration: TimeInterval
     }
 
@@ -463,8 +467,10 @@ final class ForkMeetingTrackSource: ForkParakeetSampleSource {
             if let tracks = try? await asset.loadTracks(withMediaType: .audio),
                let duration = try? await asset.load(.duration) {
                 let sorted = tracks.sorted { $0.trackID < $1.trackID }
-                var enabled: [Bool] = []
-                for track in sorted { enabled.append((try? await track.load(.isEnabled)) ?? true) }
+                var enabled: [Bool]? = []
+                for track in sorted {
+                    if let flag = try? await track.load(.isEnabled) { enabled?.append(flag) } else { enabled = nil }
+                }
                 box.audio = Audio(asset: asset, tracks: sorted, enabled: enabled,
                                   duration: duration.seconds.isFinite ? duration.seconds : 0)
             }

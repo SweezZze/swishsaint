@@ -102,6 +102,9 @@ enum ForkMeetingEcho {
         /// The path is proven, and its gain measured, this long at a time:
         /// the person may move, or turn the volume up.
         var slice: TimeInterval = 300
+        /// A last slice shorter than this joins the one before: a few
+        /// seconds past the five minutes prove nothing alone.
+        var shortestSlice: TimeInterval = 30
         /// Hops of the meeting speaking alone a slice needs to prove a path
         /// (2 s).
         var minimumHops = 200
@@ -252,7 +255,7 @@ enum ForkMeetingEcho {
                            gain: gain, settings: settings)
         var echo = Set<Int>()
         for (index, word) in micro.enumerated() {
-            let slice = max(0, Int(word.start / settings.slice))
+            let slice = min(max(0, Int(word.start / settings.slice)), slices.count - 1)
             guard slice < slices.count, let path = slices[slice], ratio(word) < path.gain * settings.margin else {
                 continue
             }
@@ -281,15 +284,22 @@ enum ForkMeetingEcho {
         let width = max(1, Int(settings.slice / ForkMeetingEnvelope.hopSeconds))
         let count = min(heard.count, source.count + shift)
         guard count > shift else { return [] }
-        var result: [Path?] = []
+        var ranges: [Range<Int>] = []
         var start = 0
         while start < count {
             let end = min(count, start + width)
-            result.append(path(heard: heard, source: source, range: max(start, shift)..<end, shift: shift,
-                               person: person, gain: gain, settings: settings))
+            ranges.append(start..<end)
             start = end
         }
-        return result
+        let shortest = Int(settings.shortestSlice / ForkMeetingEnvelope.hopSeconds)
+        if ranges.count > 1, let last = ranges.last, last.count < shortest {
+            ranges.removeLast()
+            ranges[ranges.count - 1] = ranges[ranges.count - 1].lowerBound..<last.upperBound
+        }
+        return ranges.map {
+            path(heard: heard, source: source, range: max($0.lowerBound, shift)..<$0.upperBound, shift: shift,
+                 person: person, gain: gain, settings: settings)
+        }
     }
 
     private static func path(heard: [Float], source: [Float], range: Range<Int>, shift: Int, person: [Bool],

@@ -61,11 +61,10 @@ struct ForkMeetingTranscriptRecord: Equatable {
         if case let .string(value)? = object["reason"], !value.isEmpty { reason = value }
         if case let .array(values)? = object["files"] {
             files = values.compactMap { value -> String? in
-                // A bare name only: never a path that would reach out of the
-                // folder.
-                guard case let .string(name) = value, !name.isEmpty, !name.contains("/"), !name.hasPrefix(".") else {
-                    return nil
-                }
+                // A bare `.txt` or `.srt` name only: a corrupt or foreign list
+                // never makes this app rename or remove the video, nor reach
+                // out of the folder.
+                guard case let .string(name) = value, ForkMeetingTranscript.isTranscriptName(name) else { return nil }
                 return name
             }
         }
@@ -146,6 +145,15 @@ enum ForkMeetingTranscript {
         var microphone: Int?
     }
 
+    /// When a track's flag cannot be read: what `meeting.json` says of the
+    /// final pass, a master's (or `skipped-disk`) order, else the mix first.
+    static func tracks(enabled: [Bool]?, count: Int, keptMasterTracks: Bool) -> Tracks? {
+        if let enabled { return tracks(enabled: enabled) }
+        guard count > 0 else { return nil }
+        let first = keptMasterTracks || count < 2 ? 0 : 1
+        return Tracks(meeting: first, microphone: count > first + 1 ? first + 1 : nil)
+    }
+
     static func tracks(enabled: [Bool]) -> Tracks? {
         let count = enabled.count
         guard count > 0 else { return nil }
@@ -187,7 +195,8 @@ enum ForkMeetingTranscript {
     static func placement(source: String, folderName: String, names: [String], ours: [String]) -> Placement {
         let base = fileNames(source: source, folderName: folderName)
         let stem = (base.text as NSString).deletingPathExtension
-        let present = names.filter { !ours.contains($0) }.map { $0.lowercased() }
+        let mine = Set(ours.filter(isTranscriptName).map { $0.lowercased() })
+        let present = names.map { $0.lowercased() }.filter { !mine.contains($0) }
         var text = base.text, subtitles = base.subtitles
         var number = 2
         while (present.contains(text.lowercased()) || present.contains(subtitles.lowercased())) && number < 1_000 {
@@ -195,8 +204,10 @@ enum ForkMeetingTranscript {
             subtitles = "\(stem) \(number).\(subtitlesExtension)"
             number += 1
         }
+        let onDisk = Set(names.map { $0.lowercased() })
         let stale = ours.filter { name in
-            name.lowercased() != text.lowercased() && name.lowercased() != subtitles.lowercased() && names.contains(name)
+            isTranscriptName(name) && name.lowercased() != text.lowercased() && name.lowercased() != subtitles.lowercased()
+                && onDisk.contains(name.lowercased())
         }
         return Placement(text: text, subtitles: subtitles, stale: stale)
     }
@@ -211,6 +222,23 @@ enum ForkMeetingTranscript {
 
     static func isDraft(_ name: String) -> Bool {
         name.hasPrefix(draftPrefix) && name.hasSuffix(draftSuffix) && name.count > draftPrefix.count + draftSuffix.count
+    }
+
+    /// A draft is left by a crash, not being written by another copy of
+    /// the app, once it is this old.
+    static let draftLifetime: TimeInterval = 300
+
+    static func isAbandonedDraft(_ name: String, modified: Date?, now: Date) -> Bool {
+        guard isDraft(name), let modified else { return false }
+        return now.timeIntervalSince(modified) > draftLifetime
+    }
+
+    /// A name a transcription may have written: bare, visible, `.txt` or
+    /// `.srt`.
+    static func isTranscriptName(_ name: String) -> Bool {
+        let ext = (name as NSString).pathExtension.lowercased()
+        return !name.isEmpty && !name.contains("/") && !name.hasPrefix(".")
+            && (ext == textExtension || ext == subtitlesExtension)
     }
 
     /// The transcript's names after a rename moved some of them.
@@ -247,6 +275,20 @@ enum ForkMeetingTranscript {
     /// this much later, this many times, before its failure is said.
     static let retryDelay: TimeInterval = 30
     static let maximumRetries = 10
+
+    /// When the retry timer fires: the soonest job still put off. One
+    /// already due but held (a recording, a final pass) is woken by the
+    /// activity's change, never by a timer looping meanwhile.
+    static func nextRetry(_ notBefore: [Date?], now: Date) -> Date? {
+        notBefore.compactMap { $0 }.filter { $0 > now }.min()
+    }
+
+    /// The transcript's names a failure record keeps: the ones still in the
+    /// folder (the subtitles of a former transcript stay this app's own).
+    static func kept(_ files: [String], present names: [String]) -> [String] {
+        let present = Set(names.map { $0.lowercased() })
+        return files.filter { isTranscriptName($0) && present.contains($0.lowercased()) }
+    }
 
     static func retries(_ failure: ForkMeetingTranscriptFailure, retried: Int) -> Bool {
         failure == .meetingInProgress && retried < maximumRetries

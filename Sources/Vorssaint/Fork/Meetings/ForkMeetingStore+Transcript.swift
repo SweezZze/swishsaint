@@ -19,6 +19,9 @@ extension ForkMeetingStore {
         let id: UUID?
         /// The file read, in the folder.
         let file: String
+        /// A master, or a final file that kept the master's tracks
+        /// (`skipped-disk`): what orders the tracks when the file cannot say.
+        let keptMasterTracks: Bool
     }
 
     /// Off the store's queue. `folder` as the caller knew it; `id` finds it
@@ -38,7 +41,8 @@ extension ForkMeetingStore {
             guard let file = ForkMeetingTranscript.source(video: contents.video, hasMaster: contents.hasMaster) else {
                 return .failure(.noAudio)
             }
-            return .success(TranscriptSource(folder: found, id: meeting.id, file: file))
+            let kept = file == ForkMeetingFolder.masterName || meeting.finalPass == .skippedDisk
+            return .success(TranscriptSource(folder: found, id: meeting.id, file: file, keptMasterTracks: kept))
         }
     }
 
@@ -97,7 +101,10 @@ extension ForkMeetingStore {
                                                       transcriptFiles: meeting.transcriptFiles)
             guard contents.transcript == nil, !isWritten(found, sidecar: read, contents: contents) else { return }
             var next = meeting
-            next.transcript = ForkMeetingTranscriptRecord(state: .failed, at: date, reason: failure.rawValue)
+            // The subtitles of a former transcript stay this app's own.
+            next.transcript = ForkMeetingTranscriptRecord(state: .failed, at: date, reason: failure.rawValue,
+                                                          files: ForkMeetingTranscript.kept(meeting.transcriptFiles,
+                                                                                            present: names))
                 .replacing(meeting.transcript)
             _ = writeSidecar(next, in: found)
         }
