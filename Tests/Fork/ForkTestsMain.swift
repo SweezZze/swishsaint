@@ -22,6 +22,7 @@ struct ForkTests {
             ("fork-dictation-history-search", { ForkDictationHistorySearchTests.run(suite) }),
             ("fork-parakeet", { ForkParakeetTests.run(suite) }),
             ("fork-parakeet-store", { ForkParakeetStoreTests.run(suite) }),
+            ("fork-parakeet-long", { ForkParakeetLongTests.run(suite) }),
             ("fork-meetings-machine", { ForkMeetingMachineTests.run(suite) }),
             ("fork-meetings-quality", { ForkMeetingQualityTests.run(suite) }),
             ("fork-meetings-folder", { ForkMeetingFolderTests.run(suite) }),
