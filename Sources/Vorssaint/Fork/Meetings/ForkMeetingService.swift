@@ -291,7 +291,7 @@ final class ForkMeetingService: ObservableObject {
         presenter.configure(levels: { [weak self] in self?.activeRecorder?.levels ?? .silent },
                             onPause: { [weak self] in self?.send(.pause) },
                             onResume: { [weak self] in self?.send(.resume) },
-                            onStop: { [weak self] in self?.stop() },
+                            onStop: { [weak self] in self?.stopFromPill() },
                             onToggleTarget: { [weak self] in self?.toggleTarget() },
                             onFailureAction: { [weak self] action in self?.perform(action) })
     }

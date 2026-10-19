@@ -120,6 +120,11 @@ enum ForkMeetingOfferTiming {
         return Int(left.rounded(.up))
     }
 
+    /// The pill's stop cancels, as "Cancel" does, while "Cancel" runs.
+    static func pillStopCancels(undoUntil: Date?, now: Date) -> Bool {
+        undoUntil.map { now < $0 } == true
+    }
+
     /// A start for a once-a-second timeline whose ticks fall when the
     /// number of seconds left changes, not up to a second after it: in the
     /// past, a whole number of seconds before `until`.

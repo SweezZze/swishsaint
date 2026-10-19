@@ -98,6 +98,7 @@ extension ForkMeetingPresenter {
             return
         }
         offerUI.undoUntil = until
+        pill.setCancels(until: until)
         let card = undoCard(until: until)
         if presentInIsland(card, as: .undo, minimum: 72) { return }
         showOfferBubble(card, as: .undo)
@@ -109,6 +110,7 @@ extension ForkMeetingPresenter {
             return
         }
         offerUI.undoUntil = nil
+        pill.setCancels(until: nil)
         removeIslandCard(.undo)
         hideOfferBubble(.undo)
     }
@@ -150,6 +152,7 @@ extension ForkMeetingPresenter {
         ui.bubbleCard = nil
         ui.reminder.hide()
         pill.setEndingSoon(until: nil)
+        pill.setCancels(until: nil)
     }
 
     /// Another card is about to take the island: ours moves where it can
@@ -366,7 +369,8 @@ extension ForkMeetingPresenter {
                          cancel: @escaping () -> Void, copy: @escaping () -> Void) -> ForkMeetingCard {
         var card = ForkMeetingCard(symbol: "record.circle", tint: Color(nsColor: .systemRed), title: text.noticeStarted,
                                    lines: [filmed])
-        card.actions = [ForkMeetingCard.Action(title: text.undo(seconds: Int(ForkMeetingMachine.undoWindow)),
+        let seconds = ForkMeetingOfferTiming.secondsLeft(until: until, now: Date())
+        card.actions = [ForkMeetingCard.Action(title: text.undo(seconds: seconds),
                                                countdown: ForkMeetingCard.Countdown(until: until) { now in
                                                    ForkMeetingOfferText.undo(until: until, now: now, strings: text)
                                                }, perform: cancel)]

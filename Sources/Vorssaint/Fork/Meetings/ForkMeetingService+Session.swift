@@ -152,7 +152,9 @@ extension ForkMeetingService {
             switch next {
             case .manualStart, .accept, .always: starts = true
             case let .captureFailed(token, _): starts = isStarting(token)
-            case .captureStarted: runsStart = true
+            case .captureStarted:
+                runsStart = true
+                machine.voiceOver = NSWorkspace.shared.isVoiceOverEnabled
             default: break
             }
             for effect in machine.handle(next, now: Date()) {

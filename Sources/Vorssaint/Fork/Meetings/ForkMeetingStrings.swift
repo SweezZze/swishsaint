@@ -373,6 +373,10 @@ struct ForkMeetingStrings {
     /// under the service's name, which stands in for the meeting's.
     let offerNameHidden: String
 
+    /// The pill's stop for VoiceOver and as its tooltip while "Cancel" runs
+    /// after a start "Always" made: it cancels then, as "Cancel" does.
+    let pillStopCancels: String
+
     func offerAlways(_ provider: String) -> String { String(format: offerAlwaysFormat, provider) }
     func offerNever(_ provider: String) -> String { String(format: offerNeverFormat, provider) }
     func offerCapture(window: String, sound: String, microphone: String) -> String {
@@ -621,7 +625,8 @@ extension ForkMeetingStrings {
         offerNone: "none",
         offerMicrophoneDenied: "not allowed",
         // MARK: Fixes H2
-        offerNameHidden: "Name hidden from shares"
+        offerNameHidden: "Name hidden from shares",
+        pillStopCancels: "Cancel the recording and move it to the Trash"
     )
 }
 
@@ -855,7 +860,8 @@ extension ForkMeetingStrings {
         offerNone: "nenhum",
         offerMicrophoneDenied: "não permitido",
         // MARK: Fixes H2
-        offerNameHidden: "Nome oculto ao compartilhar"
+        offerNameHidden: "Nome oculto ao compartilhar",
+        pillStopCancels: "Cancelar a gravação e movê-la para o Lixo"
     )
 }
 
@@ -1089,7 +1095,8 @@ extension ForkMeetingStrings {
         offerNone: "yok",
         offerMicrophoneDenied: "izin yok",
         // MARK: Fixes H2
-        offerNameHidden: "Paylaşımda ad gizli"
+        offerNameHidden: "Paylaşımda ad gizli",
+        pillStopCancels: "Kaydı iptal et ve Çöp Sepeti’ne taşı"
     )
 }
 
@@ -1323,7 +1330,8 @@ extension ForkMeetingStrings {
         offerNone: "нет",
         offerMicrophoneDenied: "не разрешён",
         // MARK: Fixes H2
-        offerNameHidden: "Имя скрыто при показе экрана"
+        offerNameHidden: "Имя скрыто при показе экрана",
+        pillStopCancels: "Отменить запись и переместить в Корзину"
     )
 }
 
@@ -1557,7 +1565,8 @@ extension ForkMeetingStrings {
         offerNone: "ninguno",
         offerMicrophoneDenied: "no permitido",
         // MARK: Fixes H2
-        offerNameHidden: "Nombre oculto al compartir"
+        offerNameHidden: "Nombre oculto al compartir",
+        pillStopCancels: "Cancelar la grabación y moverla a la Papelera"
     )
 }
 
@@ -1791,7 +1800,8 @@ extension ForkMeetingStrings {
         offerNone: "žiadny",
         offerMicrophoneDenied: "nepovolený",
         // MARK: Fixes H2
-        offerNameHidden: "Názov skrytý pri zdieľaní"
+        offerNameHidden: "Názov skrytý pri zdieľaní",
+        pillStopCancels: "Zrušiť nahrávanie a presunúť ho do Koša"
     )
 }
 
@@ -2025,7 +2035,8 @@ extension ForkMeetingStrings {
         offerNone: "aus",
         offerMicrophoneDenied: "nicht erlaubt",
         // MARK: Fixes H2
-        offerNameHidden: "Name beim Teilen verborgen"
+        offerNameHidden: "Name beim Teilen verborgen",
+        pillStopCancels: "Aufnahme abbrechen und in den Papierkorb legen"
     )
 }
 
@@ -2259,7 +2270,8 @@ extension ForkMeetingStrings {
         offerNone: "aucun",
         offerMicrophoneDenied: "non autorisé",
         // MARK: Fixes H2
-        offerNameHidden: "Nom masqué pour les partages"
+        offerNameHidden: "Nom masqué pour les partages",
+        pillStopCancels: "Annuler l’enregistrement et le mettre à la Corbeille"
     )
 }
 
@@ -2493,7 +2505,8 @@ extension ForkMeetingStrings {
         offerNone: "nessuno",
         offerMicrophoneDenied: "non consentito",
         // MARK: Fixes H2
-        offerNameHidden: "Nome nascosto se condividi"
+        offerNameHidden: "Nome nascosto se condividi",
+        pillStopCancels: "Annulla la registrazione e spostala nel Cestino"
     )
 }
 
@@ -2727,7 +2740,8 @@ extension ForkMeetingStrings {
         offerNone: "なし",
         offerMicrophoneDenied: "未許可",
         // MARK: Fixes H2
-        offerNameHidden: "画面共有では名前を非表示"
+        offerNameHidden: "画面共有では名前を非表示",
+        pillStopCancels: "録画を取り消してゴミ箱に入れる"
     )
 }
 
@@ -2961,7 +2975,8 @@ extension ForkMeetingStrings {
         offerNone: "없음",
         offerMicrophoneDenied: "허용 안 됨",
         // MARK: Fixes H2
-        offerNameHidden: "화면 공유 시 이름 숨김"
+        offerNameHidden: "화면 공유 시 이름 숨김",
+        pillStopCancels: "녹화를 취소하고 휴지통으로 이동"
     )
 }
 
@@ -3195,7 +3210,8 @@ extension ForkMeetingStrings {
         offerNone: "немає",
         offerMicrophoneDenied: "не дозволено",
         // MARK: Fixes H2
-        offerNameHidden: "Назву сховано при показі"
+        offerNameHidden: "Назву сховано при показі",
+        pillStopCancels: "Скасувати запис і перемістити в Смітник"
     )
 }
 
@@ -3429,7 +3445,8 @@ extension ForkMeetingStrings {
         offerNone: "无",
         offerMicrophoneDenied: "未允许",
         // MARK: Fixes H2
-        offerNameHidden: "共享屏幕时隐藏名称"
+        offerNameHidden: "共享屏幕时隐藏名称",
+        pillStopCancels: "取消录制并移到废纸篓"
     )
 }
 
@@ -3663,7 +3680,8 @@ extension ForkMeetingStrings {
         offerNone: "無",
         offerMicrophoneDenied: "未允許",
         // MARK: Fixes H2
-        offerNameHidden: "分享螢幕時隱藏名稱"
+        offerNameHidden: "分享螢幕時隱藏名稱",
+        pillStopCancels: "取消錄製並丟到垃圾桶"
     )
 }
 
@@ -3897,6 +3915,7 @@ extension ForkMeetingStrings {
         offerNone: "無",
         offerMicrophoneDenied: "未允許",
         // MARK: Fixes H2
-        offerNameHidden: "分享螢幕時隱藏名稱"
+        offerNameHidden: "分享螢幕時隱藏名稱",
+        pillStopCancels: "取消錄製並移到垃圾桶"
     )
 }

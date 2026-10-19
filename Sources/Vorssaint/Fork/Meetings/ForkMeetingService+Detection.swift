@@ -223,6 +223,17 @@ extension ForkMeetingService {
         send(.cancelAutoStart)
     }
 
+    /// The pill's stop. While "Cancel" runs after a start "Always" made, it
+    /// cancels as "Cancel" does (the file goes to the Trash), and says so to
+    /// VoiceOver: a stop then would keep a meeting nobody chose to record.
+    func stopFromPill() {
+        if ForkMeetingOfferTiming.pillStopCancels(undoUntil: machine.activeSession?.undoUntil, now: Date()) {
+            cancelAutoStart()
+        } else {
+            stop()
+        }
+    }
+
     /// "Continue" during "Meeting over? Stopping in 15 s".
     func continueRecording() {
         send(.continueRecording)

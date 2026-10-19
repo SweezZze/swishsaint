@@ -11,12 +11,36 @@ enum ForkMeetingOfferH2Tests {
         shares(suite)
         microphone(suite)
         islandCards(suite)
+        undoWindow(suite)
     }
 
     private static let zero = Date(timeIntervalSinceReferenceDate: 800_000_000)
     private static let french = ForkMeetingStrings.strings(.fr)
 
     private static func at(_ seconds: TimeInterval) -> Date { zero.addingTimeInterval(seconds) }
+
+    private static let folder = URL(fileURLWithPath: "/tmp/Meetings/2026-10-18 10h02 — Point hebdo", isDirectory: true)
+    private static let token1 = ForkMeetingToken(value: 1)
+
+    private static func request() -> ForkMeetingStartRequest {
+        ForkMeetingStartRequest(
+            settings: ForkMeetingCaptureSettings(target: .window, systemAudio: .app, microphone: "meeting",
+                                                 quality: .standard),
+            facts: ForkMeetingStartFacts(freeBytes: 50_000_000_000, screenRecordingAllowed: true,
+                                         microphoneAllowed: true, officialRecorderBusy: false))
+    }
+
+    /// A meeting "Always" started at 1 s, VoiceOver on or off.
+    private static func autoStarted(voiceOver: Bool) -> (ForkMeetingMachine, [ForkMeetingMachine.Effect]) {
+        var machine = ForkMeetingMachine()
+        var meeting = meet()
+        meeting.silenced = false
+        meeting.policy = .always
+        machine.handle(.candidates([meeting], request()), now: zero)
+        machine.voiceOver = voiceOver
+        let effects = machine.handle(.captureStarted(token1, folder: folder), now: at(1))
+        return (machine, effects)
+    }
 
     private static func meet(name: String? = "Point hebdo", code: String? = "abc-defg-hij") -> ForkMeetingCandidate {
         ForkMeetingCandidate(identity: ForkMeetingIdentity("meet:" + (code ?? "x")), provider: "meet",
@@ -85,5 +109,29 @@ enum ForkMeetingOfferH2Tests {
                      "an offer the island closed over folds into its reminder: not a « Pas cette fois »")
         suite.expect(ForkMeetingIslandCard.endingSoon.afterClose(undoUntil: at(5), now: at(1)) == .gone,
                      "the countdown stays in the pill alone")
+    }
+
+    // MARK: - H2.5 "Cancel" with VoiceOver, and the pill's stop
+
+    private static func undoWindow(_ suite: TestSuite) {
+        let (plain, plainEffects) = autoStarted(voiceOver: false)
+        suite.expect(plainEffects.contains(.showUndo(until: at(6))) && plainEffects.contains(.announce(.autoStarted(seconds: 5)))
+                        && plain.activeSession?.undoUntil == at(6),
+                     "without VoiceOver « Annuler » stays 5 s")
+        var spoken = autoStarted(voiceOver: true)
+        suite.expect(spoken.1.contains(.showUndo(until: at(16))) && spoken.1.contains(.announce(.autoStarted(seconds: 15)))
+                        && spoken.0.activeSession?.undoUntil == at(16),
+                     "with VoiceOver it stays 15 s, and the announcement says 15: \(spoken.1)")
+        suite.expect(spoken.0.handle(.tick, now: at(6)).isEmpty && spoken.0.handle(.cancelAutoStart, now: at(15)).contains(.hideUndo),
+                     "a cancel at 14 s still cancels with VoiceOver")
+        suite.expect(ForkMeetingMachine.undoWindow(voiceOver: false) == 5 && ForkMeetingMachine.undoWindow(voiceOver: true) == 15,
+                     "5 s, 15 s with VoiceOver")
+        suite.expect(ForkMeetingOfferTiming.pillStopCancels(undoUntil: at(6), now: at(3))
+                        && !ForkMeetingOfferTiming.pillStopCancels(undoUntil: at(6), now: at(6))
+                        && !ForkMeetingOfferTiming.pillStopCancels(undoUntil: nil, now: at(3)),
+                     "the pill's stop cancels while « Annuler » runs, and stops once it is over")
+        let labels = AppLanguage.allCases.map(ForkMeetingStrings.strings)
+        suite.expect(labels.allSatisfy { !$0.pillStopCancels.isEmpty && $0.pillStopCancels != $0.pillStop },
+                     "the pill's stop says it cancels, in every language")
     }
 }

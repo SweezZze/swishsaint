@@ -267,6 +267,10 @@ struct ForkMeetingMachine {
     static let offerCollapse: TimeInterval = 20
     /// How long "Cancel" deletes a recording "Always" started.
     static let undoWindow: TimeInterval = 5
+    /// With VoiceOver: time to hear the start said, then reach "Cancel".
+    static let undoWindowVoiceOver: TimeInterval = 15
+
+    static func undoWindow(voiceOver: Bool) -> TimeInterval { voiceOver ? undoWindowVoiceOver : undoWindow }
 
     /// A start asked, the capture not running yet.
     struct Pending: Equatable {
@@ -487,6 +491,9 @@ struct ForkMeetingMachine {
     /// When the screen was last unlocked: a stream stopped by the lock is
     /// reported `externalStopGrace` late, possibly after the unlock.
     private var unlockedAt: Date?
+    /// VoiceOver runs, as the service read it before the start's answer:
+    /// "Cancel" stays `undoWindowVoiceOver`.
+    var voiceOver = false
 
     /// A meeting is starting, recording or closing; an offer is not.
     var isBusy: Bool {
@@ -532,10 +539,11 @@ struct ForkMeetingMachine {
             if pending.origin == .always {
                 // Started on its own: "Recording started · Cancel (5 s)"
                 // stands in for the start notice.
-                session.undoUntil = now.addingTimeInterval(Self.undoWindow)
+                let window = Self.undoWindow(voiceOver: voiceOver)
+                session.undoUntil = now.addingTimeInterval(window)
                 if denied { effects.append(.notice(.failure(.microphoneDenied))) }
-                effects += [.showUndo(until: now.addingTimeInterval(Self.undoWindow)),
-                            .announce(.autoStarted(seconds: Int(Self.undoWindow), withoutMicrophone: denied))]
+                effects += [.showUndo(until: now.addingTimeInterval(window)),
+                            .announce(.autoStarted(seconds: Int(window), withoutMicrophone: denied))]
             } else {
                 effects += [.notice(denied ? .failure(.microphoneDenied) : .started),
                             .announce(denied ? .startedWithoutMicrophone : .started)]
