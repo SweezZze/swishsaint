@@ -12,6 +12,7 @@ enum ForkMeetingFinishTests {
         soundOnly(suite)
         notifications(suite)
         updates(suite)
+        pillStaysForWarnings(suite)
     }
 
     private static func markers(_ suite: TestSuite) {
@@ -86,5 +87,43 @@ enum ForkMeetingFinishTests {
         settle()
         suite.expect(!ForkMeetingActivity.isBusy && idle == 1 && ForkMeetingActivity.tally == before,
                      "the updater hears idle once, when the summary ends")
+    }
+
+    private static func pillStaysForWarnings(_ suite: TestSuite) {
+        let clock = ForkMeetingClock(recordedBefore: 0, runningSince: Date())
+        let context = ForkMeetingLiveContext()
+        let look = ForkMeetingPillLook(state: .recording(clock, diskMinutesLeft: nil), context: context,
+                                       finalizingProgress: nil, reducesMotion: false)
+        func hides(_ context: ForkMeetingLiveContext) -> Bool {
+            ForkMeetingIslandRules.hidesPill(indicator: .auto, islandShowsRecording: true, look: look, context: context)
+        }
+        var silent = context
+        silent.microphoneSilent = true
+        var noApp = context
+        noApp.trackSound = .noApp
+        var lost = context
+        lost.trackSound = .lost
+        suite.expect(hides(context) && !hides(silent) && !hides(noApp) && !hides(lost),
+                     "the pill never steps aside while the microphone sends nothing or the meeting's sound is not heard")
+        let island = CGRect(x: 0, y: 0, width: 1470, height: 956)
+        let other = CGRect(x: 1470, y: 0, width: 1920, height: 1080)
+        suite.expect(ForkMeetingIslandRules.islandShowsRecording(activityShown: true, islandScreen: island, filmedScreen: island,
+                                                                 workedScreen: other)
+                        && !ForkMeetingIslandRules.islandShowsRecording(activityShown: true, islandScreen: island,
+                                                                        filmedScreen: other, workedScreen: island)
+                        && ForkMeetingIslandRules.islandShowsRecording(activityShown: true, islandScreen: island,
+                                                                       filmedScreen: nil, workedScreen: island)
+                        && !ForkMeetingIslandRules.islandShowsRecording(activityShown: false, islandScreen: island,
+                                                                        filmedScreen: island, workedScreen: island),
+                     "the pill steps aside only for the island of the display filmed, never for a copy it supposes on another")
+        let recording = ForkMeetingIslandPhase(state: .recording(clock, diskMinutesLeft: nil), progress: nil)!
+        var muted = context
+        muted.microphoneSilent = true
+        var off = muted
+        off.recordsMicrophone = false
+        suite.expect(ForkMeetingIslandRules.showsMicrophoneMuted(ForkMeetingIslandSnapshotFacts(phase: recording, context: muted))
+                        && !ForkMeetingIslandRules.showsMicrophoneMuted(ForkMeetingIslandSnapshotFacts(phase: recording, context: context))
+                        && !ForkMeetingIslandRules.showsMicrophoneMuted(ForkMeetingIslandSnapshotFacts(phase: recording, context: off)),
+                     "the strip crosses out a recorded microphone that sends nothing, not one left off")
     }
 }

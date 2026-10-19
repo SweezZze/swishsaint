@@ -112,6 +112,8 @@ struct ForkMeetingIslandSnapshot: Equatable {
 
     func elapsed(at now: Date) -> TimeInterval { clock.map { $0.elapsed(at: now) } ?? stoppedAt }
 
+    var facts: ForkMeetingIslandSnapshotFacts { ForkMeetingIslandSnapshotFacts(phase: phase, context: context) }
+
     /// The microphone is recorded and sends sound: its meter is drawn.
     var hearsMicrophone: Bool { context.recordsMicrophone && !context.microphoneSilent }
     /// The meeting's own sound reaches its track.
@@ -198,6 +200,10 @@ struct ForkMeetingIslandStrip: View {
         .onChange(of: snapshot.phase.mark) { _, _ in
             DispatchQueue.main.async { service.refreshPresentation() }
         }
+        // The crossed-out microphone widens the wing that has no meters.
+        .onChange(of: ForkMeetingIslandRules.showsMicrophoneMuted(snapshot.facts)) { _, _ in
+            DispatchQueue.main.async { service.refreshPresentation() }
+        }
     }
 
     private var text: ForkMeetingStrings { ForkMeetingStrings.strings(l10n.language) }
@@ -214,6 +220,7 @@ struct ForkMeetingIslandStrip: View {
                                                           radius: Self.markSide(iconSize: iconSize) / 2)
         let metersFit = wing - markInset - NotchTimerSupport.stripCameraGap
             >= Self.markSide(iconSize: iconSize) + Self.markSpacing + ForkMeetingIslandMeters.width
+        let muted = ForkMeetingIslandRules.showsMicrophoneMuted(snapshot.facts)
         return HStack(spacing: 0) {
             HStack(spacing: Self.markSpacing) {
                 if wing >= 28 {
@@ -221,6 +228,9 @@ struct ForkMeetingIslandStrip: View {
                 }
                 if metersFit, snapshot.phase.acceptsControls {
                     ForkMeetingIslandMeters(snapshot: snapshot, height: min(14, iconSize))
+                        .transition(.opacity)
+                } else if muted {
+                    ForkMeetingIslandMutedMicrophone(side: Self.markSide(iconSize: iconSize))
                         .transition(.opacity)
                 }
             }
@@ -340,7 +350,12 @@ struct ForkMeetingIslandStrip: View {
             .size(withAttributes: [.font: NSFont.monospacedDigitSystemFont(ofSize: textSize, weight: .medium)])
             .width.rounded(.up)
         let side = markSide(iconSize: NotchTimerSupport.stripIconSize(height: height))
-        let mark = side + provisional.compactActivityEdgeInset(boxHeight: side, radius: side / 2)
+        var mark = side + provisional.compactActivityEdgeInset(boxHeight: side, radius: side / 2)
+        // Room for the microphone crossed out beside the mark, when it is.
+        if let snapshot = ForkMeetingIslandModel.shared.snapshot,
+           ForkMeetingIslandRules.showsMicrophoneMuted(snapshot.facts) {
+            mark += markSpacing + side
+        }
         return max(reading + provisional.compactActivityEdgeInset(boxHeight: textSize * 0.72, radius: 0), mark)
             + NotchTimerSupport.stripCameraGap
     }
@@ -412,6 +427,19 @@ private struct ForkMeetingIslandMark: View {
     }
 }
 
+/// The microphone crossed out in orange: recorded, it sends nothing.
+private struct ForkMeetingIslandMutedMicrophone: View {
+    let side: CGFloat
+
+    var body: some View {
+        Image(systemName: "mic.slash.fill")
+            .font(.system(size: side * 0.85, weight: .semibold))
+            .foregroundStyle(.orange)
+            .frame(width: side, height: side)
+            .accessibilityHidden(true)
+    }
+}
+
 /// A small ring: filled as far as the final pass went, or a turning arc
 /// while that is unknown (still with Reduce Motion).
 struct ForkMeetingIslandGauge: View {
@@ -466,9 +494,17 @@ struct ForkMeetingIslandMeters: View {
         TimelineView(.animation(minimumInterval: reduceMotion ? 0.5 : 1.0 / 15, paused: !live)) { _ in
             let levels = live ? model.levels() : .silent
             HStack(alignment: .center, spacing: 3) {
-                ForkMeetingIslandMeter(level: snapshot.hearsMicrophone ? levels.microphone : 0,
-                                       heard: snapshot.hearsMicrophone && live, height: height, tint: tint,
-                                       animated: !reduceMotion)
+                if ForkMeetingIslandRules.showsMicrophoneMuted(snapshot.facts) {
+                    // Recorded and silent: crossed out in orange, as the pill does.
+                    Image(systemName: "mic.slash.fill")
+                        .font(.system(size: min(9, height * 0.75), weight: .semibold))
+                        .foregroundStyle(.orange)
+                        .frame(width: Self.meterWidth, height: height)
+                } else {
+                    ForkMeetingIslandMeter(level: snapshot.hearsMicrophone ? levels.microphone : 0,
+                                           heard: snapshot.hearsMicrophone && live, height: height, tint: tint,
+                                           animated: !reduceMotion)
+                }
                 ForkMeetingIslandMeter(level: snapshot.hearsMeeting ? levels.meeting : 0,
                                        heard: snapshot.hearsMeeting && live, height: height, tint: tint,
                                        animated: !reduceMotion)
@@ -507,19 +543,17 @@ private struct ForkMeetingIslandMeter: View {
 
 extension ForkMeetingIsland {
     /// Whether the closed island shows the recording's strip where the pill
-    /// would stand: on the filmed display, or on every display; not while
-    /// the island is hidden, in full screen, or on another activity, nor
-    /// while it takes no cards, since its strip then opens none.
+    /// would stand: on the filmed display only, the island's own (a copy
+    /// on every display is not assumed); not while the island is hidden, in
+    /// full screen, or on another activity, nor while it takes no cards,
+    /// since its strip then opens none.
     static func showsRecording(onDisplay displayID: UInt32?) -> Bool {
         let island = NotchService.shared
-        guard island.showsSystemFeedback, NotchSupport.routes(.capture), island.compactActivity == .meeting else {
-            return false
-        }
-        let everyDisplay = NotchDisplay(rawValue: UserDefaults.standard.string(forKey: DefaultsKey.notchDisplay) ?? "") == .all
-        if everyDisplay { return true }
-        let screen = displayID.flatMap { id in NSScreen.screens.first { $0.displayID == id } } ?? NSScreen.main
-        guard let screen else { return false }
-        return island.geometry.screen == screen.frame
+        let shown = island.showsSystemFeedback && NotchSupport.routes(.capture) && island.compactActivity == .meeting
+        return ForkMeetingIslandRules.islandShowsRecording(
+            activityShown: shown, islandScreen: island.geometry.screen,
+            filmedScreen: displayID.flatMap { id in NSScreen.screens.first { $0.displayID == id } }?.frame,
+            workedScreen: NSScreen.main?.frame)
     }
 
     /// Calls `change` on the main thread a moment after the island changed

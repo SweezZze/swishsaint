@@ -444,7 +444,7 @@ final class ForkMeetingPresenter {
         guard indicator == .auto, look != nil else { return false }
         return ForkMeetingIslandRules.hidesPill(indicator: indicator,
                                                 islandShowsRecording: ForkMeetingIsland.showsRecording(onDisplay: context.displayID),
-                                                look: look)
+                                                look: look, context: context)
     }
 
     private func showPill(_ state: ForkMeetingPillState) {

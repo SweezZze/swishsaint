@@ -130,14 +130,36 @@ enum ForkMeetingIslandRules {
     /// recording where it is filmed, and only for what the strip says too:
     /// the countdown of a meeting that seems over, the minutes of disk left,
     /// a frozen picture or a filmed app gone are the pill's words alone, so
-    /// it comes back for them.
+    /// it comes back for them. So does a microphone sending nothing, or a
+    /// meeting's sound not reaching its track: the pill crosses its meter
+    /// out and says why, a recording short of a voice must not go unseen.
     static func hidesPill(indicator: ForkMeetingIndicator, islandShowsRecording: Bool,
-                          look: ForkMeetingPillLook?) -> Bool {
+                          look: ForkMeetingPillLook?, context: ForkMeetingLiveContext = ForkMeetingLiveContext()) -> Bool {
         guard indicator == .auto, islandShowsRecording, let look else { return false }
+        guard !context.microphoneSilent, context.trackSound == .heard else { return false }
         switch look.status {
         case .meters, .paused, .stopping, .finalizing: return true
         case .diskLow, .pictureFrozen, .sourceGone, .endingSoon: return false
         }
+    }
+
+    /// Whether the island shows the recording where the pill would stand:
+    /// its strip is the activity shown (`activityShown`), and the island's
+    /// own display is the one filmed (`filmedScreen`; `nil`: the display
+    /// being worked on, `workedScreen`). With the island on every display,
+    /// a copy on the filmed one is never assumed: only the island's own
+    /// display counts.
+    static func islandShowsRecording(activityShown: Bool, islandScreen: CGRect, filmedScreen: CGRect?,
+                                     workedScreen: CGRect?) -> Bool {
+        guard activityShown, let screen = filmedScreen ?? workedScreen else { return false }
+        return islandScreen == screen
+    }
+
+    /// The strip crosses the microphone out, in orange, while it is
+    /// recorded and sends nothing: beside the mark, even where the wing has
+    /// no room for the meters.
+    static func showsMicrophoneMuted(_ snapshot: ForkMeetingIslandSnapshotFacts) -> Bool {
+        snapshot.acceptsControls && snapshot.recordsMicrophone && snapshot.microphoneSilent
     }
 
     /// The time right of the camera, as the pill reads it: "12:03",
@@ -197,4 +219,17 @@ enum ForkMeetingIslandRules {
     static let markedHold: TimeInterval = ForkMeetingMarkers.mergeWindow
     /// How long the live card stays once the pointer leaves it.
     static let cardHold: TimeInterval = 4
+}
+
+/// What `showsMicrophoneMuted` reads of the strip's snapshot, kept pure.
+struct ForkMeetingIslandSnapshotFacts: Equatable {
+    var acceptsControls: Bool
+    var recordsMicrophone: Bool
+    var microphoneSilent: Bool
+
+    init(phase: ForkMeetingIslandPhase, context: ForkMeetingLiveContext) {
+        acceptsControls = phase.acceptsControls
+        recordsMicrophone = context.recordsMicrophone
+        microphoneSilent = context.microphoneSilent
+    }
 }
