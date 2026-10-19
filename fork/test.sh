@@ -28,6 +28,7 @@ FORK_SOURCES=(
     Sources/Vorssaint/Fork/Dictation/ForkDictationWaveform.swift
     Sources/Vorssaint/Fork/Dictation/History/ForkDictationRecord.swift
     Sources/Vorssaint/Fork/Dictation/History/ForkDictationHistorySearch.swift
+    Sources/Vorssaint/Fork/Dictation/History/ForkNotchDictationsSupport.swift
     Sources/Vorssaint/Fork/Dictation/Parakeet/ForkParakeetDecoding.swift
     Sources/Vorssaint/Fork/Dictation/Parakeet/ForkParakeetManifest.swift
     Sources/Vorssaint/Fork/Dictation/Parakeet/ForkParakeetVocabulary.swift

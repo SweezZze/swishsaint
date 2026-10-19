@@ -1278,6 +1278,8 @@ enum NotchControlSetupRequirement: Equatable {
 
 enum NotchControlItem: String, CaseIterable, Identifiable {
     case volume, brightness, keyboardLight, music, mixer, keepAwake, timer, calendar, microphone, screenshot, recording, speedTest, panel, commandBar, scratchpad
+    case dictation // FORK(notch-dictation)
+    static var dictationIsAvailable: () -> Bool = { false } // FORK(notch-dictation)
     static let defaultHidden = "keyboardLight,microphone,screenshot,recording,speedTest,panel,commandBar,scratchpad"
     var id: String { rawValue }
 
@@ -1292,6 +1294,7 @@ enum NotchControlItem: String, CaseIterable, Identifiable {
 
     var symbol: String {
         switch self {
+        case .dictation: return "waveform" // FORK(notch-dictation2)
         case .volume: return "speaker.wave.2.fill"
         case .brightness: return "sun.max.fill"
         case .keyboardLight: return "light.max"
@@ -1313,6 +1316,7 @@ enum NotchControlItem: String, CaseIterable, Identifiable {
 
     var setupRequirement: NotchControlSetupRequirement {
         switch self {
+        case .dictation: return .page(.controls, feature: nil) // FORK(notch-dictation2)
         case .volume: return .feature(.mixer)
         case .brightness, .keyboardLight: return .feature(.brightness)
         case .keepAwake: return .feature(.keepAwake)
@@ -1332,6 +1336,7 @@ enum NotchControlItem: String, CaseIterable, Identifiable {
 
     func isAvailable(in defaults: UserDefaults = .standard) -> Bool {
         switch self {
+        case .dictation: return Self.dictationIsAvailable() // FORK(notch-dictation2)
         case .volume: return AppFeature.mixer.isAvailable(in: defaults)
         case .mixer: return AppFeature.mixer.isAvailable(in: defaults) && NotchSupport.modules(in: defaults).contains(.mixer)
         case .brightness: return AppFeature.brightness.isAvailable(in: defaults)

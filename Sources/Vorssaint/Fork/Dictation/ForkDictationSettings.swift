@@ -883,13 +883,14 @@ private struct ForkDictationAfterSection: View {
 // MARK: - History
 
 /// The dictation history: whether dictations are kept with their audio,
-/// what they take on disk, and the way to the history panel. Turning it
-/// off offers to delete what is already kept.
+/// what they take on disk, and the way to the history, which opens in the
+/// island. Turning it off offers to delete what is already kept.
 private struct ForkDictationHistorySection: View {
     let text: ForkDictationStrings
 
     @AppStorage(ForkDefaultsKey.dictationKeepsHistory) private var keepsHistory = true
     @ObservedObject private var archive = ForkDictationArchive.shared
+    @ObservedObject private var l10n = L10n.shared
     @State private var confirmsDeleteAll = false
     @State private var offersDelete = false
 
@@ -914,11 +915,18 @@ private struct ForkDictationHistorySection: View {
                 }
             }
 
-            HStack {
-                Button(text.historyOpen) { ForkDictationHistoryPanel.shared.show() }
-                Spacer()
-                Button(text.historyDeleteAll, role: .destructive) { confirmsDeleteAll = true }
-                    .disabled(archive.records.isEmpty)
+            VStack(alignment: .leading, spacing: 4) {
+                HStack {
+                    Button(text.historyOpen) { ForkNotchDictations.show() }
+                    Button(text.historyIslandSettings) { ForkNotchDictations.openIslandSettings() }
+                    Spacer()
+                    Button(text.historyDeleteAll, role: .destructive) { confirmsDeleteAll = true }
+                        .disabled(archive.records.isEmpty)
+                }
+                Text(text.historyIslandCaption(NotchModule.clipboard.title(l10n.language)))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
         }
         .confirmationDialog(text.historyDeleteAllConfirmTitle, isPresented: $confirmsDeleteAll) {

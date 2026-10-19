@@ -83,9 +83,9 @@ extension ForkDictationService {
         }
     }
 
-    /// The dictation history panel, opened or closed by its shortcut.
+    /// The dictation history, in the island, opened or closed by its shortcut.
     func toggleHistory() {
-        ForkDictationHistoryPanel.shared.toggle()
+        ForkNotchDictations.show(toggle: true)
     }
 
     private var addsToHistory: Bool {
