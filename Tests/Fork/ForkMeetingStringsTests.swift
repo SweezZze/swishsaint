@@ -166,9 +166,11 @@ enum ForkMeetingStringsTests {
         suite.expect(words.count == languages.count && missing.isEmpty,
                      "what Cancel does is said as moving to the Trash, in every language: \(missing)")
         let english = ForkMeetingStrings.strings(.enUS), french = ForkMeetingStrings.strings(.fr)
-        suite.expect(!fields(english).contains { $0.1.contains("delete") }
-                        && !fields(french).contains { $0.1.contains("supprim") },
-                     "no meetings text says a recording is deleted")
+        // Only the fallback for a volume without a Trash may say it is deleted, because then it is.
+        let fallback: Set<String> = ["noticeDiscardedDeleted", "voiceDiscardedDeleted", "voiceDiscardKept"]
+        suite.expect(!fields(english).contains { !fallback.contains($0.0) && $0.1.contains("delete") }
+                        && !fields(french).contains { !fallback.contains($0.0) && $0.1.contains("supprim") },
+                     "no meetings text says a recording is deleted, except when it really is")
     }
 
     /// Every text of the pill, the bubble and their buttons is short,
