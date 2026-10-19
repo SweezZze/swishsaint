@@ -10,7 +10,9 @@ import SwiftUI
 /// what asks for a gesture (the saved meeting, a failure with its fix, the
 /// start's consent reminder) opens a card with buttons in the island, else
 /// in the bubble. A system notification is added only when neither could
-/// show the notice, and VoiceOver hears each step once.
+/// show the notice, and VoiceOver hears each step once. The Meetings page
+/// silences an event's notice and notification together
+/// (`ForkMeetingNotifyEvent`); VoiceOver still hears it.
 ///
 /// The service talks to it in four calls:
 /// ```swift
@@ -117,10 +119,15 @@ final class ForkMeetingPresenter {
         case .startCapture, .pauseCapture, .resumeCapture, .restartStream, .switchTarget, .stopCapture,
              .writeSidecar, .beginFinalize, .silence, .setPolicy, .discard:
             break
-        case let .showOffer(offer):
+        // Offers silenced: the call is still recognized, nothing is offered.
+        case let .showOffer(offer) where ForkMeetingNotifyEvent.isOn(.offers):
             showOffer(offer)
-        case .collapseOffer:
+        case .showOffer:
+            hideOffer()
+        case .collapseOffer where ForkMeetingNotifyEvent.isOn(.offers):
             collapseOffer()
+        case .collapseOffer:
+            hideOffer()
         case .hideOffer:
             hideOffer()
         case let .showUndo(until):
@@ -199,6 +206,10 @@ final class ForkMeetingPresenter {
             }
             return card
         }
+        guard ForkMeetingNotifyEvent.showsStart(notice, remindsConsent: announcement != nil, noAppSound: noApp) else {
+            lastShown = (notice, Shown())
+            return
+        }
         guard announcement != nil || hasButton(notice) || noApp else {
             lastShown = (notice, show(notice, detail: filmed))
             return
@@ -218,8 +229,9 @@ final class ForkMeetingPresenter {
         }
         let notice: ForkMeetingNotice = recovered ? .recovered : .saved
         let text = self.text
-        savedAt = Date()
         announce(ForkMeetingLiveText.sentences(notice.title(text), detail))
+        guard ForkMeetingNotifyEvent.shows(notice) else { return }
+        savedAt = Date()
         let shown = present({ dismiss in
             ForkMeetingCard(symbol: ForkMeetingIsland.symbol(for: notice), tint: .green, title: notice.title(text),
                             lines: [detail],
@@ -261,6 +273,7 @@ final class ForkMeetingPresenter {
         // seen in a share.
         let detail = ForkMeetingExportDocument.name(folder.lastPathComponent, meetCode: nil, includesMeetCode: false)
         announce(ForkMeetingLiveText.sentences(title, detail))
+        guard ForkMeetingNotifyEvent.isOn(.results) else { return }
         let shown = present({ dismiss in
             ForkMeetingCard(symbol: "xmark.circle.fill", tint: .red, title: title, lines: [detail],
                             actions: [ForkMeetingCard.Action(title: text.actionShowMeeting, prominent: true) {
@@ -317,6 +330,7 @@ final class ForkMeetingPresenter {
             tint = .orange
         }
         announce(lines.first.map { ForkMeetingLiveText.sentences(title, $0) } ?? title)
+        guard ForkMeetingNotifyEvent.isOn(.results) else { return }
         let shown = present({ dismiss in
             ForkMeetingCard(symbol: symbol, tint: tint, title: title, lines: lines,
                             actions: [ForkMeetingCard.Action(title: text.actionShowMeeting, prominent: true) {
@@ -404,6 +418,8 @@ final class ForkMeetingPresenter {
     /// meeting; any other notice is a notice of the island, else the bubble.
     @discardableResult
     private func show(_ notice: ForkMeetingNotice, detail: String?) -> Shown {
+        // Silenced on the page: shown nowhere, and `notify` stays silent too.
+        guard ForkMeetingNotifyEvent.shows(notice) else { return Shown() }
         let text = self.text
         if hasButton(notice) {
             let make = { [weak self] (dismiss: @escaping () -> Void) -> ForkMeetingCard in
@@ -589,6 +605,7 @@ final class ForkMeetingPresenter {
     /// notice could be shown neither in the island nor in the bubble (the
     /// official watch's rule): otherwise it is said twice.
     private func notify(_ notice: ForkMeetingNotice, detail: String?) {
+        guard ForkMeetingNotifyEvent.shows(notice) else { return }
         let shown = lastShown.flatMap { $0.notice == notice ? $0.shown : nil } ?? Shown()
         guard ForkMeetingServiceSupport.notifies(shownInIsland: shown.island, shownInBubble: shown.bubble,
                                                  canNotify: Self.canNotify) else { return }

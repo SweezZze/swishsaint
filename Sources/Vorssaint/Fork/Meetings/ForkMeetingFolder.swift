@@ -59,6 +59,19 @@ enum ForkMeetingFolder {
         return Root(url: movies.appendingPathComponent(strings.folderName, isDirectory: true), needsStoring: true)
     }
 
+    /// Whether the folder in use is the default one: none chosen, or the
+    /// folder in Movies named in one of the app's languages, which the first
+    /// recording saves (`Root.needsStoring`). Only a folder the person chose
+    /// gets the page's ✕ back to the default.
+    static func isDefault(stored: String, movies: URL, names: [String]) -> Bool {
+        let path = stored.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !path.isEmpty else { return true }
+        let chosen = URL(fileURLWithPath: (path as NSString).expandingTildeInPath, isDirectory: true).standardizedFileURL
+        return names.contains { name in
+            movies.appendingPathComponent(name, isDirectory: true).standardizedFileURL.path == chosen.path
+        }
+    }
+
     /// The title shown for a meeting: its own, or the default name of one
     /// recorded by hand. `nil` stays `nil` in the sidecar, so the default
     /// follows the language of whoever looks.

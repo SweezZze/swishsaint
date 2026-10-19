@@ -775,6 +775,44 @@ struct ForkMeetingStrings {
     /// The detail's line when the meeting track was silent and the echo of
     /// the speakers could not be filtered: short.
     let transcriptMeetingSilent: String
+
+    // MARK: Finish B
+
+    /// Under the notifications' permission: what they are used for.
+    let notificationsCaption: String
+    let notifyTitle: String
+    let notifyCaption: String
+    let notifyOffers: String
+    let notifyOffersCaption: String
+    let notifyStart: String
+    let notifyStartCaption: String
+    let notifySaved: String
+    let notifySavedCaption: String
+    let notifyWarnings: String
+    let notifyWarningsCaption: String
+    let notifyResults: String
+    let notifyResultsCaption: String
+    /// Under the switches: what they never silence.
+    let notifyAlwaysShown: String
+    let soundsToggle: String
+    let soundsCaption: String
+    /// Under the quality, "1080p · 30 fps · HEVC · 1.2 Mbit/s · ~0.6 GB/h":
+    /// %1$@ the lines, %2$d the frame rate, %3$@ the codec, %4$@ the
+    /// megabits per second, %5$@ the size per hour (`perHour`).
+    let qualitySpecFormat: String
+    /// The folder's ✕, back to the default folder.
+    let folderReset: String
+    let shortcutPauseLabel: String
+    let shortcutMarkerLabel: String
+    let shortcutWhileRecordingCaption: String
+    /// The Command Bar's rows.
+    let barStart: String
+    let barStop: String
+    let barPause: String
+    let barResume: String
+    let barMarker: String
+    /// Words a search of the Command Bar may type, comma-separated.
+    let barKeywords: String
 }
 
 extension ForkMeetingStrings {
@@ -1209,7 +1247,35 @@ extension ForkMeetingStrings {
         // MARK: Fixes O
         transcriptWordsOne: "1 word",
         noticeParakeetMissing: "Parakeet not installed",
-        transcriptMeetingSilent: "Meeting track silent: echo not filtered"
+        transcriptMeetingSilent: "Meeting track silent: echo not filtered",
+        // MARK: Finish B
+        notificationsCaption: "Optional: used only when neither Dynamic Island nor the bubble can show a notice, with the screen locked for instance.",
+        notifyTitle: "Notifications and sounds",
+        notifyCaption: "Each switch silences its events everywhere: Dynamic Island, the bubble and the system notification. VoiceOver still hears every step.",
+        notifyOffers: "Offers to record",
+        notifyOffersCaption: "When a call is detected. Off, calls are still recognized and those set to Always still record: start the others with the shortcut, the Command Bar or this page.",
+        notifyStart: "Recording started or resumed",
+        notifyStartCaption: "The reminder to tell the participants still shows while it is on.",
+        notifySaved: "Meeting saved",
+        notifySavedCaption: "Its length, its size and the button that shows it; also a meeting recovered after the app quit unexpectedly.",
+        notifyWarnings: "Warnings during a recording",
+        notifyWarningsCaption: "Disk getting full, microphone silent or changed, window closed, display changed.",
+        notifyResults: "Transcripts and exports",
+        notifyResultsCaption: "A transcript ready or failed, an automatic export that failed.",
+        notifyAlwaysShown: "A failure that stops a recording, refuses one or loses part of it is always shown.",
+        soundsToggle: "Start and stop sounds",
+        soundsCaption: "Quiet system sounds that the recording never contains: the start’s plays before the microphone opens, the stop’s once it has closed.",
+        qualitySpecFormat: "%1$@ · %2$d fps · %3$@ · %4$@ Mbit/s · %5$@",
+        folderReset: "Use the default folder",
+        shortcutPauseLabel: "Pause or resume",
+        shortcutMarkerLabel: "Mark this moment",
+        shortcutWhileRecordingCaption: "These two only answer while a meeting records: the rest of the time, their combinations stay free for your other apps.",
+        barStart: "Record a Meeting",
+        barStop: "Stop the Meeting Recording",
+        barPause: "Pause the Meeting Recording",
+        barResume: "Resume the Meeting Recording",
+        barMarker: "Mark This Moment in the Meeting",
+        barKeywords: "meeting, recording, record, call, video call, pause, stop, marker"
     )
 }
 
@@ -1645,7 +1711,35 @@ extension ForkMeetingStrings {
         // MARK: Fixes O
         transcriptWordsOne: "1 palavra",
         noticeParakeetMissing: "Parakeet não instalado",
-        transcriptMeetingSilent: "Faixa Reunião muda: eco não filtrado"
+        transcriptMeetingSilent: "Faixa Reunião muda: eco não filtrado",
+        // MARK: Finish B
+        notificationsCaption: "Opcionais: usadas só quando nem a Dynamic Island nem o balão podem mostrar um aviso, com a tela bloqueada, por exemplo.",
+        notifyTitle: "Notificações e sons",
+        notifyCaption: "Cada opção silencia os seus eventos em todos os lugares: Dynamic Island, balão e notificação do sistema. O VoiceOver continua ouvindo cada etapa.",
+        notifyOffers: "Propostas de gravação",
+        notifyOffersCaption: "Quando uma chamada é detectada. Desativado, as chamadas continuam reconhecidas e as definidas como Sempre continuam gravando: inicie as outras com o atalho, a Barra de comando ou esta página.",
+        notifyStart: "Gravação iniciada ou retomada",
+        notifyStartCaption: "O lembrete para avisar os participantes continua aparecendo enquanto estiver ativado.",
+        notifySaved: "Reunião salva",
+        notifySavedCaption: "A duração, o tamanho e o botão que a mostra; também uma reunião recuperada depois que o app fechou inesperadamente.",
+        notifyWarnings: "Alertas durante a gravação",
+        notifyWarningsCaption: "Disco quase cheio, microfone sem som ou trocado, janela fechada, tela trocada.",
+        notifyResults: "Transcrições e exportações",
+        notifyResultsCaption: "Uma transcrição pronta ou com falha, uma exportação automática que falhou.",
+        notifyAlwaysShown: "Uma falha que para uma gravação, recusa uma ou perde parte dela sempre aparece.",
+        soundsToggle: "Sons de início e fim",
+        soundsCaption: "Sons discretos do sistema que a gravação nunca contém: o do início toca antes de o microfone abrir, o do fim depois que ele fecha.",
+        qualitySpecFormat: "%1$@ · %2$d qps · %3$@ · %4$@ Mbit/s · %5$@",
+        folderReset: "Usar a pasta padrão",
+        shortcutPauseLabel: "Pausar ou retomar",
+        shortcutMarkerLabel: "Marcar este momento",
+        shortcutWhileRecordingCaption: "Estes dois só respondem enquanto uma reunião é gravada: no resto do tempo, as combinações ficam livres para os seus outros apps.",
+        barStart: "Gravar uma reunião",
+        barStop: "Parar a gravação da reunião",
+        barPause: "Pausar a gravação da reunião",
+        barResume: "Retomar a gravação da reunião",
+        barMarker: "Marcar este momento da reunião",
+        barKeywords: "reunião, gravação, gravar, chamada, videochamada, pausa, parar, marcador"
     )
 }
 
@@ -2081,7 +2175,35 @@ extension ForkMeetingStrings {
         // MARK: Fixes O
         transcriptWordsOne: "1 sözcük",
         noticeParakeetMissing: "Parakeet yüklü değil",
-        transcriptMeetingSilent: "Toplantı kanalı sessiz: yankı süzülmedi"
+        transcriptMeetingSilent: "Toplantı kanalı sessiz: yankı süzülmedi",
+        // MARK: Finish B
+        notificationsCaption: "İsteğe bağlı: yalnızca ne Dynamic Island ne de balon bir bildirimi gösterebildiğinde kullanılır, örneğin ekran kilitliyken.",
+        notifyTitle: "Bildirimler ve sesler",
+        notifyCaption: "Her anahtar kendi olaylarını her yerde susturur: Dynamic Island, balon ve sistem bildirimi. VoiceOver her adımı duymaya devam eder.",
+        notifyOffers: "Kaydetme önerileri",
+        notifyOffersCaption: "Bir görüşme algılandığında. Kapalıyken görüşmeler yine tanınır ve Her zaman olarak ayarlananlar yine kaydedilir: diğerlerini kısayolla, Komut çubuğuyla veya bu sayfadan başlatın.",
+        notifyStart: "Kayıt başladı veya sürdürüldü",
+        notifyStartCaption: "Katılımcılara haber verme hatırlatması, açık olduğu sürece görünmeye devam eder.",
+        notifySaved: "Toplantı kaydedildi",
+        notifySavedCaption: "Süresi, boyutu ve onu gösteren düğme; uygulama beklenmedik şekilde kapandıktan sonra kurtarılan bir toplantı da.",
+        notifyWarnings: "Kayıt sırasındaki uyarılar",
+        notifyWarningsCaption: "Disk doluyor, mikrofon sessiz veya değişti, pencere kapandı, ekran değişti.",
+        notifyResults: "Metin dökümleri ve dışa aktarımlar",
+        notifyResultsCaption: "Hazır veya başarısız bir metin dökümü, başarısız olan otomatik bir dışa aktarım.",
+        notifyAlwaysShown: "Bir kaydı durduran, reddeden veya bir kısmını kaybettiren hata her zaman gösterilir.",
+        soundsToggle: "Başlangıç ve bitiş sesleri",
+        soundsCaption: "Kaydın asla içermediği sessiz sistem sesleri: başlangıç sesi mikrofon açılmadan önce, bitiş sesi mikrofon kapandıktan sonra çalar.",
+        qualitySpecFormat: "%1$@ · %2$d kare/sn · %3$@ · %4$@ Mbit/sn · %5$@",
+        folderReset: "Varsayılan klasörü kullan",
+        shortcutPauseLabel: "Duraklat veya sürdür",
+        shortcutMarkerLabel: "Bu anı işaretle",
+        shortcutWhileRecordingCaption: "Bu ikisi yalnızca bir toplantı kaydedilirken yanıt verir: geri kalan zamanda kombinasyonları diğer uygulamalarınız için boş kalır.",
+        barStart: "Toplantı kaydet",
+        barStop: "Toplantı kaydını durdur",
+        barPause: "Toplantı kaydını duraklat",
+        barResume: "Toplantı kaydını sürdür",
+        barMarker: "Toplantının bu anını işaretle",
+        barKeywords: "toplantı, kayıt, kaydet, görüşme, görüntülü görüşme, duraklat, durdur, işaret"
     )
 }
 
@@ -2517,7 +2639,35 @@ extension ForkMeetingStrings {
         // MARK: Fixes O
         transcriptWordsOne: "1 слово",
         noticeParakeetMissing: "Parakeet не установлен",
-        transcriptMeetingSilent: "Дорожка «Встреча» пуста: эхо не убрано"
+        transcriptMeetingSilent: "Дорожка «Встреча» пуста: эхо не убрано",
+        // MARK: Finish B
+        notificationsCaption: "Необязательно: используются, только когда ни Dynamic Island, ни пузырь не могут показать уведомление, например при заблокированном экране.",
+        notifyTitle: "Уведомления и звуки",
+        notifyCaption: "Каждый переключатель заглушает свои события везде: в Dynamic Island, в пузыре и в системном уведомлении. VoiceOver по-прежнему слышит каждый шаг.",
+        notifyOffers: "Предложения записать",
+        notifyOffersCaption: "Когда обнаружен звонок. Если выключено, звонки всё равно распознаются, а заданные как «Всегда» всё равно записываются: остальные запускайте сочетанием клавиш, через командную панель или на этой странице.",
+        notifyStart: "Запись начата или продолжена",
+        notifyStartCaption: "Напоминание предупредить участников по-прежнему показывается, пока оно включено.",
+        notifySaved: "Встреча сохранена",
+        notifySavedCaption: "Её длительность, размер и кнопка, которая её показывает; а также встреча, восстановленная после неожиданного закрытия приложения.",
+        notifyWarnings: "Предупреждения во время записи",
+        notifyWarningsCaption: "Диск почти заполнен, микрофон молчит или сменился, окно закрыто, дисплей сменился.",
+        notifyResults: "Расшифровки и экспорт",
+        notifyResultsCaption: "Расшифровка готова или не удалась, автоматический экспорт не удался.",
+        notifyAlwaysShown: "Сбой, который останавливает запись, не даёт её начать или теряет её часть, показывается всегда.",
+        soundsToggle: "Звуки начала и конца",
+        soundsCaption: "Тихие системные звуки, которых никогда нет в записи: звук начала играет до включения микрофона, звук конца — после его выключения.",
+        qualitySpecFormat: "%1$@ · %2$d кадр/с · %3$@ · %4$@ Мбит/с · %5$@",
+        folderReset: "Использовать папку по умолчанию",
+        shortcutPauseLabel: "Пауза или продолжение",
+        shortcutMarkerLabel: "Отметить этот момент",
+        shortcutWhileRecordingCaption: "Эти два работают только во время записи встречи: в остальное время их сочетания остаются свободными для других приложений.",
+        barStart: "Записать встречу",
+        barStop: "Остановить запись встречи",
+        barPause: "Приостановить запись встречи",
+        barResume: "Продолжить запись встречи",
+        barMarker: "Отметить этот момент встречи",
+        barKeywords: "встреча, запись, записать, звонок, видеозвонок, пауза, стоп, отметка"
     )
 }
 
@@ -2953,7 +3103,35 @@ extension ForkMeetingStrings {
         // MARK: Fixes O
         transcriptWordsOne: "1 palabra",
         noticeParakeetMissing: "Parakeet no instalado",
-        transcriptMeetingSilent: "Pista Reunión muda: eco sin filtrar"
+        transcriptMeetingSilent: "Pista Reunión muda: eco sin filtrar",
+        // MARK: Finish B
+        notificationsCaption: "Opcionales: solo se usan cuando ni la Dynamic Island ni la burbuja pueden mostrar un aviso, por ejemplo con la pantalla bloqueada.",
+        notifyTitle: "Notificaciones y sonidos",
+        notifyCaption: "Cada interruptor silencia sus eventos en todas partes: Dynamic Island, la burbuja y la notificación del sistema. VoiceOver sigue oyendo cada paso.",
+        notifyOffers: "Ofertas de grabar",
+        notifyOffersCaption: "Cuando se detecta una llamada. Desactivado, las llamadas se siguen reconociendo y las configuradas en Siempre se siguen grabando: inicia las demás con el atajo, la Barra de comandos o esta página.",
+        notifyStart: "Grabación iniciada o reanudada",
+        notifyStartCaption: "El recordatorio de avisar a los participantes se sigue mostrando mientras esté activado.",
+        notifySaved: "Reunión guardada",
+        notifySavedCaption: "Su duración, su tamaño y el botón que la muestra; también una reunión recuperada después de que la app se cerrara inesperadamente.",
+        notifyWarnings: "Alertas durante la grabación",
+        notifyWarningsCaption: "Disco casi lleno, micrófono sin sonido o cambiado, ventana cerrada, pantalla cambiada.",
+        notifyResults: "Transcripciones y exportaciones",
+        notifyResultsCaption: "Una transcripción lista o fallida, una exportación automática que falló.",
+        notifyAlwaysShown: "Un fallo que detiene una grabación, la rechaza o pierde parte de ella siempre se muestra.",
+        soundsToggle: "Sonidos de inicio y fin",
+        soundsCaption: "Sonidos discretos del sistema que la grabación nunca contiene: el de inicio suena antes de que se abra el micrófono, el de fin una vez cerrado.",
+        qualitySpecFormat: "%1$@ · %2$d fot./s · %3$@ · %4$@ Mbit/s · %5$@",
+        folderReset: "Usar la carpeta predeterminada",
+        shortcutPauseLabel: "Pausar o reanudar",
+        shortcutMarkerLabel: "Marcar este momento",
+        shortcutWhileRecordingCaption: "Estos dos solo responden mientras se graba una reunión: el resto del tiempo, sus combinaciones quedan libres para tus otras apps.",
+        barStart: "Grabar una reunión",
+        barStop: "Detener la grabación de la reunión",
+        barPause: "Pausar la grabación de la reunión",
+        barResume: "Reanudar la grabación de la reunión",
+        barMarker: "Marcar este momento de la reunión",
+        barKeywords: "reunión, grabación, grabar, llamada, videollamada, pausa, detener, marcador"
     )
 }
 
@@ -3389,7 +3567,35 @@ extension ForkMeetingStrings {
         // MARK: Fixes O
         transcriptWordsOne: "1 slovo",
         noticeParakeetMissing: "Parakeet chýba",
-        transcriptMeetingSilent: "Stopa Stretnutie je tichá: ozvena zostala"
+        transcriptMeetingSilent: "Stopa Stretnutie je tichá: ozvena zostala",
+        // MARK: Finish B
+        notificationsCaption: "Voliteľné: používajú sa, len keď ani Dynamic Island, ani bublina nemôže zobraziť upozornenie, napríklad pri zamknutej obrazovke.",
+        notifyTitle: "Upozornenia a zvuky",
+        notifyCaption: "Každý prepínač stíši svoje udalosti všade: v Dynamic Island, v bubline aj v systémovom upozornení. VoiceOver naďalej počuje každý krok.",
+        notifyOffers: "Ponuky na nahrávanie",
+        notifyOffersCaption: "Keď sa zistí hovor. Po vypnutí sa hovory stále rozpoznávajú a tie nastavené na Vždy sa stále nahrávajú: ostatné spustite skratkou, cez Príkazovú lištu alebo na tejto stránke.",
+        notifyStart: "Nahrávanie spustené alebo obnovené",
+        notifyStartCaption: "Pripomienka upozorniť účastníkov sa naďalej zobrazuje, kým je zapnutá.",
+        notifySaved: "Stretnutie uložené",
+        notifySavedCaption: "Jeho dĺžka, veľkosť a tlačidlo, ktoré ho ukáže; aj stretnutie obnovené po neočakávanom ukončení aplikácie.",
+        notifyWarnings: "Varovania počas nahrávania",
+        notifyWarningsCaption: "Disk sa zapĺňa, mikrofón je tichý alebo sa zmenil, okno sa zavrelo, displej sa zmenil.",
+        notifyResults: "Prepisy a exporty",
+        notifyResultsCaption: "Prepis hotový alebo neúspešný, automatický export, ktorý zlyhal.",
+        notifyAlwaysShown: "Chyba, ktorá zastaví nahrávanie, odmietne ho alebo stratí jeho časť, sa zobrazí vždy.",
+        soundsToggle: "Zvuky začiatku a konca",
+        soundsCaption: "Tiché systémové zvuky, ktoré nahrávka nikdy neobsahuje: zvuk začiatku zaznie pred zapnutím mikrofónu, zvuk konca po jeho vypnutí.",
+        qualitySpecFormat: "%1$@ · %2$d sním./s · %3$@ · %4$@ Mbit/s · %5$@",
+        folderReset: "Použiť predvolený priečinok",
+        shortcutPauseLabel: "Pozastaviť alebo pokračovať",
+        shortcutMarkerLabel: "Označiť tento okamih",
+        shortcutWhileRecordingCaption: "Tieto dve reagujú, len kým sa stretnutie nahráva: inak ich kombinácie zostávajú voľné pre vaše ďalšie aplikácie.",
+        barStart: "Nahrať stretnutie",
+        barStop: "Zastaviť nahrávanie stretnutia",
+        barPause: "Pozastaviť nahrávanie stretnutia",
+        barResume: "Pokračovať v nahrávaní stretnutia",
+        barMarker: "Označiť tento okamih stretnutia",
+        barKeywords: "stretnutie, nahrávanie, nahrať, hovor, videohovor, pauza, zastaviť, značka"
     )
 }
 
@@ -3825,7 +4031,35 @@ extension ForkMeetingStrings {
         // MARK: Fixes O
         transcriptWordsOne: "1 Wort",
         noticeParakeetMissing: "Parakeet nicht installiert",
-        transcriptMeetingSilent: "Spur „Besprechung“ stumm: Echo nicht gefiltert"
+        transcriptMeetingSilent: "Spur „Besprechung“ stumm: Echo nicht gefiltert",
+        // MARK: Finish B
+        notificationsCaption: "Optional: nur genutzt, wenn weder die Dynamic Island noch die Blase einen Hinweis zeigen kann, etwa bei gesperrtem Bildschirm.",
+        notifyTitle: "Mitteilungen und Töne",
+        notifyCaption: "Jeder Schalter stellt seine Ereignisse überall stumm: Dynamic Island, Blase und Systemmitteilung. VoiceOver hört weiterhin jeden Schritt.",
+        notifyOffers: "Angebote zur Aufnahme",
+        notifyOffersCaption: "Wenn ein Anruf erkannt wird. Aus: Anrufe werden weiter erkannt, und die auf Immer gestellten werden weiter aufgenommen; starte die anderen per Kurzbefehl, über die Befehlsleiste oder auf dieser Seite.",
+        notifyStart: "Aufnahme gestartet oder fortgesetzt",
+        notifyStartCaption: "Der Hinweis, die Teilnehmenden zu informieren, erscheint weiterhin, solange er eingeschaltet ist.",
+        notifySaved: "Besprechung gespeichert",
+        notifySavedCaption: "Ihre Dauer, ihre Größe und die Schaltfläche, die sie zeigt; auch eine Besprechung, die nach einem unerwarteten Beenden der App wiederhergestellt wurde.",
+        notifyWarnings: "Warnungen während der Aufnahme",
+        notifyWarningsCaption: "Festplatte fast voll, Mikrofon stumm oder gewechselt, Fenster geschlossen, Display gewechselt.",
+        notifyResults: "Transkripte und Exporte",
+        notifyResultsCaption: "Ein Transkript fertig oder fehlgeschlagen, ein automatischer Export, der fehlgeschlagen ist.",
+        notifyAlwaysShown: "Ein Fehler, der eine Aufnahme stoppt, verweigert oder einen Teil davon verliert, wird immer angezeigt.",
+        soundsToggle: "Töne bei Start und Ende",
+        soundsCaption: "Leise Systemtöne, die nie in der Aufnahme landen: Der Startton spielt, bevor das Mikrofon öffnet, der Endton, sobald es geschlossen ist.",
+        qualitySpecFormat: "%1$@ · %2$d B/s · %3$@ · %4$@ Mbit/s · %5$@",
+        folderReset: "Standardordner verwenden",
+        shortcutPauseLabel: "Pausieren oder fortsetzen",
+        shortcutMarkerLabel: "Diesen Moment markieren",
+        shortcutWhileRecordingCaption: "Diese beiden reagieren nur, während eine Besprechung aufgenommen wird: Sonst bleiben ihre Kombinationen für deine anderen Apps frei.",
+        barStart: "Besprechung aufnehmen",
+        barStop: "Besprechungsaufnahme stoppen",
+        barPause: "Besprechungsaufnahme pausieren",
+        barResume: "Besprechungsaufnahme fortsetzen",
+        barMarker: "Diesen Moment der Besprechung markieren",
+        barKeywords: "Besprechung, Meeting, Aufnahme, aufnehmen, Anruf, Videoanruf, Pause, stoppen, Markierung"
     )
 }
 
@@ -4261,7 +4495,35 @@ extension ForkMeetingStrings {
         // MARK: Fixes O
         transcriptWordsOne: "1 mot",
         noticeParakeetMissing: "Parakeet non installé",
-        transcriptMeetingSilent: "Piste Réunion muette\u{00A0}: écho non filtré"
+        transcriptMeetingSilent: "Piste Réunion muette\u{00A0}: écho non filtré",
+        // MARK: Finish B
+        notificationsCaption: "Facultatives\u{00A0}: utilisées seulement quand ni la Dynamic Island ni la bulle ne peuvent afficher un avis, écran verrouillé par exemple.",
+        notifyTitle: "Notifications et sons",
+        notifyCaption: "Chaque bouton fait taire ses évènements partout\u{00A0}: Dynamic Island, bulle et notification système. VoiceOver entend toujours chaque étape.",
+        notifyOffers: "Propositions d’enregistrement",
+        notifyOffersCaption: "Quand un appel est détecté. Désactivé, les appels restent reconnus et ceux réglés sur Toujours s’enregistrent quand même\u{00A0}: lancez les autres avec le raccourci, la Barre de commande ou cette page.",
+        notifyStart: "Enregistrement démarré ou repris",
+        notifyStartCaption: "Le rappel de prévenir les participants reste affiché tant qu’il est activé.",
+        notifySaved: "Réunion enregistrée",
+        notifySavedCaption: "Sa durée, sa taille et le bouton qui l’affiche\u{00A0}; aussi une réunion récupérée après un arrêt inattendu de l’app.",
+        notifyWarnings: "Alertes pendant l’enregistrement",
+        notifyWarningsCaption: "Disque presque plein, micro muet ou changé, fenêtre fermée, écran changé.",
+        notifyResults: "Transcriptions et exportations",
+        notifyResultsCaption: "Une transcription prête ou en échec, une exportation automatique qui a échoué.",
+        notifyAlwaysShown: "Un échec qui arrête un enregistrement, en refuse un ou en perd une partie s’affiche toujours.",
+        soundsToggle: "Sons de début et de fin",
+        soundsCaption: "Sons système discrets, jamais présents dans l’enregistrement\u{00A0}: celui du début joue avant l’ouverture du micro, celui de la fin une fois le micro fermé.",
+        qualitySpecFormat: "%1$@ · %2$d i/s · %3$@ · %4$@ Mbit/s · %5$@",
+        folderReset: "Revenir au dossier par défaut",
+        shortcutPauseLabel: "Mettre en pause ou reprendre",
+        shortcutMarkerLabel: "Marquer ce moment",
+        shortcutWhileRecordingCaption: "Ces deux-là ne répondent que pendant l’enregistrement d’une réunion\u{00A0}: le reste du temps, leurs combinaisons restent libres pour vos autres apps.",
+        barStart: "Enregistrer une réunion",
+        barStop: "Arrêter l’enregistrement de la réunion",
+        barPause: "Mettre l’enregistrement de la réunion en pause",
+        barResume: "Reprendre l’enregistrement de la réunion",
+        barMarker: "Marquer ce moment de la réunion",
+        barKeywords: "réunion, enregistrement, enregistrer, appel, visio, pause, arrêter, marqueur"
     )
 }
 
@@ -4697,7 +4959,35 @@ extension ForkMeetingStrings {
         // MARK: Fixes O
         transcriptWordsOne: "1 parola",
         noticeParakeetMissing: "Parakeet non installato",
-        transcriptMeetingSilent: "Traccia Riunione muta: eco non filtrata"
+        transcriptMeetingSilent: "Traccia Riunione muta: eco non filtrata",
+        // MARK: Finish B
+        notificationsCaption: "Facoltative: usate solo quando né la Dynamic Island né la bolla possono mostrare un avviso, per esempio a schermo bloccato.",
+        notifyTitle: "Notifiche e suoni",
+        notifyCaption: "Ogni interruttore silenzia i suoi eventi ovunque: Dynamic Island, bolla e notifica di sistema. VoiceOver continua a sentire ogni passaggio.",
+        notifyOffers: "Proposte di registrare",
+        notifyOffersCaption: "Quando viene rilevata una chiamata. Disattivato, le chiamate sono comunque riconosciute e quelle impostate su Sempre vengono comunque registrate: avvia le altre con la scorciatoia, la Barra dei comandi o questa pagina.",
+        notifyStart: "Registrazione avviata o ripresa",
+        notifyStartCaption: "Il promemoria per avvisare i partecipanti resta visibile finché è attivo.",
+        notifySaved: "Riunione salvata",
+        notifySavedCaption: "La durata, la dimensione e il pulsante che la mostra; anche una riunione recuperata dopo una chiusura inattesa dell’app.",
+        notifyWarnings: "Avvisi durante la registrazione",
+        notifyWarningsCaption: "Disco quasi pieno, microfono muto o cambiato, finestra chiusa, schermo cambiato.",
+        notifyResults: "Trascrizioni ed esportazioni",
+        notifyResultsCaption: "Una trascrizione pronta o non riuscita, un’esportazione automatica non riuscita.",
+        notifyAlwaysShown: "Un errore che ferma una registrazione, la rifiuta o ne perde una parte viene sempre mostrato.",
+        soundsToggle: "Suoni di inizio e fine",
+        soundsCaption: "Suoni di sistema discreti che la registrazione non contiene mai: quello d’inizio suona prima che il microfono si apra, quello di fine una volta chiuso.",
+        qualitySpecFormat: "%1$@ · %2$d fotogrammi/s · %3$@ · %4$@ Mbit/s · %5$@",
+        folderReset: "Usa la cartella predefinita",
+        shortcutPauseLabel: "Metti in pausa o riprendi",
+        shortcutMarkerLabel: "Segna questo momento",
+        shortcutWhileRecordingCaption: "Queste due rispondono solo mentre si registra una riunione: il resto del tempo, le loro combinazioni restano libere per le tue altre app.",
+        barStart: "Registra una riunione",
+        barStop: "Ferma la registrazione della riunione",
+        barPause: "Metti in pausa la registrazione della riunione",
+        barResume: "Riprendi la registrazione della riunione",
+        barMarker: "Segna questo momento della riunione",
+        barKeywords: "riunione, registrazione, registra, chiamata, videochiamata, pausa, ferma, segnalibro"
     )
 }
 
@@ -5133,7 +5423,35 @@ extension ForkMeetingStrings {
         // MARK: Fixes O
         transcriptWordsOne: "1 語",
         noticeParakeetMissing: "Parakeet 未インストール",
-        transcriptMeetingSilent: "ミーティングのトラックが無音：エコー未除去"
+        transcriptMeetingSilent: "ミーティングのトラックが無音：エコー未除去",
+        // MARK: Finish B
+        notificationsCaption: "任意：Dynamic Island と吹き出しのどちらにも通知を表示できないとき（画面のロック中など）にだけ使われます。",
+        notifyTitle: "通知とサウンド",
+        notifyCaption: "各スイッチは、その出来事を Dynamic Island、吹き出し、システム通知のすべてで消音します。VoiceOver はすべての段階を引き続き読み上げます。",
+        notifyOffers: "録画の提案",
+        notifyOffersCaption: "通話を検出したとき。オフにしても通話は認識され、「常に録画」に設定したものは録画されます。それ以外はショートカット、コマンドバー、またはこのページから開始してください。",
+        notifyStart: "録画の開始・再開",
+        notifyStartCaption: "参加者に知らせるリマインダーは、オンの間は引き続き表示されます。",
+        notifySaved: "ミーティングの保存",
+        notifySavedCaption: "長さ、サイズ、表示ボタン。アプリが予期せず終了した後に復元されたミーティングも含みます。",
+        notifyWarnings: "録画中の警告",
+        notifyWarningsCaption: "ディスクの空き不足、マイクの無音または切り替え、ウインドウのクローズ、ディスプレイの切り替え。",
+        notifyResults: "文字起こしと書き出し",
+        notifyResultsCaption: "文字起こしの完了または失敗、自動書き出しの失敗。",
+        notifyAlwaysShown: "録画を止める、録画を拒否する、または録画の一部を失う失敗は常に表示されます。",
+        soundsToggle: "開始・終了のサウンド",
+        soundsCaption: "録画には決して入らない控えめなシステムサウンド。開始音はマイクが開く前に、終了音はマイクが閉じた後に鳴ります。",
+        qualitySpecFormat: "%1$@ · %2$d フレーム/秒 · %3$@ · %4$@ Mbit/s · %5$@",
+        folderReset: "デフォルトのフォルダを使用",
+        shortcutPauseLabel: "一時停止または再開",
+        shortcutMarkerLabel: "この瞬間をマーク",
+        shortcutWhileRecordingCaption: "この 2 つはミーティングの録画中にだけ反応します。それ以外の時間は、組み合わせがほかのアプリのために空いたままになります。",
+        barStart: "ミーティングを録画",
+        barStop: "ミーティングの録画を停止",
+        barPause: "ミーティングの録画を一時停止",
+        barResume: "ミーティングの録画を再開",
+        barMarker: "ミーティングのこの瞬間をマーク",
+        barKeywords: "ミーティング, 録画, 録音, 通話, ビデオ通話, 一時停止, 停止, マーク"
     )
 }
 
@@ -5569,7 +5887,35 @@ extension ForkMeetingStrings {
         // MARK: Fixes O
         transcriptWordsOne: "1단어",
         noticeParakeetMissing: "Parakeet 미설치",
-        transcriptMeetingSilent: "회의 트랙 무음: 에코 미제거"
+        transcriptMeetingSilent: "회의 트랙 무음: 에코 미제거",
+        // MARK: Finish B
+        notificationsCaption: "선택 사항: Dynamic Island와 말풍선 모두 알림을 표시할 수 없을 때(예: 화면 잠금 중)에만 사용됩니다.",
+        notifyTitle: "알림 및 사운드",
+        notifyCaption: "각 스위치는 해당 이벤트를 Dynamic Island, 말풍선, 시스템 알림 모두에서 끕니다. VoiceOver는 계속 모든 단계를 읽어 줍니다.",
+        notifyOffers: "녹화 제안",
+        notifyOffersCaption: "통화가 감지될 때. 꺼도 통화는 계속 인식되고 항상으로 설정한 앱은 계속 녹화됩니다. 나머지는 단축키, 명령 막대 또는 이 페이지에서 시작하세요.",
+        notifyStart: "녹화 시작 또는 재개",
+        notifyStartCaption: "참가자에게 알리라는 알림은 켜져 있는 동안 계속 표시됩니다.",
+        notifySaved: "회의 저장",
+        notifySavedCaption: "길이, 크기, 회의를 보여 주는 버튼. 앱이 예기치 않게 종료된 후 복구된 회의도 포함됩니다.",
+        notifyWarnings: "녹화 중 경고",
+        notifyWarningsCaption: "디스크 공간 부족, 마이크 무음 또는 변경, 윈도우 닫힘, 디스플레이 변경.",
+        notifyResults: "전사 및 내보내기",
+        notifyResultsCaption: "전사 완료 또는 실패, 실패한 자동 내보내기.",
+        notifyAlwaysShown: "녹화를 멈추거나, 거부하거나, 일부를 잃게 하는 실패는 항상 표시됩니다.",
+        soundsToggle: "시작 및 종료 사운드",
+        soundsCaption: "녹화에 절대 포함되지 않는 조용한 시스템 사운드: 시작 사운드는 마이크가 열리기 전에, 종료 사운드는 마이크가 닫힌 후에 재생됩니다.",
+        qualitySpecFormat: "%1$@ · %2$d프레임/초 · %3$@ · %4$@Mbit/s · %5$@",
+        folderReset: "기본 폴더 사용",
+        shortcutPauseLabel: "일시 정지 또는 재개",
+        shortcutMarkerLabel: "이 순간 표시",
+        shortcutWhileRecordingCaption: "이 두 가지는 회의를 녹화하는 동안에만 반응합니다. 그 외 시간에는 조합이 다른 앱을 위해 비어 있습니다.",
+        barStart: "회의 녹화",
+        barStop: "회의 녹화 중지",
+        barPause: "회의 녹화 일시 정지",
+        barResume: "회의 녹화 재개",
+        barMarker: "회의의 이 순간 표시",
+        barKeywords: "회의, 녹화, 녹음, 통화, 영상 통화, 일시 정지, 중지, 표시"
     )
 }
 
@@ -6005,7 +6351,35 @@ extension ForkMeetingStrings {
         // MARK: Fixes O
         transcriptWordsOne: "1 слово",
         noticeParakeetMissing: "Parakeet не встановлено",
-        transcriptMeetingSilent: "Доріжка «Зустріч» порожня: луну не прибрано"
+        transcriptMeetingSilent: "Доріжка «Зустріч» порожня: луну не прибрано",
+        // MARK: Finish B
+        notificationsCaption: "Необов’язково: використовуються, лише коли ні Dynamic Island, ні бульбашка не можуть показати сповіщення, наприклад коли екран заблоковано.",
+        notifyTitle: "Сповіщення і звуки",
+        notifyCaption: "Кожен перемикач вимикає свої події всюди: у Dynamic Island, у бульбашці та в системному сповіщенні. VoiceOver і далі чує кожен крок.",
+        notifyOffers: "Пропозиції записати",
+        notifyOffersCaption: "Коли виявлено дзвінок. Якщо вимкнено, дзвінки все одно розпізнаються, а ті, що мають «Завжди», все одно записуються: інші запускайте поєднанням клавіш, через панель команд або на цій сторінці.",
+        notifyStart: "Запис почато або продовжено",
+        notifyStartCaption: "Нагадування попередити учасників і далі показується, поки воно ввімкнене.",
+        notifySaved: "Зустріч збережено",
+        notifySavedCaption: "Її тривалість, розмір і кнопка, що її показує; також зустріч, відновлена після неочікуваного закриття застосунку.",
+        notifyWarnings: "Попередження під час запису",
+        notifyWarningsCaption: "Диск майже заповнений, мікрофон мовчить або змінився, вікно закрито, дисплей змінився.",
+        notifyResults: "Розшифрування та експорт",
+        notifyResultsCaption: "Розшифрування готове або не вдалося, автоматичний експорт не вдався.",
+        notifyAlwaysShown: "Збій, що зупиняє запис, не дає його почати або втрачає його частину, показується завжди.",
+        soundsToggle: "Звуки початку й кінця",
+        soundsCaption: "Тихі системні звуки, яких ніколи немає в записі: звук початку грає до ввімкнення мікрофона, звук кінця — після його вимкнення.",
+        qualitySpecFormat: "%1$@ · %2$d кадр/с · %3$@ · %4$@ Мбіт/с · %5$@",
+        folderReset: "Використовувати типову папку",
+        shortcutPauseLabel: "Призупинити або продовжити",
+        shortcutMarkerLabel: "Позначити цю мить",
+        shortcutWhileRecordingCaption: "Ці два працюють лише під час запису зустрічі: решту часу їхні поєднання лишаються вільними для інших застосунків.",
+        barStart: "Записати зустріч",
+        barStop: "Зупинити запис зустрічі",
+        barPause: "Призупинити запис зустрічі",
+        barResume: "Продовжити запис зустрічі",
+        barMarker: "Позначити цю мить зустрічі",
+        barKeywords: "зустріч, запис, записати, дзвінок, відеодзвінок, пауза, зупинити, позначка"
     )
 }
 
@@ -6441,7 +6815,35 @@ extension ForkMeetingStrings {
         // MARK: Fixes O
         transcriptWordsOne: "1 个词",
         noticeParakeetMissing: "未安装 Parakeet",
-        transcriptMeetingSilent: "会议音轨无声：未过滤回声"
+        transcriptMeetingSilent: "会议音轨无声：未过滤回声",
+        // MARK: Finish B
+        notificationsCaption: "可选：仅在 Dynamic Island 和气泡都无法显示提示时使用，例如屏幕锁定时。",
+        notifyTitle: "通知和声音",
+        notifyCaption: "每个开关都会在所有地方静音其事件：Dynamic Island、气泡和系统通知。VoiceOver 仍会播报每一步。",
+        notifyOffers: "录制提议",
+        notifyOffersCaption: "检测到通话时。关闭后，通话仍会被识别，设为“总是”的仍会录制；其他的请用快捷键、命令栏或此页面开始。",
+        notifyStart: "录制开始或继续",
+        notifyStartCaption: "提醒告知参与者的提示在开启期间仍会显示。",
+        notifySaved: "会议已保存",
+        notifySavedCaption: "时长、大小以及显示它的按钮；也包括 App 意外退出后恢复的会议。",
+        notifyWarnings: "录制期间的警告",
+        notifyWarningsCaption: "磁盘快满、麦克风没有声音或已更换、窗口已关闭、显示器已更换。",
+        notifyResults: "转写和导出",
+        notifyResultsCaption: "转写完成或失败、自动导出失败。",
+        notifyAlwaysShown: "会停止录制、拒绝录制或丢失部分录制内容的失败始终会显示。",
+        soundsToggle: "开始和结束声音",
+        soundsCaption: "录制中绝不会包含的轻柔系统声音：开始声在麦克风打开前播放，结束声在麦克风关闭后播放。",
+        qualitySpecFormat: "%1$@ · %2$d 帧/秒 · %3$@ · %4$@ Mbit/s · %5$@",
+        folderReset: "使用默认文件夹",
+        shortcutPauseLabel: "暂停或继续",
+        shortcutMarkerLabel: "标记此刻",
+        shortcutWhileRecordingCaption: "这两个仅在录制会议时响应：其余时间，它们的组合键会留给你的其他 App。",
+        barStart: "录制会议",
+        barStop: "停止录制会议",
+        barPause: "暂停录制会议",
+        barResume: "继续录制会议",
+        barMarker: "标记会议的此刻",
+        barKeywords: "会议, 录制, 录音, 通话, 视频通话, 暂停, 停止, 标记"
     )
 }
 
@@ -6877,7 +7279,35 @@ extension ForkMeetingStrings {
         // MARK: Fixes O
         transcriptWordsOne: "1 個詞",
         noticeParakeetMissing: "未安裝 Parakeet",
-        transcriptMeetingSilent: "會議音軌無聲：未過濾回音"
+        transcriptMeetingSilent: "會議音軌無聲：未過濾回音",
+        // MARK: Finish B
+        notificationsCaption: "選用：僅在 Dynamic Island 和氣泡都無法顯示提示時使用，例如螢幕鎖定時。",
+        notifyTitle: "通知與聲音",
+        notifyCaption: "每個開關都會在所有地方將其事件靜音：Dynamic Island、氣泡和系統通知。VoiceOver 仍會朗讀每個步驟。",
+        notifyOffers: "錄製提議",
+        notifyOffersCaption: "偵測到通話時。關閉後，通話仍會被辨識，設為「一律」的仍會錄製；其他的請用快速鍵、指令列或此頁面開始。",
+        notifyStart: "錄製開始或繼續",
+        notifyStartCaption: "提醒告知參與者的提示在開啟期間仍會顯示。",
+        notifySaved: "會議已儲存",
+        notifySavedCaption: "長度、大小以及顯示它的按鈕；也包括 App 意外結束後復原的會議。",
+        notifyWarnings: "錄製期間的警告",
+        notifyWarningsCaption: "磁碟快滿、麥克風沒有聲音或已更換、視窗已關閉、顯示器已更換。",
+        notifyResults: "轉寫與輸出",
+        notifyResultsCaption: "轉寫完成或失敗、自動輸出失敗。",
+        notifyAlwaysShown: "會停止錄製、拒絕錄製或遺失部分錄製內容的失敗一律會顯示。",
+        soundsToggle: "開始與結束聲音",
+        soundsCaption: "錄製中絕不會包含的輕柔系統聲音：開始聲在麥克風開啟前播放，結束聲在麥克風關閉後播放。",
+        qualitySpecFormat: "%1$@ · %2$d 格/秒 · %3$@ · %4$@ Mbit/s · %5$@",
+        folderReset: "使用預設資料夾",
+        shortcutPauseLabel: "暫停或繼續",
+        shortcutMarkerLabel: "標記此刻",
+        shortcutWhileRecordingCaption: "這兩個僅在錄製會議時回應：其餘時間，它們的組合鍵會留給你的其他 App。",
+        barStart: "錄製會議",
+        barStop: "停止錄製會議",
+        barPause: "暫停錄製會議",
+        barResume: "繼續錄製會議",
+        barMarker: "標記會議的此刻",
+        barKeywords: "會議, 錄製, 錄音, 通話, 視訊通話, 暫停, 停止, 標記"
     )
 }
 
@@ -7313,6 +7743,34 @@ extension ForkMeetingStrings {
         // MARK: Fixes O
         transcriptWordsOne: "1 個詞",
         noticeParakeetMissing: "未安裝 Parakeet",
-        transcriptMeetingSilent: "會議音軌無聲：未過濾回音"
+        transcriptMeetingSilent: "會議音軌無聲：未過濾回音",
+        // MARK: Finish B
+        notificationsCaption: "選用：只在 Dynamic Island 和氣泡都無法顯示提示時使用，例如螢幕鎖定時。",
+        notifyTitle: "通知與聲音",
+        notifyCaption: "每個開關都會在所有地方將其事件靜音：Dynamic Island、氣泡和系統通知。VoiceOver 仍會讀出每個步驟。",
+        notifyOffers: "錄製提議",
+        notifyOffersCaption: "偵測到通話時。關閉後，通話仍會被辨識，設為「一律」的仍會錄製；其他的請用快速鍵、指令列或此頁面開始。",
+        notifyStart: "錄製開始或繼續",
+        notifyStartCaption: "提醒通知參與者的提示在開啟期間仍會顯示。",
+        notifySaved: "會議已儲存",
+        notifySavedCaption: "長度、大小以及顯示它的按鈕；亦包括 App 意外結束後復原的會議。",
+        notifyWarnings: "錄製期間的警告",
+        notifyWarningsCaption: "磁碟快滿、咪高風沒有聲音或已更換、視窗已關閉、顯示器已更換。",
+        notifyResults: "轉寫與匯出",
+        notifyResultsCaption: "轉寫完成或失敗、自動匯出失敗。",
+        notifyAlwaysShown: "會停止錄製、拒絕錄製或遺失部分錄製內容的失敗一律會顯示。",
+        soundsToggle: "開始與結束聲音",
+        soundsCaption: "錄製中絕不會包含的輕柔系統聲音：開始聲在咪高風開啟前播放，結束聲在咪高風關閉後播放。",
+        qualitySpecFormat: "%1$@ · %2$d 格/秒 · %3$@ · %4$@ Mbit/s · %5$@",
+        folderReset: "使用預設資料夾",
+        shortcutPauseLabel: "暫停或繼續",
+        shortcutMarkerLabel: "標記此刻",
+        shortcutWhileRecordingCaption: "這兩個只在錄製會議時回應：其餘時間，它們的組合鍵會留給你的其他 App。",
+        barStart: "錄製會議",
+        barStop: "停止錄製會議",
+        barPause: "暫停錄製會議",
+        barResume: "繼續錄製會議",
+        barMarker: "標記會議的此刻",
+        barKeywords: "會議, 錄製, 錄音, 通話, 視像通話, 暫停, 停止, 標記"
     )
 }

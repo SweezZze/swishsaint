@@ -170,6 +170,10 @@ extension ForkMeetingService {
     private func run(_ effect: ForkMeetingMachine.Effect) {
         switch effect {
         case let .startCapture(config, token):
+            // Before anything listens: the microphone opens once the folder,
+            // the stream, the file and the taps are ready, well after the
+            // sound's few audible tenths of a second.
+            if defaults.bool(forKey: ForkDefaultsKey.meetingsSounds) { ForkMeetingSounds.shared.play(.start) }
             startCapture(config, token: token)
         case let .pauseCapture(reason):
             activeRecorder?.pause(stoppingStream: reason == .sleep)
@@ -204,6 +208,8 @@ extension ForkMeetingService {
             // gauge, whatever the next start does.
             let shown = ForkMeetingServiceSupport.pill(state, finalizing: !finalizing.isEmpty)
             presenter.apply(.showPill(shown), context: context)
+            let clock = ForkMeetingServiceSupport.clock(of: state)
+            if liveClock != clock { liveClock = clock }
         case .announce(.discarded):
             // Said once the folder is gone, with what became of it
             // (`discardCancelled`): it may stay, and is never deleted then.
@@ -226,7 +232,12 @@ extension ForkMeetingService {
         let session = machine.activeSession
         let paused: Bool
         if case .paused = machine.phase { paused = true } else { paused = false }
-        if isRecording != (session != nil) { isRecording = session != nil }
+        if isRecording != (session != nil) {
+            isRecording = session != nil
+            // Pausing and marking answer only while a meeting records.
+            syncHotKey()
+        }
+        if session == nil, liveClock != nil { liveClock = nil }
         if isPaused != paused { isPaused = paused }
         let busy = machine.isBusy || preparingStart || !finalizing.isEmpty || finalizer.isBusy
         if isBusy != busy { isBusy = busy }
@@ -510,6 +521,8 @@ extension ForkMeetingService {
             if let folder { discardUnstarted(folder) }
             return
         }
+        // The microphone is closed: the stop's sound is never in the file.
+        if !terminating, defaults.bool(forKey: ForkDefaultsKey.meetingsSounds) { ForkMeetingSounds.shared.play(.stop) }
         if case let .failed(failure) = result {
             log.error("the file did not close: \(String(describing: failure), privacy: .public)")
             // Not finalized: what the fragments hold waits for the next
