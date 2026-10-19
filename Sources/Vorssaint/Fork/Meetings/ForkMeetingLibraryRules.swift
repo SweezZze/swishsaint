@@ -502,7 +502,8 @@ enum ForkMeetingEditorCopy {
                      live: Bool = false) -> Result<Plan, Refusal> {
         if live || entry.status.isInProgress { return .failure(.meetingInProgress) }
         guard editorAvailable else { return .failure(.editorUnavailable) }
-        guard let source = entry.playable else { return .failure(.noVideo) }
+        // Without picture there is nothing for the editor to show.
+        guard let source = entry.playable, !entry.isAudioOnly else { return .failure(.noVideo) }
         let audio: Audio = audioTracks == finalAudioTracks && source != ForkMeetingFolder.masterName ? .withoutMix : .asIs
         return .success(Plan(source: source, audio: audio))
     }

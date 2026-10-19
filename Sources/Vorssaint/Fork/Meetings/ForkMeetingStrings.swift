@@ -775,6 +775,24 @@ struct ForkMeetingStrings {
     /// The detail's line when the meeting track was silent and the echo of
     /// the speakers could not be filtered: short.
     let transcriptMeetingSilent: String
+
+    // MARK: Finish C
+
+    /// "Sound only": the picture setting's third choice, what the pill and
+    /// the start say is recorded, a library row's mark: 28 characters at most.
+    let soundOnly: String
+    let soundOnlyCaption: String
+    let soundOnlyBefore144: String
+    /// The offer's menu: this one meeting otherwise than the setting.
+    let offerRecordSoundOnly: String
+    let offerRecordWithPicture: String
+    /// The offer's line for a meeting without picture: the sound's and the
+    /// microphone's values, as `offerCaptureFormat` says them.
+    let offerCaptureSoundOnlyFormat: String
+
+    func offerCaptureSoundOnly(sound: String, microphone: String) -> String {
+        String(format: offerCaptureSoundOnlyFormat, sound, microphone)
+    }
 }
 
 extension ForkMeetingStrings {
@@ -1209,7 +1227,14 @@ extension ForkMeetingStrings {
         // MARK: Fixes O
         transcriptWordsOne: "1 word",
         noticeParakeetMissing: "Parakeet not installed",
-        transcriptMeetingSilent: "Meeting track silent: echo not filtered"
+        transcriptMeetingSilent: "Meeting track silent: echo not filtered",
+        // MARK: Finish C
+        soundOnly: "Sound only",
+        soundOnlyCaption: "No picture: the meeting’s sound and your microphone, in an .m4a file. Screen Recording is not needed, and the quality only applies to the picture.",
+        soundOnlyBefore144: "Before macOS 14.4, no app’s sound can be heard without filming: only your microphone is recorded.",
+        offerRecordSoundOnly: "Record Sound Only",
+        offerRecordWithPicture: "Record with Picture",
+        offerCaptureSoundOnlyFormat: "Sound only · sound: %1$@ · mic: %2$@"
     )
 }
 
@@ -1645,7 +1670,14 @@ extension ForkMeetingStrings {
         // MARK: Fixes O
         transcriptWordsOne: "1 palavra",
         noticeParakeetMissing: "Parakeet não instalado",
-        transcriptMeetingSilent: "Faixa Reunião muda: eco não filtrado"
+        transcriptMeetingSilent: "Faixa Reunião muda: eco não filtrado",
+        // MARK: Finish C
+        soundOnly: "Só o som",
+        soundOnlyCaption: "Sem imagem: o som da reunião e o seu microfone, num arquivo .m4a. A Gravação de Tela não é necessária, e a qualidade só vale para a imagem.",
+        soundOnlyBefore144: "Antes do macOS 14.4, nenhum som de app pode ser ouvido sem filmar: só o seu microfone é gravado.",
+        offerRecordSoundOnly: "Gravar só o som",
+        offerRecordWithPicture: "Gravar com imagem",
+        offerCaptureSoundOnlyFormat: "Só o som · som: %1$@ · microfone: %2$@"
     )
 }
 
@@ -2081,7 +2113,14 @@ extension ForkMeetingStrings {
         // MARK: Fixes O
         transcriptWordsOne: "1 sözcük",
         noticeParakeetMissing: "Parakeet yüklü değil",
-        transcriptMeetingSilent: "Toplantı kanalı sessiz: yankı süzülmedi"
+        transcriptMeetingSilent: "Toplantı kanalı sessiz: yankı süzülmedi",
+        // MARK: Finish C
+        soundOnly: "Yalnızca ses",
+        soundOnlyCaption: "Görüntü yok: toplantının sesi ve mikrofonunuz, bir .m4a dosyasında. Ekran Kaydı gerekmez; kalite yalnızca görüntü için geçerlidir.",
+        soundOnlyBefore144: "macOS 14.4’ten önce, çekim yapmadan hiçbir uygulamanın sesi duyulamaz: yalnızca mikrofonunuz kaydedilir.",
+        offerRecordSoundOnly: "Yalnızca sesi kaydet",
+        offerRecordWithPicture: "Görüntüyle kaydet",
+        offerCaptureSoundOnlyFormat: "Yalnızca ses · ses: %1$@ · mikrofon: %2$@"
     )
 }
 
@@ -2517,7 +2556,14 @@ extension ForkMeetingStrings {
         // MARK: Fixes O
         transcriptWordsOne: "1 слово",
         noticeParakeetMissing: "Parakeet не установлен",
-        transcriptMeetingSilent: "Дорожка «Встреча» пуста: эхо не убрано"
+        transcriptMeetingSilent: "Дорожка «Встреча» пуста: эхо не убрано",
+        // MARK: Finish C
+        soundOnly: "Только звук",
+        soundOnlyCaption: "Без изображения: звук встречи и ваш микрофон в файле .m4a. Запись экрана не нужна, а качество относится только к изображению.",
+        soundOnlyBefore144: "До macOS 14.4 звук приложений нельзя услышать без съёмки: записывается только ваш микрофон.",
+        offerRecordSoundOnly: "Записать только звук",
+        offerRecordWithPicture: "Записать с изображением",
+        offerCaptureSoundOnlyFormat: "Только звук · звук: %1$@ · микрофон: %2$@"
     )
 }
 
@@ -2953,7 +2999,14 @@ extension ForkMeetingStrings {
         // MARK: Fixes O
         transcriptWordsOne: "1 palabra",
         noticeParakeetMissing: "Parakeet no instalado",
-        transcriptMeetingSilent: "Pista Reunión muda: eco sin filtrar"
+        transcriptMeetingSilent: "Pista Reunión muda: eco sin filtrar",
+        // MARK: Finish C
+        soundOnly: "Solo sonido",
+        soundOnlyCaption: "Sin imagen: el sonido de la reunión y tu micrófono, en un archivo .m4a. No hace falta la Grabación de pantalla, y la calidad solo se aplica a la imagen.",
+        soundOnlyBefore144: "Antes de macOS 14.4, no se puede oír el sonido de ninguna app sin filmar: solo se graba tu micrófono.",
+        offerRecordSoundOnly: "Grabar solo el sonido",
+        offerRecordWithPicture: "Grabar con imagen",
+        offerCaptureSoundOnlyFormat: "Solo sonido · sonido: %1$@ · micro: %2$@"
     )
 }
 
@@ -3389,7 +3442,14 @@ extension ForkMeetingStrings {
         // MARK: Fixes O
         transcriptWordsOne: "1 slovo",
         noticeParakeetMissing: "Parakeet chýba",
-        transcriptMeetingSilent: "Stopa Stretnutie je tichá: ozvena zostala"
+        transcriptMeetingSilent: "Stopa Stretnutie je tichá: ozvena zostala",
+        // MARK: Finish C
+        soundOnly: "Len zvuk",
+        soundOnlyCaption: "Bez obrazu: zvuk stretnutia a váš mikrofón v súbore .m4a. Nahrávanie obrazovky nie je potrebné a kvalita sa týka len obrazu.",
+        soundOnlyBefore144: "Pred macOS 14.4 nemožno bez natáčania počuť zvuk žiadnej aplikácie: nahráva sa len váš mikrofón.",
+        offerRecordSoundOnly: "Nahrávať len zvuk",
+        offerRecordWithPicture: "Nahrávať s obrazom",
+        offerCaptureSoundOnlyFormat: "Len zvuk · zvuk: %1$@ · mikrofón: %2$@"
     )
 }
 
@@ -3825,7 +3885,14 @@ extension ForkMeetingStrings {
         // MARK: Fixes O
         transcriptWordsOne: "1 Wort",
         noticeParakeetMissing: "Parakeet nicht installiert",
-        transcriptMeetingSilent: "Spur „Besprechung“ stumm: Echo nicht gefiltert"
+        transcriptMeetingSilent: "Spur „Besprechung“ stumm: Echo nicht gefiltert",
+        // MARK: Finish C
+        soundOnly: "Nur Ton",
+        soundOnlyCaption: "Kein Bild: der Ton der Besprechung und dein Mikrofon, in einer .m4a-Datei. Bildschirmaufnahme ist nicht nötig, und die Qualität betrifft nur das Bild.",
+        soundOnlyBefore144: "Vor macOS 14.4 ist ohne Filmen kein App-Ton zu hören: Nur dein Mikrofon wird aufgenommen.",
+        offerRecordSoundOnly: "Nur Ton aufnehmen",
+        offerRecordWithPicture: "Mit Bild aufnehmen",
+        offerCaptureSoundOnlyFormat: "Nur Ton · Ton: %1$@ · Mikro: %2$@"
     )
 }
 
@@ -4261,7 +4328,14 @@ extension ForkMeetingStrings {
         // MARK: Fixes O
         transcriptWordsOne: "1 mot",
         noticeParakeetMissing: "Parakeet non installé",
-        transcriptMeetingSilent: "Piste Réunion muette\u{00A0}: écho non filtré"
+        transcriptMeetingSilent: "Piste Réunion muette\u{00A0}: écho non filtré",
+        // MARK: Finish C
+        soundOnly: "Son seulement",
+        soundOnlyCaption: "Pas d’image\u{00A0}: le son de la réunion et votre micro, dans un fichier .m4a. L’enregistrement de l’écran n’est pas nécessaire, et la qualité ne concerne que l’image.",
+        soundOnlyBefore144: "Avant macOS 14.4, aucun son d’app ne s’entend sans filmer\u{00A0}: seul votre micro est enregistré.",
+        offerRecordSoundOnly: "Enregistrer le son seulement",
+        offerRecordWithPicture: "Enregistrer avec l’image",
+        offerCaptureSoundOnlyFormat: "Son seulement · son\u{00A0}: %1$@ · micro\u{00A0}: %2$@"
     )
 }
 
@@ -4697,7 +4771,14 @@ extension ForkMeetingStrings {
         // MARK: Fixes O
         transcriptWordsOne: "1 parola",
         noticeParakeetMissing: "Parakeet non installato",
-        transcriptMeetingSilent: "Traccia Riunione muta: eco non filtrata"
+        transcriptMeetingSilent: "Traccia Riunione muta: eco non filtrata",
+        // MARK: Finish C
+        soundOnly: "Solo audio",
+        soundOnlyCaption: "Nessuna immagine: l’audio della riunione e il tuo microfono, in un file .m4a. La Registrazione schermo non serve, e la qualità riguarda solo l’immagine.",
+        soundOnlyBefore144: "Prima di macOS 14.4 non si può sentire l’audio di nessuna app senza riprendere: viene registrato solo il tuo microfono.",
+        offerRecordSoundOnly: "Registra solo l’audio",
+        offerRecordWithPicture: "Registra con l’immagine",
+        offerCaptureSoundOnlyFormat: "Solo audio · audio: %1$@ · microfono: %2$@"
     )
 }
 
@@ -5133,7 +5214,14 @@ extension ForkMeetingStrings {
         // MARK: Fixes O
         transcriptWordsOne: "1 語",
         noticeParakeetMissing: "Parakeet 未インストール",
-        transcriptMeetingSilent: "ミーティングのトラックが無音：エコー未除去"
+        transcriptMeetingSilent: "ミーティングのトラックが無音：エコー未除去",
+        // MARK: Finish C
+        soundOnly: "音声のみ",
+        soundOnlyCaption: "映像なし：ミーティングの音声とマイクを .m4a ファイルに保存します。画面収録は不要で、画質は映像にのみ関係します。",
+        soundOnlyBefore144: "macOS 14.4 より前では、撮影せずにアプリの音声を取り込むことはできません。録音されるのはマイクだけです。",
+        offerRecordSoundOnly: "音声のみ録音",
+        offerRecordWithPicture: "映像付きで録画",
+        offerCaptureSoundOnlyFormat: "音声のみ · 音声：%1$@ · マイク：%2$@"
     )
 }
 
@@ -5569,7 +5657,14 @@ extension ForkMeetingStrings {
         // MARK: Fixes O
         transcriptWordsOne: "1단어",
         noticeParakeetMissing: "Parakeet 미설치",
-        transcriptMeetingSilent: "회의 트랙 무음: 에코 미제거"
+        transcriptMeetingSilent: "회의 트랙 무음: 에코 미제거",
+        // MARK: Finish C
+        soundOnly: "소리만",
+        soundOnlyCaption: "화면 없음: 회의 소리와 마이크를 .m4a 파일로 저장합니다. 화면 녹화 권한이 필요 없으며, 화질은 화면에만 적용됩니다.",
+        soundOnlyBefore144: "macOS 14.4 이전에는 촬영하지 않으면 앱 소리를 들을 수 없어 마이크만 녹음됩니다.",
+        offerRecordSoundOnly: "소리만 녹음",
+        offerRecordWithPicture: "화면과 함께 녹화",
+        offerCaptureSoundOnlyFormat: "소리만 · 사운드: %1$@ · 마이크: %2$@"
     )
 }
 
@@ -6005,7 +6100,14 @@ extension ForkMeetingStrings {
         // MARK: Fixes O
         transcriptWordsOne: "1 слово",
         noticeParakeetMissing: "Parakeet не встановлено",
-        transcriptMeetingSilent: "Доріжка «Зустріч» порожня: луну не прибрано"
+        transcriptMeetingSilent: "Доріжка «Зустріч» порожня: луну не прибрано",
+        // MARK: Finish C
+        soundOnly: "Лише звук",
+        soundOnlyCaption: "Без зображення: звук зустрічі й ваш мікрофон у файлі .m4a. Запис екрана не потрібен, а якість стосується лише зображення.",
+        soundOnlyBefore144: "До macOS 14.4 звук програм не можна почути без знімання: записується лише ваш мікрофон.",
+        offerRecordSoundOnly: "Записати лише звук",
+        offerRecordWithPicture: "Записати із зображенням",
+        offerCaptureSoundOnlyFormat: "Лише звук · звук: %1$@ · мікрофон: %2$@"
     )
 }
 
@@ -6441,7 +6543,14 @@ extension ForkMeetingStrings {
         // MARK: Fixes O
         transcriptWordsOne: "1 个词",
         noticeParakeetMissing: "未安装 Parakeet",
-        transcriptMeetingSilent: "会议音轨无声：未过滤回声"
+        transcriptMeetingSilent: "会议音轨无声：未过滤回声",
+        // MARK: Finish C
+        soundOnly: "仅声音",
+        soundOnlyCaption: "没有画面：会议的声音和你的麦克风，保存为 .m4a 文件。不需要屏幕录制权限，画质只影响画面。",
+        soundOnlyBefore144: "在 macOS 14.4 之前，不录制画面就听不到任何 App 的声音：只会录下你的麦克风。",
+        offerRecordSoundOnly: "仅录制声音",
+        offerRecordWithPicture: "连同画面录制",
+        offerCaptureSoundOnlyFormat: "仅声音 · 声音：%1$@ · 麦克风：%2$@"
     )
 }
 
@@ -6877,7 +6986,14 @@ extension ForkMeetingStrings {
         // MARK: Fixes O
         transcriptWordsOne: "1 個詞",
         noticeParakeetMissing: "未安裝 Parakeet",
-        transcriptMeetingSilent: "會議音軌無聲：未過濾回音"
+        transcriptMeetingSilent: "會議音軌無聲：未過濾回音",
+        // MARK: Finish C
+        soundOnly: "僅聲音",
+        soundOnlyCaption: "沒有畫面：會議的聲音和你的麥克風，儲存為 .m4a 檔案。不需要螢幕錄製權限，畫質只影響畫面。",
+        soundOnlyBefore144: "在 macOS 14.4 之前，不錄製畫面就聽不到任何 App 的聲音：只會錄下你的麥克風。",
+        offerRecordSoundOnly: "僅錄製聲音",
+        offerRecordWithPicture: "連同畫面錄製",
+        offerCaptureSoundOnlyFormat: "僅聲音 · 聲音：%1$@ · 麥克風：%2$@"
     )
 }
 
@@ -7313,6 +7429,13 @@ extension ForkMeetingStrings {
         // MARK: Fixes O
         transcriptWordsOne: "1 個詞",
         noticeParakeetMissing: "未安裝 Parakeet",
-        transcriptMeetingSilent: "會議音軌無聲：未過濾回音"
+        transcriptMeetingSilent: "會議音軌無聲：未過濾回音",
+        // MARK: Finish C
+        soundOnly: "只有聲音",
+        soundOnlyCaption: "沒有畫面：會議的聲音和你的咪高風，儲存為 .m4a 檔案。不需要螢幕錄影權限，畫質只影響畫面。",
+        soundOnlyBefore144: "在 macOS 14.4 之前，不錄製畫面就聽不到任何 App 的聲音：只會錄下你的咪高風。",
+        offerRecordSoundOnly: "只錄製聲音",
+        offerRecordWithPicture: "連同畫面錄製",
+        offerCaptureSoundOnlyFormat: "只有聲音 · 聲音：%1$@ · 咪高風：%2$@"
     )
 }

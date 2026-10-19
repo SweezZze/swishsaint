@@ -6,7 +6,9 @@ import CoreMedia
 import VideoToolbox
 
 /// Writes a meeting's master: a fragmented MP4 with the picture and two mono
-/// sound tracks, the meeting and the microphone, always in that order.
+/// sound tracks, the meeting and the microphone, always in that order. A
+/// meeting recorded without picture (`outputSize` nil) has the two sound
+/// tracks alone, under the same rules.
 ///
 /// - **Compressed once, while it records**, at the preset's rate: HEVC when
 ///   the encoder really encodes at this size, H.264 otherwise. Each optional
@@ -60,14 +62,15 @@ final class ForkMeetingWriter: @unchecked Sendable {
 
     let queue = DispatchQueue(label: "fork.meetings.writer", qos: .userInitiated)
     let url: URL
-    let outputSize: ForkMeetingPixelSize
-    let codec: AVVideoCodecType
+    /// `nil`: no picture, the sound alone.
+    let outputSize: ForkMeetingPixelSize?
+    let codec: AVVideoCodecType?
 
     /// Writer queue. Called once, the first time an append fails.
     var onFailure: ((ForkMeetingFailure) -> Void)?
 
     private let writer: AVAssetWriter
-    private let videoInput: AVAssetWriterInput
+    private let videoInput: AVAssetWriterInput?
     private let audioInputs: [AVAssetWriterInput]
     private let pauseClock: RecorderPauseClock
     private let targetFormat: AVAudioFormat
@@ -94,7 +97,7 @@ final class ForkMeetingWriter: @unchecked Sendable {
 
     /// Builds the writer off the main thread (encoder discovery can wait on
     /// VideoToolbox), then answers on `completionQueue`.
-    static func prepare(url: URL, outputSize: ForkMeetingPixelSize, quality: ForkMeetingQuality,
+    static func prepare(url: URL, outputSize: ForkMeetingPixelSize?, quality: ForkMeetingQuality,
                         pauseClock: RecorderPauseClock, titles: ForkMeetingFinalizer.TrackTitles,
                         completionQueue: DispatchQueue, completion: @escaping (ForkMeetingWriter?) -> Void) {
         let box = PauseClockBox(pauseClock)
@@ -105,30 +108,36 @@ final class ForkMeetingWriter: @unchecked Sendable {
         }
     }
 
-    init?(url: URL, outputSize: ForkMeetingPixelSize, quality: ForkMeetingQuality, pauseClock: RecorderPauseClock,
+    init?(url: URL, outputSize: ForkMeetingPixelSize?, quality: ForkMeetingQuality, pauseClock: RecorderPauseClock,
           titles: ForkMeetingFinalizer.TrackTitles = .standard) {
-        guard outputSize.width >= 2, outputSize.height >= 2,
-              let format = AVAudioFormat(commonFormat: .pcmFormatFloat32, sampleRate: Self.sampleRate, channels: 1,
+        guard let format = AVAudioFormat(commonFormat: .pcmFormatFloat32, sampleRate: Self.sampleRate, channels: 1,
                                          interleaved: false),
               let writer = try? AVAssetWriter(outputURL: url, fileType: .mp4) else { return nil }
         writer.movieFragmentInterval = CMTime(seconds: Self.fragmentSeconds, preferredTimescale: 600)
         writer.shouldOptimizeForNetworkUse = false
 
-        let width = outputSize.width, height = outputSize.height
-        var chosen: (AVVideoCodecType, [String: Any])?
-        for codec in [AVVideoCodecType.hevc, .h264] {
-            if codec == .hevc, !RecorderWriter.hevcEncodes(width: width, height: height) { continue }
-            if let settings = Self.videoSettings(writer: writer, codec: codec, width: width, height: height,
-                                                 bitRate: quality.videoBitRate) {
-                chosen = (codec, settings)
-                break
+        var codec: AVVideoCodecType?
+        var videoInput: AVAssetWriterInput?
+        if let outputSize {
+            let width = outputSize.width, height = outputSize.height
+            guard width >= 2, height >= 2 else { return nil }
+            var chosen: (AVVideoCodecType, [String: Any])?
+            for candidate in [AVVideoCodecType.hevc, .h264] {
+                if candidate == .hevc, !RecorderWriter.hevcEncodes(width: width, height: height) { continue }
+                if let settings = Self.videoSettings(writer: writer, codec: candidate, width: width, height: height,
+                                                     bitRate: quality.videoBitRate) {
+                    chosen = (candidate, settings)
+                    break
+                }
             }
+            guard let (picked, settings) = chosen else { return nil }
+            let input = AVAssetWriterInput(mediaType: .video, outputSettings: settings)
+            input.expectsMediaDataInRealTime = true
+            guard writer.canAdd(input) else { return nil }
+            writer.add(input)
+            codec = picked
+            videoInput = input
         }
-        guard let (codec, settings) = chosen else { return nil }
-        let videoInput = AVAssetWriterInput(mediaType: .video, outputSettings: settings)
-        videoInput.expectsMediaDataInRealTime = true
-        guard writer.canAdd(videoInput) else { return nil }
-        writer.add(videoInput)
 
         let audioSettings: [String: Any] = [
             AVFormatIDKey: kAudioFormatMPEG4AAC,
@@ -233,10 +242,10 @@ final class ForkMeetingWriter: @unchecked Sendable {
         }
     }
 
-    /// A screen frame, timed on the host clock.
+    /// A screen frame, timed on the host clock. Nothing without picture.
     func appendVideo(_ sample: CMSampleBuffer) {
         queue.async { [self] in
-            guard let time = fileTime(of: sample) else { return }
+            guard videoInput != nil, let time = fileTime(of: sample) else { return }
             // The first picture is held from the very start, so the file
             // does not open on black while the stream comes up.
             writeVideo(sample, at: videoFrameCount == 0 ? .zero : time)
@@ -312,7 +321,7 @@ final class ForkMeetingWriter: @unchecked Sendable {
             writer.endSession(atSourceTime: max(endTime, lastVideoTime.isNumeric ? lastVideoTime : .zero))
             lastVideoSample = nil
             placeholder = nil
-            videoInput.markAsFinished()
+            videoInput?.markAsFinished()
             audioInputs.forEach { $0.markAsFinished() }
             writer.finishWriting { [self] in
                 queue.async { [self] in
@@ -361,7 +370,7 @@ final class ForkMeetingWriter: @unchecked Sendable {
     }
 
     private func writeVideo(_ sample: CMSampleBuffer, at time: CMTime) {
-        guard started, !failed, time.isNumeric else { return }
+        guard started, !failed, time.isNumeric, let videoInput else { return }
         // Times only go forward: a frame stamped before the last one written
         // (a still frame repeated meanwhile) is dropped, never appended.
         if lastVideoTime.isNumeric, time <= lastVideoTime { return }
@@ -403,8 +412,9 @@ final class ForkMeetingWriter: @unchecked Sendable {
 
     /// A black frame at the start, for a stream that has shown nothing yet
     /// (a minimized window): the file still has a picture track to play.
+    /// None without picture.
     private func writePlaceholder() {
-        guard videoFrameCount == 0 else { return }
+        guard videoFrameCount == 0, let outputSize else { return }
         if placeholder == nil { placeholder = Self.blackFrame(outputSize) }
         guard let placeholder else { return }
         writeVideo(placeholder, at: .zero)

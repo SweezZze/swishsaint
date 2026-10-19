@@ -248,6 +248,12 @@ extension ForkMeetingService {
         answerOffer(always: false)
     }
 
+    /// "Record Sound Only" (or "Record with Picture") in the offer's menu:
+    /// this one meeting otherwise than the setting, which stays as it is.
+    func acceptOffer(target: ForkMeetingCaptureTarget) {
+        answerOffer(always: false, target: target)
+    }
+
     /// "Always for Meet": it records now, and on its own from then on.
     func alwaysForOffer() {
         answerOffer(always: true)
@@ -298,7 +304,7 @@ extension ForkMeetingService {
     /// hand: the microphone asked if it never was (the person just chose to
     /// record), the free space read off the main thread. The offer may be
     /// gone by then: nothing starts.
-    private func answerOffer(always: Bool) {
+    private func answerOffer(always: Bool, target: ForkMeetingCaptureTarget? = nil) {
         guard case let .offering(offer) = machine.phase, isWanted, !terminating, !preparingStart else { return }
         guard consentAcknowledged else { return presentConsent() }
         prepareSurfaces()
@@ -308,7 +314,8 @@ extension ForkMeetingService {
         let attempt = startAttempt.begin()
         preparingStart = true
         refreshState()
-        let settings = captureSettings()
+        var settings = captureSettings()
+        if let target { settings.target = target }
         let root = store.root()
         let freeBytes = self.freeBytes
         Self.microphoneAnswer(asking: settings.microphone != ForkMeetingCaptureSettings.microphoneOff) { [weak self] allowed in

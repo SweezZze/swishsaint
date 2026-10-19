@@ -13,6 +13,10 @@ import os
 ///                                                        └─copy of the Mix─► .finalizing.m4a ─► <name>.m4a
 /// ```
 ///
+/// A master without picture (a meeting recorded with its sound only) takes
+/// the same path to `<name>.m4a` through `.finalizing.m4a`: the mix and the
+/// two sources, no separate M4A, since the final file is one.
+///
 /// - The copy keeps the picture and both sources untouched and adds the
 ///   mixed track every player plays (`ForkMeetingFinalPass`): about 15 s
 ///   an hour of meeting, measured in spike S1.
@@ -54,8 +58,9 @@ final class ForkMeetingFinalizer: ObservableObject, @unchecked Sendable {
     struct Outcome: Equatable {
         let folder: URL
         let finalPass: ForkMeetingSidecar.FinalPass
-        /// The final video; `nil` on a failure, the master then stays as
-        /// it was, readable with its separate tracks.
+        /// The final video, or the final `.m4a` of a meeting without
+        /// picture; `nil` on a failure, the master then stays as it was,
+        /// readable with its separate tracks.
         let video: URL?
         /// The M4A, when one was asked for and made.
         let audio: URL?
@@ -225,20 +230,24 @@ final class ForkMeetingFinalizer: ObservableObject, @unchecked Sendable {
         let draft: URL
         let audio: URL
         let audioDraft: URL
+        /// Recorded without picture: the final file is the `.m4a`.
+        let soundOnly: Bool
 
-        init(_ folder: URL) {
+        init(_ folder: URL, soundOnly: Bool = false) {
             let name = folder.lastPathComponent
             self.folder = folder
+            self.soundOnly = soundOnly
             master = folder.appendingPathComponent(ForkMeetingFolder.masterName)
-            final = folder.appendingPathComponent("\(name).\(ForkMeetingFolder.videoExtension)")
-            draft = folder.appendingPathComponent(ForkMeetingFolder.videoDraftName)
+            final = folder.appendingPathComponent("\(name).\(ForkMeetingFolder.finalExtension(audioOnly: soundOnly))")
+            draft = folder.appendingPathComponent(soundOnly ? ForkMeetingFolder.audioDraftName
+                                                            : ForkMeetingFolder.videoDraftName)
             audio = folder.appendingPathComponent("\(name).\(ForkMeetingFolder.audioExtension)")
             audioDraft = folder.appendingPathComponent(ForkMeetingFolder.audioDraftName)
         }
     }
 
     private func run(_ job: Job) async -> Outcome {
-        let paths = Paths(job.folder)
+        var paths = Paths(job.folder)
         let manager = FileManager.default
         // The final pass is short, but the Mac must not doze off in the
         // middle of it, nor the app be ended suddenly.
@@ -259,6 +268,13 @@ final class ForkMeetingFinalizer: ObservableObject, @unchecked Sendable {
         guard let masterSeconds = await Self.playableSeconds(at: paths.master), masterSeconds > 0 else {
             return failed(job, note: "the master is missing or does not open", seconds: nil)
         }
+        // Told by `meeting.json`, as the library reads it; by the master's
+        // own tracks when it cannot say (unreadable, or a capture this
+        // version does not know).
+        let target = (try? store.sidecar(in: job.folder).get())?.capture?.target
+        let soundOnly: Bool
+        if let target { soundOnly = !target.filmsPicture } else { soundOnly = await Self.hasNoPicture(paths.master) }
+        if soundOnly { paths = Paths(job.folder, soundOnly: true) }
         let masterBytes = Self.fileSize(paths.master) ?? 0
         if ForkMeetingFinalPass.route(freeBytes: freeBytes(job.folder), masterBytes: masterBytes) == .promoteMaster {
             return await promote(job, paths: paths, masterSeconds: masterSeconds, note: nil)
@@ -289,7 +305,8 @@ final class ForkMeetingFinalizer: ObservableObject, @unchecked Sendable {
 
         var audio: URL?
         var note: String?
-        if job.extractAudio, layout.hasMix {
+        // Without picture the final file is the M4A already.
+        if job.extractAudio, layout.hasMix, !paths.soundOnly {
             do {
                 try await extractMix(from: paths.final, to: paths.audio, draft: paths.audioDraft) { [self] seconds in
                     publish(ForkMeetingFinalPass.progress(copy: 1, audio: seconds, extractsAudio: true), for: job)
@@ -302,7 +319,8 @@ final class ForkMeetingFinalizer: ObservableObject, @unchecked Sendable {
         }
         publish(1, for: job)
         store.write(ForkMeetingSidecarPatch(state: .complete, finalPass: .done), in: job.folder)
-        store.addToRecentCaptures(paths.final)
+        // Recent captures lists what was filmed, never a sound alone.
+        if !paths.soundOnly { store.addToRecentCaptures(paths.final) }
         return Outcome(folder: job.folder, finalPass: .done, video: paths.final, audio: audio, seconds: seconds,
                        videoBytes: Self.fileSize(paths.final), audioBytes: audio.flatMap(Self.fileSize), note: note)
     }
@@ -333,7 +351,7 @@ final class ForkMeetingFinalizer: ObservableObject, @unchecked Sendable {
         let seconds = await Self.playableSeconds(at: paths.final) ?? masterSeconds
         publish(1, for: job)
         store.write(ForkMeetingSidecarPatch(state: .complete, finalPass: .skippedDisk), in: job.folder)
-        store.addToRecentCaptures(paths.final)
+        if !paths.soundOnly { store.addToRecentCaptures(paths.final) }
         return Outcome(folder: job.folder, finalPass: .skippedDisk, video: paths.final, audio: nil, seconds: seconds,
                        videoBytes: Self.fileSize(paths.final), audioBytes: nil, note: note)
     }
@@ -353,7 +371,10 @@ final class ForkMeetingFinalizer: ObservableObject, @unchecked Sendable {
     private func copy(_ job: Job, paths: Paths,
                       masterSeconds: Double) async throws -> (ForkMeetingFinalPass.Layout, Double) {
         let asset = AVURLAsset(url: paths.master, options: [AVURLAssetPreferPreciseDurationAndTimingKey: true])
-        guard let video = try await asset.loadTracks(withMediaType: .video).first else { throw PassError.noVideo }
+        // Without picture, a picture track (never written) would not be
+        // copied into an `.m4a` either.
+        let video = paths.soundOnly ? nil : try await asset.loadTracks(withMediaType: .video).first
+        guard video != nil || paths.soundOnly else { throw PassError.noVideo }
         // By order: an `.mp4` keeps no track identifier the writer could set.
         let sources = try await asset.loadTracks(withMediaType: .audio).sorted { $0.trackID < $1.trackID }
         let layout = ForkMeetingFinalPass.layout(audioTracks: sources.count)
@@ -361,9 +382,9 @@ final class ForkMeetingFinalizer: ObservableObject, @unchecked Sendable {
 
         let reader = try AVAssetReader(asset: asset)
         var readers = [reader]
-        let videoOutput = AVAssetReaderTrackOutput(track: video, outputSettings: nil)
+        let videoOutput = video.map { AVAssetReaderTrackOutput(track: $0, outputSettings: nil) }
         let copyOutputs = sources.map { AVAssetReaderTrackOutput(track: $0, outputSettings: nil) }
-        for output in [videoOutput] + copyOutputs {
+        for output in [videoOutput].compactMap({ $0 }) + copyOutputs {
             output.alwaysCopiesSampleData = false
             guard reader.canAdd(output) else { throw PassError.cannotSetUp("a copied track") }
             reader.add(output)
@@ -396,11 +417,16 @@ final class ForkMeetingFinalizer: ObservableObject, @unchecked Sendable {
             mixOutput = output
         }
 
-        let writer = try AVAssetWriter(outputURL: paths.draft, fileType: .mp4)
-        let videoInput = AVAssetWriterInput(mediaType: .video, outputSettings: nil,
-                                            sourceFormatHint: try await video.load(.formatDescriptions).first)
-        videoInput.transform = try await video.load(.preferredTransform)
-        var inputs = [videoInput]
+        let writer = try AVAssetWriter(outputURL: paths.draft, fileType: paths.soundOnly ? .m4a : .mp4)
+        var inputs: [AVAssetWriterInput] = []
+        var videoInput: AVAssetWriterInput?
+        if let video {
+            let input = AVAssetWriterInput(mediaType: .video, outputSettings: nil,
+                                           sourceFormatHint: try await video.load(.formatDescriptions).first)
+            input.transform = try await video.load(.preferredTransform)
+            inputs.append(input)
+            videoInput = input
+        }
         var mixInput: AVAssetWriterInput?
         if layout.hasMix {
             let settings: [String: Any] = [
@@ -451,14 +477,23 @@ final class ForkMeetingFinalizer: ObservableObject, @unchecked Sendable {
         }
         writer.startSession(atSourceTime: .zero)
 
-        let extractsAudio = job.extractAudio && layout.hasMix
-        var pairs = [Pair(output: videoOutput, input: videoInput, label: "video", onAppend: { [self] seconds in
+        let extractsAudio = job.extractAudio && layout.hasMix && !paths.soundOnly
+        // The progress follows the picture, or the first track copied
+        // without one.
+        let progress: @Sendable (Double) -> Void = { [self] seconds in
             publish(ForkMeetingFinalPass.progress(copy: seconds / masterSeconds, extractsAudio: extractsAudio),
                     for: job)
-        })]
-        if let mixOutput, let mixInput { pairs.append(Pair(output: mixOutput, input: mixInput, label: "mix")) }
+        }
+        var pairs: [Pair] = []
+        if let videoOutput, let videoInput {
+            pairs.append(Pair(output: videoOutput, input: videoInput, label: "video", onAppend: progress))
+        }
+        if let mixOutput, let mixInput {
+            pairs.append(Pair(output: mixOutput, input: mixInput, label: "mix", onAppend: pairs.isEmpty ? progress : nil))
+        }
         for (index, output) in copyOutputs.enumerated() {
-            pairs.append(Pair(output: output, input: copyInputs[index], label: "source\(index)"))
+            pairs.append(Pair(output: output, input: copyInputs[index], label: "source\(index)",
+                              onAppend: pairs.isEmpty ? progress : nil))
         }
         let stalled = await Self.pump(pairs, abandon: Abandon(readers: readers, writer: writer))
         guard !stalled else { throw PassError.stalled }
@@ -500,6 +535,15 @@ final class ForkMeetingFinalizer: ObservableObject, @unchecked Sendable {
             Self.log.error("no M4A for \(folder.lastPathComponent, privacy: .private): \(String(describing: error), privacy: .private)")
             return nil
         }
+    }
+
+    /// A master with sound and no picture: a meeting recorded without it.
+    /// `false` when it cannot tell, and the pass then fails as it would.
+    static func hasNoPicture(_ master: URL) async -> Bool {
+        let asset = AVURLAsset(url: master)
+        guard let video = try? await asset.loadTracks(withMediaType: .video),
+              let audio = try? await asset.loadTracks(withMediaType: .audio) else { return false }
+        return video.isEmpty && !audio.isEmpty
     }
 
     /// The final pass's layout: the first audio track, the mix, plays; the

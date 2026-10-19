@@ -59,8 +59,8 @@ enum ForkDefaultsKey {
     /// Meetings: recording a call's window, its sound and the microphone,
     /// one folder per meeting.
     static let meetingsEnabled = "fork.meetings.enabled"
-    /// `ForkMeetingCaptureTarget`: window (the meeting's window) or display
-    /// (the display it is on).
+    /// `ForkMeetingCaptureTarget`: window (the meeting's window), display
+    /// (the display it is on) or audioOnly (no picture, an `.m4a`).
     static let meetingsCaptureTarget = "fork.meetings.captureTarget"
     /// `ForkMeetingSystemAudio`: app (the meeting app's sound), all (the
     /// whole Mac's) or off.

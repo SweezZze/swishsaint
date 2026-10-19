@@ -465,8 +465,14 @@ enum ForkMeetingTrackSound: Equatable {
     /// silence from then on, said once.
     case lost
 
+    /// `hasStream` false: recorded without picture, no stream stands in for
+    /// a tap, so a track no tap writes holds nothing, whatever was asked.
     static func of(setting: ForkMeetingSystemAudio, sound: ForkMeetingSoundSource,
-                   arbiter: ForkMeetingSoundArbiter, filmsWindow: Bool) -> ForkMeetingTrackSound {
+                   arbiter: ForkMeetingSoundArbiter, filmsWindow: Bool, hasStream: Bool = true) -> ForkMeetingTrackSound {
+        if !hasStream {
+            guard setting != .off, !arbiter.writesTap else { return .heard }
+            return arbiter.readerLost ? .lost : .noApp
+        }
         if arbiter.streamHearsMacOnly, sound != .none {
             // A call's sound (FaceTime): nothing hears it any more.
             return arbiter.writesTap || arbiter.streamWrites(filmsWindow: filmsWindow) ? .heard : .lost
