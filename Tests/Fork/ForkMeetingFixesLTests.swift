@@ -23,6 +23,7 @@ enum ForkMeetingFixesLTests {
         aHuddleTitledWithAHyphen(suite)
         theProofDuringTheOffer(suite)
         alwaysInTheMenuOnlyWithTheMicrophone(suite)
+        moreCalendarLinks(suite)
     }
 
     // MARK: - Fixtures
@@ -427,5 +428,51 @@ enum ForkMeetingFixesLTests {
         suite.expect(ForkMeetingOfferText.showsAlways(offer, microphoneSignal: true)
                         && !ForkMeetingOfferText.showsAlways(offer, microphoneSignal: false),
                      "« Always for Zoom » in the menu only on a Mac that can say which app uses the microphone")
+    }
+
+    // MARK: - L.m: the calendar's other links
+
+    /// Probe R5.
+    private static func moreCalendarLinks(_ suite: TestSuite) {
+        typealias Link = ForkMeetingCalendarLink
+        let found: [(String, Set<Link>)] = [
+            ("https://teams.microsoft.com/meet/26372771178?p=abcDEF", [.teams]),
+            ("https://teams.live.com/meet/9876543210", [.teams]),
+            ("https://zoom.us/my/alice", [.zoom]),
+            ("https://acme.zoomgov.com/j/1612345678", [.zoom]),
+            ("https://nam12.safelinks.protection.outlook.com/?url=https%3A%2F%2Fteams.microsoft.com%2Fl%2Fmeetup-join%2F19&data=x",
+             [.teams]),
+            ("<https://eur01.safelinks.protection.outlook.com/?url=https%3A%2F%2Fus02web.zoom.us%2Fj%2F812%3Fpwd%3Dx&reserved=0>",
+             [.zoom]),
+            ("https://acme.webex.com/acme/j.php?MTID=m1", [.webex]),
+            ("https://safelinks.protection.outlook.com/?url=https%3A%2F%2Fexample.com", []),
+        ]
+        let wrong = found.filter { Link.found(in: $0.0) != $0.1 }.map(\.0)
+        suite.expect(wrong.isEmpty, "Teams' and Zoom's other links, and Outlook's safe links, are read: \(wrong)")
+        let safeMeet = "https://nam12.safelinks.protection.outlook.com/?url=https%3A%2F%2Fmeet.google.com%2Fabc-defg-hij&data=1"
+        suite.expect(ForkMeetingTitleRules.meetCode(inLink: Link.unwrapped(safeMeet)) == "abc-defg-hij",
+                     "a Meet link in a safe link gives its code")
+        let plain = "https://us02web.zoom.us/j/812?pwd=x"
+        let wrapped = "https://eur01.safelinks.protection.outlook.com/?url=https%3A%2F%2Fus02web.zoom.us%2Fj%2F812%3Fpwd%3Dx"
+        suite.expect(!Link.prints(in: plain).isEmpty && Link.prints(in: plain) == Link.prints(in: wrapped)
+                        && Link.prints(in: plain).isDisjoint(with: Link.prints(in: "https://zoom.us/j/999")),
+                     "one link, wrapped or not, has one print; another link another")
+
+        func event(_ title: String, _ text: String, from start: TimeInterval, to end: TimeInterval) -> ForkMeetingCalendarHint {
+            ForkMeetingCalendarHint(title: title, meetCode: nil, startsAt: at(start), endsAt: at(end),
+                                    links: Link.found(in: text), linkPrints: Link.prints(in: text))
+        }
+        let work = event("Point hebdo", wrapped, from: -300, to: 1500)
+        let home = event("Point hebdo", plain, from: -300, to: 1500)
+        suite.expect(Link.event(.zoom, at: at(0), in: [work, home])?.title == "Point hebdo",
+                     "one event in two calendars (the same link, the same times) is one: it names the call")
+        suite.expect(Link.event(.zoom, at: at(0), in: [work, event("Revue", "https://zoom.us/j/999", from: -300, to: 1500)])
+                        == nil,
+                     "two events at the same times with two links name nothing")
+        var zoom = Live(#"{"zoom":"ask"}"#)
+        zoom.read(-1, calendar: [work, home])
+        zoom.read(0, microphones: [zoomMicrophone])
+        suite.expect(zoom.read(2, microphones: [zoomMicrophone]).candidates.first?.name == "Point hebdo",
+                     "the Zoom call is named after it")
     }
 }

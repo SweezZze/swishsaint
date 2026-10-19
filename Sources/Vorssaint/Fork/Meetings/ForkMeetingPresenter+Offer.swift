@@ -333,7 +333,8 @@ extension ForkMeetingPresenter {
         card.lines = [heading.subtitle].compactMap { $0 }
         card.lines.append(ForkMeetingOfferText.capture(
             target: settings.target, windowApp: facts.windowApp, hasWindow: facts.hasWindow ?? (candidate.windowID != nil),
-            mainWindow: facts.mainWindow, sound: ForkMeetingOfferText.sound(setting: settings.systemAudio, providerDefault: candidate.defaultSound),
+            mainWindow: facts.mainWindow,
+            sound: ForkMeetingOfferText.sound(setting: settings.systemAudio, providerDefault: candidate.defaultSound),
             soundApp: facts.soundApp, microphone: facts.microphone, strings: text))
         if facts.consentReminder { card.info = text.consentRemind }
         let notNow = ForkMeetingCard.Action(title: text.offerNotNow, perform: actions.notNow)

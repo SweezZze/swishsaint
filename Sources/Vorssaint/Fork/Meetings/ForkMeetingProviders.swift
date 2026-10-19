@@ -416,31 +416,89 @@ enum ForkMeetingCalendarLink: String, CaseIterable, Equatable {
     case zoom, teams, webex, whereby, jitsi
 
     /// The links found in an event's link, place or notes: `zoom.us/j/`,
-    /// `teams.microsoft.com/l/meetup-join`, `webex.com/meet` or a
-    /// `<site>.webex.com/…/j.php`, `whereby.com/`, `meet.jit.si/`.
+    /// `zoom.us/my/`, `zoomgov.com/j/`, `teams.microsoft.com/l/meetup-join`,
+    /// `teams.microsoft.com/meet/`, `teams.live.com/meet/`, `webex.com/meet`
+    /// or a `<site>.webex.com/…/j.php`, `whereby.com/`, `meet.jit.si/`; an
+    /// Outlook safe link read as the link it wraps.
     static func found(in text: String) -> Set<ForkMeetingCalendarLink> {
-        let words = text.lowercased().split { $0.isWhitespace || "<>\"'()[]".contains($0) }
-        var links = Set<ForkMeetingCalendarLink>()
-        for word in words {
-            if word.contains("zoom.us/j/") { links.insert(.zoom) }
-            if word.contains("teams.microsoft.com/l/meetup-join") { links.insert(.teams) }
-            if word.contains("webex.com/meet") || (word.contains(".webex.com/") && word.contains("/j.php")) {
-                links.insert(.webex)
-            }
-            if word.contains("whereby.com/") { links.insert(.whereby) }
-            if word.contains("meet.jit.si/") { links.insert(.jitsi) }
+        Set(addresses(in: text).map(\.link))
+    }
+
+    /// A print of each meeting link of the text, its address without its
+    /// query: the same event in two calendars (one of them wrapping it in a
+    /// safe link) has the same. Kept in memory for this run only.
+    static func prints(in text: String) -> Set<Int> {
+        Set(addresses(in: text).map(\.address.hashValue))
+    }
+
+    /// The text with each Outlook safe link's own link after it, decoded
+    /// (`…safelinks.protection.outlook.com/?url=https%3A%2F%2Fzoom.us…`):
+    /// what the event really links to, for its Meet code too.
+    static func unwrapped(_ text: String) -> String {
+        let wrapped = words(text).compactMap { word -> String? in
+            guard word.lowercased().contains("safelinks.protection.outlook.com") else { return nil }
+            return safeLinkTarget(String(word))
         }
+        return wrapped.isEmpty ? text : ([text] + wrapped).joined(separator: "\n")
+    }
+
+    private static func words(_ text: String) -> [Substring] {
+        text.split { $0.isWhitespace || "<>\"'()[]".contains($0) }
+    }
+
+    /// The `url=` a safe link wraps, decoded.
+    private static func safeLinkTarget(_ word: String) -> String? {
+        if let items = URLComponents(string: word)?.queryItems,
+           let target = items.first(where: { $0.name.lowercased() == "url" })?.value, !target.isEmpty {
+            return target
+        }
+        guard let start = word.range(of: "url=", options: .caseInsensitive) else { return nil }
+        let value = word[start.upperBound...].prefix { $0 != "&" }
+        return String(value).removingPercentEncoding
+    }
+
+    private static func addresses(in text: String) -> [(link: ForkMeetingCalendarLink, address: String)] {
+        var found: [(link: ForkMeetingCalendarLink, address: String)] = []
+        for word in words(unwrapped(text)).map({ $0.lowercased() }) {
+            let address = String(word.prefix { $0 != "?" && $0 != "#" })
+                .trimmingCharacters(in: CharacterSet(charactersIn: "/.,;:"))
+            for link in kinds(of: word) { found.append((link, address)) }
+        }
+        return found
+    }
+
+    private static func kinds(of word: String) -> [ForkMeetingCalendarLink] {
+        var links: [ForkMeetingCalendarLink] = []
+        if ["zoom.us/j/", "zoom.us/my/", "zoomgov.com/j/", "zoomgov.com/my/"].contains(where: word.contains) {
+            links.append(.zoom)
+        }
+        if ["teams.microsoft.com/l/meetup-join", "teams.microsoft.com/meet/", "teams.live.com/meet/"]
+            .contains(where: word.contains) {
+            links.append(.teams)
+        }
+        if word.contains("webex.com/meet") || (word.contains(".webex.com/") && word.contains("/j.php")) {
+            links.append(.webex)
+        }
+        if word.contains("whereby.com/") { links.append(.whereby) }
+        if word.contains("meet.jit.si/") { links.append(.jitsi) }
         return links
     }
 
     /// The event going on (10 minutes either way) that holds this link,
-    /// when it is the only one; two of them, or none, name nothing.
+    /// when it is the only one; two of them, or none, name nothing. One
+    /// event in two calendars (the same times, the same link) is one.
     static func event(_ link: ForkMeetingCalendarLink, at now: Date,
                       in hints: [ForkMeetingCalendarHint]) -> ForkMeetingCalendarHint? {
         let margin: TimeInterval = 10 * 60
-        let going = hints.filter {
-            $0.links.contains(link) && $0.startsAt.addingTimeInterval(-margin) <= now
-                && now <= $0.endsAt.addingTimeInterval(margin)
+        var going: [ForkMeetingCalendarHint] = []
+        for hint in hints where hint.links.contains(link) && hint.startsAt.addingTimeInterval(-margin) <= now
+            && now <= hint.endsAt.addingTimeInterval(margin) {
+            let copy = going.contains { other in
+                let sameLink = (other.linkPrints.isEmpty && hint.linkPrints.isEmpty)
+                    || !other.linkPrints.isDisjoint(with: hint.linkPrints)
+                return other.startsAt == hint.startsAt && other.endsAt == hint.endsAt && sameLink
+            }
+            if !copy { going.append(hint) }
         }
         return going.count == 1 ? going[0] : nil
     }
