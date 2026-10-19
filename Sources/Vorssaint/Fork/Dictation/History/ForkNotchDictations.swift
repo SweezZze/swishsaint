@@ -19,10 +19,15 @@ final class ForkNotchDictations: ObservableObject {
         let serial: Int
     }
 
-    /// The clipboard page's tab, back to the clipboard when the island closes.
+    /// The clipboard page's tab. Dictations only while an opening of the
+    /// history put it there: the island closing, another page, and the
+    /// clipboard's own routes bring the clipboard back.
     @Published var tab: ForkNotchDictationsTab = .clipboard
-    /// The pinned filter, as the clipboard's: off again when the island closes.
+    /// The island's pinned filter, as the clipboard's: off again when the
+    /// island closes.
     @Published var pinnedOnly = false
+    /// The window's own filter, off again when the window hides.
+    @Published var windowPinnedOnly = false
     @Published private(set) var focus: Focus?
     /// A transcription again that failed, said on its card.
     @Published private(set) var problems: [UUID: String] = [:]
@@ -35,6 +40,7 @@ final class ForkNotchDictations: ObservableObject {
     /// the clipboard page remembers it.
     private var pasteTarget: NSRunningApplication?
     private var expandedObserver: AnyCancellable?
+    private var selectedObserver: AnyCancellable?
     private var recordsObserver: AnyCancellable?
 
     private init() {}
@@ -46,7 +52,11 @@ final class ForkNotchDictations: ObservableObject {
     /// At launch (`ForkBootstrap.start`): the island offers its Dictations
     /// button while dictation is on, and the tab follows the island.
     static func start() {
-        NotchControlItem.dictationIsAvailable = { ForkFeature.dictation.isEnabled }
+        NotchControlItem.dictationIsAvailable = { defaults in
+            ForkNotchDictationsSupport.controlAvailable(
+                dictationEnabled: defaults.bool(forKey: ForkFeature.dictation.enabledKey),
+                clipboardPageShown: NotchSupport.modules(in: defaults).contains(.clipboard))
+        }
         DispatchQueue.main.async { shared.follow() }
     }
 
@@ -54,6 +64,12 @@ final class ForkNotchDictations: ObservableObject {
         expandedObserver = NotchService.shared.$expanded
             .removeDuplicates()
             .sink { [weak self] expanded in self?.islandExpanded(expanded) }
+        // Arriving on the clipboard page from another one shows the clipboard;
+        // `show` picks the Dictations tab once the island is there.
+        selectedObserver = NotchService.shared.$selected
+            .removeDuplicates()
+            .dropFirst()
+            .sink { [weak self] _ in self?.showClipboardTab() }
         // A dictation deleted elsewhere (the settings page clears them all)
         // stops playing and loses what was said about it.
         recordsObserver = ForkDictationArchive.shared.$records
@@ -88,6 +104,23 @@ final class ForkNotchDictations: ObservableObject {
         if self.listening != listening { self.listening = listening }
     }
 
+    private func showClipboardTab() {
+        if tab != .clipboard { tab = .clipboard }
+    }
+
+    /// The filter of the page shown in the island or in the window.
+    func pinnedOnly(inWindow: Bool) -> Bool {
+        inWindow ? windowPinnedOnly : pinnedOnly
+    }
+
+    func setPinnedOnly(_ value: Bool, inWindow: Bool) {
+        if inWindow {
+            if windowPinnedOnly != value { windowPinnedOnly = value }
+        } else if pinnedOnly != value {
+            pinnedOnly = value
+        }
+    }
+
     // MARK: Opening
 
     static var route: ForkNotchDictationsRoute {
@@ -95,6 +128,14 @@ final class ForkNotchDictations: ObservableObject {
                                          clipboardPageShown: NotchSupport.modules().contains(.clipboard),
                                          dictationEnabled: ForkFeature.dictation.isEnabled,
                                          acceptsInteraction: NotchService.shared.acceptsUserInteraction)
+    }
+
+    /// Something the island shows over its page: a detail, Explore, the
+    /// app panel or the Command Bar.
+    private static var islandCovered: Bool {
+        let island = NotchService.shared
+        return island.showingAppPanel || island.showingSections || island.showingCommandBar
+            || island.selectedMetric != nil
     }
 
     /// Opens the history: the Dictations tab of the island's clipboard page,
@@ -111,25 +152,60 @@ final class ForkNotchDictations: ObservableObject {
         switch route {
         case .island:
             if window.isVisible { window.hide() }
-            let covered = island.showingAppPanel || island.showingSections || island.showingCommandBar
-                || island.selectedMetric != nil
             if toggle, focus == nil,
                ForkNotchDictationsSupport.togglesClosed(expanded: island.expanded, onClipboardPage: island.selected == .clipboard,
-                                                        tab: state.tab, covered: covered) {
+                                                        tab: state.tab, covered: islandCovered) {
                 island.collapse()
                 return
             }
             if let focus { state.request(focus) }
-            state.tab = .dictations
             island.open(.clipboard)
+            // The island can stay shut (capture controls hold it): the
+            // window shows the history then.
+            guard ForkNotchDictationsSupport.showsClipboardPage(expanded: island.expanded,
+                                                                onClipboardPage: island.selected == .clipboard,
+                                                                covered: islandCovered) else {
+                showWindow()
+                return
+            }
+            if state.tab != .dictations { state.tab = .dictations }
         case .window:
             if toggle, focus == nil, window.isVisible {
                 window.hide()
                 return
             }
             if let focus { state.request(focus) }
-            if island.expanded { island.perform { window.show() } } else { window.show() }
+            showWindow()
         }
+    }
+
+    private static func showWindow() {
+        let island = NotchService.shared
+        let window = ForkNotchDictationsWindow.shared
+        if island.expanded { island.perform { window.show() } } else { window.show() }
+    }
+
+    /// The clipboard history's shortcut and menu (seam `notch-dictation6`):
+    /// on the Dictations tab they show the clipboard. True when that is done
+    /// here, in place.
+    static func showsClipboardTab() -> Bool {
+        guard Thread.isMainThread else { return false }
+        let island = NotchService.shared
+        let route = ForkNotchDictationsSupport.clipboardRoute(
+            tab: shared.tab,
+            tabInView: ForkNotchDictationsSupport.showsClipboardPage(expanded: island.expanded,
+                                                                     onClipboardPage: island.selected == .clipboard,
+                                                                     covered: islandCovered),
+            routesToIsland: island.acceptsUserInteraction && NotchSupport.routesClipboardWindow())
+        if shared.tab != route.tab { shared.tab = route.tab }
+        return route.handled
+    }
+
+    /// A page chosen in the island (Explore, its buttons; seam
+    /// `notch-dictation7`): the clipboard page opens on the clipboard.
+    static func pageChosen() {
+        guard Thread.isMainThread else { return }
+        shared.showClipboardTab()
     }
 
     /// A dictation starts: the history steps aside, so neither the window
@@ -155,12 +231,17 @@ final class ForkNotchDictations: ObservableObject {
     }
 
     func rememberPasteTarget() {
-        let app = NSWorkspace.shared.frontmostApplication
-        let eligible = app.map {
-            ForkNotchDictationsSupport.isPasteTarget(bundleID: $0.bundleIdentifier, ownBundleID: Bundle.main.bundleIdentifier,
-                                                     regular: $0.activationPolicy == .regular, terminated: $0.isTerminated)
-        } ?? false
-        pasteTarget = eligible ? app : nil
+        pasteTarget = Self.frontmostPasteTarget()
+    }
+
+    /// The app in front when it can take a paste: never Swishsaint itself.
+    private static func frontmostPasteTarget() -> NSRunningApplication? {
+        guard let app = NSWorkspace.shared.frontmostApplication,
+              ForkNotchDictationsSupport.isPasteTarget(bundleID: app.bundleIdentifier, ownBundleID: Bundle.main.bundleIdentifier,
+                                                       regular: app.activationPolicy == .regular,
+                                                       terminated: app.isTerminated)
+        else { return nil }
+        return app
     }
 
     // MARK: Island seams
@@ -175,14 +256,19 @@ final class ForkNotchDictations: ObservableObject {
         show()
     }
 
-    /// Why the island's Dictations button is off, as the official controls say it.
-    static func controlReason(_ language: AppLanguage) -> String {
-        FeatureStrings.notchEditor(language).enableFeature(ForkExtrasStrings.strings(language).dictationTitle)
+    /// Why the island's Dictations button is off while dictation is, as the
+    /// official controls say it. Once dictation is on, nil: the official
+    /// reason for the clipboard page it needs applies.
+    static func controlReason(_ language: AppLanguage) -> String? {
+        guard !ForkFeature.dictation.isEnabled else { return nil }
+        return FeatureStrings.notchEditor(language).enableFeature(ForkExtrasStrings.strings(language).dictationTitle)
     }
 
     /// Where that reason leads: the Dictation page, already in Settings.
+    /// Nil once dictation is on: the official link to the clipboard page.
     static func controlSetupAction() -> (() -> Void)? {
-        { ForkSettingsPages.open(.dictation) }
+        guard !ForkFeature.dictation.isEnabled else { return nil }
+        return { ForkSettingsPages.open(.dictation) }
     }
 
     // MARK: Actions
@@ -201,13 +287,15 @@ final class ForkNotchDictations: ObservableObject {
         }
     }
 
-    /// Pastes into the app the island opened over. Not added to the
-    /// clipboard history again: it is already there.
+    /// Pastes into the app in front, or the one the island opened over when
+    /// Swishsaint itself is in front. Not added to the clipboard history
+    /// again: it is already there.
     func paste(_ record: ForkDictationRecord) {
         guard !record.text.isEmpty else {
             NSSound.beep()
             return
         }
+        if let app = Self.frontmostPasteTarget() { pasteTarget = app }
         let target = pasteTarget
         let excerpt = ForkDictationPresentation.excerpt(record.text)
         dismiss()
@@ -226,9 +314,18 @@ final class ForkNotchDictations: ObservableObject {
         }
     }
 
-    func copy(_ record: ForkDictationRecord) {
-        guard !record.text.isEmpty else { return }
-        ForkDictationPaster.shared.deliver(record.text, action: .copy, target: nil, addsToHistory: false) { _ in }
+    /// Copies the text, then says how it went: the tick, or the beep heard
+    /// here when the clipboard did not take it.
+    func copy(_ record: ForkDictationRecord, done: @escaping (ForkNotchDictationsCopyFeedback) -> Void = { _ in }) {
+        guard !record.text.isEmpty else {
+            NSSound.beep()
+            return
+        }
+        ForkDictationPaster.shared.deliver(record.text, action: .copy, target: nil, addsToHistory: false) { outcome in
+            let feedback = ForkNotchDictationsSupport.copyFeedback(outcome)
+            if feedback == .beep { NSSound.beep() }
+            done(feedback)
+        }
     }
 
     func togglePin(_ record: ForkDictationRecord) {
@@ -272,20 +369,20 @@ final class ForkNotchDictations: ObservableObject {
     static func confirmClearUnpinned() {
         let ids = ForkNotchDictationsSupport.clearable(ForkDictationArchive.shared.records)
         guard !ids.isEmpty else { return }
-        let clipboard = FeatureStrings.clipboard(L10n.shared.language)
-        let message = text.historyClearConfirmMessage
+        let text = Self.text
+        let cancel = FeatureStrings.clipboard(L10n.shared.language).cancel
         let player = shared.player
         DispatchQueue.main.async {
-            guard NSAlert.confirmAboveIsland(String(format: clipboard.clearRecentConfirmFormat, ids.count),
-                                             message: message,
-                                             action: clipboard.clearRecent, destructive: true,
-                                             cancel: clipboard.cancel) else { return }
+            guard NSAlert.confirmAboveIsland(String(format: text.historyClearConfirmFormat, ids.count),
+                                             message: text.historyClearConfirmMessage,
+                                             action: text.historyClearUnpinned, destructive: true,
+                                             cancel: cancel) else { return }
             if let playing = player.playingID, ids.contains(playing) { player.stop() }
             ForkDictationArchive.shared.delete(Set(ids))
         }
     }
 
-    /// The Dictation page of Settings.
+    /// The Dictation page of Settings, from the top row of the history.
     static func openSettings() {
         shared.dismiss {
             ForkSettingsPages.open(.dictation)
@@ -295,9 +392,7 @@ final class ForkNotchDictations: ObservableObject {
 
     /// The island's Settings, on the controls where its Dictations button is placed.
     static func openIslandSettings() {
-        SettingsRouter.shared.notchModule = .controls
-        SettingsRouter.shared.request(FeatureSettingsDestination(.notch))
-        (NSApp.delegate as? AppDelegate)?.openSettingsWindow()
+        NotchService.shared.openSettings(showing: .controls)
     }
 }
 

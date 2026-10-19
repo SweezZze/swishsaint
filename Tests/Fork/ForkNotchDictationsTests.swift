@@ -41,6 +41,25 @@ enum ForkNotchDictationsTests {
                         && Support.tab(.dictations, expanded: true) == .dictations
                         && Support.tab(.clipboard, expanded: true) == .clipboard,
                      "a closed island opens again on the clipboard, the open one keeps its tab")
+        suite.expect(Support.showsClipboardPage(expanded: true, onClipboardPage: true, covered: false)
+                        && !Support.showsClipboardPage(expanded: false, onClipboardPage: true, covered: false)
+                        && !Support.showsClipboardPage(expanded: true, onClipboardPage: false, covered: false)
+                        && !Support.showsClipboardPage(expanded: true, onClipboardPage: true, covered: true),
+                     "the tab is chosen only once the island did open on its page; otherwise the window shows it")
+        let inPlace = Support.clipboardRoute(tab: .dictations, tabInView: true, routesToIsland: true)
+        suite.expect(inPlace.tab == .clipboard && inPlace.handled,
+                     "the clipboard's shortcut on the Dictations tab switches to the clipboard instead of closing")
+        let covered = Support.clipboardRoute(tab: .dictations, tabInView: false, routesToIsland: true)
+        suite.expect(covered.tab == .clipboard && !covered.handled,
+                     "under Explore or a detail, the official route opens the page, now on the clipboard")
+        let window = Support.clipboardRoute(tab: .dictations, tabInView: true, routesToIsland: false)
+        let clipboard = Support.clipboardRoute(tab: .clipboard, tabInView: true, routesToIsland: true)
+        suite.expect(window.tab == .dictations && !window.handled && clipboard.tab == .clipboard && !clipboard.handled,
+                     "a clipboard opening in its own window, or already shown, is the official route's")
+        suite.expect(Support.controlAvailable(dictationEnabled: true, clipboardPageShown: true)
+                        && !Support.controlAvailable(dictationEnabled: false, clipboardPageShown: true)
+                        && !Support.controlAvailable(dictationEnabled: true, clipboardPageShown: false),
+                     "the Dictations button needs dictation and the clipboard page its tab lives on")
     }
 
     private static func keys(_ suite: TestSuite) {
@@ -98,6 +117,20 @@ enum ForkNotchDictationsTests {
         let failed = ForkDictationRecord(duration: 1, engine: "apple", language: nil, rawText: "", text: "",
                                          outcome: .failed, hasAudio: true)
         suite.expect(Support.isFailed(failed) && !Support.isFailed(a), "a dictation without text failed")
+        suite.expect(Support.preview("  Bonjour\n\tHector  ") == "Bonjour  Hector"
+                        && Support.preview("\n") == "\n"
+                        && Support.preview(String(repeating: "a", count: ClipboardHistoryEditing.previewCharacters + 1))
+                            .hasSuffix("…"),
+                     "a card's text reads on one line, cut as the clipboard page cuts an entry")
+        let failures: [ForkDictationFailure] = [
+            .accessibilityMissing, .microphoneDenied, .microphoneMutedInVorssaint, .microphoneSilent, .captureFailed,
+            .secureInput(app: "Terminal"), .secureInput(app: "Say \"hi\""), .secureInput(app: nil), .speechDenied,
+            .speechUnavailableInBuild, .languageUnavailable, .modelMissing, .modelDamaged, .transcriptionFailed,
+        ]
+        suite.expect(failures.allSatisfy { Support.failure(stored: String(describing: $0)) == $0 },
+                     "a failed card says the failure kept with it")
+        suite.expect(Support.failure(stored: nil) == nil && Support.failure(stored: "somethingNew") == nil,
+                     "an unknown failure falls back to the generic words")
         let text = ForkDictationStrings.strings(.enUS)
         suite.expect(Support.engineName("apple", text: text) == text.engineApple
                         && Support.engineName("parakeet", text: text) == text.parakeetTitle,
@@ -116,6 +149,9 @@ enum ForkNotchDictationsTests {
         suite.expect(!appleOnly.parakeet && appleOnly.apple, "Parakeet not installed: only Apple is offered")
         suite.expect(!Support.retranscription(hasAudio: true, busy: false, parakeetInstalled: false, appleUsable: false).any,
                      "no engine, no transcription again")
+        suite.expect(Support.copyFeedback(.copied) == .tick && Support.copyFeedback(.superseded) == .none
+                        && Support.copyFeedback(.inHistoryOnly) == .beep && Support.copyFeedback(.keptInClipboard) == .beep,
+                     "the tick only for a copy that reached the clipboard, the beep otherwise")
         suite.expect(Support.isPasteTarget(bundleID: "com.apple.TextEdit", ownBundleID: "fork.app", regular: true, terminated: false),
                      "the app the island opened over takes the paste")
         suite.expect(!Support.isPasteTarget(bundleID: "fork.app", ownBundleID: "fork.app", regular: true, terminated: false)
@@ -127,11 +163,11 @@ enum ForkNotchDictationsTests {
     private static func island(_ suite: TestSuite) {
         let saved = NotchControlItem.dictationIsAvailable
         defer { NotchControlItem.dictationIsAvailable = saved }
-        NotchControlItem.dictationIsAvailable = { false }
+        NotchControlItem.dictationIsAvailable = { _ in false }
         suite.expect(!NotchControlItem.dictation.isAvailable(), "the Dictations button waits for dictation")
-        NotchControlItem.dictationIsAvailable = { true }
+        NotchControlItem.dictationIsAvailable = { _ in true }
         suite.expect(NotchControlItem.dictation.isAvailable() && NotchControlItem.dictation.symbol == "waveform"
-                        && NotchControlItem.dictation.setupRequirement != .none
+                        && NotchControlItem.dictation.setupRequirement == .page(.clipboard, feature: .clipboardHistory)
                         && NotchQuickAction.optionalActions.contains(.control(.dictation))
                         && NotchQuickAction(id: NotchQuickAction.control(.dictation).id) == .control(.dictation),
                      "the Dictations button can sit among the controls and float beside the island")
@@ -139,8 +175,9 @@ enum ForkNotchDictationsTests {
         suite.expect(strings.allSatisfy { $0.historyIslandCaption("X").contains("X") },
                      "every language says where the history opens")
         suite.expect(strings.allSatisfy { !$0.historyOff.isEmpty && !$0.historyTurnOn.isEmpty
-                                            && !$0.historyClearConfirmMessage.isEmpty && !$0.historyMore.isEmpty
-                                            && !$0.historySettings.isEmpty && !$0.historyIslandSettings.isEmpty },
+                                            && !$0.historyClearConfirmMessage.isEmpty && !$0.historyClearUnpinned.isEmpty
+                                            && $0.historyClearConfirmFormat.contains("%d") && !$0.historySettings.isEmpty
+                                            && !$0.historyIslandSettings.isEmpty },
                      "the tab's words exist in every language")
         let seams = (try? String(contentsOfFile: "Sources/Vorssaint/Services/Notch/NotchSupport.swift", encoding: .utf8)) ?? ""
         suite.expect(!seams.split(separator: "\n").contains { $0.contains("FORK(") && $0.contains("Fork") },

@@ -909,9 +909,13 @@ private struct ForkDictationHistorySection: View {
 
             if !archive.records.isEmpty {
                 LabeledContent(String(format: text.historyCountFormat, archive.records.count)) {
-                    Text(String(format: text.historyAudioSizeFormat,
-                                ByteCountFormatter.string(fromByteCount: archive.audioBytes, countStyle: .file)))
-                        .foregroundStyle(.secondary)
+                    // Audio expired with the retention leaves nothing to weigh.
+                    if archive.audioBytes > 0 {
+                        Text(String(format: text.historyAudioSizeFormat,
+                                    archive.audioBytes.formatted(.byteCount(style: .file)
+                                        .locale(l10n.language.formattingLocale()))))
+                            .foregroundStyle(.secondary)
+                    }
                 }
             }
 

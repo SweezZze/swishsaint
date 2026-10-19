@@ -46,7 +46,11 @@ final class ForkNotchDictationsWindow {
         removeDismissMonitors()
         guard let panel, panel.isVisible else { return }
         panel.orderOut(nil)
+        // The page goes with the window, so a hidden one takes no dictation
+        // the bubble asks the island to show, and keeps no key monitor.
+        host?.rootView = ForkNotchDictationsWindowContent(size: Self.size, opening: nil)
         ForkNotchDictations.shared.player.stop()
+        ForkNotchDictations.shared.setPinnedOnly(false, inWindow: true)
     }
 
     private func ensurePanel() -> NSPanel {
@@ -63,7 +67,7 @@ final class ForkNotchDictationsWindow {
         panel.backgroundColor = .clear
         panel.isOpaque = false
         panel.hasShadow = true
-        let host = NSHostingController(rootView: ForkNotchDictationsWindowContent(size: Self.size, opening: UUID()))
+        let host = NSHostingController(rootView: ForkNotchDictationsWindowContent(size: Self.size, opening: nil))
         host.sizingOptions = []
         panel.contentViewController = host
         panel.setContentSize(Self.size)
@@ -144,10 +148,11 @@ private final class ForkNotchDictationsPanel: NSPanel {
 }
 
 /// The page on the island's black, with its top row laid out as the open
-/// island lays out a row across its top.
+/// island lays out a row across its top. Empty while the window is hidden.
 private struct ForkNotchDictationsWindowContent: View {
     let size: CGSize
-    let opening: UUID
+    /// Each showing of the window, nil while it is hidden.
+    let opening: UUID?
 
     private var pageSize: CGSize {
         CGSize(width: size.width - 2 * NotchLayout.horizontalInset,
@@ -155,8 +160,12 @@ private struct ForkNotchDictationsWindowContent: View {
     }
 
     var body: some View {
+        if let opening { page(opening) } else { Color.clear }
+    }
+
+    private func page(_ opening: UUID) -> some View {
         let shape = RoundedRectangle(cornerRadius: 24, style: .continuous)
-        VStack(spacing: NotchLayout.spacing) {
+        return VStack(spacing: NotchLayout.spacing) {
             Color.clear.frame(height: NotchLayout.headerHeight)
             ForkNotchDictationsView(service: .shared, size: pageSize, inWindow: true)
                 .frame(width: pageSize.width, height: pageSize.height, alignment: .top)

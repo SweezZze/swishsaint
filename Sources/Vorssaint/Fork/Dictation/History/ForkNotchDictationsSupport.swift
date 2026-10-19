@@ -25,6 +25,15 @@ enum ForkNotchDictationsKey: Equatable {
     case listen
 }
 
+/// What a click on Copy shows: the tick once the text is on the clipboard,
+/// the system beep when it is not, as the clipboard page does.
+enum ForkNotchDictationsCopyFeedback: Equatable {
+    case tick
+    case beep
+    /// A newer delivery took over: nothing to say about this one.
+    case none
+}
+
 /// Which engines can transcribe a dictation again.
 struct ForkNotchDictationsRetranscription: Equatable {
     var parakeet: Bool
@@ -42,17 +51,42 @@ enum ForkNotchDictationsSupport {
         islandEnabled && clipboardPageShown && dictationEnabled && acceptsInteraction ? .island : .window
     }
 
+    /// The island's Dictations button: while dictation is on and the island
+    /// keeps the clipboard page its tab lives on, as the Mixer button needs
+    /// the Mixer page.
+    static func controlAvailable(dictationEnabled: Bool, clipboardPageShown: Bool) -> Bool {
+        dictationEnabled && clipboardPageShown
+    }
+
+    /// Whether the island shows its clipboard page, open and with nothing
+    /// over it: where the Dictations tab can be seen.
+    static func showsClipboardPage(expanded: Bool, onClipboardPage: Bool, covered: Bool) -> Bool {
+        expanded && onClipboardPage && !covered
+    }
+
     /// The history's shortcut closes the island only when it already shows
     /// the Dictations tab, with nothing over it.
     static func togglesClosed(expanded: Bool, onClipboardPage: Bool, tab: ForkNotchDictationsTab,
                               covered: Bool) -> Bool {
-        expanded && onClipboardPage && tab == .dictations && !covered
+        tab == .dictations && showsClipboardPage(expanded: expanded, onClipboardPage: onClipboardPage, covered: covered)
     }
 
     /// The tab once the island opens or closes: a closed island opens again
     /// on the clipboard, like the clipboard's pinned filter.
     static func tab(_ tab: ForkNotchDictationsTab, expanded: Bool) -> ForkNotchDictationsTab {
         expanded ? tab : .clipboard
+    }
+
+    /// The clipboard's own shortcut and menu while the island keeps the
+    /// Dictations tab: they show the clipboard. With the tab in view, it
+    /// switches in place (`handled`), where the official route would close
+    /// the island or leave it on the dictations; otherwise the official
+    /// route opens the page, now on the clipboard. A clipboard that opens in
+    /// its own window is left to it.
+    static func clipboardRoute(tab: ForkNotchDictationsTab, tabInView: Bool,
+                               routesToIsland: Bool) -> (tab: ForkNotchDictationsTab, handled: Bool) {
+        guard routesToIsland, tab == .dictations else { return (tab, false) }
+        return (.clipboard, tabInView)
     }
 
     /// The clipboard page's keys first. Space listens while nothing is typed
@@ -92,6 +126,15 @@ enum ForkNotchDictationsSupport {
                                                   apple: possible && appleUsable)
     }
 
+    /// The tick only for a copy that reached the clipboard.
+    static func copyFeedback(_ outcome: ForkDictationDeliveryOutcome) -> ForkNotchDictationsCopyFeedback {
+        switch outcome {
+        case .copied: return .tick
+        case .superseded: return .none
+        case .pasted, .keptInClipboard, .inHistoryOnly: return .beep
+        }
+    }
+
     /// What "Clear unpinned" deletes.
     static func clearable(_ records: [ForkDictationRecord]) -> [UUID] {
         records.filter { !$0.isPinned }.map(\.id)
@@ -115,5 +158,38 @@ enum ForkNotchDictationsSupport {
     /// A dictation with no text: the transcription failed.
     static func isFailed(_ record: ForkDictationRecord) -> Bool {
         record.text.isEmpty
+    }
+
+    /// A card's text before it opens: lines and tabs read as spaces, cut
+    /// where the clipboard page cuts an entry (`ClipboardHistoryEntry.preview`).
+    static func preview(_ text: String) -> String {
+        let prefix = text.prefix(ClipboardHistoryEditing.previewCharacters)
+        let collapsed = prefix
+            .replacingOccurrences(of: "\n", with: " ")
+            .replacingOccurrences(of: "\t", with: " ")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        let visible = collapsed.isEmpty ? String(prefix) : collapsed
+        return prefix.endIndex == text.endIndex ? visible : visible + "…"
+    }
+
+    /// The failure kept with a dictation (`ForkDictationRecord.failure`,
+    /// written with `String(describing:)`), nil when it cannot be read back.
+    static func failure(stored: String?) -> ForkDictationFailure? {
+        guard let stored else { return nil }
+        let simple: [ForkDictationFailure] = [
+            .accessibilityMissing, .microphoneDenied, .microphoneMutedInVorssaint, .microphoneSilent, .captureFailed,
+            .speechDenied, .speechUnavailableInBuild, .languageUnavailable, .modelMissing, .modelDamaged,
+            .transcriptionFailed,
+        ]
+        if let failure = simple.first(where: { String(describing: $0) == stored }) { return failure }
+        guard stored.hasPrefix("secureInput(") else { return nil }
+        // secureInput(app: Optional("Terminal")) or secureInput(app: nil).
+        guard let open = stored.range(of: "Optional(\""),
+              let close = stored.range(of: "\")", options: .backwards), open.upperBound <= close.lowerBound
+        else { return .secureInput(app: nil) }
+        let app = stored[open.upperBound..<close.lowerBound]
+            .replacingOccurrences(of: "\\\"", with: "\"")
+            .replacingOccurrences(of: "\\\\", with: "\\")
+        return .secureInput(app: app)
     }
 }

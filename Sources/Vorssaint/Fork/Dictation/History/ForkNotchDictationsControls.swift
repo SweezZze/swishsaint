@@ -12,9 +12,9 @@ extension View {
 }
 
 /// The clipboard page, or the dictations in its place, with the two tabs
-/// after the page's own leading control (the magnifier) in the island's top
-/// row. The trailing side keeps the clipboard's actions as they are: beside
-/// the camera, a side holds only about a hundred points.
+/// at the start of the island's top row, before the page's own leading
+/// control (the magnifier). The trailing side keeps the clipboard's actions
+/// as they are: beside the camera, a side holds only about a hundred points.
 private struct ForkNotchDictationsTabs: ViewModifier {
     @ObservedObject var service: NotchService
     let size: CGSize
@@ -29,7 +29,7 @@ private struct ForkNotchDictationsTabs: ViewModifier {
             ForkNotchDictationsView(service: service, size: size)
         } else {
             // Applied outside the page, the transform sees what the page set
-            // on the row's leading side and adds the tabs after it.
+            // on the row's leading side and puts the tabs before it.
             content.transformPreference(NotchBandKey.self) { items in
                 items.leading = AnyView(ForkNotchDictationsLeading(page: items.leading))
             }
@@ -37,10 +37,11 @@ private struct ForkNotchDictationsTabs: ViewModifier {
     }
 }
 
-/// The row's leading side: the page's own control, then Clipboard and
-/// Dictations as two of the island's glyph buttons, the chosen one filled
-/// like the clipboard's pinned filter. Where a side beside the camera has
-/// no room for both, one button switches between the two.
+/// The row's leading side: Clipboard and Dictations as two of the island's
+/// glyph buttons, the chosen one filled like the clipboard's pinned filter,
+/// then the page's own control. The tabs lead, so they stay put when the
+/// magnifier gives way to the search field. Where a side beside the camera
+/// has no room for both tabs, one button switches between the two.
 struct ForkNotchDictationsLeading: View {
     let page: AnyView?
     @ObservedObject private var state = ForkNotchDictations.shared
@@ -49,55 +50,69 @@ struct ForkNotchDictationsLeading: View {
     var body: some View {
         ViewThatFits(in: .horizontal) {
             HStack(spacing: 6) {
-                if let page { page }
                 NotchIconButton(symbol: "doc.on.clipboard", title: NotchModule.clipboard.title(l10n.language),
                                 selected: state.tab == .clipboard) {
                     state.tab = .clipboard
                 }
-                NotchIconButton(symbol: "waveform", title: ForkNotchDictations.title(l10n.language),
+                NotchIconButton(symbol: NotchControlItem.dictation.symbol, title: ForkNotchDictations.title(l10n.language),
                                 selected: state.tab == .dictations) {
                     state.tab = .dictations
                 }
+                if let page { page }
             }
             HStack(spacing: 6) {
-                if let page { page }
-                NotchIconButton(symbol: "waveform", title: ForkNotchDictations.title(l10n.language),
+                NotchIconButton(symbol: NotchControlItem.dictation.symbol, title: ForkNotchDictations.title(l10n.language),
                                 selected: state.tab == .dictations) {
                     state.tab = state.tab == .dictations ? .clipboard : .dictations
                 }
+                if let page { page }
             }
         }
     }
 }
 
-/// The pinned filter and the history's menu, at the trailing end of the
-/// island's top row, where the clipboard page has its own.
+/// The filter, the clearing of unpinned dictations and the Dictation
+/// settings, at the trailing end of the island's top row: three buttons
+/// where the clipboard page has its three, so nothing moves between tabs.
 struct ForkNotchDictationsHeaderActions: View {
+    /// The window's page keeps a filter of its own.
+    let inWindow: Bool
     @ObservedObject private var state = ForkNotchDictations.shared
     @ObservedObject private var archive = ForkDictationArchive.shared
     @ObservedObject private var l10n = L10n.shared
     private var text: ForkDictationStrings { ForkDictationStrings.strings(l10n.language) }
 
     var body: some View {
-        NotchIconButton(symbol: state.pinnedOnly ? "line.3.horizontal.decrease.circle.fill"
+        let pinnedOnly = state.pinnedOnly(inWindow: inWindow)
+        // A filter's glyph: the row's pin keeps the island open.
+        NotchIconButton(symbol: pinnedOnly ? "line.3.horizontal.decrease.circle.fill"
                             : "line.3.horizontal.decrease.circle",
-                        title: text.historyPinned, selected: state.pinnedOnly) {
-            state.pinnedOnly.toggle()
+                        title: text.historyPinned, selected: pinnedOnly) {
+            state.setPinnedOnly(!pinnedOnly, inWindow: inWindow)
         }
-        NotchMenuButton(title: text.historyMore, items: [
-            NotchMenuItem(title: FeatureStrings.clipboard(l10n.language).clearRecent, symbol: "trash",
-                          enabled: !ForkNotchDictationsSupport.clearable(archive.records).isEmpty,
-                          action: ForkNotchDictations.confirmClearUnpinned),
-            .separator,
-            NotchMenuItem(title: text.historySettings, symbol: "gearshape", action: ForkNotchDictations.openSettings),
-        ], cornerRadius: 9) {
-            Image(systemName: "ellipsis")
-                .font(.system(size: 12, weight: .medium))
-                .foregroundStyle(.white.opacity(0.55))
-                .frame(width: 28, height: 28)
-                .contentShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
-        }
-        .help(text.historyMore)
+        NotchIconButton(symbol: "trash", title: text.historyClearUnpinned,
+                        action: ForkNotchDictations.confirmClearUnpinned)
+            .disabled(ForkNotchDictationsSupport.clearable(archive.records).isEmpty)
+        NotchIconButton(symbol: "gearshape", title: text.historySettings, action: ForkNotchDictations.openSettings)
+    }
+}
+
+/// What the window's top row leads with: the page it shows, drawn as the
+/// island draws its chosen Dictations tab.
+struct ForkNotchDictationsMark: View {
+    @ObservedObject private var l10n = L10n.shared
+
+    var body: some View {
+        let title = ForkNotchDictations.title(l10n.language)
+        Image(systemName: NotchControlItem.dictation.symbol)
+            .font(.system(size: 12, weight: .medium))
+            .foregroundStyle(.white)
+            .frame(width: 28, height: 28)
+            .background(.white.opacity(0.12), in: RoundedRectangle(cornerRadius: 9, style: .continuous))
+            .help(title)
+            .accessibilityElement()
+            .accessibilityLabel(title)
+            .accessibilityAddTraits(.isHeader)
     }
 }
 
@@ -109,7 +124,7 @@ struct ForkNotchDictationTile: View {
     @ObservedObject private var l10n = L10n.shared
 
     var body: some View {
-        NotchActionTile(symbol: "waveform", title: ForkNotchDictations.title(l10n.language),
+        NotchActionTile(symbol: NotchControlItem.dictation.symbol, title: ForkNotchDictations.title(l10n.language),
                         active: state.listening, accent: .selection) {
             ForkNotchDictations.show()
         }

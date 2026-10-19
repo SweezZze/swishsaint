@@ -815,7 +815,7 @@ struct NotchSettings: View {
     /// A control that opens a page is off while that page is hidden, or while
     /// the feature behind it is disabled; the others follow their feature.
     private func controlReason(_ item: NotchControlItem) -> String {
-        if item == .dictation { return ForkNotchDictations.controlReason(l10n.language) } // FORK(notch-dictation5)
+        if item == .dictation, let reason = ForkNotchDictations.controlReason(l10n.language) { return reason } // FORK(notch-dictation5)
         // The keyboard light also needs a keyboard that has one.
         if item == .keyboardLight, AppFeature.brightness.isAvailable { return editor.keyboardLightUnavailable }
         switch item.setupRequirement {
@@ -826,7 +826,7 @@ struct NotchSettings: View {
     }
 
     private func controlUnavailableAction(_ item: NotchControlItem) -> (() -> Void)? {
-        if item == .dictation { return ForkNotchDictations.controlSetupAction() } // FORK(notch-dictation5)
+        if item == .dictation, let action = ForkNotchDictations.controlSetupAction() { return action } // FORK(notch-dictation5)
         if item == .keyboardLight, AppFeature.brightness.isAvailable { return nil }
         switch item.setupRequirement {
         case .feature(let feature):

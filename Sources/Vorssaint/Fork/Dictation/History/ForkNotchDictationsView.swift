@@ -44,8 +44,11 @@ struct ForkNotchDictationsView: View {
     private var clipboardText: ClipboardFeatureStrings { FeatureStrings.clipboard(l10n.language) }
     private static let listSpace = "fork.notch.dictations.list"
 
+    /// The island and the window each keep their own filter.
+    private var pinnedOnly: Bool { state.pinnedOnly(inWindow: inWindow) }
+
     private var entries: [ForkDictationRecord] {
-        ForkNotchDictationsSupport.entries(archive.records, query: query, pinnedOnly: state.pinnedOnly)
+        ForkNotchDictationsSupport.entries(archive.records, query: query, pinnedOnly: pinnedOnly)
     }
 
     private var searchTokens: [String] {
@@ -75,13 +78,16 @@ struct ForkNotchDictationsView: View {
         VStack(spacing: searchOpen ? NotchLayout.rowSpacing : 0) {
             searchField
             if !keepsHistory, archive.records.isEmpty {
-                NotchEmptyView(symbol: "waveform", message: text.historyOff) {
-                    NotchPillButton(title: text.historyTurnOn, prominent: true) { keepsHistory = true }
+                // As the clipboard page says it is off, and turns it on from here.
+                VStack(spacing: 10) {
+                    NotchEmptyView(symbol: NotchControlItem.dictation.symbol, message: text.historyOff)
+                    Button(text.historyTurnOn) { keepsHistory = true }
+                        .buttonStyle(.bordered).controlSize(.small)
                 }
                 .frame(maxHeight: .infinity)
             } else if entries.isEmpty {
-                NotchEmptyView(symbol: state.pinnedOnly ? "pin" : "waveform",
-                               message: query.isEmpty && !state.pinnedOnly ? text.historyEmpty : clipboardText.noResults)
+                NotchEmptyView(symbol: pinnedOnly ? "pin" : NotchControlItem.dictation.symbol,
+                               message: query.isEmpty && !pinnedOnly ? text.historyEmpty : clipboardText.noResults)
                     .frame(maxHeight: .infinity)
             } else {
                 ScrollViewReader { proxy in
@@ -107,12 +113,14 @@ struct ForkNotchDictationsView: View {
         // island's top row, so the cards start at the top of the page.
         .notchBand(leading: {
             if inWindow {
+                // The window names its page where the island shows its tabs.
+                ForkNotchDictationsMark()
                 if !searchOpen { magnifier }
             } else {
                 ForkNotchDictationsLeading(page: searchOpen ? nil : AnyView(magnifier))
             }
         }, trailing: {
-            HStack(spacing: 6) { ForkNotchDictationsHeaderActions() }
+            HStack(spacing: 6) { ForkNotchDictationsHeaderActions(inWindow: inWindow) }
         })
         .onChange(of: query) { _, query in queryChanged(query) }
         // Resting on a dictation with the arrow keys opens it, as resting the pointer does.
@@ -134,7 +142,7 @@ struct ForkNotchDictationsView: View {
         .onAppear(perform: appeared)
         .onChange(of: state.focus) { _, _ in if !preview, let id = state.takeFocus() { reveal(id) } }
         .onChange(of: service.clipboardSearchRequest) { _, _ in if !preview, !inWindow { openSearch() } }
-        .onChange(of: state.pinnedOnly) { _, _ in highlightedID = searchHighlight(keeping: nil) }
+        .onChange(of: pinnedOnly) { _, _ in highlightedID = searchHighlight(keeping: nil) }
         .onChange(of: searchOpen) { _, open in
             guard !preview, !inWindow else { return }
             // Escape closes the search before it closes the island.
@@ -183,8 +191,7 @@ struct ForkNotchDictationsView: View {
         keysMoved = false
         if !query.isEmpty { query = "" }
         searchOpen = false
-        let keepsFilter = ForkNotchDictationsSupport.keepsPinnedFilter(state.pinnedOnly, revealing: record)
-        if state.pinnedOnly != keepsFilter { state.pinnedOnly = keepsFilter }
+        state.setPinnedOnly(ForkNotchDictationsSupport.keepsPinnedFilter(pinnedOnly, revealing: record), inWindow: inWindow)
         highlightedID = id
     }
 
@@ -321,33 +328,41 @@ struct ForkNotchDictationsView: View {
         }
     }
 
-    /// The app the dictation went to, or the dictation's own mark.
-    @ViewBuilder private func sourceBadge(_ record: ForkDictationRecord) -> some View {
-        if let app = ForkNotchDictationApps.app(for: record) {
-            Image(nsImage: app.icon)
-                .resizable().interpolation(.high)
-                .frame(width: 14, height: 14)
-                .help(app.name)
-                .accessibilityLabel(app.name)
-        } else {
-            Image(systemName: "waveform")
-                .font(.system(size: 10)).foregroundStyle(.secondary)
-        }
+    /// A failed dictation's warning, the only color on the page.
+    private var failedMark: some View {
+        Image(systemName: "exclamationmark.triangle")
+            .font(.system(size: 10)).foregroundStyle(.orange.opacity(0.85))
     }
 
-    /// What a compact card leads with: the app it went to, or the mark of a
-    /// dictation; a failed one shows its warning, the only color here.
+    /// The details row leads with the app the dictation went to, or the
+    /// dictation's glyph, as the clipboard's names an entry's source; a
+    /// failed one with its warning. One 14-point column, so the dates line up.
+    @ViewBuilder private func sourceBadge(_ record: ForkDictationRecord) -> some View {
+        Group {
+            if ForkNotchDictationsSupport.isFailed(record) {
+                failedMark
+            } else if let app = ForkNotchDictationApps.app(for: record) {
+                Image(nsImage: app.icon)
+                    .resizable().interpolation(.high)
+                    .help(app.name)
+                    .accessibilityLabel(app.name)
+            } else {
+                Image(systemName: NotchControlItem.dictation.symbol)
+                    .font(.system(size: 10)).foregroundStyle(.secondary)
+            }
+        }
+        .frame(width: 14, height: 14)
+    }
+
+    /// What a compact card leads with: the dictation's glyph, as the
+    /// clipboard's rows lead with the kind of entry; a failed one with its
+    /// warning. The app shows once the card opens.
     private func leadingIcon(_ record: ForkDictationRecord) -> some View {
         Group {
             if ForkNotchDictationsSupport.isFailed(record) {
-                Image(systemName: "exclamationmark.triangle")
-                    .font(.system(size: 10)).foregroundStyle(.orange.opacity(0.85))
-            } else if let app = ForkNotchDictationApps.app(for: record) {
-                Image(nsImage: app.icon).resizable().interpolation(.high).frame(width: 14, height: 14)
-                    .help(app.name)
-                    .accessibilityHidden(true)
+                failedMark
             } else {
-                Image(systemName: "waveform").font(.system(size: 10)).foregroundStyle(.secondary)
+                Image(systemName: NotchControlItem.dictation.symbol).font(.system(size: 10)).foregroundStyle(.secondary)
             }
         }
         .frame(width: 14)
@@ -374,15 +389,18 @@ struct ForkNotchDictationsView: View {
             }
             .clipped()
             .contextMenu { actions(record) }
-            .accessibilityAction(named: Text(text.historyPaste)) { paste(record) }
-            .accessibilityAction(named: Text(text.historyCopy)) { copy(record) }
-            .accessibilityAction(named: Text(player.isPlaying(record.id) ? text.historyPause : text.historyPlay)) {
-                listen(record)
+            .accessibilityActions {
+                // Paste only where the app may type, as the card's menu offers it.
+                if !record.text.isEmpty {
+                    if permissions.accessibility { Button(text.historyPaste) { paste(record) } }
+                    Button(text.historyCopy) { copy(record) }
+                }
+                if record.hasAudio {
+                    Button(player.isPlaying(record.id) ? text.historyPause : text.historyPlay) { listen(record) }
+                }
+                Button(record.isPinned ? text.historyUnpin : text.historyPin) { state.togglePin(record) }
+                Button(text.historyDelete) { remove(record) }
             }
-            .accessibilityAction(named: Text(record.isPinned ? text.historyUnpin : text.historyPin)) {
-                state.togglePin(record)
-            }
-            .accessibilityAction(named: Text(text.historyDelete)) { remove(record) }
     }
 
     /// One or two lines, with the actions shown only for the dictation in use.
@@ -403,7 +421,9 @@ struct ForkNotchDictationsView: View {
             if archive.retranscribing == record.id {
                 retranscribing
             } else if active {
-                HStack(spacing: 2) { buttons(record) }
+                // The clipboard's three actions: listening stays on Space, the
+                // card's menu and the open card.
+                HStack(spacing: 2) { buttons(record, listens: false) }
             } else {
                 HStack(spacing: 6) {
                     if record.isPinned { Image(systemName: "pin.fill").font(.system(size: 9)).foregroundStyle(.secondary) }
@@ -443,7 +463,7 @@ struct ForkNotchDictationsView: View {
                 if archive.retranscribing == record.id {
                     retranscribing
                 } else {
-                    buttons(record)
+                    buttons(record, listens: true)
                 }
             }
             .frame(height: 28)
@@ -451,17 +471,18 @@ struct ForkNotchDictationsView: View {
         .padding(.horizontal, 10).padding(.top, 10).padding(.bottom, 4)
     }
 
-    /// When, how long and with which engine; a failed transcription again
-    /// says why instead of the engine.
+    /// When, how long and with which engine. A failure says why in the
+    /// engine's place: the card's text says that it failed.
     private func details(_ record: ForkDictationRecord) -> some View {
-        HStack(spacing: 4) {
+        let failed = ForkNotchDictationsSupport.isFailed(record)
+        return HStack(spacing: 4) {
             Text(record.date, format: .dateTime.month(.abbreviated).day().hour().minute())
                 .environment(\.locale, l10n.language.formattingLocale())
             Text("·")
             Text(ForkDictationHistoryListing.duration(record.duration)).monospacedDigit()
             Text("·")
-            if let problem = state.problem(record.id), !ForkNotchDictationsSupport.isFailed(record) {
-                Text(problem).foregroundStyle(.orange.opacity(0.85))
+            if failed || state.problem(record.id) != nil {
+                Text(failureText(record)).foregroundStyle(.orange.opacity(0.85))
             } else {
                 Text(ForkNotchDictationsSupport.engineName(record.engine, text: text))
             }
@@ -469,17 +490,18 @@ struct ForkNotchDictationsView: View {
         .font(.system(size: 9.5)).foregroundStyle(.tertiary).lineLimit(1)
     }
 
-    /// Listen, copy, pin and delete, in the clipboard page's buttons.
-    @ViewBuilder private func buttons(_ record: ForkDictationRecord) -> some View {
-        if record.hasAudio {
+    /// Listen, copy, pin and delete, in the clipboard page's buttons. Each
+    /// keeps its place: what a dictation cannot do is drawn disabled.
+    @ViewBuilder private func buttons(_ record: ForkDictationRecord, listens: Bool) -> some View {
+        if listens {
             let playing = player.isPlaying(record.id)
             NotchIconButton(symbol: playing ? "pause.fill" : "play.fill",
                             title: playing ? text.historyPause : text.historyPlay) { listen(record) }
+                .disabled(!record.hasAudio)
         }
-        if !record.text.isEmpty {
-            NotchIconButton(symbol: copiedID == record.id ? "checkmark" : "doc.on.doc",
-                            title: copiedID == record.id ? clipboardText.copied : text.historyCopy) { copy(record) }
-        }
+        NotchIconButton(symbol: copiedID == record.id ? "checkmark" : "doc.on.doc",
+                        title: copiedID == record.id ? clipboardText.copied : text.historyCopy) { copy(record) }
+            .disabled(record.text.isEmpty)
         NotchIconButton(symbol: record.isPinned ? "pin.fill" : "pin",
                         title: record.isPinned ? text.historyUnpin : text.historyPin) { state.togglePin(record) }
         NotchIconButton(symbol: "trash", title: text.historyDelete) { remove(record) }
@@ -511,8 +533,9 @@ struct ForkNotchDictationsView: View {
         Button(text.historyDelete, role: .destructive) { remove(record) }
     }
 
+    /// As the clipboard page says it: a click pastes, or copies without Accessibility.
     private var activateHelp: String {
-        permissions.accessibility ? text.historyPaste : text.historyCopy
+        permissions.accessibility ? clipboardText.clickRowShortcut : clipboardText.copy
     }
 
     private func searchHighlight(keeping current: UUID?) -> UUID? {
@@ -628,9 +651,10 @@ struct ForkNotchDictationsView: View {
     }
 
     private func copy(_ record: ForkDictationRecord) {
-        guard !record.text.isEmpty else { return }
-        state.copy(record)
-        copiedID = record.id
+        let id = record.id
+        state.copy(record) { feedback in
+            if feedback == .tick { copiedID = id }
+        }
     }
 
     private func listen(_ record: ForkDictationRecord) {
@@ -643,15 +667,24 @@ struct ForkNotchDictationsView: View {
         state.delete(record)
     }
 
+    /// Why a dictation has no text: a transcription again that failed, or
+    /// the failure kept with it.
+    private func failureText(_ record: ForkDictationRecord) -> String {
+        state.problem(record.id)
+            ?? ForkNotchDictationsSupport.failure(stored: record.failure)?.summary(text)
+            ?? text.historyFailed
+    }
+
     @ViewBuilder private func preview(_ record: ForkDictationRecord, compact: Bool, open: Bool = false) -> some View {
         if ForkNotchDictationsSupport.isFailed(record) {
-            Text(state.problem(record.id) ?? text.historyFailed)
+            // A closed compact card has no details row to say why.
+            Text(compact ? failureText(record) : text.historyFailed)
                 .font(.system(size: 12))
                 .foregroundStyle(.secondary)
                 .lineLimit(2)
                 .frame(maxWidth: .infinity, alignment: .topLeading)
         } else {
-            searchText(open ? openText(record) : String(record.text.prefix(600)), matching: searchTokens)
+            searchText(open ? openText(record) : ForkNotchDictationsSupport.preview(record.text), matching: searchTokens)
                 .font(.system(size: 12))
                 .lineLimit(compact ? 2 : open ? NotchClipboardCardSize.maximumOpenLines : 3)
                 .multilineTextAlignment(.leading)
