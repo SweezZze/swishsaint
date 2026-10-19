@@ -24,8 +24,8 @@ struct ForkMeetingCard {
         /// A dot before the title, in red: "● Record".
         var recordDot = false
         var enabled = true
-        /// Its title counts down instead (`title` stays its VoiceOver name
-        /// until the first tick).
+        /// Its title counts down instead, and its VoiceOver name with it
+        /// (`title` is the first second's).
         var countdown: Countdown?
         let perform: () -> Void
     }
@@ -207,8 +207,22 @@ struct ForkMeetingCardView: View {
         }
     }
 
+    /// A button that counts down ("Cancel (4 s)") redraws each second, its
+    /// VoiceOver name with it: VoiceOver reads the seconds really left.
     @ViewBuilder
     private func actionButton(_ action: ForkMeetingCard.Action) -> some View {
+        if let countdown = action.countdown {
+            TimelineView(.periodic(from: ForkMeetingOfferTiming.tickStart(until: countdown.until, now: Date()), by: 1)) {
+                context in
+                actionButton(action, title: countdown.words(context.date))
+            }
+        } else {
+            actionButton(action, title: action.title)
+        }
+    }
+
+    @ViewBuilder
+    private func actionButton(_ action: ForkMeetingCard.Action, title: String) -> some View {
         let button = Button(action: action.perform) {
             HStack(spacing: 5) {
                 if action.recordDot {
@@ -217,12 +231,8 @@ struct ForkMeetingCardView: View {
                         .frame(width: 7, height: 7)
                         .opacity(action.enabled ? 1 : 0.5)
                 }
-                if let countdown = action.countdown {
-                    ForkMeetingCountdownText(countdown: countdown)
-                        .monospacedDigit()
-                } else {
-                    Text(action.title)
-                }
+                Text(title)
+                    .monospacedDigit()
             }
             .font(.system(size: 12, weight: .semibold))
             .lineLimit(1)
@@ -231,7 +241,7 @@ struct ForkMeetingCardView: View {
             .frame(minHeight: inIsland ? 28 : 0)
         }
         .disabled(!action.enabled)
-        .accessibilityLabel(action.title)
+        .accessibilityLabel(title)
         if inIsland {
             button
                 .buttonStyle(NotchButtonStyle(cornerRadius: 8))

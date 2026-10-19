@@ -16,6 +16,7 @@ enum ForkMeetingOfferH2Tests {
         discarded(suite)
         menu(suite)
         undoCardWords(suite)
+        undoLabel(suite)
     }
 
     private static let zero = Date(timeIntervalSinceReferenceDate: 800_000_000)
@@ -236,5 +237,17 @@ enum ForkMeetingOfferH2Tests {
                      "« Démarré seul · Toujours pour Meet »")
         suite.expect(AppLanguage.allCases.map(ForkMeetingStrings.strings).allSatisfy { $0.undoAutoStarted("Meet").contains("Meet") },
                      "every language names the provider")
+    }
+
+    // MARK: - H2.12 "Cancel (5 s)" for VoiceOver
+
+    private static func undoLabel(_ suite: TestSuite) {
+        // The button's title and its VoiceOver name are the same words of
+        // the same second (`ForkMeetingCardView.actionButton`).
+        let words = (0...4).map { ForkMeetingOfferText.undo(until: at(5), now: at(Double($0) + 0.5), strings: french) }
+        suite.expect(words == ["Annuler (5 s)", "Annuler (4 s)", "Annuler (3 s)", "Annuler (2 s)", "Annuler (1 s)"],
+                     "the words VoiceOver reads go down with the seconds: \(words)")
+        suite.expect(ForkMeetingOfferTiming.tickStart(until: at(5), now: at(0.4)) <= at(0.4),
+                     "its timeline ticks from the past, on whole seconds before the end")
     }
 }
