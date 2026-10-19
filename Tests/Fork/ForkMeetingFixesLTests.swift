@@ -16,6 +16,9 @@ enum ForkMeetingFixesLTests {
     static func run(_ suite: TestSuite) {
         aTeamsChatBesideAMeetCall(suite)
         teamsOnTheWebOnlyOnACall(suite)
+        theSameAppMeetingBack(suite)
+        notNowHoldsAfterAGap(suite)
+        backToBackMeetings(suite)
     }
 
     // MARK: - Fixtures
@@ -165,5 +168,132 @@ enum ForkMeetingFixesLTests {
             chat.read(second, windows: [chrome("Chat | Microsoft Teams", id: 8)], microphones: [chromeMicrophone])
         }
         suite.expect(chat.offers.isEmpty, "Teams' chat with the browser's microphone in use: nothing")
+    }
+
+    // MARK: - L.I1: an app's meeting back soon after its end
+
+    /// Probe R1: Teams recording on "Always", its microphone gone 22 s
+    /// (muted, a device change), back during the countdown.
+    private static func theSameAppMeetingBack(_ suite: TestSuite) {
+        var teams = Live(#"{"teams":"always"}"#)
+        for second in stride(from: 0.0, through: 16, by: 2) { teams.read(second, microphones: [teamsMicrophone]) }
+        guard let token = teams.starts.first?.token else { return suite.expect(false, "Always starts the Teams call") }
+        teams.send(.captureStarted(token, folder: folder), 17)
+        for second in stride(from: 18.0, through: 40, by: 2) { teams.read(second, microphones: []) }
+        guard case .endingSoon = teams.machine.phase else {
+            return suite.expect(false, "its microphone gone 20 s: the countdown runs")
+        }
+        teams.effects = []
+        for second in stride(from: 42.0, through: 70, by: 2) { teams.read(second, microphones: [teamsMicrophone]) }
+        suite.expect(teams.said == [.meetingBack] && teams.isRecording && teams.starts.isEmpty
+                        && teams.last.candidates.map(\.identity) == [identity("teams#1")],
+                     "its microphone back during the countdown: the same call back, the recording goes on")
+
+        // Past 60 s, a new call.
+        var later = Live(#"{"teams":"ask"}"#)
+        later.read(0, microphones: [teamsMicrophone])
+        later.read(2, microphones: [teamsMicrophone])
+        later.send(.dismiss(.thisTime), 3)
+        var ended: [ForkMeetingIdentity] = []
+        for second in stride(from: 4.0, through: 30, by: 2) { ended += later.read(second, microphones: []).ended }
+        later.effects = []
+        later.read(100, microphones: [teamsMicrophone])
+        later.read(102, microphones: [teamsMicrophone])
+        suite.expect(ended == [identity("teams#1")] && later.offers.map(\.candidate.identity) == [identity("teams#2")],
+                     "back 76 s after its end: another call, offered")
+
+        // A countdown longer than 60 s keeps it the same meeting while it runs.
+        var long = ForkMeetingResolver(ownPID: ownPID, policies: ForkMeetingPolicies(json: #"{"teams":"ask"}"#))
+        long.endCountdown = 120
+        _ = long.resolve(ForkMeetingReading(at: at(0), microphones: [teamsMicrophone]))
+        _ = long.resolve(ForkMeetingReading(at: at(2), microphones: [teamsMicrophone]))
+        var gone: [ForkMeetingIdentity] = []
+        for second in stride(from: 4.0, through: 30, by: 2) {
+            gone += long.resolve(ForkMeetingReading(at: at(second), microphones: [])).ended
+        }
+        _ = long.resolve(ForkMeetingReading(at: at(110), microphones: [teamsMicrophone]))
+        let back = long.resolve(ForkMeetingReading(at: at(112), microphones: [teamsMicrophone]))
+        suite.expect(gone == [identity("teams#1")] && back.candidates.map(\.identity) == [identity("teams#1")],
+                     "with a 120 s countdown, back 86 s after its end: still the same call")
+
+        // Zoom's meeting window gone, then its microphone again: a new
+        // meeting, as before.
+        var zoom = Live(#"{"zoom":"ask"}"#)
+        zoom.read(0, windows: [zoomWindow("Zoom Meeting")], microphones: [zoomMicrophone])
+        zoom.read(2, windows: [zoomWindow("Zoom Meeting")], microphones: [zoomMicrophone])
+        for second in stride(from: 4.0, through: 30, by: 2) {
+            zoom.read(second, windows: [zoomWindow("Zoom Workplace", id: 9)], microphones: [])
+        }
+        zoom.read(32, microphones: [zoomMicrophone])
+        let next = zoom.read(34, microphones: [zoomMicrophone])
+        suite.expect(next.candidates.map(\.identity) == [identity("zoom:500#2")],
+                     "Zoom's meeting window gone, its microphone again: a new meeting")
+        zoom.read(36, windows: [zoomWindow("Zoom Workplace", id: 9)], microphones: [])
+        var same = Live(#"{"zoom":"ask"}"#)
+        same.read(0, windows: [zoomWindow("Zoom Meeting")], microphones: [zoomMicrophone])
+        same.read(2, windows: [zoomWindow("Zoom Meeting")], microphones: [zoomMicrophone])
+        same.send(.dismiss(.thisTime), 3)
+        for second in stride(from: 4.0, through: 30, by: 2) {
+            same.read(second, windows: [zoomWindow("Zoom Workplace", id: 9)], microphones: [])
+        }
+        same.effects = []
+        same.read(40, windows: [zoomWindow("Zoom Meeting")], microphones: [zoomMicrophone])
+        let window = same.read(42, windows: [zoomWindow("Zoom Meeting")], microphones: [zoomMicrophone])
+        suite.expect(window.candidates.map(\.identity) == [identity("zoom:500#1")] && same.offers.isEmpty,
+                     "its very meeting window back within 60 s: the same meeting, still set aside")
+    }
+
+    /// Probe R1b: Teams on "Offer", "Not now", its microphone gone 25 s
+    /// and back.
+    private static func notNowHoldsAfterAGap(_ suite: TestSuite) {
+        var teams = Live(#"{"teams":"ask"}"#)
+        teams.read(0, microphones: [teamsMicrophone])
+        teams.read(2, microphones: [teamsMicrophone])
+        teams.send(.dismiss(.thisTime), 3)
+        var ended: [ForkMeetingIdentity] = []
+        for second in stride(from: 4.0, through: 30, by: 2) { ended += teams.read(second, microphones: []).ended }
+        teams.effects = []
+        for second in stride(from: 32.0, through: 40, by: 2) { teams.read(second, microphones: [teamsMicrophone]) }
+        suite.expect(ended == [identity("teams#1")] && teams.offers.isEmpty
+                        && teams.last.candidates.map(\.identity) == [identity("teams#1")]
+                        && teams.last.candidates.first?.silenced == true,
+                     "Not now, then its microphone gone 25 s and back: the same call, still set aside, not offered")
+    }
+
+    // MARK: - L.I2: two meetings back to back
+
+    /// Probe R4: the first Zoom meeting's window closes, the second's opens
+    /// 8 s later.
+    private static func backToBackMeetings(_ suite: TestSuite) {
+        var zoom = Live(#"{"zoom":"ask"}"#)
+        zoom.read(0, windows: [zoomWindow("Zoom Meeting", id: 1)], microphones: [zoomMicrophone])
+        zoom.read(2, windows: [zoomWindow("Zoom Meeting", id: 1)], microphones: [zoomMicrophone])
+        zoom.send(.dismiss(.thisTime), 3)
+        zoom.read(4, windows: [zoomWindow("Zoom Workplace", id: 9)], microphones: [])
+        zoom.effects = []
+        var ended: [ForkMeetingIdentity] = []
+        for second in stride(from: 12.0, through: 30, by: 2) {
+            ended += zoom.read(second, windows: [zoomWindow("Zoom Meeting", id: 2)], microphones: [zoomMicrophone]).ended
+        }
+        suite.expect(ended == [identity("zoom:500#1")] && zoom.last.candidates.map(\.identity) == [identity("zoom:500#2")]
+                        && zoom.offers.map(\.candidate.identity) == [identity("zoom:500#2")]
+                        && zoom.offers.first?.candidate.windowID == 2,
+                     "another meeting window once the first's is gone: the first is over, the next one offered")
+
+        // A meeting window redrawn while its microphone runs (a share) is
+        // the same meeting.
+        var share = Live(#"{"zoom":"ask"}"#)
+        share.read(0, windows: [zoomWindow("Zoom Meeting", id: 1)], microphones: [zoomMicrophone])
+        share.read(2, windows: [zoomWindow("Zoom Meeting", id: 1)], microphones: [zoomMicrophone])
+        share.read(4, windows: [zoomWindow("Zoom Workplace", id: 9)], microphones: [zoomMicrophone])
+        share.effects = []
+        var shareEnded: [ForkMeetingIdentity] = []
+        for second in stride(from: 6.0, through: 20, by: 2) {
+            shareEnded += share.read(second, windows: [zoomWindow("Zoom Meeting", id: 3)],
+                                     microphones: [zoomMicrophone]).ended
+        }
+        suite.expect(shareEnded.isEmpty && share.last.candidates.map(\.identity) == [identity("zoom:500#1")]
+                        && share.offers.allSatisfy { $0.candidate.identity == identity("zoom:500#1") },
+                     "its window redrawn with the microphone on: the same meeting, followed in its new window")
     }
 }
