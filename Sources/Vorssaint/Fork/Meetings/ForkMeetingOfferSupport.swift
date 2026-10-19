@@ -164,6 +164,30 @@ enum ForkMeetingDiscardOutcome: Equatable {
         case .kept: return s.voiceDiscardKept
         }
     }
+
+    // MARK: Fixes J
+
+    /// Said once the folder is gone, "Recording cancelled." having been said
+    /// at the click: the outcome without that first sentence when it starts
+    /// with it, then, when "Cancel" took back the "Always" chosen for
+    /// `askedAgain` (its short name), that its meetings are offered again.
+    func spokenAfterCancel(askedAgain: String?, strings s: ForkMeetingStrings) -> String {
+        let full = spoken(s)
+        var outcome = full
+        if full.hasPrefix(s.voiceCancelled) {
+            let rest = full.dropFirst(s.voiceCancelled.count).trimmingCharacters(in: .whitespaces)
+            if !rest.isEmpty { outcome = rest }
+        }
+        guard let askedAgain else { return outcome }
+        return ForkMeetingLiveText.sentences(outcome, s.voiceAskAgain(askedAgain))
+    }
+
+    /// The notice's second line: the folder still there comes first, else
+    /// the provider offered again, else none.
+    func detail(askedAgain: String?, strings s: ForkMeetingStrings) -> String? {
+        if self == .kept { return s.noticeDiscardKeptDetail }
+        return askedAgain.map(s.noticeAskAgain)
+    }
 }
 
 /// VoiceOver's last sentence: the same one twice in a row is said once.
@@ -335,8 +359,51 @@ enum ForkMeetingOfferText {
         s.undo(seconds: ForkMeetingOfferTiming.secondsLeft(until: until, now: now))
     }
 
+    // MARK: Fixes J
+
+    /// The "Cancel" card's line, why it records: started on its own
+    /// ("Auto-start · Always for Meet"), or "Always for Meet" just chosen by
+    /// hand, with where to change it ("Always for Meet · Change it in
+    /// Meetings"). `nil` without a provider.
+    static func undoLine(provider: String?, choseAlways: Bool, strings s: ForkMeetingStrings) -> String? {
+        guard let provider else { return nil }
+        return choseAlways ? s.offerAlways(provider) + " · " + s.noticeNeverDetail : s.undoAutoStarted(provider)
+    }
+
     private static func named(_ value: String?) -> String? {
         guard let value = value?.trimmingCharacters(in: .whitespacesAndNewlines), !value.isEmpty else { return nil }
         return value
+    }
+}
+
+// MARK: Fixes J
+
+/// What the island shows when someone else's screen share sees it (the
+/// official "Show in screenshots and videos" on), and the pill under the
+/// pointer then: the service rather than the meeting's name, a kind of
+/// microphone rather than its own name ("AirPods d’Alice"). VoiceOver, which
+/// no share hears, keeps the names.
+enum ForkMeetingSharedText {
+    /// The pill's name under the pointer: the meeting's, or the provider's
+    /// when shares see the pill; the default name without either.
+    static func pillName(title: String?, providerName: String?, seenInShares: Bool,
+                         strings s: ForkMeetingStrings) -> String {
+        let name = seenInShares ? providerName : title
+        guard let name, !name.isEmpty else { return s.untitledMeeting }
+        return name
+    }
+
+    /// A microphone, by kind: "Automatic" for the meeting's own input, else
+    /// built in or external.
+    static func microphone(_ input: ForkMeetingOfferInput, builtIn: Bool, strings s: ForkMeetingStrings) -> String {
+        if case .meetingApp = input { return s.microphoneMeeting }
+        return builtIn ? s.microphoneBuiltIn : s.microphoneExternal
+    }
+
+    /// A notice's second line as the island shows it to shares: the
+    /// microphone changed names its kind; any other keeps its own.
+    static func detail(_ notice: ForkMeetingNotice, microphoneBuiltIn: Bool, strings s: ForkMeetingStrings) -> String? {
+        guard case .microphone = notice else { return notice.detail(s) }
+        return microphoneBuiltIn ? s.microphoneBuiltIn : s.microphoneExternal
     }
 }

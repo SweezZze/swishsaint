@@ -297,9 +297,13 @@ enum ForkMeetingResolverTests {
         microphones(&r, -5, [chromeMicrophone])
         windows(&r, 0, [chrome("Meet – \(code)")])
         let left = windows(&r, 30, [chrome("Vous avez quitté la réunion")])
-        suite.expect(left.ended == [meetA] && left.candidates.isEmpty,
-                     "the page saying the call is over ends the meeting at once, the microphone still open")
-        suite.expect(windows(&r, 33, [chrome("Vous avez quitté la réunion")]).candidates.isEmpty
+        suite.expect(left.ended.isEmpty && left.candidates.map(\.identity) == [meetA],
+                     "the page saying the call is over, the microphone still open: nothing ends yet, the 20 s decide (J.I2)")
+        microphones(&r, 31, [])
+        let over = windows(&r, 33, [chrome("Vous avez quitté la réunion")])
+        suite.expect(over.ended == [meetA] && over.candidates.isEmpty,
+                     "the microphone free, the page still there: the meeting ends at that reading")
+        suite.expect(windows(&r, 36, [chrome("Vous avez quitté la réunion")]).candidates.isEmpty
                         && tick(&r, 60).ended.isEmpty,
                      "and nothing comes back while the page stays")
 

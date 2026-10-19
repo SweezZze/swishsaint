@@ -31,7 +31,8 @@ enum ForkMeetingTitleRuleSet: Equatable {
 /// a missed title still leaves the microphone and the Record button.
 ///
 /// The Google Meet rules come from an earlier recorder's matcher (a code
-/// `abc-defg-hij`, "Meet – x", "x – Google Meet"), with what the S2 spike
+/// `abc-defg-hij`, "Meet – x", "x – Google Meet"), a code now read only as
+/// the last part of Meet's own titles, never alone, with what the S2 spike
 /// read from a real Chrome added: the page titles around a meeting are
 /// refused (home, "Untitled" while loading, Google Workspace's page, the
 /// translate bubble and the share picker, which are windows of their own),
@@ -82,14 +83,15 @@ enum ForkMeetingTitleRules {
             || refusedFragments.contains(where: normalized.contains) {
             return .none
         }
-        if exitFragments.contains(where: normalized.contains) { return .exit }
+        if isExitPage(dashed) { return .exit }
 
-        // 1. A code, only in Meet's own titles: three, four and three letters
-        // are everywhere else too ("all-time-low", "fix-auth-bug"). 2. "Meet –
-        // <name>": a named meeting without its code in the tab, which the
-        // resolver takes only with the browser's microphone in use. 3. "<name>
-        // – Google Meet": the end tells a meeting from an article about it.
-        let code = isMeetFormat(normalized) ? formatCode(in: normalized) : nil
+        // 1. A code, only as the last part of a title Meet writes: three,
+        // four and three letters are everywhere else too ("all-time-low",
+        // "fix-auth-bug"). 2. "Meet – <name>": a named meeting without its
+        // code in the tab, which the resolver takes only with the browser's
+        // microphone in use. 3. "<name> – Google Meet": the end tells a
+        // meeting from an article about it.
+        let code = formatCode(dashed)
         let named = afterMeetPrefix(title) ?? beforeGoogleMeetSuffix(title)
         guard code != nil || named != nil else { return .none }
         return .meeting(code: code, name: named.flatMap { meetingName($0, code: code) })
@@ -97,29 +99,59 @@ enum ForkMeetingTitleRules {
 
     // MARK: Fixes H1
 
-    /// A title as Google Meet writes it: "Meet – …", "Meet - …", "Meet: …",
-    /// "… – Google Meet", or its code alone. Lowercased.
-    private static func isMeetFormat(_ normalized: String) -> Bool {
-        if normalized.hasSuffix("google meet") { return true }
-        if let code = meetCode(in: normalized), code == normalized { return true }
-        guard normalized.hasPrefix("meet") else { return false }
-        let rest = normalized.dropFirst(4).drop(while: { $0 == " " })
-        guard let separator = rest.first else { return false }
-        return dashes.contains(separator) || separator == ":"
+    /// "Meet", a space, a dash and a space, as Meet writes its tab
+    /// ("Meet – Point hebdo"); never a word glued to a dash ("Meet-up
+    /// Paris", "Meet-the-Press"). Lowercased, every dash as "-".
+    private static let meetPrefix = "meet - "
+    /// "… – Google Meet", the same way.
+    private static let meetSuffix = " - google meet"
+
+    /// The text of a title Google Meet writes between its marks: after
+    /// "Meet – " or "Meet:", before " – Google Meet"; `nil` for any other
+    /// title. Lowercased, every dash as "-".
+    private static func meetBody(_ dashed: String) -> Substring? {
+        var body = Substring(dashed)
+        var marked = false
+        if body.hasSuffix(meetSuffix) {
+            body = body.dropLast(meetSuffix.count)
+            marked = true
+        }
+        if body.hasPrefix(meetPrefix) {
+            body = body.dropFirst(meetPrefix.count)
+            marked = true
+        } else if body.hasPrefix("meet:") {
+            body = body.dropFirst(5)
+            marked = true
+        }
+        guard marked else { return nil }
+        let trimmed = body.drop(while: { $0 == " " })
+        return trimmed.isEmpty ? nil : trimmed
     }
 
-    /// The first code of a Meet title that stands as a part of its own: at
-    /// the start, or after a dash or a colon ("Meet – Point hebdo –
-    /// abc-defg-hij"), never inside a sentence ("Meet – Bitcoin hits
-    /// all-time-low").
-    private static func formatCode(in normalized: String) -> String? {
-        let characters = Array(normalized)
-        for (start, code) in codes(in: characters) {
-            var before = start - 1
-            while before >= 0, characters[before] == " " { before -= 1 }
-            if before < 0 || dashes.contains(characters[before]) || characters[before] == ":" { return code }
+    /// The code of a Meet title: its last part, alone ("Meet – Point hebdo –
+    /// abc-defg-hij", "Meet – abc-defg-hij", "abc-defg-hij – Google Meet").
+    /// A code inside a sentence, before another part ("Meet – fix-auth-bug –
+    /// GitHub") or alone outside Meet's marks is no code.
+    private static func formatCode(_ dashed: String) -> String? {
+        guard let body = meetBody(dashed) else { return nil }
+        let last = body.components(separatedBy: " - ").last?.trimmingCharacters(in: .whitespaces) ?? ""
+        guard last.count == 12, let code = meetCode(in: last), code == last else { return nil }
+        return code
+    }
+
+    /// The meeting page says the call is over: in a Meet title ("Meet –
+    /// Vous avez quitté la réunion"), or as the whole title, its code beside
+    /// it or not ("You left the meeting – abc-defg-hij"). Never inside
+    /// another page's title ("Re: the meeting has ended – Gmail").
+    private static func isExitPage(_ dashed: String) -> Bool {
+        if let body = meetBody(dashed) { return exitFragments.contains(where: body.contains) }
+        var page = Substring(dashed)
+        let parts = dashed.components(separatedBy: " - ")
+        if parts.count == 2, let code = meetCode(in: parts[1]), code == parts[1].trimmingCharacters(in: .whitespaces) {
+            page = Substring(parts[0])
         }
-        return nil
+        let sentence = page.trimmingCharacters(in: .whitespaces.union(CharacterSet(charactersIn: ".!")))
+        return exitFragments.contains(sentence)
     }
 
     /// Every `abc-defg-hij` of the text, with where it starts.
@@ -210,20 +242,26 @@ enum ForkMeetingTitleRules {
     }
 
     /// "Meet – Point hebdo" → "Point hebdo".
+    /// A dash between two spaces: "Meet-up" is a word, not a separator.
     private static func afterMeetPrefix(_ title: String) -> String? {
         guard title.prefix(4).lowercased() == "meet" else { return nil }
-        let rest = title.dropFirst(4).drop(while: { $0 == " " })
-        guard let separator = rest.first, dashes.contains(separator) else { return nil }
-        let name = rest.dropFirst().trimmingCharacters(in: .whitespaces)
+        let rest = title.dropFirst(4)
+        guard rest.first == " " else { return nil }
+        let after = rest.dropFirst()
+        guard let separator = after.first, dashes.contains(separator), after.dropFirst().first == " " else { return nil }
+        let name = after.dropFirst().trimmingCharacters(in: .whitespaces)
         return name.isEmpty ? nil : name
     }
 
-    /// "Point hebdo – Google Meet" → "Point hebdo".
+    /// "Point hebdo – Google Meet" → "Point hebdo", the dash between two
+    /// spaces too.
     private static func beforeGoogleMeetSuffix(_ title: String) -> String? {
         guard title.suffix(11).lowercased() == "google meet" else { return nil }
-        let head = title.dropLast(11).trimmingCharacters(in: .whitespaces)
-        guard let separator = head.last, dashes.contains(separator) else { return nil }
-        let name = head.dropLast().trimmingCharacters(in: .whitespaces)
+        let head = title.dropLast(11)
+        guard head.last == " " else { return nil }
+        let before = head.dropLast()
+        guard let separator = before.last, dashes.contains(separator), before.dropLast().last == " " else { return nil }
+        let name = before.dropLast().trimmingCharacters(in: .whitespaces)
         return name.isEmpty ? nil : name
     }
 

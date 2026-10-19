@@ -699,6 +699,8 @@ enum ForkMeetingBehaviorTests {
                         case .leave, .markInterrupted: return true
                         case let .complete(removeMaster, discardDrafts): return !removeMaster && !discardDrafts
                         case let .finalize(_, _, discardDrafts): return !discardDrafts
+                        // Only a meeting the person cancelled goes.
+                        case .discard: return false
                         }
                      },
                      "without a readable master or a whole final file, nothing in the folder is removed, drafts included")

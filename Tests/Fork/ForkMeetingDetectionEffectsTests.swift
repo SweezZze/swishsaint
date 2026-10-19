@@ -133,10 +133,14 @@ enum ForkMeetingDetectionEffectsTests {
                             && Set([strings.policyAskCaption, strings.policyAlwaysCaption, strings.policyNeverCaption]).count == 3
                             && strings.detected("Point hebdo").contains("Point hebdo")
                             && strings.detectionTitlesOnly.contains("14.4")
-                            && strings.policyAlwaysCaption.contains("5")
+                            && !strings.policyAlwaysCaption.contains("5")
                             && strings.policyAskCaption.contains("20")
                      },
-                     "every language has three distinct choices per provider, names the detected meeting, and says the 14.4 limit")
+                     "every language has three distinct choices per provider, names the detected meeting, and says the 14.4 limit; "
+                        + "Always's caption says « a few seconds » to cancel, which are 15 with VoiceOver")
+        suite.expect(ForkMeetingStrings.strings(.fr).policyAlwaysCaption.contains("quelques secondes")
+                        && ForkMeetingStrings.strings(.enUS).policyAlwaysCaption.contains("a few seconds"),
+                     "« dans les quelques secondes qui suivent »")
         let french = ForkMeetingStrings.strings(.fr)
         suite.expect(french.detectionTitle == "Détection" && french.policyAsk == "Proposer" && french.policyAlways == "Toujours"
                         && french.policyNever == "Jamais" && french.calendarNaming == "Nommer avec le calendrier"

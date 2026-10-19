@@ -33,6 +33,9 @@ enum ForkMeetingStopReason: String, Codable, CaseIterable {
     case featureDisabled
     /// macOS or the capture itself stopped it.
     case captureStopped
+    /// "Cancel" after a start "Always" made: its folder goes to the Trash,
+    /// at the next launch if the app ended before (never recovered).
+    case cancelled
 }
 
 /// Why a recording paused. A locked screen is not one: it pauses nothing,

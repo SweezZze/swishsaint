@@ -488,9 +488,13 @@ final class ForkMeetingPill {
         updateTicker()
     }
 
+    /// Seen in someone else's screen share, the pill names the service
+    /// under the pointer, not the meeting.
     private func applySharing() {
-        let sharing: NSWindow.SharingType = ForkMeetingIsland.showsInCaptures ? .readOnly : .none
+        let shown = ForkMeetingIsland.showsInCaptures
+        let sharing: NSWindow.SharingType = shown ? .readOnly : .none
         if panel?.sharingType != sharing { panel?.sharingType = sharing }
+        if model.seenInShares != shown { model.seenInShares = shown }
     }
 }
 
@@ -504,6 +508,8 @@ final class ForkMeetingPillModel: ObservableObject {
     @Published var endingSoonUntil: Date?
     /// "Cancel" runs: stop cancels.
     @Published var cancelsUntil: Date?
+    /// Someone else's screen share sees the pill.
+    @Published var seenInShares = false
     var text = ForkMeetingStrings.current
 
     var look: ForkMeetingPillLook? {
@@ -600,7 +606,10 @@ struct ForkMeetingPillView: View {
                 }
                 if model.hovering, look.showsControls {
                     VStack(alignment: .leading, spacing: 0) {
-                        Text(model.context.title ?? text.untitledMeeting)
+                        // In shares, the service: the name stays with VoiceOver.
+                        Text(ForkMeetingSharedText.pillName(title: model.context.title,
+                                                            providerName: model.context.providerName,
+                                                            seenInShares: model.seenInShares, strings: text))
                             .font(.system(size: 12, weight: .medium))
                             .foregroundStyle(Color.white.opacity(0.85))
                         // What is filmed: the window of which app, or the screen.

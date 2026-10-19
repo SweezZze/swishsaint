@@ -261,13 +261,15 @@ extension ForkMeetingPresenter {
         let candidate = offer.candidate
         let service = ForkMeetingService.shared
         let settings = service.captureSettings()
+        let seenInShares = inIsland && ForkMeetingIsland.showsInCaptures
         let facts = OfferFacts(
             icon: Self.icon(for: candidate), settings: settings,
             windowApp: Self.appName(pid: candidate.pid, bundle: candidate.windowBundle),
             soundApp: Self.appName(pid: nil, bundle: candidate.appBundle),
-            microphone: Self.microphone(settings.microphone, meetingInput: service.meetingMicrophone(for: candidate)),
+            microphone: Self.microphone(settings.microphone, meetingInput: service.meetingMicrophone(for: candidate),
+                                        seenInShares: seenInShares, text: text),
             consentReminder: UserDefaults.standard.bool(forKey: ForkDefaultsKey.meetingsConsentReminder),
-            seenInShares: inIsland && ForkMeetingIsland.showsInCaptures,
+            seenInShares: seenInShares,
             hasWindow: ForkMeetingAppsSupport.window(for: candidate, in: ForkMeetingRecorder.onScreenWindows(),
                                                      ownPID: ProcessInfo.processInfo.processIdentifier) != nil)
         let actions = OfferActions(record: { service.acceptOffer() }, notNow: { service.dismissOffer(.thisTime) },
@@ -363,21 +365,23 @@ extension ForkMeetingPresenter {
         let filmed = ForkMeetingServiceSupport.filmed(target: context.target, appName: context.appName,
                                                       noWindowToFilm: context.noWindowToFilm, strings: text)
         let announcement = context.announcement
-        let provider = ForkMeetingService.shared.machine.activeSession?.config.meeting
-            .map(ForkMeetingOfferText.reminderTitle)
-        return Self.undoCard(until: until, provider: provider, filmed: filmed, consent: announcement != nil, text: text,
+        let session = ForkMeetingService.shared.machine.activeSession
+        let line = ForkMeetingOfferText.undoLine(provider: session?.config.meeting.map(ForkMeetingOfferText.reminderTitle),
+                                                 choseAlways: session?.choseAlways == true, strings: text)
+        return Self.undoCard(until: until, line: line, filmed: filmed, consent: announcement != nil, text: text,
                              cancel: { ForkMeetingService.shared.cancelAutoStart() },
                              copy: { [weak self] in if let announcement { self?.copy(announcement) } })
     }
 
-    /// "Recording started · Started on its own · Always for Meet · Chrome
-    /// window · [Cancel (4 s)]": nobody pressed Record, the card says why it
-    /// records. With the consent reminder and its copy button while that
-    /// setting is on.
-    static func undoCard(until: Date, provider: String?, filmed: String, consent: Bool, text: ForkMeetingStrings,
+    /// "Recording started · Auto-start · Always for Meet · Chrome window ·
+    /// [Cancel (4 s)]": the card says why it records, nobody having pressed
+    /// Record, or "Always for Meet" just chosen and where to change it
+    /// (`ForkMeetingOfferText.undoLine`). With the consent reminder and its
+    /// copy button while that setting is on.
+    static func undoCard(until: Date, line: String?, filmed: String, consent: Bool, text: ForkMeetingStrings,
                          cancel: @escaping () -> Void, copy: @escaping () -> Void) -> ForkMeetingCard {
         var card = ForkMeetingCard(symbol: "record.circle", tint: Color(nsColor: .systemRed), title: text.noticeStarted,
-                                   lines: [provider.map(text.undoAutoStarted), filmed].compactMap { $0 })
+                                   lines: [line, filmed].compactMap { $0 })
         let seconds = ForkMeetingOfferTiming.secondsLeft(until: until, now: Date())
         card.actions = [ForkMeetingCard.Action(title: text.undo(seconds: seconds),
                                                countdown: ForkMeetingCard.Countdown(until: until) { now in
@@ -539,8 +543,9 @@ extension ForkMeetingPresenter {
 
     /// The microphone a start would record, by name: for "Automatic", the
     /// input the meeting's app records from (`meetingInput`), else the
-    /// system's.
-    private static func microphone(_ stored: String, meetingInput: String?) -> ForkMeetingOfferMicrophone {
+    /// system's. Seen in shares, by kind only (`ForkMeetingSharedText`).
+    private static func microphone(_ stored: String, meetingInput: String?, seenInShares: Bool,
+                                   text: ForkMeetingStrings) -> ForkMeetingOfferMicrophone {
         let input = ForkMeetingOfferInput.of(ForkMeetingMicrophoneChoice(stored: stored), meetingInput: meetingInput)
         if input == .off { return .off }
         switch AVCaptureDevice.authorizationStatus(for: .audio) {
@@ -556,6 +561,9 @@ extension ForkMeetingPresenter {
         case let .meetingApp(uid): device = AVCaptureDevice(uniqueID: uid) ?? system()
         case .off: device = nil
         }
-        return device.map { .named($0.localizedName) } ?? .off
+        guard let device else { return .off }
+        guard seenInShares else { return .named(device.localizedName) }
+        let builtIn = ForkDictationAudioDevices.inputs().first { $0.id == device.uniqueID }?.isBuiltIn == true
+        return .named(ForkMeetingSharedText.microphone(input, builtIn: builtIn, strings: text))
     }
 }

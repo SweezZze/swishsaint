@@ -351,8 +351,8 @@ extension ForkMeetingService {
             policies.set(policy, for: provider)
             policies.save(defaults)
             detection.resolver.policies = policies
-        case let .discard(folder):
-            discardCancelled(folder)
+        case let .discard(folder, askedAgain):
+            discardCancelled(folder, askedAgain: askedAgain)
         case .startCapture, .pauseCapture, .resumeCapture, .restartStream, .switchTarget, .stopCapture, .showPill,
              .notice, .announce, .notify, .writeSidecar, .beginFinalize:
             break
@@ -361,11 +361,13 @@ extension ForkMeetingService {
 
     /// "Cancel" after a start "Always" made: once its file is closed, the
     /// folder goes to the Trash (deleted if the volume has none), off the
-    /// main thread, then the notice says what became of it. While the app
-    /// quits, at once, before it ends: nothing is shown any more, the log
-    /// keeps a folder that stayed. It was never finalized nor added to the
-    /// recent captures.
-    private func discardCancelled(_ folder: URL) {
+    /// main thread, then the notice says what became of it, and that the
+    /// provider is offered again when "Cancel" took back its "Always". While
+    /// the app quits, waited for within the quit's bound (shared with the
+    /// file's close): a volume that hangs never holds the quit, and the
+    /// folder, marked `cancelled` at the click, goes at the next launch.
+    /// It was never finalized nor added to the recent captures.
+    private func discardCancelled(_ folder: URL, askedAgain: String?) {
         let discard = { [store, log] () -> ForkMeetingDiscardOutcome in
             store.release(folder)
             let manager = FileManager.default
@@ -376,14 +378,20 @@ extension ForkMeetingService {
             return outcome
         }
         if terminating {
-            _ = discard()
+            let done = ForkMeetingBoundedWait.run(timeout: quitDeadline.timeIntervalSinceNow) { finished in
+                DispatchQueue.global(qos: .userInitiated).async {
+                    _ = discard()
+                    finished()
+                }
+            }
+            if !done { log.notice("quit: a cancelled meeting's folder is left to the next launch") }
             return
         }
         DispatchQueue.global(qos: .utility).async { [weak self] in
             let outcome = discard()
             DispatchQueue.main.async {
                 guard let self, !self.terminating else { return }
-                self.presenter.showDiscarded(outcome)
+                self.presenter.showDiscarded(outcome, askedAgain: askedAgain)
             }
         }
     }

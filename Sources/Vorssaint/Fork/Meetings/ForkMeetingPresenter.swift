@@ -232,14 +232,17 @@ final class ForkMeetingPresenter {
     }
 
     /// After "Cancel", once the folder is gone, or not: the notice and
-    /// VoiceOver say what became of it.
-    func showDiscarded(_ outcome: ForkMeetingDiscardOutcome) {
+    /// VoiceOver say what became of it, once ("Recording cancelled" was
+    /// said at the click), and that `askedAgain`'s meetings are offered
+    /// again when "Cancel" took back its "Always".
+    func showDiscarded(_ outcome: ForkMeetingDiscardOutcome, askedAgain: String? = nil) {
         guard Thread.isMainThread else {
-            DispatchQueue.main.async { self.showDiscarded(outcome) }
+            DispatchQueue.main.async { self.showDiscarded(outcome, askedAgain: askedAgain) }
             return
         }
-        notice(.discarded(outcome))
-        announce(outcome.spoken(text))
+        let text = self.text
+        notice(.discarded(outcome), detail: outcome.detail(askedAgain: askedAgain, strings: text))
+        announce(outcome.spokenAfterCancel(askedAgain: askedAgain, strings: text))
     }
 
     /// Said to VoiceOver only: what the pill shows without a word VoiceOver
@@ -326,7 +329,13 @@ final class ForkMeetingPresenter {
             return present(make, height: ForkMeetingIsland.height(of: make({}), minimum: Self.savedCardHeight),
                            hold: Self.hold(for: notice))
         }
-        if ForkMeetingIsland.show(notice, detail: detail, text: text) {
+        // Seen in shares, the island names a microphone by its kind only.
+        var islandDetail = detail
+        if detail == nil, case let .microphone(name) = notice, ForkMeetingIsland.showsInCaptures {
+            let builtIn = ForkDictationAudioDevices.inputs().first { $0.name == name }?.isBuiltIn == true
+            islandDetail = ForkMeetingSharedText.detail(notice, microphoneBuiltIn: builtIn, strings: text)
+        }
+        if ForkMeetingIsland.show(notice, detail: islandDetail, text: text) {
             // The island has the newest word: an older one in the bubble
             // would contradict it.
             bubble.hide()
@@ -428,7 +437,7 @@ final class ForkMeetingPresenter {
                     dismiss()
                 })
             }
-        case .resumed, .microphone, .displayChanged, .neverOffered, .alwaysChosen, .announcementCopied:
+        case .resumed, .microphone, .displayChanged, .neverOffered, .alwaysChosen, .announcementCopied, .askedAgain:
             tint = .accentColor
         case let .discarded(outcome):
             tint = outcome == .kept ? .orange : .secondary

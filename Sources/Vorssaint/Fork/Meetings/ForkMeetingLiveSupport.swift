@@ -52,6 +52,12 @@ struct ForkMeetingLiveContext: Equatable {
     /// The filmed window's app quit: the picture holds its last frame, and
     /// the pill says why (not "window minimized").
     var sourceGone = false
+
+    // MARK: Fixes J
+
+    /// The detected meeting's service ("Google Meet"): what the pill names
+    /// under the pointer while screen shares see it.
+    var providerName: String?
 }
 
 /// What the pill shows, decided from the machine's state and the live
