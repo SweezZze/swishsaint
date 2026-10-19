@@ -860,8 +860,19 @@ final class ForkMeetingRecorder: @unchecked Sendable {
     /// The windows on screen, front to back as the window server orders
     /// them.
     static func onScreenWindows() -> [ForkMeetingWindowCandidate] {
-        guard let list = CGWindowListCopyWindowInfo([.optionOnScreenOnly, .excludeDesktopElements],
-                                                    kCGNullWindowID) as? [[String: Any]] else { return [] }
+        windows([.optionOnScreenOnly, .excludeDesktopElements])
+    }
+
+    /// Every window, as the window scanner lists them (`.optionAll`): those
+    /// on screen first, front to back, then the minimized ones and those on
+    /// another Space, which a detected app's meeting is filmed in too (the
+    /// stream follows a window wherever it is).
+    static func meetingWindows() -> [ForkMeetingWindowCandidate] {
+        windows([.optionAll, .excludeDesktopElements])
+    }
+
+    private static func windows(_ options: CGWindowListOption) -> [ForkMeetingWindowCandidate] {
+        guard let list = CGWindowListCopyWindowInfo(options, kCGNullWindowID) as? [[String: Any]] else { return [] }
         var regular: [pid_t: Bool] = [:]
         return list.compactMap { info -> ForkMeetingWindowCandidate? in
             guard let id = info[kCGWindowNumber as String] as? UInt32,
@@ -871,9 +882,12 @@ final class ForkMeetingRecorder: @unchecked Sendable {
             if regular[pid] == nil {
                 regular[pid] = NSRunningApplication(processIdentifier: pid)?.activationPolicy == .regular
             }
+            let title = info[kCGWindowName as String] as? String
             return ForkMeetingWindowCandidate(id: id, pid: pid, layer: info[kCGWindowLayer as String] as? Int ?? 0,
                                               alpha: info[kCGWindowAlpha as String] as? Double ?? 1,
-                                              bounds: bounds, ownerIsRegularApp: regular[pid] ?? false)
+                                              bounds: bounds, ownerIsRegularApp: regular[pid] ?? false,
+                                              onScreen: info[kCGWindowIsOnscreen as String] as? Bool ?? false,
+                                              titled: title.map { !$0.isEmpty } ?? false)
         }
     }
 

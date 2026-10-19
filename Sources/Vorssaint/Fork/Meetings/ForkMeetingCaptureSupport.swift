@@ -14,6 +14,11 @@ struct ForkMeetingWindowCandidate: Equatable {
     /// In points, top-left origin, as the window list gives it.
     var bounds: CGRect
     var ownerIsRegularApp: Bool
+    /// On screen now; else minimized, hidden, on another Space, or never
+    /// shown (an app's spare windows).
+    var onScreen = true
+    /// It has a title (Screen Recording allowed): one never shown has none.
+    var titled = true
 }
 
 /// A display and its frame, in the same space as `ForkMeetingWindowCandidate.bounds`.
@@ -479,17 +484,22 @@ enum ForkMeetingTrackSound: Equatable {
 /// (S3: a device change it could not follow, AirPods coming or going,
 /// leaves that tap deaf for good): a new tap of the same sound, a second
 /// later, twice at most. One that hears sound again earns its tries back,
-/// for the next change.
+/// for the next change, up to `total` new taps for the whole recording: a
+/// device that keeps failing is not rebuilt for hours.
 struct ForkMeetingTapRepair: Equatable {
     static let attempts = 2
     static let delay: TimeInterval = 1
+    /// New taps one recording may try, however often they heard again.
+    static let total = 10
 
     private(set) var used = 0
+    private(set) var tried = 0
 
     /// Whether another new tap may be tried now; counts it.
     mutating func tryAgain() -> Bool {
-        guard used < Self.attempts else { return false }
+        guard used < Self.attempts, tried < Self.total else { return false }
         used += 1
+        tried += 1
         return true
     }
 

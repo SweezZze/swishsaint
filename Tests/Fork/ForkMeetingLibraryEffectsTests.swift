@@ -162,6 +162,11 @@ enum ForkMeetingLibraryEffectsTests {
                         && ForkMeetingLibraryText.providerName(nil) == nil
                         && ForkMeetingLibraryText.providerName("later-app") == nil,
                      "a row names its service by its short name, and none it does not know")
+        let services = ["meet", "zoom", "teams", "slack", "facetime", "webex", "discord"]
+        suite.expect(services.allSatisfy { ForkMeetingLibraryText.providerName($0) != nil }
+                        && ForkMeetingLibraryText.providerName("facetime") == "FaceTime"
+                        && ForkMeetingLibraryText.providerName("web") == nil,
+                     "each of the seven services has its name; the other web calls, all written web, are not called by one of theirs")
         if let complete = entry(), let recovered = entry(recovered: true), let manual = entry(provider: nil) {
             let caption = ForkMeetingLibraryText.caption(complete, strings: english, language: .enUS)
             suite.expect(caption.hasPrefix("Meet · ") && caption.contains("410") && !caption.contains("Recovered"),

@@ -36,7 +36,9 @@ struct ForkMeetingResolution: Equatable {
 ///   another meeting of that browser shows with its code, the microphone
 ///   opened again since (two Meet in a row: the microphone is the new
 ///   one's). A title without a code, or another Meet's waiting room on the
-///   same microphone, never takes it from a call going on.
+///   same microphone, never takes it from a call going on. The other web
+///   calls (Zoom's web client, Whereby…) live on the microphone alone: their
+///   title stays on the tab once the call is over.
 /// - It **probably ends** when both have been gone for 20 s, or at once when
 ///   its window says the call is over and its microphone is free: an end
 ///   page with the microphone still open leaves it to the 20 s (another tab
@@ -48,6 +50,9 @@ struct ForkMeetingResolution: Equatable {
 /// - A meeting set aside ("Not now", or already offered) stays so until it
 ///   has been over for 10 minutes: coming back to its tab offers nothing.
 /// - Meetings are told apart by identity: one ending never ends another.
+/// - An app holds one meeting at a time, numbered by its birth (`zoom:500#2`,
+///   that Zoom's second): a meeting over, the next one in the same app is
+///   another, and its set-aside goes with it.
 struct ForkMeetingResolver {
     struct Tuning: Equatable {
         /// Readings that must agree before a meeting is born…
@@ -71,6 +76,9 @@ struct ForkMeetingResolver {
     private struct Track {
         let identity: ForkMeetingIdentity
         let provider: ForkMeetingProvider
+        /// An app's meeting: the app process it belongs to (`zoom:500`), one
+        /// meeting at a time; `nil` for a meeting in a browser.
+        let scope: String?
         /// The app whose microphone keeps it alive and whose sound is recorded.
         var family: String
         var pid: Int32
@@ -93,6 +101,7 @@ struct ForkMeetingResolver {
         init(identity: ForkMeetingIdentity, provider: ForkMeetingProvider, family: String, pid: Int32) {
             self.identity = identity
             self.provider = provider
+            scope = provider.identity == .appProcess ? ForkMeetingResolver.scope(provider, pid: pid) : nil
             self.family = family
             self.pid = pid
         }
@@ -107,6 +116,8 @@ struct ForkMeetingResolver {
     private var calendar: [ForkMeetingCalendarHint] = []
     /// Set-aside meetings, with when they ended (`nil` while alive).
     private var silenced: [ForkMeetingIdentity: Date?] = [:]
+    /// The meetings each app process has had: its next one is the one after.
+    private var births: [String: Int] = [:]
 
     init(table: ForkMeetingProviderTable = .current, ownPID: Int32 = ProcessInfo.processInfo.processIdentifier,
          policies: ForkMeetingPolicies = ForkMeetingPolicies(json: ForkMeetingPolicies.defaultJSON),
@@ -133,6 +144,7 @@ struct ForkMeetingResolver {
         microphoneSince = [:]
         calendar = []
         silenced = [:]
+        births = [:]
     }
 
     /// Takes a reading (a source left `nil` keeps what it said last; none at
@@ -140,6 +152,8 @@ struct ForkMeetingResolver {
     /// ones that ended.
     mutating func resolve(_ reading: ForkMeetingReading) -> ForkMeetingResolution {
         let now = reading.at
+        // An app's meeting is never met again once over: its set-aside goes.
+        let appMeetings = Set(tracks.values.filter { $0.scope != nil }.map(\.identity))
         if let hints = reading.calendar { calendar = hints }
         if let readMicrophones = reading.microphones { takeMicrophones(readMicrophones, at: now) }
         var ended: [ForkMeetingIdentity] = []
@@ -149,12 +163,14 @@ struct ForkMeetingResolver {
             ended += takeWindows(windows, at: now)
         }
         ended += live(at: now)
-        for identity in ended where silenced.keys.contains(identity) { silenced[identity] = .some(now) }
+        for identity in ended where silenced.keys.contains(identity) {
+            silenced[identity] = appMeetings.contains(identity) ? nil : .some(now)
+        }
         silenced = silenced.filter { _, endedAt in
             guard let endedAt else { return true }
             return now.timeIntervalSince(endedAt) < tuning.silenceAfterEnd
         }
-        return ForkMeetingResolution(candidates: candidates(), ended: ended.sorted { $0.value < $1.value },
+        return ForkMeetingResolution(candidates: candidates(at: now), ended: ended.sorted { $0.value < $1.value },
                                      onMicrophone: onMicrophone(at: now))
     }
 
@@ -171,12 +187,19 @@ struct ForkMeetingResolver {
         for provider in table.providers where provider.kind == .app {
             for microphone in microphones where provider.owns(microphone) {
                 let pid = microphone.appPID ?? microphone.pid
-                let identity = ForkMeetingIdentity("\(provider.id):\(pid)")
+                let identity = appIdentity(provider, pid: pid)
                 guard !seen.contains(identity) else { continue }
                 seen.insert(identity)
                 var track = tracks[identity] ?? newTrack(identity, provider: provider,
                                                          family: microphone.appBundle ?? microphone.processBundle ?? "",
                                                          pid: pid)
+                // Of a provider's two apps, the one using the microphone is
+                // the call's: heard, and filmed.
+                let held = microphones.contains { provider.owns($0) && ($0.appPID ?? $0.pid) == track.pid }
+                if track.pid != pid, !held {
+                    track.pid = pid
+                    track.family = microphone.appBundle ?? track.family
+                }
                 if track.firstMicrophoneAt == nil { track.firstMicrophoneAt = now }
                 track.microphoneReadings += 1
                 tracks[identity] = track
@@ -199,6 +222,8 @@ struct ForkMeetingResolver {
         }
         var sightings: [ForkMeetingIdentity: Sighting] = [:]
         var exits = Set<UInt32>()
+        // The app meetings this reading gave a number to, before their track.
+        var numbered: [String: ForkMeetingIdentity] = [:]
         for window in windows where window.pid != ownPID {
             for provider in table.providers where provider.owns(windowBundle: window.bundle) {
                 guard let rules = provider.titles else { continue }
@@ -213,7 +238,14 @@ struct ForkMeetingResolver {
                     // still that meeting, never a new one to offer.
                     // Only under the name it had: another title in that
                     // window (another tab, another page) is not that meeting.
-                    var identity = Self.identity(provider, window: window, code: code)
+                    var identity: ForkMeetingIdentity
+                    if provider.identity == .appProcess {
+                        let scope = Self.scope(provider, pid: window.pid)
+                        identity = numbered[scope] ?? appIdentity(provider, pid: window.pid)
+                        numbered[scope] = identity
+                    } else {
+                        identity = Self.identity(provider, window: window, code: code)
+                    }
                     var adopted = false
                     if code == nil, let name, let same = tracks.values.first(where: {
                         $0.provider == provider && $0.windowID == window.windowID && $0.meetCode != nil
@@ -303,15 +335,29 @@ struct ForkMeetingResolver {
         return ended
     }
 
+    /// A meeting in a browser: `meet:<code>`, else `<id>:<pid>:<title>`.
     static func identity(_ provider: ForkMeetingProvider, window: ForkMeetingWindowSignal,
                          code: String?) -> ForkMeetingIdentity {
-        switch provider.identity {
-        case .codeOrWindow:
-            if let code { return ForkMeetingIdentity("\(provider.id):\(code)") }
-            return ForkMeetingIdentity("\(provider.id):\(window.pid):\(ForkMeetingTitleRules.cleaned(window.title))")
-        case .appProcess:
-            return ForkMeetingIdentity("\(provider.id):\(window.pid)")
-        }
+        if let code { return ForkMeetingIdentity("\(provider.id):\(code)") }
+        return ForkMeetingIdentity("\(provider.id):\(window.pid):\(ForkMeetingTitleRules.cleaned(window.title))")
+    }
+
+    /// The app process an app's meeting belongs to: one meeting at a time.
+    /// A provider of two apps (Webex and Webex Meetings, which may both hold
+    /// the microphone for one call) has one meeting at a time between them.
+    static func scope(_ provider: ForkMeetingProvider, pid: Int32) -> String {
+        provider.bundles.count > 1 ? provider.id : "\(provider.id):\(pid)"
+    }
+
+    /// The meeting of this app process going on, else its next one, by
+    /// birth: `zoom:500#2` is that Zoom's second meeting, never set aside
+    /// by the first.
+    private mutating func appIdentity(_ provider: ForkMeetingProvider, pid: Int32) -> ForkMeetingIdentity {
+        let scope = Self.scope(provider, pid: pid)
+        if let track = tracks.values.first(where: { $0.scope == scope }) { return track.identity }
+        let birth = (births[scope] ?? 0) + 1
+        births[scope] = birth
+        return ForkMeetingIdentity("\(scope)#\(birth)")
     }
 
     // MARK: - Life
@@ -334,7 +380,11 @@ struct ForkMeetingResolver {
         }
         var ended: [ForkMeetingIdentity] = []
         for (identity, var track) in tracks where track.bornAt != nil {
-            let alive = track.windowSeen || keepsAlive(track)
+            // The other web calls' titles are plain words a tab keeps once
+            // the call is over ("Zoom"): their window names them and is the
+            // one filmed, only the browser's microphone keeps them alive.
+            let shown = track.windowSeen && (track.provider.kind == .app || track.provider.titlesMakeMeetings)
+            let alive = shown || keepsAlive(track)
             if alive {
                 track.absentSince = nil
             } else {
@@ -377,7 +427,9 @@ struct ForkMeetingResolver {
         case .web:
             return microphoneSince[track.family] != nil
         case .app:
-            return microphones.contains { track.provider.owns($0) && ($0.appPID ?? $0.pid) == track.pid }
+            return microphones.contains {
+                track.provider.owns($0) && Self.scope(track.provider, pid: $0.appPID ?? $0.pid) == track.scope
+            }
         }
     }
 
@@ -414,19 +466,23 @@ struct ForkMeetingResolver {
 
     // MARK: - Candidates
 
-    private func candidates() -> [ForkMeetingCandidate] {
+    private func candidates(at now: Date) -> [ForkMeetingCandidate] {
         let born = tracks.values.compactMap { track -> ForkMeetingCandidate? in
             guard let bornAt = track.bornAt else { return nil }
             let policy = policies.policy(for: track.provider)
             guard policy != .never else { return nil }
+            // Google Meet by its code; an app or another web call by the
+            // only event going on with its link.
             let hint = track.meetCode.flatMap { code in calendar.first { $0.meetCode == code } }
+                ?? track.provider.calendarLink.flatMap { ForkMeetingCalendarLink.event($0, at: now, in: calendar) }
             return ForkMeetingCandidate(
                 identity: track.identity, provider: track.provider.id, providerName: track.provider.name,
                 providerShortName: track.provider.shortName, titleName: track.titleName, meetCode: track.meetCode,
                 calendarTitle: hint?.title, appBundle: track.family, pid: track.pid,
                 windowID: track.windowID, windowBundle: track.windowBundle, defaultSound: track.provider.defaultSound,
                 policy: policy, silenced: silenced.keys.contains(track.identity), bornAt: bornAt,
-                alwaysProof: track.provider.alwaysProof)
+                alwaysProof: track.provider.alwaysProof,
+                microphoneSince: track.provider.kind == .app && microphoneOpen(track) ? track.firstMicrophoneAt : nil)
         }
         return born.sorted { $0.bornAt != $1.bornAt ? $0.bornAt > $1.bornAt : $0.identity.value < $1.identity.value }
     }

@@ -439,7 +439,8 @@ final class ForkMeetingPresenter {
                     dismiss()
                 })
             }
-        case .resumed, .microphone, .displayChanged, .neverOffered, .alwaysChosen, .announcementCopied, .askedAgain:
+        case .resumed, .microphone, .displayChanged, .neverOffered, .neverOfferedWebCalls, .alwaysChosen,
+             .announcementCopied, .askedAgain:
             tint = .accentColor
         case let .discarded(outcome):
             tint = outcome == .kept ? .orange : .secondary

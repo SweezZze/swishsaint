@@ -368,7 +368,7 @@ private struct ForkMeetingDetectionSection: View {
                 caption(text.detectionLookalike)
             }
             if let limit {
-                Label(limit, systemImage: "info.circle")
+                Label(limit + " " + text.detectionAlwaysUnavailable, systemImage: "info.circle")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
@@ -421,7 +421,10 @@ private struct ForkMeetingDetectionSection: View {
     /// provider has them (Discord is "Never" from the start).
     private var policyCaptions: [String] {
         let policies = ForkMeetingPolicies(json: apps)
-        let used = Set(Self.rows.compactMap { $0.providers.first.map(policies.policy(for:)) })
+        let signal = ForkMeetingMicWatcher.isSupported
+        let used = Set(Self.rows.compactMap { row in
+            row.providers.first.map { row.shown(policies.policy(for: $0), microphoneSignal: signal) }
+        })
         let lines: [(ForkMeetingPolicy, String, String)] = [
             (.ask, text.policyAsk, text.policyAskCaption), (.always, text.policyAlways, text.policyAlwaysCaption),
             (.never, text.policyNever, text.policyNeverCaption),
@@ -473,10 +476,14 @@ private struct ForkMeetingProviderRow: View {
     @Binding var apps: String
     let microphoneSignal: Bool
 
+    @AppStorage(ForkDefaultsKey.meetingsSystemAudio) private var sound = ForkMeetingSystemAudio.fallback.rawValue
     @State private var icon: NSImage?
 
     private var policy: Binding<ForkMeetingPolicy> {
-        Binding(get: { row.providers.first.map(ForkMeetingPolicies(json: apps).policy(for:)) ?? .ask },
+        Binding(get: {
+                    row.shown(row.providers.first.map(ForkMeetingPolicies(json: apps).policy(for:)) ?? .ask,
+                              microphoneSignal: microphoneSignal)
+                },
                 set: { policy in
                     var policies = ForkMeetingPolicies(json: apps)
                     policies.set(policy, for: row.id)
@@ -488,7 +495,7 @@ private struct ForkMeetingProviderRow: View {
         let recognized = row.recognized(microphoneSignal: microphoneSignal)
         Picker(selection: policy) {
             Text(text.policyAsk).tag(ForkMeetingPolicy.ask)
-            if row.allowsAlways {
+            if row.showsAlways(microphoneSignal: microphoneSignal) {
                 Text(text.policyAlways).tag(ForkMeetingPolicy.always)
             }
             Text(text.policyNever).tag(ForkMeetingPolicy.never)
@@ -511,11 +518,15 @@ private struct ForkMeetingProviderRow: View {
                     } else if row.name == nil {
                         note(text.detectionOtherWebCallsCaption)
                     }
-                    if recognized, row.recordsWholeMac {
+                    if recognized, row.warnsWholeMac(policy.wrappedValue,
+                                                     sound: ForkMeetingSystemAudio(rawValue: sound) ?? .fallback) {
                         Label(text.detectionFaceTimeWholeMac, systemImage: "exclamationmark.triangle.fill")
                             .font(.caption)
                             .foregroundStyle(.orange)
                             .fixedSize(horizontal: false, vertical: true)
+                    }
+                    if recognized, row.notesRelayedCalls(policy.wrappedValue) {
+                        note(text.detectionFaceTimeRelayed)
                     }
                 }
             }

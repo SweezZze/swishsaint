@@ -338,11 +338,11 @@ extension ForkMeetingService {
             // left out anyway.
             let excluded = presenter.windowNumbers.compactMap { CGWindowID(exactly: $0) }
             // A detected meeting is filmed in its own window (an app found
-            // by its microphone, its largest one), its app heard, and
+            // by its microphone, its own most in front), its app heard, and
             // "Meeting microphone (auto)" records the input its app uses.
             let meeting = config.meeting
             let window = meeting.flatMap {
-                ForkMeetingAppsSupport.window(for: $0, in: ForkMeetingRecorder.onScreenWindows(),
+                ForkMeetingAppsSupport.window(for: $0, in: ForkMeetingRecorder.meetingWindows(),
                                               ownPID: ProcessInfo.processInfo.processIdentifier,
                                               excluded: Set(excluded))
             }
@@ -373,7 +373,8 @@ extension ForkMeetingService {
             context.recordsMicrophone = start.microphone != nil
             filmedWindow = start.window
             context.displayID = Self.displayID(of: start.window)
-            context.appName = start.appName
+            // A meeting app by its brand ("Zoom"), not its process ("zoom.us").
+            context.appName = ForkMeetingAppsSupport.appName(for: config.meeting) ?? start.appName
             // A window was asked for, none could be filmed: said at the start.
             context.noWindowToFilm = config.settings.target == .window && start.target == .display
             filmedDisplay = context.displayID ?? CGMainDisplayID()

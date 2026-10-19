@@ -19,7 +19,7 @@ extension ForkMeetingTitleRules {
             return normalized == "zoom" || zoomMeetingTitles.contains(normalized) ? .meeting(code: nil, name: nil) : .none
         case .whereby: return normalized == "whereby" ? .meeting(code: nil, name: nil) : .none
         case .jitsiMeet: return jitsiMeet(cleaned(title), normalized: normalized)
-        case .teamsWeb: return normalized.contains("teams.microsoft.com") ? .meeting(code: nil, name: nil) : .none
+        case .teamsWeb: return isTeamsWeb(normalized) ? .meeting(code: nil, name: nil) : .none
         }
     }
 
@@ -46,17 +46,27 @@ extension ForkMeetingTitleRules {
         "zoom會議", "zoom網路研討會",
     ]
 
-    /// A part of the title, between Slack's separators, that starts with
-    /// the word "huddle": "Huddle", "Huddle: #design". A channel's name
-    /// keeps its "#" ("#huddle-notes"), and "#meeting" is no huddle.
+    /// "Huddle", "Huddle: #design" or "Huddle – Acme" at the head of the
+    /// title, as Slack titles a huddle's window. Slack writes a channel's
+    /// name without its "#" ("huddle-notes (Channel) - Acme - Slack"), and a
+    /// channel's name may hold a "-": only "|" and "–" part the title, and a
+    /// channel called "huddle" or "huddle-notes" is no huddle.
     private static func isHuddle(_ normalized: String) -> Bool {
-        let separators: Set<Character> = ["|", "-", "\u{2013}", "\u{2014}", "\u{00B7}"]
-        return normalized.split(whereSeparator: { separators.contains($0) }).contains { part in
-            let words = part.trimmingCharacters(in: .whitespaces)
-            guard words.hasPrefix("huddle") else { return false }
-            let rest = words.dropFirst("huddle".count)
-            return rest.first.map { $0 == " " || $0 == ":" } ?? true
-        }
+        let separators: Set<Character> = ["|", "\u{2013}"]
+        guard let head = normalized.split(omittingEmptySubsequences: false, whereSeparator: separators.contains).first
+        else { return false }
+        let words = head.trimmingCharacters(in: .whitespaces)
+        return words == "huddle" || words.hasPrefix("huddle:")
+    }
+
+    /// Teams on the web: its address in the title, or "<page> | Microsoft
+    /// Teams" as its pages are titled. Its chat is titled so too: like every
+    /// web call, it needs the browser's microphone in use.
+    private static func isTeamsWeb(_ normalized: String) -> Bool {
+        if normalized.contains("teams.microsoft.com") { return true }
+        let suffix = "| microsoft teams"
+        guard normalized.hasSuffix(suffix) else { return false }
+        return !normalized.dropLast(suffix.count).trimmingCharacters(in: .whitespaces).isEmpty
     }
 
     /// "Jitsi Meet" alone, or "<room> | Jitsi Meet" as its rooms are titled:

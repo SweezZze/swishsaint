@@ -117,6 +117,8 @@ enum ForkMeetingNotice: Equatable {
     case soundLost
     /// "Never for Meet" was chosen; the provider's short name.
     case neverOffered(String)
+    /// "Never for other web calls" was chosen: one choice for them all.
+    case neverOfferedWebCalls
     /// "Always for Meet" was chosen; the provider's short name.
     case alwaysChosen(String)
     /// After "Cancel", once the folder is gone (or not).
@@ -142,6 +144,7 @@ enum ForkMeetingNotice: Equatable {
         case let .failure(failure): return failure.summary(s)
         case .soundLost: return s.noticeSoundLost
         case let .neverOffered(provider): return s.noticeNever(provider)
+        case .neverOfferedWebCalls: return s.noticeNeverWebCalls
         case let .alwaysChosen(provider): return s.offerAlways(provider)
         case .discarded(.trashed): return s.noticeDiscardedTrash
         case .discarded(.deleted): return s.noticeDiscardedDeleted
@@ -157,7 +160,7 @@ enum ForkMeetingNotice: Equatable {
         switch self {
         case let .microphone(name): return name
         case let .diskLow(minutes): return s.diskMinutes(minutes)
-        case .neverOffered, .alwaysChosen, .askedAgain: return s.noticeNeverDetail
+        case .neverOffered, .neverOfferedWebCalls, .alwaysChosen, .askedAgain: return s.noticeNeverDetail
         case .discarded(.kept): return s.noticeDiscardKeptDetail
         case .announcementCopied: return s.noticeAnnouncementCopiedDetail
         case .started, .resumed, .saved, .recovered, .microphoneSilent, .displayChanged, .sourceGone, .failure,
@@ -194,6 +197,8 @@ enum ForkMeetingAnnouncement: Equatable {
     /// once it is gone (`ForkMeetingDiscardOutcome.spokenAfterCancel`).
     case discarded
     case neverOffered(String)
+    /// "Never for other web calls".
+    case neverOfferedWebCalls
     /// The meeting came back during the countdown: it goes on, so does
     /// the recording.
     case meetingBack
@@ -226,6 +231,7 @@ enum ForkMeetingAnnouncement: Equatable {
         case .continued: return s.voiceContinued
         case .discarded: return s.voiceCancelled
         case let .neverOffered(provider): return s.voiceNever(provider)
+        case .neverOfferedWebCalls: return s.voiceNeverWebCalls
         case .meetingBack: return s.voiceMeetingBack
         case let .askedAgain(provider): return s.voiceAskAgain(provider)
         }
@@ -299,9 +305,11 @@ enum ForkMeetingDismissal: Equatable {
 ///   "Always" was chosen in the offer, the provider is offered again
 ///   ("ask"), and that is said;
 /// - "Always" starts on its own only a meeting that proves who it is (its
-///   Meet code in the title, or an app's own meeting; the other web calls
-///   never) whose app has used the microphone for a second, on a screen not
-///   locked: otherwise, and once an offer was shown, it waits for a click.
+///   Meet code in the title, an app's meeting window, an app's microphone
+///   open for 15 s; FaceTime and the other web calls never) whose app has
+///   used the microphone for a second, on a screen not locked: otherwise,
+///   and once an offer was shown, it waits for a click. An app's call that
+///   may still prove itself is waited for, not offered.
 struct ForkMeetingMachine {
     /// An unanswered offer folds after this long.
     static let offerCollapse: TimeInterval = 20
@@ -943,7 +951,9 @@ struct ForkMeetingMachine {
     /// From idle: offers the most recent meeting not set aside, or starts it
     /// when its provider is set to "Always" and nothing refuses the start:
     /// it proves who it is (Meet's code in its title, as a page can call
-    /// itself "Meet – x", or an app of its own; the other web calls never),
+    /// itself "Meet – x"; an app's meeting window, or its microphone open
+    /// 15 s, as a test of it in the app's settings is not; FaceTime and the
+    /// other web calls never),
     /// its app has used the microphone for a second (a page can copy a
     /// title, not a call) and the screen is not locked (nobody to cancel).
     private mutating func offerOrStart(_ candidates: [ForkMeetingCandidate], request: ForkMeetingStartRequest,
@@ -952,9 +962,15 @@ struct ForkMeetingMachine {
             return []
         }
         let blocked = Self.refusal(request)
-        if candidate.policy == .always, blocked == nil, !locked, candidate.provesItself,
+        if candidate.policy == .always, blocked == nil, !locked,
            request.facts.meetingsOnMicrophone.contains(candidate.identity) {
-            return [.silence(candidate.identity)] + start(origin: .always, request: request, meeting: candidate)
+            if candidate.provesItself(at: now) {
+                return [.silence(candidate.identity)] + start(origin: .always, request: request, meeting: candidate)
+            }
+            // An app's call not proved yet (Zoom's meeting window not read
+            // yet, Teams' microphone open under 15 s): waited for. A
+            // microphone test closes it before, and is then only offered.
+            if candidate.awaitsProof(at: now) { return [] }
         }
         // Set aside as soon as it is offered: coming back to its tab, or
         // leaving and rejoining within 10 minutes, offers nothing new.
@@ -980,8 +996,10 @@ struct ForkMeetingMachine {
             }
             var updated = offer
             updated.candidate = current
-            // The set-aside it asked for, read back or not yet.
+            // The set-aside it asked for, read back or not yet; and the
+            // microphone's run, which only "Always" waits on, never redraws it.
             updated.candidate.silenced = true
+            updated.candidate.microphoneSince = offer.candidate.microphoneSince
             updated.blocked = Self.refusal(request)
             guard updated != offer else { return [] }
             phase = .offering(updated)
@@ -998,7 +1016,7 @@ struct ForkMeetingMachine {
             return startOffered(.offered, request: request, offer: offer)
 
         case let .always(request):
-            // Not offered for the other web calls: there it only records.
+            // Not offered for FaceTime and the other web calls: there it only records.
             guard candidate.alwaysProof != .none else { return startOffered(.offered, request: request, offer: offer) }
             let effects: [Effect] = [.setPolicy(.always, provider: candidate.provider)]
                 + startOffered(.always, request: request, offer: offer)
@@ -1022,9 +1040,12 @@ struct ForkMeetingMachine {
             case .thisTime:
                 return [.hideOffer, .silence(candidate.identity)]
             case .never:
-                return [.hideOffer, .setPolicy(.never, provider: candidate.provider),
-                        .notice(.neverOffered(candidate.providerShortName)),
-                        .announce(.neverOffered(candidate.providerShortName))]
+                // The other web calls share one choice: said for them all,
+                // never as if it were Jitsi Meet's alone.
+                let said: (ForkMeetingNotice, ForkMeetingAnnouncement) = ForkMeetingOfferText.isOtherWebCall(candidate)
+                    ? (.neverOfferedWebCalls, .neverOfferedWebCalls)
+                    : (.neverOffered(candidate.providerShortName), .neverOffered(candidate.providerShortName))
+                return [.hideOffer, .setPolicy(.never, provider: candidate.provider), .notice(said.0), .announce(said.1)]
             }
 
         case let .endProbable(identity, _):

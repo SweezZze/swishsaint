@@ -30,7 +30,9 @@ struct ForkMeetingProvider: Equatable {
         /// `<id>:<code>` when the title shows a code, else
         /// `<id>:<pid>:<title>`, the title as read (Chrome's cut kept).
         case codeOrWindow
-        /// `<id>:<pid>`: one meeting at a time per app process.
+        /// `<id>:<pid>#<birth>`: one meeting at a time per app process,
+        /// each one after the other numbered (`zoom:500#2`); `<id>#<birth>`
+        /// for a provider of two apps (`webex#1`).
         case appProcess
     }
 
@@ -56,6 +58,12 @@ struct ForkMeetingProvider: Equatable {
     /// only name it and point at its window once its microphone made it
     /// (Slack's "Huddle", which a channel may be called).
     var titlesMakeMeetings = true
+    /// The link a calendar event holds for one of its meetings (Zoom's
+    /// `zoom.us/j/`…): with "Name with the calendar", the event going on
+    /// that holds one names the meeting. Google Meet goes by its code.
+    var calendarLink: ForkMeetingCalendarLink? = nil
+    /// Of its apps, the one whose icon the page shows first (the new Teams).
+    var iconBundle: String? = nil
 
     /// What lets "Always" start one of its meetings on its own, once its
     /// microphone has been open for a second on a screen not locked.
@@ -63,18 +71,27 @@ struct ForkMeetingProvider: Equatable {
         /// Google Meet: its code in the title. A page may call itself
         /// "Meet – x"; the code is Meet's own.
         case meetCode
-        /// An app's meeting: the app itself, its window and its own
-        /// microphone, which no web page can be.
-        case ownApp
-        /// The other web calls: plain words any page may use, and no code
-        /// to check. "Always" is not offered for them: they are offered.
+        /// An app whose meetings have a window of their own (Zoom's meeting
+        /// window, Slack's huddle): that window, which testing the
+        /// microphone in its settings never opens.
+        case meetingWindow
+        /// An app without one (Teams, Webex, Discord): its microphone open
+        /// for `ForkMeetingCandidate.alwaysMicrophone`, longer than a test.
+        case longMicrophone
+        /// FaceTime, whose system process carries an iPhone call relayed
+        /// too, and the other web calls, plain words any page may use with
+        /// no code to check. "Always" is not offered for them: they are
+        /// offered.
         case none
     }
 
     var alwaysProof: AlwaysProof {
         switch kind {
-        case .app: return .ownApp
-        case .web: return titles == .googleMeet ? .meetCode : .none
+        case .app:
+            guard processBundles.isEmpty else { return .none }
+            return titles != nil ? .meetingWindow : .longMicrophone
+        case .web:
+            return titles == .googleMeet ? .meetCode : .none
         }
     }
 
@@ -137,14 +154,16 @@ extension ForkMeetingProvider {
     /// their sound are Zoom's (S3).
     static let zoom = ForkMeetingProvider(
         id: "zoom", name: "Zoom", shortName: "Zoom", kind: .app, bundles: ["us.zoom.xos"], webAppHosts: [:],
-        processBundles: [], titles: .zoomApp, identity: .appProcess, defaultSound: .app, defaultPolicy: .ask)
+        processBundles: [], titles: .zoomApp, identity: .appProcess, defaultSound: .app, defaultPolicy: .ask,
+        calendarLink: .zoom)
 
     /// The new Teams and the classic one: its microphone. Its titles say
     /// as much in a chat as in a call, so they are not read.
     static let teams = ForkMeetingProvider(
         id: "teams", name: "Microsoft Teams", shortName: "Teams", kind: .app,
         bundles: ["com.microsoft.teams2", "com.microsoft.teams"], webAppHosts: [:], processBundles: [], titles: nil,
-        identity: .appProcess, defaultSound: .app, defaultPolicy: .ask)
+        identity: .appProcess, defaultSound: .app, defaultPolicy: .ask, calendarLink: .teams,
+        iconBundle: "com.microsoft.teams2")
 
     /// A huddle: Slack's microphone (its audio helper is Slack's); a
     /// "Huddle" window names it and is the one filmed, never makes it.
@@ -156,6 +175,7 @@ extension ForkMeetingProvider {
     /// A call runs in `avconferenced` (and `callservicesd`), system
     /// processes no app owns: theirs counts as FaceTime's only while
     /// FaceTime is open. Their sound is no app's: the whole Mac is recorded.
+    /// An iPhone call relayed runs there too: offered, never "Always".
     static let faceTime = ForkMeetingProvider(
         id: "facetime", name: "FaceTime", shortName: "FaceTime", kind: .app, bundles: ["com.apple.FaceTime"],
         webAppHosts: [:], processBundles: ["com.apple.avconferenced", "com.apple.TelephonyUtilities"], titles: nil,
@@ -165,7 +185,7 @@ extension ForkMeetingProvider {
     static let webex = ForkMeetingProvider(
         id: "webex", name: "Webex", shortName: "Webex", kind: .app,
         bundles: ["Cisco-Systems.Spark", "com.webex.meetingmanager"], webAppHosts: [:], processBundles: [],
-        titles: nil, identity: .appProcess, defaultSound: .app, defaultPolicy: .ask)
+        titles: nil, identity: .appProcess, defaultSound: .app, defaultPolicy: .ask, calendarLink: .webex)
 
     /// Off by default: much of its voice chat is leisure.
     static let discord = ForkMeetingProvider(
@@ -178,15 +198,15 @@ extension ForkMeetingProvider {
     /// titles are plain words an article may use too, so a title only ever
     /// makes a meeting with the browser's microphone in use.
     static let otherWebCalls: [ForkMeetingProvider] = [
-        web("Zoom", .zoomWeb), web("Whereby", .whereby), web("Jitsi Meet", .jitsiMeet),
-        web("Microsoft Teams", .teamsWeb, shortName: "Teams"),
+        web("Zoom", .zoomWeb, link: .zoom), web("Whereby", .whereby, link: .whereby),
+        web("Jitsi Meet", .jitsiMeet, link: .jitsi), web("Microsoft Teams", .teamsWeb, shortName: "Teams", link: .teams),
     ]
 
-    private static func web(_ name: String, _ titles: ForkMeetingTitleRuleSet,
-                            shortName: String? = nil) -> ForkMeetingProvider {
+    private static func web(_ name: String, _ titles: ForkMeetingTitleRuleSet, shortName: String? = nil,
+                            link: ForkMeetingCalendarLink) -> ForkMeetingProvider {
         ForkMeetingProvider(id: "web", name: name, shortName: shortName ?? name, kind: .web, bundles: browsers,
                             webAppHosts: webAppHosts, processBundles: [], titles: titles, identity: .codeOrWindow,
-                            defaultSound: .app, defaultPolicy: .ask, titlesMakeMeetings: false)
+                            defaultSound: .app, defaultPolicy: .ask, titlesMakeMeetings: false, calendarLink: link)
     }
 }
 
@@ -275,9 +295,16 @@ struct ForkMeetingPolicyRow: Equatable {
     }
 
     /// The apps whose icon stands for the row, the first installed one
-    /// shown; none for the browsers' rows.
+    /// shown (the new Teams before the classic one); none for the browsers'
+    /// rows.
     var appBundles: [String] {
-        providers.first?.kind == .app ? providers.flatMap { $0.bundles.sorted() } : []
+        guard providers.first?.kind == .app else { return [] }
+        return providers.flatMap { provider in
+            provider.bundles.sorted { first, second in
+                let preferred = (first == provider.iconBundle, second == provider.iconBundle)
+                return preferred.0 != preferred.1 ? preferred.0 : first < second
+            }
+        }
     }
 
     /// Whether its meetings are recognized on a Mac that cannot say which
@@ -288,7 +315,8 @@ struct ForkMeetingPolicyRow: Equatable {
     }
 
     /// Whether "Always" is one of its choices: not for the other web calls,
-    /// which nothing can tell from a page that copies their title.
+    /// which nothing can tell from a page that copies their title, nor for
+    /// FaceTime, which an iPhone call relayed looks like.
     var allowsAlways: Bool {
         providers.allSatisfy { $0.alwaysProof != .none }
     }
@@ -296,6 +324,41 @@ struct ForkMeetingPolicyRow: Equatable {
     /// FaceTime's calls record the whole Mac: the page says so.
     var recordsWholeMac: Bool {
         providers.contains { $0.defaultSound == .all }
+    }
+
+    /// FaceTime's system process carries an iPhone call relayed too: the
+    /// page says it may be offered.
+    var offersRelayedCalls: Bool {
+        providers.contains { !$0.processBundles.isEmpty }
+    }
+
+    // MARK: Fixes K
+
+    /// Whether the page shows "Always": not on a Mac that cannot say which
+    /// app uses the microphone (before macOS 14.4), where it never starts
+    /// anything (it needs the microphone), Meet and Zoom included.
+    func showsAlways(microphoneSignal: Bool) -> Bool {
+        allowsAlways && microphoneSignal
+    }
+
+    /// The choice the row shows: an "Always" it does not show reads as
+    /// "Offer", as it acts.
+    func shown(_ policy: ForkMeetingPolicy, microphoneSignal: Bool) -> ForkMeetingPolicy {
+        policy == .always && !showsAlways(microphoneSignal: microphoneSignal) ? .ask : policy
+    }
+
+    /// FaceTime's warning that the whole Mac is recorded: while its calls
+    /// may be offered, with the meeting app's sound chosen (the whole Mac
+    /// for FaceTime). "Whole Mac" chosen says it already; no sound records
+    /// none of it.
+    func warnsWholeMac(_ policy: ForkMeetingPolicy, sound: ForkMeetingSystemAudio) -> Bool {
+        recordsWholeMac && policy != .never && sound == .app
+    }
+
+    /// "A phone call relayed from your iPhone may be offered too", while
+    /// FaceTime's calls may be.
+    func notesRelayedCalls(_ policy: ForkMeetingPolicy) -> Bool {
+        offersRelayedCalls && policy != .never
     }
 }
 
@@ -341,6 +404,45 @@ struct ForkMeetingPolicies: Equatable {
 
     func save(_ defaults: UserDefaults = .standard) {
         defaults.set(json, forKey: ForkDefaultsKey.meetingsApps)
+    }
+}
+
+// MARK: Fixes K
+
+/// The meeting links a calendar event may hold, other than Google Meet's
+/// (which gives a code): an app's or a web call's. Only the kind of link
+/// leaves the calendar's queue, never the link.
+enum ForkMeetingCalendarLink: String, CaseIterable, Equatable {
+    case zoom, teams, webex, whereby, jitsi
+
+    /// The links found in an event's link, place or notes: `zoom.us/j/`,
+    /// `teams.microsoft.com/l/meetup-join`, `webex.com/meet` or a
+    /// `<site>.webex.com/…/j.php`, `whereby.com/`, `meet.jit.si/`.
+    static func found(in text: String) -> Set<ForkMeetingCalendarLink> {
+        let words = text.lowercased().split { $0.isWhitespace || "<>\"'()[]".contains($0) }
+        var links = Set<ForkMeetingCalendarLink>()
+        for word in words {
+            if word.contains("zoom.us/j/") { links.insert(.zoom) }
+            if word.contains("teams.microsoft.com/l/meetup-join") { links.insert(.teams) }
+            if word.contains("webex.com/meet") || (word.contains(".webex.com/") && word.contains("/j.php")) {
+                links.insert(.webex)
+            }
+            if word.contains("whereby.com/") { links.insert(.whereby) }
+            if word.contains("meet.jit.si/") { links.insert(.jitsi) }
+        }
+        return links
+    }
+
+    /// The event going on (10 minutes either way) that holds this link,
+    /// when it is the only one; two of them, or none, name nothing.
+    static func event(_ link: ForkMeetingCalendarLink, at now: Date,
+                      in hints: [ForkMeetingCalendarHint]) -> ForkMeetingCalendarHint? {
+        let margin: TimeInterval = 10 * 60
+        let going = hints.filter {
+            $0.links.contains(link) && $0.startsAt.addingTimeInterval(-margin) <= now
+                && now <= $0.endsAt.addingTimeInterval(margin)
+        }
+        return going.count == 1 ? going[0] : nil
     }
 }
 

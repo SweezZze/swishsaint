@@ -335,7 +335,8 @@ enum ForkMeetingOfferText {
 
     /// "Always for Zoom" is in the menu only for a meeting it could start on
     /// its own one day: never for the other web calls (Whereby, Jitsi…),
-    /// which nothing tells from a page that copies their title.
+    /// which nothing tells from a page that copies their title, nor for
+    /// FaceTime, which an iPhone call relayed looks like.
     static func showsAlways(_ offer: ForkMeetingOffer) -> Bool {
         offer.candidate.alwaysProof != .none
     }
@@ -354,6 +355,20 @@ enum ForkMeetingOfferText {
     /// The folded offer's words: the provider's short name ("Meet").
     static func reminderTitle(_ candidate: ForkMeetingCandidate) -> String {
         candidate.providerShortName.isEmpty ? candidate.providerName : candidate.providerShortName
+    }
+
+    // MARK: Fixes K
+
+    /// A call in a browser other than Google Meet (Zoom's web client,
+    /// Whereby, Jitsi Meet, Teams on the web): one choice for all of them.
+    static func isOtherWebCall(_ candidate: ForkMeetingCandidate) -> Bool {
+        candidate.provider == ForkMeetingProvider.otherWebCalls.first?.id
+    }
+
+    /// The menu's "Never": for the provider ("Never for Zoom"), or for the
+    /// other web calls together, which that choice covers.
+    static func neverTitle(_ candidate: ForkMeetingCandidate, strings s: ForkMeetingStrings) -> String {
+        isOtherWebCall(candidate) ? s.offerNeverWebCalls : s.offerNever(reminderTitle(candidate))
     }
 
     /// "Meeting over? Stopping in 12 s", as the pill shows it.

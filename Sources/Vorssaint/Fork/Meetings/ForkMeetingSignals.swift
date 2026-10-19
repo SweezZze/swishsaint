@@ -53,6 +53,9 @@ struct ForkMeetingCalendarHint: Equatable {
     var meetCode: String?
     var startsAt: Date
     var endsAt: Date
+    /// The other meeting links found there (Zoom, Teams, Webex, Whereby,
+    /// Jitsi Meet), by kind.
+    var links: Set<ForkMeetingCalendarLink> = []
 }
 
 /// What the detection read at one moment. A source left `nil` was not read
@@ -78,9 +81,10 @@ struct ForkMeetingReading: Equatable {
 }
 
 /// Which meeting a candidate is: `meet:<code>`, else `meet:<pid>:<title>`
-/// for a Google Meet without a code in its title; `<provider>:<pid>` for a
-/// meeting app. Two windows, two profiles or a web app and a tab on the same
-/// Google Meet give the same identity, so one meeting.
+/// for a Google Meet without a code in its title; `<provider>:<pid>#<birth>`
+/// for a meeting app, its second meeting `#2`. Two windows, two profiles or a
+/// web app and a tab on the same Google Meet give the same identity, so one
+/// meeting.
 struct ForkMeetingIdentity: Hashable, CustomStringConvertible {
     let value: String
 
@@ -126,14 +130,36 @@ struct ForkMeetingCandidate: Equatable {
     /// What lets "Always" start it on its own (`ForkMeetingProvider.alwaysProof`);
     /// unknown, nothing does.
     var alwaysProof: ForkMeetingProvider.AlwaysProof = .none
+    /// An app's meeting: since when its app has used the microphone without
+    /// a break; `nil` while it does not, and for a meeting in a browser.
+    var microphoneSince: Date? = nil
 
-    /// Whether it shows who it is beyond a title any page may copy: Meet's
-    /// code, or an app of its own. "Always" starts only such a meeting.
-    var provesItself: Bool {
+    /// An app without a meeting window of its own proves its call by its
+    /// microphone open this long: testing it in the app's settings takes a
+    /// few seconds.
+    static let alwaysMicrophone: TimeInterval = 15
+
+    /// Whether it shows who it is beyond a title any page may copy or a
+    /// microphone test: Meet's code, an app's meeting window, an app's
+    /// microphone open for 15 s. "Always" starts only such a meeting.
+    func provesItself(at now: Date) -> Bool {
         switch alwaysProof {
         case .meetCode: return meetCode != nil
-        case .ownApp: return true
+        case .meetingWindow: return windowID != nil
+        case .longMicrophone: return microphoneSince.map { now.timeIntervalSince($0) >= Self.alwaysMicrophone } ?? false
         case .none: return false
+        }
+    }
+
+    /// An app's call that may still prove itself: its microphone open for
+    /// less than 15 s. "Always" waits for it rather than offer it; past
+    /// that, or its microphone closed (a test), it is offered.
+    func awaitsProof(at now: Date) -> Bool {
+        switch alwaysProof {
+        case .meetingWindow, .longMicrophone:
+            return microphoneSince.map { now.timeIntervalSince($0) < Self.alwaysMicrophone } ?? false
+        case .meetCode, .none:
+            return false
         }
     }
 

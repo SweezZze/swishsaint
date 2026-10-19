@@ -180,10 +180,14 @@ enum ForkMeetingLibraryText {
     }
 
     /// The service's short name ("Meet", "Zoom"); `nil` for a meeting
-    /// recorded by hand, or a provider this version does not know.
+    /// recorded by hand, a provider this version does not know, or an id
+    /// several services share: `meeting.json` says `web` for every other
+    /// web call (Whereby, Jitsi…), and naming the table's first one would
+    /// call a Jitsi meeting Zoom.
     static func providerName(_ id: String?) -> String? {
         guard let id else { return nil }
-        return ForkMeetingProviderTable.current.provider(id: id)?.shortName
+        let named = ForkMeetingProviderTable.current.providers.filter { $0.id == id }
+        return named.count == 1 ? named[0].shortName : nil
     }
 
     /// The line under a row's title: "Meet · 410 MB", then its status.

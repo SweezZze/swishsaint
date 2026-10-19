@@ -264,13 +264,14 @@ extension ForkMeetingPresenter {
         let seenInShares = inIsland && ForkMeetingIsland.showsInCaptures
         let facts = OfferFacts(
             icon: Self.icon(for: candidate), settings: settings,
-            windowApp: Self.appName(pid: candidate.pid, bundle: candidate.windowBundle),
-            soundApp: Self.appName(pid: nil, bundle: candidate.appBundle),
+            windowApp: ForkMeetingAppsSupport.appName(for: candidate)
+                ?? Self.appName(pid: candidate.pid, bundle: candidate.windowBundle),
+            soundApp: ForkMeetingAppsSupport.appName(for: candidate) ?? Self.appName(pid: nil, bundle: candidate.appBundle),
             microphone: Self.microphone(settings.microphone, meetingInput: service.meetingMicrophone(for: candidate),
                                         seenInShares: seenInShares, text: text),
             consentReminder: UserDefaults.standard.bool(forKey: ForkDefaultsKey.meetingsConsentReminder),
             seenInShares: seenInShares,
-            hasWindow: ForkMeetingAppsSupport.window(for: candidate, in: ForkMeetingRecorder.onScreenWindows(),
+            hasWindow: ForkMeetingAppsSupport.window(for: candidate, in: ForkMeetingRecorder.meetingWindows(),
                                                      ownPID: ProcessInfo.processInfo.processIdentifier) != nil)
         let actions = OfferActions(record: { service.acceptOffer() }, notNow: { service.dismissOffer(.thisTime) },
                                    always: { service.alwaysForOffer() }, never: { service.dismissOffer(.never) },
@@ -288,7 +289,8 @@ extension ForkMeetingPresenter {
         var consentReminder: Bool
         /// Someone else's screen share would show the card.
         var seenInShares = false
-        /// A window will be filmed (an app found by its microphone: its largest); `nil`: the meeting's own.
+        /// A window will be filmed (an app found by its microphone: its own most in front); `nil`: the
+        /// meeting's own.
         var hasWindow: Bool?
     }
 
@@ -350,7 +352,7 @@ extension ForkMeetingPresenter {
                              action: actions.always)]
             : []
         card.menu += [
-            NotchMenuItem(title: text.offerNever(provider), action: actions.never),
+            NotchMenuItem(title: ForkMeetingOfferText.neverTitle(candidate, strings: text), action: actions.never),
             .separator,
             NotchMenuItem(title: text.copyAnnouncement, action: actions.copyAnnouncement),
         ]
