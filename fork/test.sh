@@ -51,17 +51,22 @@ FORK_SOURCES=(
     Sources/Vorssaint/Fork/Meetings/ForkMeetingActivity.swift
     Sources/Vorssaint/Fork/Meetings/ForkMeetingAppTitleRules.swift
     Sources/Vorssaint/Fork/Meetings/ForkMeetingAppsSupport.swift
+    Sources/Vorssaint/Fork/Meetings/ForkMeetingAudioOnly.swift
     Sources/Vorssaint/Fork/Meetings/ForkMeetingCaptureSupport.swift
     Sources/Vorssaint/Fork/Meetings/ForkMeetingDetectionSupport.swift
     Sources/Vorssaint/Fork/Meetings/ForkMeetingFailure.swift
     Sources/Vorssaint/Fork/Meetings/ForkMeetingFinalPass.swift
     Sources/Vorssaint/Fork/Meetings/ForkMeetingFolder.swift
+    Sources/Vorssaint/Fork/Meetings/ForkMeetingIslandSupport.swift
     Sources/Vorssaint/Fork/Meetings/ForkMeetingLibrary.swift
     Sources/Vorssaint/Fork/Meetings/ForkMeetingLibraryRules.swift
     Sources/Vorssaint/Fork/Meetings/ForkMeetingLibrarySupport.swift
     Sources/Vorssaint/Fork/Meetings/ForkMeetingLiveSupport.swift
     Sources/Vorssaint/Fork/Meetings/ForkMeetingMachine.swift
+    Sources/Vorssaint/Fork/Meetings/ForkMeetingMarkerSupport.swift
+    Sources/Vorssaint/Fork/Meetings/ForkMeetingNotifications.swift
     Sources/Vorssaint/Fork/Meetings/ForkMeetingOfferSupport.swift
+    Sources/Vorssaint/Fork/Meetings/ForkMeetingPlaybackSupport.swift
     Sources/Vorssaint/Fork/Meetings/ForkMeetingPreferences.swift
     Sources/Vorssaint/Fork/Meetings/ForkMeetingProviders.swift
     Sources/Vorssaint/Fork/Meetings/ForkMeetingQuality.swift
@@ -71,6 +76,7 @@ FORK_SOURCES=(
     Sources/Vorssaint/Fork/Meetings/ForkMeetingSidecar.swift
     Sources/Vorssaint/Fork/Meetings/ForkMeetingSignals.swift
     Sources/Vorssaint/Fork/Meetings/ForkMeetingStrings.swift
+    Sources/Vorssaint/Fork/Meetings/ForkMeetingSummarySupport.swift
     Sources/Vorssaint/Fork/Meetings/ForkMeetingSystemSupport.swift
     Sources/Vorssaint/Fork/Meetings/ForkMeetingTitleRules.swift
     Sources/Vorssaint/Fork/Meetings/ForkMeetingTranscriptFormat.swift

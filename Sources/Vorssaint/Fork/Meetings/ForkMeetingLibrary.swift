@@ -81,16 +81,25 @@ struct ForkMeetingLibraryEntry: Equatable {
     let notes: String
     /// Its exports' history, for the row's ✓ or ✗ (§4.5).
     let exports: [ForkMeetingSidecar.Export]
-    /// The file the player opens: the final video, or, for an interrupted
-    /// meeting, its master, readable up to its last fragment.
+    /// The file the player opens: the final video (the final `.m4a` of a
+    /// meeting without picture), or, for an interrupted meeting, its master,
+    /// readable up to its last fragment.
     private(set) var playable: String?
     private(set) var video: String?
+    /// The M4A made beside a video; `nil` without picture, whose final file
+    /// (`playable`) is the M4A itself.
     private(set) var audio: String?
+    /// Recorded without picture (`meeting.json`'s `capture.target`).
+    let isAudioOnly: Bool
     /// The transcript beside the video (`<name>.txt`), and its subtitles.
     private(set) var transcript: String?
     private(set) var subtitles: String?
     /// What `meeting.json` says of the last transcription.
     private(set) var transcriptRecord: ForkMeetingTranscriptRecord?
+    /// The moments marked while recording, sorted (`ForkMeetingMarkers`).
+    private(set) var markers: [Double] = []
+    /// What `meeting.json` says of the last summary (Finish E).
+    private(set) var summaryRecord: ForkMeetingSummaryRecord?
     /// From a later version of the app, unreadable, or not written by it:
     /// shown, never written.
     let isReadOnly: Bool
@@ -129,8 +138,10 @@ struct ForkMeetingLibraryEntry: Equatable {
         self.bytes = bytes
         self.videoModified = videoModified
         self.folderFile = folderFile
+        let audioOnly = (try? sidecar.get())?.isAudioOnly == true
+        isAudioOnly = audioOnly
         video = contents.video
-        audio = contents.audio
+        audio = audioOnly ? nil : contents.audio
         transcript = contents.transcript
         subtitles = contents.subtitles
         let stamped = ForkMeetingLibrary.stampDate(folderName, calendar: calendar)
@@ -164,6 +175,8 @@ struct ForkMeetingLibraryEntry: Equatable {
             isForeign = !meeting.isWrittenByMeetings
             isReadOnly = !meeting.isRewritable || isForeign
             transcriptRecord = ForkMeetingTranscriptRecord(json: meeting.transcript)
+            markers = ForkMeetingMarkers.times(meeting.markers)
+            summaryRecord = ForkMeetingSummaryRecord(json: meeting.summary)
         }
         if let startedAt {
             date = startedAt
@@ -175,14 +188,15 @@ struct ForkMeetingLibraryEntry: Equatable {
             date = folderCreated
             dateSource = folderCreated == nil ? nil : .folderCreated
         }
+        let media = contents.media(audioOnly: audioOnly)
         switch status {
         case .interrupted, .unreadable:
-            playable = contents.video ?? (contents.hasMaster ? ForkMeetingFolder.masterName : nil)
+            playable = media ?? (contents.hasMaster ? ForkMeetingFolder.masterName : nil)
         case .recording, .finalizing:
             // The master is being written, the final file being replaced.
             playable = nil
         case .complete, .recovered:
-            playable = contents.video
+            playable = media
         }
     }
 
@@ -208,7 +222,7 @@ struct ForkMeetingLibraryEntry: Equatable {
         case .interrupted?:
             return .interrupted(cause(of: meeting, fallback: nil))
         case nil:
-            return contents.video == nil ? .interrupted(.unknown) : .complete
+            return contents.media(audioOnly: meeting.isAudioOnly) == nil ? .interrupted(.unknown) : .complete
         }
     }
 

@@ -29,6 +29,8 @@ final class ForkMeetingPill {
         var toggleTarget: () -> Void = {}
         /// "Continue" while the countdown of a meeting that seems over runs.
         var continueRecording: () -> Void = {}
+        /// ★ "Mark This Moment" (Finish E).
+        var mark: () -> Void = { ForkMeetingService.shared.addMarker() }
     }
 
     private let model = ForkMeetingPillModel()
@@ -49,6 +51,13 @@ final class ForkMeetingPill {
     /// Bumped by each show: a fade-out overtaken by a newer show must not
     /// order the panel out from its completion handler.
     private var generation = 0
+    /// Whether the closed island shows the recording where the pill would
+    /// stand (`fork.meetings.indicator`): the pill then steps aside, faded
+    /// out and out of the pointer's and VoiceOver's way, and comes back as
+    /// soon as the island no longer shows it.
+    var stepsAside: (ForkMeetingPillLook?, ForkMeetingLiveContext) -> Bool = { _, _ in false }
+    private var steppedAside = false
+    private var islandWatch: AnyCancellable?
 
     /// The pill's window, created by `prepare` before the first recording,
     /// so a capture filter built before the pill shows can already name it.
@@ -118,6 +127,7 @@ final class ForkMeetingPill {
         applySharing()
         guard appearing else {
             fit()
+            syncStepAside()
             return
         }
         place(panel, on: screen(for: context))
@@ -126,9 +136,10 @@ final class ForkMeetingPill {
             panel.orderFrontRegardless()
         }
         observe()
+        setSteppedAside(stepsAside(model.look, model.context))
         NSAnimationContext.runAnimationGroup { context in
             context.duration = 0.18
-            panel.animator().alphaValue = 1
+            panel.animator().alphaValue = steppedAside ? 0 : 1
         }
     }
 
@@ -136,6 +147,7 @@ final class ForkMeetingPill {
         guard model.context != context else { return }
         withAnimation(model.reducesMotion ? nil : .smooth(duration: 0.25)) { model.context = context }
         fit()
+        syncStepAside()
     }
 
     /// "Meeting over? Stopping in 12 s [Continue]" until `until`, or gone
@@ -145,6 +157,7 @@ final class ForkMeetingPill {
         withAnimation(model.reducesMotion ? nil : .smooth(duration: 0.25)) { model.endingSoonUntil = until }
         tick()
         fit()
+        syncStepAside()
     }
 
     /// Until `until`, stop cancels the recording "Always" started, as
@@ -165,6 +178,7 @@ final class ForkMeetingPill {
     func hide() {
         stopTicker()
         unobserve()
+        setSteppedAside(false)
         model.endingSoonUntil = nil
         model.cancelsUntil = nil
         collapseWork?.cancel()
@@ -184,6 +198,32 @@ final class ForkMeetingPill {
             self.model.state = .hidden
             self.model.hovering = false
         })
+    }
+
+    // MARK: - Stepping aside
+
+    /// The island showed or stopped showing the recording, or the pill's
+    /// words changed: the pill fades out of its way, or back.
+    private func syncStepAside() {
+        guard let panel, panel.isVisible, model.state != .hidden else { return }
+        let aside = stepsAside(model.look, model.context)
+        guard aside != steppedAside else { return }
+        setSteppedAside(aside)
+        if model.reducesMotion {
+            panel.alphaValue = aside ? 0 : 1
+            return
+        }
+        NSAnimationContext.runAnimationGroup { context in
+            context.duration = aside ? 0.16 : 0.2
+            panel.animator().alphaValue = aside ? 0 : 1
+        }
+    }
+
+    private func setSteppedAside(_ aside: Bool) {
+        steppedAside = aside
+        panel?.ignoresMouseEvents = aside
+        if model.steppedAside != aside { model.steppedAside = aside }
+        if aside { collapseWork?.cancel(); model.hovering = false }
     }
 
     // MARK: - Ticks
@@ -449,6 +489,7 @@ final class ForkMeetingPill {
         observers.append((center, center.addObserver(forName: UserDefaults.didChangeNotification,
                                                      object: nil, queue: .main) { [weak self] _ in
             self?.applySharing()
+            self?.syncStepAside()
         }))
         let workspace = NSWorkspace.shared.notificationCenter
         observers.append((workspace, workspace.addObserver(
@@ -460,12 +501,14 @@ final class ForkMeetingPill {
             guard let self, !self.placedByPerson else { return }
             self.reposition()
         }
+        islandWatch = ForkMeetingIsland.observeIsland { [weak self] in self?.syncStepAside() }
     }
 
     private func unobserve() {
         for (center, observer) in observers { center.removeObserver(observer) }
         observers = []
         geometryWatch = nil
+        islandWatch = nil
         screensWork?.cancel()
         screensWork = nil
         dragWork?.cancel()
@@ -510,6 +553,8 @@ final class ForkMeetingPillModel: ObservableObject {
     @Published var cancelsUntil: Date?
     /// Someone else's screen share sees the pill.
     @Published var seenInShares = false
+    /// The island shows the recording: the pill is out of the way.
+    @Published var steppedAside = false
     var text = ForkMeetingStrings.current
 
     var look: ForkMeetingPillLook? {
@@ -529,9 +574,9 @@ final class ForkMeetingPillTicker: ObservableObject {
 
 // MARK: - The pill
 
-/// Dark in light and dark mode, like the recorder's pill and the island;
-/// red only for the recording light and stop, orange for what asks for
-/// attention.
+/// Glass, like the bubble, in light and dark mode (`HUDBackdrop`, high
+/// contrast, so its words read over any window); red only for the
+/// recording light and stop, orange for what asks for attention.
 struct ForkMeetingPillView: View {
     @ObservedObject var model: ForkMeetingPillModel
     let ticker: ForkMeetingPillTicker
@@ -546,23 +591,25 @@ struct ForkMeetingPillView: View {
             .frame(minWidth: ForkMeetingPillLayout.restingSize.width,
                    maxWidth: .infinity, minHeight: 32, maxHeight: .infinity, alignment: .leading)
             .background(ForkMeetingPillDragHandle(beginDrag: beginDrag, reset: resetPlace))
-            .background(
-                Capsule(style: .continuous)
-                    .fill(Color(white: 0.12).opacity(0.94))
-                    .overlay(Capsule(style: .continuous).strokeBorder(Color.white.opacity(0.18), lineWidth: 1))
-            )
+            .background(HUDBackdrop(cornerRadius: ForkMeetingPillLayout.restingSize.height / 2, contrast: .high))
+            .overlay(Capsule(style: .continuous).strokeBorder(Color.primary.opacity(0.12), lineWidth: 0.8))
             .clipShape(Capsule(style: .continuous))
-            .environment(\.colorScheme, .dark)
             .accessibilityElement(children: .contain)
             .accessibilityLabel(model.text.pillRecording)
             // The name, what is filmed and ⧉ show under the pointer only:
             // VoiceOver has them at any time.
             .accessibilityValue(accessibilityValue)
             .accessibilityActions {
-                if model.look?.showsControls == true, model.context.canSwitchTarget {
+                if model.look?.showsControls == true, model.look?.paused != true {
+                    Button(model.text.pillMark) { actions.mark() }
+                }
+                if model.look?.showsControls == true, model.context.offersTargetSwitch {
                     Button(toggleLabel) { actions.toggleTarget() }
                 }
             }
+            // Stepped aside for the island: hidden from VoiceOver last, so
+            // nothing set after it brings the pill back to its list.
+            .accessibilityHidden(model.steppedAside)
     }
 
     private var filmed: String {
@@ -611,11 +658,11 @@ struct ForkMeetingPillView: View {
                                                             providerName: model.context.providerName,
                                                             seenInShares: model.seenInShares, strings: text))
                             .font(.system(size: 12, weight: .medium))
-                            .foregroundStyle(Color.white.opacity(0.85))
+                            .foregroundStyle(.primary)
                         // What is filmed: the window of which app, or the screen.
                         Text(filmed)
                             .font(.system(size: 10))
-                            .foregroundStyle(Color.white.opacity(0.6))
+                            .foregroundStyle(.secondary)
                         if let soundNote {
                             Text(soundNote)
                                 .font(.system(size: 10))
@@ -654,13 +701,13 @@ struct ForkMeetingPillView: View {
         case .sourceGone:
             label(text.noticeSourceGone, color: .orange)
         case .stopping:
-            label(text.pillStopping, color: .white.opacity(0.85))
+            label(text.pillStopping, color: .primary)
         case let .finalizing(progress):
-            label(text.pillFinalizing, color: .white.opacity(0.85))
+            label(text.pillFinalizing, color: .primary)
             if let progress {
                 ProgressView(value: progress)
                     .progressViewStyle(.linear)
-                    .tint(.white)
+                    .tint(.primary)
                     .frame(width: 44)
                     .accessibilityLabel(text.pillFinalizing)
             }
@@ -669,12 +716,12 @@ struct ForkMeetingPillView: View {
             Button(action: actions.continueRecording) {
                 Text(text.endingSoonContinue)
                     .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(Color.white)
+                    .foregroundStyle(.primary)
                     .lineLimit(1)
                     .fixedSize()
                     .padding(.horizontal, 9)
                     .frame(height: 24)
-                    .background(Color.white.opacity(0.16), in: Capsule(style: .continuous))
+                    .background(Color.primary.opacity(0.12), in: Capsule(style: .continuous))
                     .contentShape(Capsule(style: .continuous))
             }
             .buttonStyle(NotchButtonStyle(cornerRadius: 12, lifts: false))
@@ -683,7 +730,7 @@ struct ForkMeetingPillView: View {
         }
     }
 
-    private func label(_ string: String, color: Color) -> some View {
+    private func label(_ string: String, color: some ShapeStyle) -> some View {
         Text(string)
             .font(.system(size: 12, weight: .semibold))
             .foregroundStyle(color)
@@ -697,15 +744,20 @@ struct ForkMeetingPillView: View {
         HStack(spacing: 0) {
             // During the countdown "Continue" stands where pause was.
             if model.look?.status != .endingSoon {
-                pillButton(symbol: paused ? "play.fill" : "pause.fill", color: .white,
+                pillButton(symbol: paused ? "play.fill" : "pause.fill", color: .primary,
                            label: paused ? text.pillResume : text.pillPause,
                            action: paused ? actions.resume : actions.pause)
             }
             pillButton(symbol: "stop.fill", color: Color(nsColor: .systemRed),
                        label: model.cancelsUntil == nil ? text.pillStop : text.pillStopCancels, action: actions.stop)
-            if model.hovering, model.context.canSwitchTarget {
+            // Nothing to mark while paused.
+            if model.hovering, model.look?.paused != true {
+                pillButton(symbol: "star", color: .primary, label: text.pillMark, action: actions.mark)
+                    .transition(.opacity)
+            }
+            if model.hovering, model.context.offersTargetSwitch {
                 let window = model.context.target == .window
-                pillButton(symbol: window ? "display" : "macwindow", color: .white,
+                pillButton(symbol: window ? "display" : "macwindow", color: .primary,
                            label: window ? text.pillFilmDisplay : text.pillFilmTheWindow,
                            action: actions.toggleTarget)
                     .transition(.opacity)
@@ -713,7 +765,7 @@ struct ForkMeetingPillView: View {
         }
     }
 
-    private func pillButton(symbol: String, color: Color, label: String,
+    private func pillButton(symbol: String, color: some ShapeStyle, label: String,
                             action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Image(systemName: symbol)
@@ -757,7 +809,7 @@ private struct ForkMeetingPillClock: View {
     var body: some View {
         Text(ticker.clock)
             .font(.system(size: 13, weight: .semibold).monospacedDigit())
-            .foregroundStyle(alert ? Color.orange : Color.white)
+            .foregroundStyle(alert ? AnyShapeStyle(Color.orange) : AnyShapeStyle(.primary))
             .lineLimit(1)
             .fixedSize()
             .frame(minWidth: 40, alignment: .leading)
@@ -779,7 +831,7 @@ private struct ForkMeetingPillMeters: View {
     var body: some View {
         HStack(spacing: 5) {
             if !context.recordsMicrophone {
-                crossed(color: .white.opacity(0.45), label: text.pillMicrophoneOff)
+                crossed(color: .secondary, label: text.pillMicrophoneOff)
             } else if context.microphoneSilent {
                 crossed(color: .orange, label: text.noticeMicrophoneSilent)
             } else {
@@ -798,7 +850,7 @@ private struct ForkMeetingPillMeters: View {
         .allowsHitTesting(false)
     }
 
-    private func crossed(symbol: String = "mic.slash.fill", color: Color, label: String) -> some View {
+    private func crossed(symbol: String = "mic.slash.fill", color: some ShapeStyle, label: String) -> some View {
         Image(systemName: symbol)
             .font(.system(size: 10, weight: .semibold))
             .foregroundStyle(color)
@@ -819,7 +871,7 @@ private struct ForkMeetingMiniMeter: View {
             ForEach(0..<3, id: \.self) { index in
                 let lit = min(1, max(0, (value - CGFloat(index) / 3) * 3))
                 Capsule(style: .continuous)
-                    .fill(Color.white.opacity(0.35 + 0.6 * lit))
+                    .fill(Color.primary.opacity(0.3 + 0.6 * lit))
                     .frame(width: 2.5, height: 3 + 11 * lit * (0.6 + 0.2 * CGFloat(index)))
             }
         }
@@ -855,17 +907,20 @@ private struct ForkMeetingPillMark: View {
 
 /// The recorder's own light: red, breathing from full to 0.28 in 0.85 s,
 /// drawn by Core Animation so it stays live without waking the app. Still
-/// with Reduce Motion.
-private struct ForkMeetingRecordingDot: NSViewRepresentable {
+/// with Reduce Motion. The pill and the island's strip and card share it.
+struct ForkMeetingRecordingDot: NSViewRepresentable {
     let pulses: Bool
+    var diameter: CGFloat = 8
 
     func makeNSView(context: Context) -> DotView {
         let view = DotView()
+        view.diameter = diameter
         view.pulses = pulses
         return view
     }
 
     func updateNSView(_ view: DotView, context: Context) {
+        view.diameter = diameter
         view.pulses = pulses
     }
 
@@ -876,24 +931,33 @@ private struct ForkMeetingRecordingDot: NSViewRepresentable {
             didSet { if pulses != oldValue { refresh() } }
         }
 
+        var diameter: CGFloat = 8 {
+            didSet {
+                guard diameter != oldValue else { return }
+                invalidateIntrinsicContentSize()
+                needsLayout = true
+            }
+        }
+
         override init(frame frameRect: NSRect) {
             super.init(frame: frameRect)
             wantsLayer = true
             dot.backgroundColor = NSColor.systemRed.cgColor
-            dot.cornerRadius = 4
             layer?.addSublayer(dot)
         }
 
         @available(*, unavailable)
         required init?(coder: NSCoder) { nil }
 
-        override var intrinsicContentSize: NSSize { NSSize(width: 8, height: 8) }
+        override var intrinsicContentSize: NSSize { NSSize(width: diameter, height: diameter) }
 
         override func layout() {
             super.layout()
             CATransaction.begin()
             CATransaction.setDisableActions(true)
-            dot.frame = CGRect(x: (bounds.width - 8) / 2, y: (bounds.height - 8) / 2, width: 8, height: 8)
+            dot.cornerRadius = diameter / 2
+            dot.frame = CGRect(x: (bounds.width - diameter) / 2, y: (bounds.height - diameter) / 2,
+                               width: diameter, height: diameter)
             CATransaction.commit()
         }
 

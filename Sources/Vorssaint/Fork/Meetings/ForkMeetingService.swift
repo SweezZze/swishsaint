@@ -55,6 +55,12 @@ final class ForkMeetingService: ObservableObject {
     /// The meeting the detection sees now, the most recent, offered or not:
     /// the page names it.
     @Published var detectedMeeting: ForkMeetingCandidate?
+    /// The time the pill shows, while a meeting records or is paused: the
+    /// page's status line counts with it.
+    @Published var liveClock: ForkMeetingClock?
+    /// macOS refused the pause's or the marker's combination, the last time
+    /// a recording asked for it.
+    @Published private(set) var refusedShortcuts: Set<ForkMeetingShortcutRole> = []
 
     // Shared with the service's other files (+Session, +Finalize, +System),
     // hence not private. Nothing outside the service touches them.
@@ -129,6 +135,8 @@ final class ForkMeetingService: ObservableObject {
     var onDetectionEffect: ((ForkMeetingMachine.Effect) -> Void)?
 
     private lazy var hotKey = ForkMeetingHotKey { [weak self] in self?.shortcutPressed() }
+    private lazy var pauseHotKey = ForkMeetingHotKey(identifier: 2) { [weak self] in self?.pauseShortcutPressed() }
+    private lazy var markerHotKey = ForkMeetingHotKey(identifier: 3) { [weak self] in self?.markerShortcutPressed() }
     private var observers: [AnyCancellable] = []
     private var followsPermissions = false
     /// Whether the feature was wanted at the last sync: turning it on asks
@@ -235,6 +243,7 @@ final class ForkMeetingService: ObservableObject {
         syncSystemEvents()
         syncDetection()
         ForkMeetingTranscriber.shared.sync(enabled: wanted)
+        ForkMeetingSummarizer.shared.sync(enabled: wanted)
         ForkMeetingRetentionSweep.shared.sync(enabled: wanted)
         if !wanted {
             ForkMeetingLibraryWindow.shared.close()
@@ -337,15 +346,52 @@ final class ForkMeetingService: ObservableObject {
         toggleRecording()
     }
 
-    /// Installed while the feature is on with a usable combination, and no
-    /// shortcut field is listening.
+    /// Only installed while a meeting records; the check stays, a press
+    /// may come in just as it ends.
+    private func pauseShortcutPressed() {
+        guard !ShortcutCapture.isCapturing, !recordsShortcutInPage, isWanted, isRecording else { return }
+        togglePause()
+    }
+
+    private func markerShortcutPressed() {
+        guard !ShortcutCapture.isCapturing, !recordsShortcutInPage, isWanted, isRecording else { return }
+        guard ForkMeetingMarkers.accepts(recording: isRecording, paused: isPaused) else {
+            // Paused, nothing to mark: a quiet "no" for those who hear the
+            // recording's sounds, nothing for the others.
+            if UserDefaults.standard.bool(forKey: ForkDefaultsKey.meetingsSounds) { ForkMeetingSounds.shared.play(.refused) }
+            return
+        }
+        addMarker()
+    }
+
+    /// Each combination installed while the feature is on with a usable
+    /// combination, and no shortcut field is listening; pausing and marking
+    /// only while a meeting records, so the rest of the time they stay the
+    /// other apps'. Asked again when a recording starts or ends.
     func syncHotKey() {
         let wanted = isWanted && !shortcutStepsAside && !recordsShortcutInPage
-        let shortcut = wanted ? ForkMeetingShortcut.load(defaults).flatMap { shortcut in
-            ForkMeetingShortcut.problem(of: shortcut) == nil ? shortcut : nil
-        } : nil
-        hotKey.sync(shortcut)
-        if shortcutRefused != hotKey.isRefused { shortcutRefused = hotKey.isRefused }
+        let recording = machine.activeSession != nil
+        var refused: Set<ForkMeetingShortcutRole> = []
+        for (role, key) in [(ForkMeetingShortcutRole.toggle, hotKey), (.pause, pauseHotKey), (.marker, markerHotKey)] {
+            let installed = wanted && role.isInstalled(featureOn: true, recording: recording)
+            let shortcut = installed ? ForkMeetingShortcut.load(defaults, role: role).flatMap { shortcut in
+                ForkMeetingShortcut.problem(of: shortcut, role: role, defaults: defaults) == nil ? shortcut : nil
+            } : nil
+            key.sync(shortcut)
+            if key.isRefused { refused.insert(role) }
+        }
+        if shortcutRefused != refused.contains(.toggle) { shortcutRefused = refused.contains(.toggle) }
+        // Out of a recording they are not installed, which is not refused:
+        // the last recording's word stays until the combination changes.
+        let others = refused.subtracting([.toggle])
+        if recording, refusedShortcuts != others { refusedShortcuts = others }
+    }
+
+    /// The page saved a new combination for `role`: what macOS said of the
+    /// old one no longer holds.
+    func shortcutChanged(_ role: ForkMeetingShortcutRole) {
+        if refusedShortcuts.contains(role) { refusedShortcuts.remove(role) }
+        syncHotKey()
     }
 
     /// The Meetings page's own recorder, at once: a combination already

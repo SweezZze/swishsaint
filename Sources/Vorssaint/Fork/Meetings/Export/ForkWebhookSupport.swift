@@ -188,9 +188,10 @@ enum ForkWebhookPayload {
     /// The file names carry the meeting's name, without its Google Meet
     /// code unless asked, like the `meeting` part.
     static func parts(_ package: ForkMeetingExportPackage, includesMeetCode: Bool,
-                      includesNotes: Bool) throws -> [ForkWebhookMultipart.Part] {
+                      includesNotes: Bool, includesSummary: Bool = false) throws -> [ForkWebhookMultipart.Part] {
         let json = try ForkMeetingExportDocument.json(package.sidecar, includesMeetCode: includesMeetCode,
-                                                      includesNotes: includesNotes)
+                                                      includesNotes: includesNotes, includesSummary: includesSummary,
+                                                      summary: package.summary)
         let name = package.name(includesMeetCode: includesMeetCode)
         var parts = [
             ForkWebhookMultipart.Part(name: meetingPart, filename: ForkMeetingFolder.sidecarName,

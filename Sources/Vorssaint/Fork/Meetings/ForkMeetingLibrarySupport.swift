@@ -68,6 +68,8 @@ struct ForkMeetingProbeCache: Equatable {
 ///   two tracks for room) has its sources mixed into a new M4A: the only
 ///   case that encodes, since one of its tracks alone would be half the
 ///   meeting.
+/// - A meeting without picture has no separate M4A: its final `.m4a` holds
+///   the mix and both sources, and its mix alone is copied out.
 enum ForkMeetingAudioExport {
     enum Route: Equatable {
         /// A file of the meeting's folder, copied.
@@ -240,6 +242,7 @@ enum ForkMeetingLibraryText {
                         language: AppLanguage) -> String {
         var parts: [String] = []
         if let name = providerName(entry.provider) { parts.append(name) }
+        if entry.isAudioOnly { parts.append(strings.soundOnly) }
         if let bytes = entry.bytes, bytes > 0 { parts.append(ForkMeetingLiveText.size(bytes, language: language)) }
         if let status = ForkMeetingLibrary.statusText(entry.status, strings: strings) { parts.append(status) }
         return parts.joined(separator: " · ")
@@ -253,6 +256,7 @@ enum ForkMeetingLibraryText {
         if let date = entry.date { parts.append(time(date, language: language, calendar: calendar)) }
         if let length = duration(entry.seconds, language: language) { parts.append(length) }
         if let name = providerName(entry.provider) { parts.append(name) }
+        if entry.isAudioOnly { parts.append(strings.soundOnly) }
         if let status = ForkMeetingLibrary.statusText(entry.status, strings: strings) { parts.append(status) }
         return parts.joined(separator: ", ")
     }

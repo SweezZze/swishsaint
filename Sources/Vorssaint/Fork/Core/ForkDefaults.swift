@@ -59,8 +59,8 @@ enum ForkDefaultsKey {
     /// Meetings: recording a call's window, its sound and the microphone,
     /// one folder per meeting.
     static let meetingsEnabled = "fork.meetings.enabled"
-    /// `ForkMeetingCaptureTarget`: window (the meeting's window) or display
-    /// (the display it is on).
+    /// `ForkMeetingCaptureTarget`: window (the meeting's window), display
+    /// (the display it is on) or audioOnly (no picture, an `.m4a`).
     static let meetingsCaptureTarget = "fork.meetings.captureTarget"
     /// `ForkMeetingSystemAudio`: app (the meeting app's sound), all (the
     /// whole Mac's) or off.
@@ -99,6 +99,33 @@ enum ForkDefaultsKey {
     /// (`ForkMeetingTranscriber`). Off until a real meeting has been read
     /// back (plan §10).
     static let meetingsTranscribe = "fork.meetings.transcribe"
+    // MARK: Finish A
+    /// What says that a meeting is being recorded: the closed island's
+    /// strip and the pill (`auto`), the pill alone (`pill`), or both always
+    /// (`both`). A choice of the person's: it follows the backup.
+    static let meetingsIndicator = "fork.meetings.indicator"
+    // MARK: Finish B
+    /// Each event's notice in the island or the bubble, and its system
+    /// notification (`ForkMeetingNotifyEvent`): the offers, the start, the
+    /// saved meeting, the warnings during a recording, the transcripts and
+    /// exports. A failure that loses a recording is shown whatever these say.
+    static let meetingsNotifyOffers = "fork.meetings.notify.offers"
+    static let meetingsNotifyStart = "fork.meetings.notify.start"
+    static let meetingsNotifySaved = "fork.meetings.notify.saved"
+    static let meetingsNotifyWarnings = "fork.meetings.notify.warnings"
+    static let meetingsNotifyResults = "fork.meetings.notify.results"
+    /// A quiet sound when a recording starts and when it stops.
+    static let meetingsSounds = "fork.meetings.sounds"
+    /// The shortcuts that pause or resume the recording and mark a moment
+    /// in it, stored like `meetingsShortcut`; empty: none. They answer only
+    /// while a meeting records.
+    static let meetingsPauseShortcut = "fork.meetings.pauseShortcut"
+    static let meetingsMarkerShortcut = "fork.meetings.markerShortcut"
+    // MARK: Finish E
+    /// Each transcript written is summarized on this Mac by Apple
+    /// Intelligence (`ForkMeetingSummarizer`), when it can run here. Off by
+    /// default (Finish E).
+    static let meetingsSummarize = "fork.meetings.summarize"
     /// The meetings folder's path; empty: a folder in Movies, named in the
     /// person's language and saved here at the first recording. Machine
     /// state, like the official recorder's folder: kept out of the backup.
@@ -183,6 +210,16 @@ enum ForkDefaults {
         ForkDefaultsKey.meetingsCalendarNaming: false,
         ForkDefaultsKey.meetingsRetentionDays: ForkMeetingRetention.fallback,
         ForkDefaultsKey.meetingsTranscribe: false,
+        ForkDefaultsKey.meetingsIndicator: ForkMeetingIndicator.fallback.rawValue,
+        ForkDefaultsKey.meetingsNotifyOffers: true,
+        ForkDefaultsKey.meetingsNotifyStart: true,
+        ForkDefaultsKey.meetingsNotifySaved: true,
+        ForkDefaultsKey.meetingsNotifyWarnings: true,
+        ForkDefaultsKey.meetingsNotifyResults: true,
+        ForkDefaultsKey.meetingsSounds: false,
+        ForkDefaultsKey.meetingsPauseShortcut: "",
+        ForkDefaultsKey.meetingsMarkerShortcut: "",
+        ForkDefaultsKey.meetingsSummarize: false,
     ]
 
     /// Where each setting lived in the test builds made before the fork

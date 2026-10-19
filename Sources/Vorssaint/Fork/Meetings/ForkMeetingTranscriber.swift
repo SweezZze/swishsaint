@@ -278,6 +278,7 @@ final class ForkMeetingTranscriber: ObservableObject {
         lastMeasure = measure
         outcomes.removeAll { $0.job.isFor(id: job.id, folder: job.folder) }
         outcomes.append(Outcome.Entry(job: job, outcome: outcome))
+        if case let .done(words) = outcome { ForkMeetingSummarizer.shared.transcriptWritten(job.folder, id: job.id, words: words) }
         log.notice("transcript of \(job.folder.lastPathComponent, privacy: .private): \(String(describing: outcome), privacy: .public)")
         // The person stopped it, or the meeting went to the Trash: nothing
         // to tell. An automatic job is told, once the saved notice had its
@@ -400,7 +401,7 @@ final class ForkMeetingTranscriber: ObservableObject {
         let document = ForkMeetingTranscriptFormat.document(
             me: heard.count > 1 ? heard[1] : [], participants: heard[0],
             microEnvelope: envelopes.count > 1 ? envelopes[1] : nil, meetingEnvelope: envelopes.first,
-            label: label, rewrite: { ForkDictationReplacements.apply(rules, to: $0) })
+            label: label, rewrite: { ForkDictationReplacements.apply(rules, to: $0) }, markers: source.markers)
         measure.echoRemoved = document.echo?.echo.count ?? 0
         measure.echoGain = document.echo?.gain
         measure.echoDelay = document.echo?.delay

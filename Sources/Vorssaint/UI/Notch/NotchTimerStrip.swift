@@ -138,6 +138,7 @@ struct NotchCompanionMark: View {
                             radius: geometry.compactMusicArtworkRadius, source: music.playback?.track)
         case .timer, .keepAwake, .watch:
             EmptyView()
+        case .meeting: EmptyView() // FORK(notch-meeting6)
         }
     }
 
@@ -177,6 +178,7 @@ struct NotchCompanionMark: View {
         case .downloads, .timer, .keepAwake, .watch:
             let side = min(13, NotchTimerSupport.stripIconSize(height: geometry.compactActivityContentHeight))
             return geometry.compactActivityEdgeInset(boxHeight: side, radius: side / 2)
+        case .meeting: return 0 // FORK(notch-meeting6)
         }
     }
 
@@ -197,6 +199,7 @@ struct NotchCompanionMark: View {
             return [title, playback?.track.artist].compactMap { $0 }.joined(separator: ", ")
         case .timer, .keepAwake, .watch:
             return companion.title(language)
+        case .meeting: return companion.title(language) // FORK(notch-meeting6)
         }
     }
 }

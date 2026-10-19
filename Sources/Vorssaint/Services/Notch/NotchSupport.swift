@@ -824,6 +824,8 @@ enum NotchMusicStripLayout {
 
 enum NotchCompactActivity: String, Identifiable {
     case timer, watch, downloads, agents, calendar, music, keepAwake
+    case meeting // FORK(notch-meeting)
+    static var meetingHooks: (title: (AppLanguage) -> String, activities: () -> [NotchCompactActivity], wing: (NotchGeometry) -> CGFloat) = ({ _ in "" }, { [] }, { _ in 0 }) // FORK(notch-meeting)
 
     var id: String { rawValue }
 
@@ -836,6 +838,7 @@ enum NotchCompactActivity: String, Identifiable {
         case .calendar: return FeatureStrings.notchCalendar(language).title
         case .music: return FeatureStrings.notch(language).music
         case .keepAwake: return Strings.localized(language).keepAwakeTitle
+        case .meeting: return Self.meetingHooks.title(language) // FORK(notch-meeting2)
         }
     }
 
@@ -849,6 +852,7 @@ enum NotchCompactActivity: String, Identifiable {
         case .calendar: return .calendar
         case .music: return .music
         case .keepAwake: return .controls
+        case .meeting: return .controls // FORK(notch-meeting2)
         }
     }
 
@@ -1280,6 +1284,8 @@ enum NotchControlItem: String, CaseIterable, Identifiable {
     case volume, brightness, keyboardLight, music, mixer, keepAwake, timer, calendar, microphone, screenshot, recording, speedTest, panel, commandBar, scratchpad
     case dictation // FORK(notch-dictation)
     static var dictationIsAvailable: (UserDefaults) -> Bool = { _ in false } // FORK(notch-dictation)
+    case meeting // FORK(notch-meeting-tile)
+    static var meetingIsAvailable: (UserDefaults) -> Bool = { _ in false } // FORK(notch-meeting-tile)
     static let defaultHidden = "keyboardLight,microphone,screenshot,recording,speedTest,panel,commandBar,scratchpad"
     var id: String { rawValue }
 
@@ -1295,6 +1301,7 @@ enum NotchControlItem: String, CaseIterable, Identifiable {
     var symbol: String {
         switch self {
         case .dictation: return "waveform" // FORK(notch-dictation2)
+        case .meeting: return "person.2.wave.2" // FORK(notch-meeting-tile2)
         case .volume: return "speaker.wave.2.fill"
         case .brightness: return "sun.max.fill"
         case .keyboardLight: return "light.max"
@@ -1317,6 +1324,7 @@ enum NotchControlItem: String, CaseIterable, Identifiable {
     var setupRequirement: NotchControlSetupRequirement {
         switch self {
         case .dictation: return .page(.clipboard, feature: .clipboardHistory) // FORK(notch-dictation2)
+        case .meeting: return .page(.controls, feature: nil) // FORK(notch-meeting-tile2)
         case .volume: return .feature(.mixer)
         case .brightness, .keyboardLight: return .feature(.brightness)
         case .keepAwake: return .feature(.keepAwake)
@@ -1337,6 +1345,7 @@ enum NotchControlItem: String, CaseIterable, Identifiable {
     func isAvailable(in defaults: UserDefaults = .standard) -> Bool {
         switch self {
         case .dictation: return Self.dictationIsAvailable(defaults) // FORK(notch-dictation2)
+        case .meeting: return Self.meetingIsAvailable(defaults) // FORK(notch-meeting-tile2)
         case .volume: return AppFeature.mixer.isAvailable(in: defaults)
         case .mixer: return AppFeature.mixer.isAvailable(in: defaults) && NotchSupport.modules(in: defaults).contains(.mixer)
         case .brightness: return AppFeature.brightness.isAvailable(in: defaults)

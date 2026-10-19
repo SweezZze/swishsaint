@@ -816,6 +816,7 @@ struct NotchSettings: View {
     /// the feature behind it is disabled; the others follow their feature.
     private func controlReason(_ item: NotchControlItem) -> String {
         if item == .dictation, let reason = ForkNotchDictations.controlReason(l10n.language) { return reason } // FORK(notch-dictation5)
+        if item == .meeting, let reason = ForkMeetingIslandTile.controlReason(l10n.language) { return reason } // FORK(notch-meeting-tile5)
         // The keyboard light also needs a keyboard that has one.
         if item == .keyboardLight, AppFeature.brightness.isAvailable { return editor.keyboardLightUnavailable }
         switch item.setupRequirement {
@@ -827,6 +828,7 @@ struct NotchSettings: View {
 
     private func controlUnavailableAction(_ item: NotchControlItem) -> (() -> Void)? {
         if item == .dictation, let action = ForkNotchDictations.controlSetupAction() { return action } // FORK(notch-dictation5)
+        if item == .meeting, let action = ForkMeetingIslandTile.controlSetupAction() { return action } // FORK(notch-meeting-tile5)
         if item == .keyboardLight, AppFeature.brightness.isAvailable { return nil }
         switch item.setupRequirement {
         case .feature(let feature):
