@@ -293,9 +293,9 @@ enum ForkMeetingDetectionTests {
 
         var back = recording()
         back.handle(.endProbable(meetA, countdown: 15), now: at(600))
-        suite.expect(back.handle(.candidates([candidate(silenced: true)], request()), now: at(605)) == [.hideEndingSoon]
-                        && isRecording(back),
-                     "its meeting back (the microphone, the tab) takes the countdown away")
+        suite.expect(back.handle(.candidates([candidate(silenced: true)], request()), now: at(605))
+                        == [.hideEndingSoon, .announce(.meetingBack)] && isRecording(back),
+                     "its meeting back (the microphone, the tab) takes the countdown away, and says so")
 
         var off = recording()
         suite.expect(off.handle(.endProbable(meetA, countdown: nil), now: at(600)).isEmpty && isRecording(off),

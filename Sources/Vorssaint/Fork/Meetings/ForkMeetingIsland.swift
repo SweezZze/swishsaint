@@ -58,6 +58,9 @@ enum ForkMeetingIsland {
         case .failure: return "exclamationmark.triangle.fill"
         case .soundLost: return "speaker.slash"
         case .neverOffered: return "bell.slash"
+        case .discarded(.kept): return "exclamationmark.triangle.fill"
+        case .discarded: return "trash"
+        case .announcementCopied: return "doc.on.doc"
         }
     }
 
@@ -67,11 +70,15 @@ enum ForkMeetingIsland {
     /// lock) calls `close`, instead of the card staying attached unseen.
     /// `fallback` runs when the island goes away under it (turned off, its
     /// display unplugged). A card with a ⋯ menu puts it in the island's top
-    /// row, right of the camera, where the page's own controls go.
+    /// row, right of the camera, where the page's own controls go. The card
+    /// `id` already up is changed in place: the island, open on it, is no
+    /// longer free for a new one.
     @discardableResult
     static func present(_ card: ForkMeetingCard, id: UUID, height: CGFloat, fallback: @escaping () -> Void,
                         close: @escaping () -> Void, hover: @escaping (Bool) -> Void) -> Bool {
-        guard isAvailable else { return false }
+        guard ForkMeetingIslandCard.islandTakes(available: isAvailable, showingThisCard: isShowing(id: id)) else {
+            return false
+        }
         let actions = card.menu.isEmpty ? nil : AnyView(ForkMeetingCardMenu(card: card))
         return NotchService.shared.presentCapture(
             id: id, content: AnyView(ForkMeetingCardView(card: card)), actions: actions, height: height,
@@ -95,6 +102,15 @@ enum ForkMeetingIsland {
             .fixedSize(horizontal: false, vertical: true))
         let measured = host.fittingSize.height
         return measured.isFinite ? max(minimum, measured.rounded(.up)) : minimum
+    }
+
+    /// The island's panel takes the keyboard while open (`acceptsKeyFocus`),
+    /// so a click on our card made it key. After a button that leaves the
+    /// card up ("Copy Announcement"), the keyboard goes back, so typing lands
+    /// in the call again; the buttons that take the card away give it back
+    /// with the island's collapse.
+    static func giveKeyboardBack() {
+        NotchService.shared.resignPanelKey()
     }
 
     /// Takes the card away; never calls its `close`.

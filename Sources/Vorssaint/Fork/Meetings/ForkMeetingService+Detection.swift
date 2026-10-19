@@ -223,6 +223,17 @@ extension ForkMeetingService {
         send(.cancelAutoStart)
     }
 
+    /// The pill's stop. While "Cancel" runs after a start "Always" made, it
+    /// cancels as "Cancel" does (the file goes to the Trash), and says so to
+    /// VoiceOver: a stop then would keep a meeting nobody chose to record.
+    func stopFromPill() {
+        if ForkMeetingOfferTiming.pillStopCancels(undoUntil: machine.activeSession?.undoUntil, now: Date()) {
+            cancelAutoStart()
+        } else {
+            stop()
+        }
+    }
+
     /// "Continue" during "Meeting over? Stopping in 15 s".
     func continueRecording() {
         send(.continueRecording)
@@ -234,10 +245,7 @@ extension ForkMeetingService {
         let text = ForkMeetingStrings.current
         let announcement = ForkMeetingAnnouncementText.text(
             stored: defaults.string(forKey: ForkDefaultsKey.meetingsAnnouncement) ?? "", strings: text)
-        let pasteboard = NSPasteboard.general
-        pasteboard.clearContents()
-        pasteboard.setString(announcement, forType: .string)
-        presenter.say(text.voiceAnnouncementCopied)
+        presenter.copy(announcement)
     }
 
     /// What the offer will record, "Google Chrome window · Google Chrome
@@ -348,19 +356,19 @@ extension ForkMeetingService {
 
     /// "Cancel" after a start "Always" made: once its file is closed, the
     /// folder goes to the Trash (deleted if the volume has none), off the
-    /// main thread. It was never finalized nor added to the recent captures.
+    /// main thread, then the notice says what became of it. It was never
+    /// finalized nor added to the recent captures.
     private func discardCancelled(_ folder: URL) {
-        DispatchQueue.global(qos: .utility).async { [store, log] in
+        DispatchQueue.global(qos: .utility).async { [weak self, store, log] in
             store.release(folder)
             let manager = FileManager.default
-            do {
-                try manager.trashItem(at: folder, resultingItemURL: nil)
-            } catch {
-                do {
-                    try manager.removeItem(at: folder)
-                } catch {
-                    log.error("a cancelled meeting stays: \(error.localizedDescription, privacy: .private)")
-                }
+            let outcome = ForkMeetingDiscardOutcome.discard(
+                trash: { try manager.trashItem(at: folder, resultingItemURL: nil) },
+                remove: { try manager.removeItem(at: folder) })
+            if outcome == .kept { log.error("a cancelled meeting stays in its folder") }
+            DispatchQueue.main.async {
+                guard let self, !self.terminating else { return }
+                self.presenter.showDiscarded(outcome)
             }
         }
     }

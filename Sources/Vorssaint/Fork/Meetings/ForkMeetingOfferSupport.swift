@@ -19,6 +19,41 @@ enum ForkMeetingOfferSurface: Equatable {
     }
 }
 
+/// Which of the detection's cards the island holds: the offer, "Recording
+/// started · Cancel (5 s)", "Meeting over? Stopping in 12 s".
+enum ForkMeetingIslandCard: Equatable {
+    case offer
+    case undo
+    case endingSoon
+
+    /// What becomes of a card the island closed over (a click on the
+    /// island, a lock, the official capture controls).
+    enum AfterClose: Equatable {
+        /// The offer folds into its reminder: not a "Not Now".
+        case fold
+        /// "Cancel" goes on in the bubble while its seconds run.
+        case bubble
+        /// Nothing to keep: the pill holds the countdown, and "Cancel" is
+        /// over.
+        case gone
+    }
+
+    func afterClose(undoUntil: Date?, now: Date) -> AfterClose {
+        switch self {
+        case .offer: return .fold
+        case .undo: return undoUntil.map { now < $0 } == true ? .bubble : .gone
+        case .endingSoon: return .gone
+        }
+    }
+
+    /// Our card already up in the island is changed there, in place. The
+    /// island is open on it, so it is not "available" (free to be opened
+    /// for a card) any more.
+    static func islandTakes(available: Bool, showingThisCard: Bool) -> Bool {
+        available || showingThisCard
+    }
+}
+
 /// When an open offer folds. The machine folds it 20 s after it opened;
 /// the pointer resting on it holds the fold until it leaves, then a short
 /// grace lets a click that was on its way land. An offer opened again from
@@ -85,11 +120,75 @@ enum ForkMeetingOfferTiming {
         return Int(left.rounded(.up))
     }
 
+    /// The pill's stop cancels, as "Cancel" does, while "Cancel" runs.
+    static func pillStopCancels(undoUntil: Date?, now: Date) -> Bool {
+        undoUntil.map { now < $0 } == true
+    }
+
     /// A start for a once-a-second timeline whose ticks fall when the
     /// number of seconds left changes, not up to a second after it: in the
     /// past, a whole number of seconds before `until`.
     static func tickStart(until: Date, now: Date) -> Date {
         until.addingTimeInterval(-Double(secondsLeft(until: until, now: now) + 1))
+    }
+}
+
+/// What became of a cancelled recording's folder, as its notice and
+/// VoiceOver say it: never "deleted" when it was not.
+enum ForkMeetingDiscardOutcome: Equatable {
+    case trashed
+    /// It could not go to the Trash (a volume without one): deleted.
+    case deleted
+    /// Neither: it stays in the meetings' folder.
+    case kept
+
+    /// To the Trash, else deleted, else kept.
+    static func discard(trash: () throws -> Void, remove: () throws -> Void) -> ForkMeetingDiscardOutcome {
+        do {
+            try trash()
+            return .trashed
+        } catch {
+            do {
+                try remove()
+                return .deleted
+            } catch {
+                return .kept
+            }
+        }
+    }
+
+    func spoken(_ s: ForkMeetingStrings) -> String {
+        switch self {
+        case .trashed: return s.voiceDiscarded
+        case .deleted: return s.voiceDiscardedDeleted
+        case .kept: return s.voiceDiscardKept
+        }
+    }
+}
+
+/// VoiceOver's last sentence: the same one twice in a row is said once.
+/// It is forgotten when what it spoke of goes away (the offer, the
+/// countdown, the recording's pill), so the next offer or countdown is said
+/// in full, even in the same words.
+struct ForkMeetingSpoken: Equatable {
+    private(set) var last: String?
+
+    /// Whether `message` is to be said now; it becomes the last one.
+    mutating func says(_ message: String) -> Bool {
+        guard !message.isEmpty, message != last else { return false }
+        last = message
+        return true
+    }
+
+    mutating func forget() {
+        last = nil
+    }
+
+    static func forgets(after effect: ForkMeetingMachine.Effect) -> Bool {
+        switch effect {
+        case .hideOffer, .hideEndingSoon, .showPill(.hidden): return true
+        default: return false
+        }
     }
 }
 
@@ -100,6 +199,33 @@ enum ForkMeetingOfferMicrophone: Equatable {
     case off
     /// macOS does not allow it: the meeting would record without it.
     case denied
+}
+
+/// The input an offer names for the Meetings page's microphone: the one
+/// its start would record.
+enum ForkMeetingOfferInput: Equatable {
+    case off
+    case system
+    case builtIn
+    /// Chosen on the page, by its unique ID.
+    case chosen(String)
+    /// "Meeting microphone (auto)": the input the meeting's app records
+    /// from, by its unique ID, as the start asks the recorder for it.
+    case meetingApp(String)
+
+    /// "Automatic" names the meeting app's own input when the app records
+    /// one, else the system's, as its start does.
+    static func of(_ choice: ForkMeetingMicrophoneChoice, meetingInput: String?) -> ForkMeetingOfferInput {
+        switch choice {
+        case .meeting:
+            guard let meetingInput, !meetingInput.isEmpty else { return .system }
+            return .meetingApp(meetingInput)
+        case .system: return .system
+        case .builtIn: return .builtIn
+        case let .device(uid): return .chosen(uid)
+        case .off: return .off
+        }
+    }
 }
 
 /// The offer's words, put together from the meeting and the settings.
@@ -170,6 +296,23 @@ enum ForkMeetingOfferText {
             parts.append(code)
         }
         return parts.isEmpty ? nil : parts.joined(separator: " · ")
+    }
+
+    /// The card's title and the line under it. Where someone else's screen
+    /// share would see the card (the island, while the official "Show in
+    /// screenshots and videos" is on), it names the service alone and says
+    /// why: the meeting's name and code stay in the bubble, which no share
+    /// shows, and with VoiceOver.
+    static func heading(_ candidate: ForkMeetingCandidate, seenInShares: Bool,
+                        strings s: ForkMeetingStrings) -> (title: String, subtitle: String?) {
+        guard seenInShares else { return (candidate.name, subtitle(candidate)) }
+        return (candidate.providerName, s.offerNameHidden)
+    }
+
+    /// "Always for Meet" records now: a greyed offer, which cannot, offers
+    /// it greyed too. "Never" stays.
+    static func allowsAlways(_ offer: ForkMeetingOffer) -> Bool {
+        offer.blocked == nil
     }
 
     /// Why a greyed offer cannot record now, in a few words.

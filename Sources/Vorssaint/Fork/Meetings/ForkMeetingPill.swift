@@ -147,6 +147,13 @@ final class ForkMeetingPill {
         fit()
     }
 
+    /// Until `until`, stop cancels the recording "Always" started, as
+    /// "Cancel" does: VoiceOver and the tooltip say so.
+    func setCancels(until: Date?) {
+        guard model.cancelsUntil != until else { return }
+        model.cancelsUntil = until
+    }
+
     /// The final pass's share done, between 0 and 1; `nil` while unknown.
     func setFinalizing(progress: Double?) {
         guard model.progress != progress else { return }
@@ -159,6 +166,7 @@ final class ForkMeetingPill {
         stopTicker()
         unobserve()
         model.endingSoonUntil = nil
+        model.cancelsUntil = nil
         collapseWork?.cancel()
         collapseWork = nil
         guard let panel, panel.isVisible else {
@@ -494,6 +502,8 @@ final class ForkMeetingPillModel: ObservableObject {
     @Published var reducesMotion = false
     /// The countdown of a meeting that seems over, while it runs.
     @Published var endingSoonUntil: Date?
+    /// "Cancel" runs: stop cancels.
+    @Published var cancelsUntil: Date?
     var text = ForkMeetingStrings.current
 
     var look: ForkMeetingPillLook? {
@@ -682,8 +692,8 @@ struct ForkMeetingPillView: View {
                            label: paused ? text.pillResume : text.pillPause,
                            action: paused ? actions.resume : actions.pause)
             }
-            pillButton(symbol: "stop.fill", color: Color(nsColor: .systemRed), label: text.pillStop,
-                       action: actions.stop)
+            pillButton(symbol: "stop.fill", color: Color(nsColor: .systemRed),
+                       label: model.cancelsUntil == nil ? text.pillStop : text.pillStopCancels, action: actions.stop)
             if model.hovering, model.context.canSwitchTarget {
                 let window = model.context.target == .window
                 pillButton(symbol: window ? "display" : "macwindow", color: .white,

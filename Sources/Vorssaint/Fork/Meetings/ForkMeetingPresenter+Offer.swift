@@ -9,12 +9,7 @@ import SwiftUI
 /// shows, where, and the cards "Cancel (5 s)" and "Meeting over?" that
 /// hold the island meanwhile.
 final class ForkMeetingOfferUI {
-    /// Which of our cards the island holds.
-    enum Card: Equatable {
-        case offer
-        case undo
-        case endingSoon
-    }
+    typealias Card = ForkMeetingIslandCard
 
     /// The offer's own bubble, apart from the notices': a notice arriving
     /// meanwhile never replaces it, it goes under it.
@@ -103,6 +98,7 @@ extension ForkMeetingPresenter {
             return
         }
         offerUI.undoUntil = until
+        pill.setCancels(until: until)
         let card = undoCard(until: until)
         if presentInIsland(card, as: .undo, minimum: 72) { return }
         showOfferBubble(card, as: .undo)
@@ -114,6 +110,7 @@ extension ForkMeetingPresenter {
             return
         }
         offerUI.undoUntil = nil
+        pill.setCancels(until: nil)
         removeIslandCard(.undo)
         hideOfferBubble(.undo)
     }
@@ -155,6 +152,7 @@ extension ForkMeetingPresenter {
         ui.bubbleCard = nil
         ui.reminder.hide()
         pill.setEndingSoon(until: nil)
+        pill.setCancels(until: nil)
     }
 
     /// Another card is about to take the island: ours moves where it can
@@ -185,23 +183,23 @@ extension ForkMeetingPresenter {
             return
         }
         ui.reminder.hide()
-        let card = offerCard(offer)
+        let islandCard = offerCard(offer, inIsland: true)
         // Already in the island: changed in place.
         if let held = ui.islandCard, held.card == .offer, ForkMeetingIsland.isShowing(id: held.id) {
-            present(card, id: held.id)
+            present(islandCard, id: held.id)
             return
         }
         let surface = ForkMeetingOfferSurface.choose(folded: false, islandAvailable: ForkMeetingIsland.isAvailable,
                                                      islandTurnedAway: ui.islandTurnedAway)
         if surface == .island {
-            if presentInIsland(card, as: .offer, minimum: 96) {
+            if presentInIsland(islandCard, as: .offer, minimum: 96) {
                 hideOfferBubble(.offer)
                 return
             }
             ui.islandTurnedAway = true
         }
         removeIslandCard(.offer)
-        showOfferBubble(card, as: .offer)
+        showOfferBubble(offerCard(offer, inIsland: false), as: .offer)
     }
 
     private func showReminder(_ offer: ForkMeetingOffer) {
@@ -257,7 +255,9 @@ extension ForkMeetingPresenter {
         renderOffer()
     }
 
-    private func offerCard(_ offer: ForkMeetingOffer) -> ForkMeetingCard {
+    /// The island's card follows the official "Show in screenshots and
+    /// videos": seen in shares, it does not name the meeting.
+    private func offerCard(_ offer: ForkMeetingOffer, inIsland: Bool) -> ForkMeetingCard {
         let candidate = offer.candidate
         let service = ForkMeetingService.shared
         let settings = service.captureSettings()
@@ -265,8 +265,9 @@ extension ForkMeetingPresenter {
             icon: Self.icon(for: candidate), settings: settings,
             windowApp: Self.appName(pid: candidate.pid, bundle: candidate.windowBundle),
             soundApp: Self.appName(pid: nil, bundle: candidate.appBundle),
-            microphone: Self.microphone(settings.microphone),
-            consentReminder: UserDefaults.standard.bool(forKey: ForkDefaultsKey.meetingsConsentReminder))
+            microphone: Self.microphone(settings.microphone, meetingInput: service.meetingMicrophone(for: candidate)),
+            consentReminder: UserDefaults.standard.bool(forKey: ForkDefaultsKey.meetingsConsentReminder),
+            seenInShares: inIsland && ForkMeetingIsland.showsInCaptures)
         let actions = OfferActions(record: { service.acceptOffer() }, notNow: { service.dismissOffer(.thisTime) },
                                    always: { service.alwaysForOffer() }, never: { service.dismissOffer(.never) },
                                    copyAnnouncement: { service.copyAnnouncement() }, fix: failureAction)
@@ -281,6 +282,8 @@ extension ForkMeetingPresenter {
         var soundApp: String?
         var microphone: ForkMeetingOfferMicrophone
         var consentReminder: Bool
+        /// Someone else's screen share would show the card.
+        var seenInShares = false
     }
 
     /// What the offer's buttons and menu do. `fix` runs a refusal's way out
@@ -294,7 +297,9 @@ extension ForkMeetingPresenter {
         var fix: ((ForkMeetingFailureAction) -> Void)?
     }
 
-    /// The offer's card, the same in the island and the bubble:
+    /// The offer's card, the same in the island and the bubble, but for its
+    /// name in an island seen in screen shares ("Google Meet", "Name hidden
+    /// from shares"):
     /// ```
     /// [icon] Point hebdo                              (⋯ in the island's top row)
     ///        Google Meet · abc-defg-hij
@@ -307,9 +312,11 @@ extension ForkMeetingPresenter {
                           text: ForkMeetingStrings) -> ForkMeetingCard {
         let candidate = offer.candidate
         let settings = facts.settings
-        var card = ForkMeetingCard(symbol: "video.fill", tint: .accentColor, title: candidate.name)
+        let heading = ForkMeetingOfferText.heading(candidate, seenInShares: facts.seenInShares, strings: text)
+        var card = ForkMeetingCard(symbol: "video.fill", tint: .accentColor, title: heading.title)
+        if heading.title != candidate.name { card.spokenTitle = candidate.name }
         card.icon = facts.icon
-        card.lines = [ForkMeetingOfferText.subtitle(candidate)].compactMap { $0 }
+        card.lines = [heading.subtitle].compactMap { $0 }
         card.lines.append(ForkMeetingOfferText.capture(
             target: settings.target, windowApp: facts.windowApp, hasWindow: candidate.windowID != nil,
             sound: ForkMeetingOfferText.sound(setting: settings.systemAudio, providerDefault: candidate.defaultSound),
@@ -333,7 +340,8 @@ extension ForkMeetingPresenter {
         card.actions = [notNow, record]
         let provider = ForkMeetingOfferText.reminderTitle(candidate)
         card.menu = [
-            NotchMenuItem(title: text.offerAlways(provider), action: actions.always),
+            NotchMenuItem(title: text.offerAlways(provider), enabled: ForkMeetingOfferText.allowsAlways(offer),
+                          action: actions.always),
             NotchMenuItem(title: text.offerNever(provider), action: actions.never),
             .separator,
             NotchMenuItem(title: text.copyAnnouncement, action: actions.copyAnnouncement),
@@ -351,18 +359,23 @@ extension ForkMeetingPresenter {
         let filmed = ForkMeetingServiceSupport.filmed(target: context.target, appName: context.appName,
                                                       noWindowToFilm: context.noWindowToFilm, strings: text)
         let announcement = context.announcement
-        return Self.undoCard(until: until, filmed: filmed, consent: announcement != nil, text: text,
+        let provider = ForkMeetingService.shared.machine.activeSession?.config.meeting
+            .map(ForkMeetingOfferText.reminderTitle)
+        return Self.undoCard(until: until, provider: provider, filmed: filmed, consent: announcement != nil, text: text,
                              cancel: { ForkMeetingService.shared.cancelAutoStart() },
                              copy: { [weak self] in if let announcement { self?.copy(announcement) } })
     }
 
-    /// "Recording started · Chrome window · [Cancel (4 s)]", with the
-    /// consent reminder and its copy button while that setting is on.
-    static func undoCard(until: Date, filmed: String, consent: Bool, text: ForkMeetingStrings,
+    /// "Recording started · Started on its own · Always for Meet · Chrome
+    /// window · [Cancel (4 s)]": nobody pressed Record, the card says why it
+    /// records. With the consent reminder and its copy button while that
+    /// setting is on.
+    static func undoCard(until: Date, provider: String?, filmed: String, consent: Bool, text: ForkMeetingStrings,
                          cancel: @escaping () -> Void, copy: @escaping () -> Void) -> ForkMeetingCard {
         var card = ForkMeetingCard(symbol: "record.circle", tint: Color(nsColor: .systemRed), title: text.noticeStarted,
-                                   lines: [filmed])
-        card.actions = [ForkMeetingCard.Action(title: text.undo(seconds: Int(ForkMeetingMachine.undoWindow)),
+                                   lines: [provider.map(text.undoAutoStarted), filmed].compactMap { $0 })
+        let seconds = ForkMeetingOfferTiming.secondsLeft(until: until, now: Date())
+        card.actions = [ForkMeetingCard.Action(title: text.undo(seconds: seconds),
                                                countdown: ForkMeetingCard.Countdown(until: until) { now in
                                                    ForkMeetingOfferText.undo(until: until, now: now, strings: text)
                                                }, perform: cancel)]
@@ -372,6 +385,8 @@ extension ForkMeetingPresenter {
             // Two buttons leave the words no room beside them in the island.
             card.stacked = true
         }
+        // A × beside "Cancel" would read as cancelling the recording.
+        card.closable = false
         return card
     }
 
@@ -395,10 +410,13 @@ extension ForkMeetingPresenter {
     private func presentInIsland(_ card: ForkMeetingCard, as kind: ForkMeetingOfferUI.Card, minimum: CGFloat) -> Bool {
         let ui = offerUI
         let ours = ui.islandCard.map { ForkMeetingIsland.isShowing(id: $0.id) } ?? false
-        guard ForkMeetingIsland.isAvailable || ours else { return false }
+        guard ForkMeetingIslandCard.islandTakes(available: ForkMeetingIsland.isAvailable, showingThisCard: ours) else {
+            return false
+        }
         // The presenter's own card is replaced in place, not taken away
-        // first, so the island does not close and open again.
-        forgetCard()
+        // first, so the island does not close and open again; it goes on in
+        // the bubble.
+        yieldIsland()
         let id = ui.islandCard?.id ?? UUID()
         ui.islandCard = (id, kind)
         guard present(card, id: id, minimum: minimum) else {
@@ -422,14 +440,24 @@ extension ForkMeetingPresenter {
             close: { [weak self] in
                 guard let self, let held = self.offerUI.islandCard, held.id == id else { return }
                 self.offerUI.islandCard = nil
-                guard held.card == .offer else { return }
-                // Collapsed by a click, a lock, the capture controls: not a
-                // "Not Now", only a fold. Later, so a quitting app folds
-                // nothing.
-                self.offerUI.islandTurnedAway = true
-                DispatchQueue.main.async { [weak self] in
-                    guard let self, self.offerUI.open, self.offerUI.offer != nil else { return }
-                    self.foldOffer()
+                // Collapsed by a click, a lock, the capture controls: an
+                // offer only folds, "Cancel" goes on in the bubble while it
+                // runs. Later, so a quitting app moves nothing.
+                switch held.card.afterClose(undoUntil: self.offerUI.undoUntil, now: Date()) {
+                case .fold:
+                    self.offerUI.islandTurnedAway = true
+                    DispatchQueue.main.async { [weak self] in
+                        guard let self, self.offerUI.open, self.offerUI.offer != nil else { return }
+                        self.foldOffer()
+                    }
+                case .bubble:
+                    DispatchQueue.main.async { [weak self] in
+                        guard let self, let until = self.offerUI.undoUntil, Date() < until,
+                              self.offerUI.islandCard == nil else { return }
+                        self.showOfferBubble(self.undoCard(until: until), as: .undo)
+                    }
+                case .gone:
+                    break
                 }
             },
             hover: { [weak self] inside in
@@ -455,6 +483,7 @@ extension ForkMeetingPresenter {
         }
         let screen = kind == .offer ? offerUI.offer.map { meetingScreen($0.candidate) } ?? self.screen : self.screen
         ui.bubble.show(card, on: screen, hold: nil)
+        settleNoticeBubble()
     }
 
     private func hideOfferBubble(_ kind: ForkMeetingOfferUI.Card) {
@@ -504,19 +533,23 @@ extension ForkMeetingPresenter {
         return (FileManager.default.displayName(atPath: url.path) as NSString).deletingPathExtension
     }
 
-    /// The microphone a start would record, by name.
-    private static func microphone(_ stored: String) -> ForkMeetingOfferMicrophone {
-        let choice = ForkMeetingMicrophoneChoice(stored: stored)
-        if choice == .off { return .off }
+    /// The microphone a start would record, by name: for "Automatic", the
+    /// input the meeting's app records from (`meetingInput`), else the
+    /// system's.
+    private static func microphone(_ stored: String, meetingInput: String?) -> ForkMeetingOfferMicrophone {
+        let input = ForkMeetingOfferInput.of(ForkMeetingMicrophoneChoice(stored: stored), meetingInput: meetingInput)
+        if input == .off { return .off }
         switch AVCaptureDevice.authorizationStatus(for: .audio) {
         case .denied, .restricted: return .denied
         default: break
         }
+        let system = { ForkDictationAudioDevices.captureDevice(for: ForkDictationAudioDevices.systemChoice) }
         let device: AVCaptureDevice?
-        switch choice {
-        case .meeting, .system: device = ForkDictationAudioDevices.captureDevice(for: ForkDictationAudioDevices.systemChoice)
+        switch input {
+        case .system: device = system()
         case .builtIn: device = ForkDictationAudioDevices.captureDevice(for: ForkDictationAudioDevices.builtInChoice)
-        case let .device(uid): device = ForkDictationAudioDevices.captureDevice(for: uid)
+        case let .chosen(uid): device = ForkDictationAudioDevices.captureDevice(for: uid)
+        case let .meetingApp(uid): device = AVCaptureDevice(uniqueID: uid) ?? system()
         case .off: device = nil
         }
         return device.map { .named($0.localizedName) } ?? .off

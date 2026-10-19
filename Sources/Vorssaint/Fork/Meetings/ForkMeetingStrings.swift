@@ -366,6 +366,41 @@ struct ForkMeetingStrings {
     /// The microphone's value while macOS does not allow it.
     let offerMicrophoneDenied: String
 
+    // MARK: Fixes H2
+
+    /// The island's offer when the island shows in screen shares: the line
+    /// under the service's name, which stands in for the meeting's.
+    let offerNameHidden: String
+
+    /// The pill's stop for VoiceOver and as its tooltip while "Cancel" runs
+    /// after a start "Always" made: it cancels then, as "Cancel" does.
+    let pillStopCancels: String
+
+    /// Said when the meeting comes back during "Meeting over?": the
+    /// countdown goes, the recording goes on.
+    let voiceMeetingBack: String
+
+    /// After "Cancel", once the folder is gone: the notice says where it
+    /// went (the Trash; deleted on a volume without one), or that it stayed.
+    let noticeDiscardedTrash: String
+    let noticeDiscardedDeleted: String
+    let noticeDiscardKept: String
+    let noticeDiscardKeptDetail: String
+    /// Said once the folder is gone: deleted (it could not go to the
+    /// Trash), or kept. Moved to the Trash, `voiceDiscarded` says it.
+    let voiceDiscardedDeleted: String
+    let voiceDiscardKept: String
+
+    /// After "Copy Announcement": the notice and its detail.
+    let noticeAnnouncementCopied: String
+    let noticeAnnouncementCopiedDetail: String
+
+    /// The "Cancel" card's line: nobody pressed Record. %@ is the provider's
+    /// short name ("Meet").
+    let undoAutoStartedFormat: String
+
+    func undoAutoStarted(_ provider: String) -> String { String(format: undoAutoStartedFormat, provider) }
+
     func offerAlways(_ provider: String) -> String { String(format: offerAlwaysFormat, provider) }
     func offerNever(_ provider: String) -> String { String(format: offerNeverFormat, provider) }
     func offerCapture(window: String, sound: String, microphone: String) -> String {
@@ -611,7 +646,20 @@ extension ForkMeetingStrings {
         // MARK: Offer UI
         offerCaptureDisplayFormat: "Whole screen · sound: %1$@ · mic: %2$@",
         offerNone: "none",
-        offerMicrophoneDenied: "not allowed"
+        offerMicrophoneDenied: "not allowed",
+        // MARK: Fixes H2
+        offerNameHidden: "Name hidden from shares",
+        pillStopCancels: "Cancel the recording and move it to the Trash",
+        voiceMeetingBack: "The meeting goes on: the recording does not stop.",
+        noticeDiscardedTrash: "Cancelled · moved to Trash",
+        noticeDiscardedDeleted: "Cancelled · deleted",
+        noticeDiscardKept: "Cancelled · folder kept",
+        noticeDiscardKeptDetail: "It stays with your meetings",
+        voiceDiscardedDeleted: "Recording cancelled. Its folder could not go to the Trash: it is deleted.",
+        voiceDiscardKept: "Recording cancelled, but its folder could be neither moved to the Trash nor deleted: it stays with your meetings.",
+        noticeAnnouncementCopied: "Announcement copied",
+        noticeAnnouncementCopiedDetail: "Paste it in the meeting chat",
+        undoAutoStartedFormat: "Started on its own · Always for %@"
     )
 }
 
@@ -842,7 +890,20 @@ extension ForkMeetingStrings {
         // MARK: Offer UI
         offerCaptureDisplayFormat: "Tela inteira · som: %1$@ · microfone: %2$@",
         offerNone: "nenhum",
-        offerMicrophoneDenied: "não permitido"
+        offerMicrophoneDenied: "não permitido",
+        // MARK: Fixes H2
+        offerNameHidden: "Nome oculto ao compartilhar",
+        pillStopCancels: "Cancelar a gravação e movê-la para o Lixo",
+        voiceMeetingBack: "A reunião continua: a gravação não para.",
+        noticeDiscardedTrash: "Cancelada · no Lixo",
+        noticeDiscardedDeleted: "Cancelada · apagada",
+        noticeDiscardKept: "Cancelada · pasta mantida",
+        noticeDiscardKeptDetail: "Continua com suas reuniões",
+        voiceDiscardedDeleted: "Gravação cancelada. A pasta não pôde ir para o Lixo: foi apagada.",
+        voiceDiscardKept: "Gravação cancelada, mas a pasta não pôde ir para o Lixo nem ser apagada: continua com suas reuniões.",
+        noticeAnnouncementCopied: "Aviso copiado",
+        noticeAnnouncementCopiedDetail: "Cole no chat da reunião",
+        undoAutoStartedFormat: "Iniciada sozinha · Sempre para %@"
     )
 }
 
@@ -1073,7 +1134,20 @@ extension ForkMeetingStrings {
         // MARK: Offer UI
         offerCaptureDisplayFormat: "Tüm ekran · ses: %1$@ · mikrofon: %2$@",
         offerNone: "yok",
-        offerMicrophoneDenied: "izin yok"
+        offerMicrophoneDenied: "izin yok",
+        // MARK: Fixes H2
+        offerNameHidden: "Paylaşımda ad gizli",
+        pillStopCancels: "Kaydı iptal et ve Çöp Sepeti’ne taşı",
+        voiceMeetingBack: "Toplantı sürüyor: kayıt durmuyor.",
+        noticeDiscardedTrash: "İptal · Çöp Sepeti’nde",
+        noticeDiscardedDeleted: "İptal · silindi",
+        noticeDiscardKept: "İptal · klasör duruyor",
+        noticeDiscardKeptDetail: "Toplantılarınızda duruyor",
+        voiceDiscardedDeleted: "Kayıt iptal edildi. Klasörü Çöp Sepeti’ne taşınamadı: silindi.",
+        voiceDiscardKept: "Kayıt iptal edildi, ancak klasörü Çöp Sepeti’ne taşınamadı ve silinemedi: toplantılarınızda duruyor.",
+        noticeAnnouncementCopied: "Duyuru kopyalandı",
+        noticeAnnouncementCopiedDetail: "Sohbete yapıştırın",
+        undoAutoStartedFormat: "Kendiliğinden başladı · %@ için her zaman"
     )
 }
 
@@ -1304,7 +1378,20 @@ extension ForkMeetingStrings {
         // MARK: Offer UI
         offerCaptureDisplayFormat: "Весь экран · звук: %1$@ · микрофон: %2$@",
         offerNone: "нет",
-        offerMicrophoneDenied: "не разрешён"
+        offerMicrophoneDenied: "не разрешён",
+        // MARK: Fixes H2
+        offerNameHidden: "Имя скрыто при показе экрана",
+        pillStopCancels: "Отменить запись и переместить в Корзину",
+        voiceMeetingBack: "Встреча продолжается: запись не остановится.",
+        noticeDiscardedTrash: "Отменено · в Корзине",
+        noticeDiscardedDeleted: "Отменено · удалено",
+        noticeDiscardKept: "Отменено · папка осталась",
+        noticeDiscardKeptDetail: "Она среди ваших встреч",
+        voiceDiscardedDeleted: "Запись отменена. Её папку не удалось переместить в Корзину: она удалена.",
+        voiceDiscardKept: "Запись отменена, но её папку не удалось ни переместить в Корзину, ни удалить: она среди ваших встреч.",
+        noticeAnnouncementCopied: "Объявление скопировано",
+        noticeAnnouncementCopiedDetail: "Вставьте его в чат встречи",
+        undoAutoStartedFormat: "Начата автоматически · Всегда для %@"
     )
 }
 
@@ -1535,7 +1622,20 @@ extension ForkMeetingStrings {
         // MARK: Offer UI
         offerCaptureDisplayFormat: "Pantalla completa · sonido: %1$@ · micro: %2$@",
         offerNone: "ninguno",
-        offerMicrophoneDenied: "no permitido"
+        offerMicrophoneDenied: "no permitido",
+        // MARK: Fixes H2
+        offerNameHidden: "Nombre oculto al compartir",
+        pillStopCancels: "Cancelar la grabación y moverla a la Papelera",
+        voiceMeetingBack: "La reunión continúa: la grabación no se detiene.",
+        noticeDiscardedTrash: "Cancelada · en la Papelera",
+        noticeDiscardedDeleted: "Cancelada · borrada",
+        noticeDiscardKept: "Cancelada · carpeta intacta",
+        noticeDiscardKeptDetail: "Sigue con tus reuniones",
+        voiceDiscardedDeleted: "Grabación cancelada. Su carpeta no pudo ir a la Papelera: se ha borrado.",
+        voiceDiscardKept: "Grabación cancelada, pero su carpeta no se pudo mover a la Papelera ni borrar: sigue con tus reuniones.",
+        noticeAnnouncementCopied: "Aviso copiado",
+        noticeAnnouncementCopiedDetail: "Pégalo en el chat",
+        undoAutoStartedFormat: "Iniciada sola · Siempre para %@"
     )
 }
 
@@ -1766,7 +1866,20 @@ extension ForkMeetingStrings {
         // MARK: Offer UI
         offerCaptureDisplayFormat: "Celá obrazovka · zvuk: %1$@ · mikrofón: %2$@",
         offerNone: "žiadny",
-        offerMicrophoneDenied: "nepovolený"
+        offerMicrophoneDenied: "nepovolený",
+        // MARK: Fixes H2
+        offerNameHidden: "Názov skrytý pri zdieľaní",
+        pillStopCancels: "Zrušiť nahrávanie a presunúť ho do Koša",
+        voiceMeetingBack: "Stretnutie pokračuje: nahrávanie sa nezastaví.",
+        noticeDiscardedTrash: "Zrušené · v Koši",
+        noticeDiscardedDeleted: "Zrušené · vymazané",
+        noticeDiscardKept: "Zrušené · priečinok ostal",
+        noticeDiscardKeptDetail: "Ostáva medzi stretnutiami",
+        voiceDiscardedDeleted: "Nahrávanie zrušené. Jeho priečinok nešlo presunúť do Koša: je vymazaný.",
+        voiceDiscardKept: "Nahrávanie zrušené, no jeho priečinok sa nepodarilo presunúť do Koša ani vymazať: ostáva medzi stretnutiami.",
+        noticeAnnouncementCopied: "Oznámenie skopírované",
+        noticeAnnouncementCopiedDetail: "Vložte ho do četu stretnutia",
+        undoAutoStartedFormat: "Spustené samo · Vždy pre %@"
     )
 }
 
@@ -1997,7 +2110,20 @@ extension ForkMeetingStrings {
         // MARK: Offer UI
         offerCaptureDisplayFormat: "Ganzer Bildschirm · Ton: %1$@ · Mikro: %2$@",
         offerNone: "aus",
-        offerMicrophoneDenied: "nicht erlaubt"
+        offerMicrophoneDenied: "nicht erlaubt",
+        // MARK: Fixes H2
+        offerNameHidden: "Name beim Teilen verborgen",
+        pillStopCancels: "Aufnahme abbrechen und in den Papierkorb legen",
+        voiceMeetingBack: "Die Besprechung geht weiter: Die Aufnahme stoppt nicht.",
+        noticeDiscardedTrash: "Abgebrochen · im Papierkorb",
+        noticeDiscardedDeleted: "Abgebrochen · gelöscht",
+        noticeDiscardKept: "Abgebrochen · Ordner bleibt",
+        noticeDiscardKeptDetail: "Bei Ihren Besprechungen",
+        voiceDiscardedDeleted: "Aufnahme abgebrochen. Ihr Ordner konnte nicht in den Papierkorb: Er wurde gelöscht.",
+        voiceDiscardKept: "Aufnahme abgebrochen, aber ihr Ordner ließ sich weder in den Papierkorb legen noch löschen: Er bleibt bei Ihren Besprechungen.",
+        noticeAnnouncementCopied: "Ankündigung kopiert",
+        noticeAnnouncementCopiedDetail: "In den Chat einfügen",
+        undoAutoStartedFormat: "Von selbst gestartet · Immer für %@"
     )
 }
 
@@ -2228,7 +2354,20 @@ extension ForkMeetingStrings {
         // MARK: Offer UI
         offerCaptureDisplayFormat: "Écran entier · son\u{00A0}: %1$@ · micro\u{00A0}: %2$@",
         offerNone: "aucun",
-        offerMicrophoneDenied: "non autorisé"
+        offerMicrophoneDenied: "non autorisé",
+        // MARK: Fixes H2
+        offerNameHidden: "Nom masqué pour les partages",
+        pillStopCancels: "Annuler l’enregistrement et le mettre à la Corbeille",
+        voiceMeetingBack: "La réunion continue\u{00A0}: l’enregistrement ne s’arrête pas.",
+        noticeDiscardedTrash: "Annulé · mis à la Corbeille",
+        noticeDiscardedDeleted: "Annulé · supprimé",
+        noticeDiscardKept: "Annulé · dossier non jeté",
+        noticeDiscardKeptDetail: "Il reste avec vos réunions",
+        voiceDiscardedDeleted: "Enregistrement annulé. Son dossier n’a pas pu aller à la Corbeille\u{00A0}: il est supprimé.",
+        voiceDiscardKept: "Enregistrement annulé, mais son dossier n’a pu être ni mis à la Corbeille ni supprimé\u{00A0}: il reste avec vos réunions.",
+        noticeAnnouncementCopied: "Annonce copiée",
+        noticeAnnouncementCopiedDetail: "À coller dans la discussion",
+        undoAutoStartedFormat: "Démarré seul · Toujours pour %@"
     )
 }
 
@@ -2459,7 +2598,20 @@ extension ForkMeetingStrings {
         // MARK: Offer UI
         offerCaptureDisplayFormat: "Schermo intero · audio: %1$@ · microfono: %2$@",
         offerNone: "nessuno",
-        offerMicrophoneDenied: "non consentito"
+        offerMicrophoneDenied: "non consentito",
+        // MARK: Fixes H2
+        offerNameHidden: "Nome nascosto se condividi",
+        pillStopCancels: "Annulla la registrazione e spostala nel Cestino",
+        voiceMeetingBack: "La riunione continua: la registrazione non si ferma.",
+        noticeDiscardedTrash: "Annullata · nel Cestino",
+        noticeDiscardedDeleted: "Annullata · eliminata",
+        noticeDiscardKept: "Annullata · cartella rimasta",
+        noticeDiscardKeptDetail: "Resta tra le tue riunioni",
+        voiceDiscardedDeleted: "Registrazione annullata. La cartella non è potuta andare nel Cestino: è stata eliminata.",
+        voiceDiscardKept: "Registrazione annullata, ma la cartella non è stata spostata nel Cestino né eliminata: resta tra le tue riunioni.",
+        noticeAnnouncementCopied: "Annuncio copiato",
+        noticeAnnouncementCopiedDetail: "Incollalo nella chat",
+        undoAutoStartedFormat: "Avviata da sola · Sempre per %@"
     )
 }
 
@@ -2690,7 +2842,20 @@ extension ForkMeetingStrings {
         // MARK: Offer UI
         offerCaptureDisplayFormat: "画面全体 · 音声：%1$@ · マイク：%2$@",
         offerNone: "なし",
-        offerMicrophoneDenied: "未許可"
+        offerMicrophoneDenied: "未許可",
+        // MARK: Fixes H2
+        offerNameHidden: "画面共有では名前を非表示",
+        pillStopCancels: "録画を取り消してゴミ箱に入れる",
+        voiceMeetingBack: "ミーティングは続いています。録画は停止しません。",
+        noticeDiscardedTrash: "取り消し · ゴミ箱に移動",
+        noticeDiscardedDeleted: "取り消し · 削除済み",
+        noticeDiscardKept: "取り消し · フォルダは未削除",
+        noticeDiscardKeptDetail: "ミーティングのフォルダに残っています",
+        voiceDiscardedDeleted: "録画を取り消しました。フォルダをゴミ箱に移せなかったため、削除しました。",
+        voiceDiscardKept: "録画を取り消しましたが、フォルダをゴミ箱に移すことも削除することもできませんでした。ミーティングのフォルダに残っています。",
+        noticeAnnouncementCopied: "告知をコピーしました",
+        noticeAnnouncementCopiedDetail: "チャットに貼り付けてください",
+        undoAutoStartedFormat: "自動で開始 · %@ では常に録画"
     )
 }
 
@@ -2921,7 +3086,20 @@ extension ForkMeetingStrings {
         // MARK: Offer UI
         offerCaptureDisplayFormat: "전체 화면 · 사운드: %1$@ · 마이크: %2$@",
         offerNone: "없음",
-        offerMicrophoneDenied: "허용 안 됨"
+        offerMicrophoneDenied: "허용 안 됨",
+        // MARK: Fixes H2
+        offerNameHidden: "화면 공유 시 이름 숨김",
+        pillStopCancels: "녹화를 취소하고 휴지통으로 이동",
+        voiceMeetingBack: "회의가 계속됩니다. 녹화는 중지되지 않습니다.",
+        noticeDiscardedTrash: "취소됨 · 휴지통으로 이동",
+        noticeDiscardedDeleted: "취소됨 · 삭제됨",
+        noticeDiscardKept: "취소됨 · 폴더가 남아 있음",
+        noticeDiscardKeptDetail: "회의 폴더에 남아 있습니다",
+        voiceDiscardedDeleted: "녹화가 취소되었습니다. 폴더를 휴지통으로 옮길 수 없어 삭제했습니다.",
+        voiceDiscardKept: "녹화가 취소되었지만 폴더를 휴지통으로 옮기거나 삭제하지 못했습니다. 회의 폴더에 남아 있습니다.",
+        noticeAnnouncementCopied: "안내를 복사했습니다",
+        noticeAnnouncementCopiedDetail: "회의 채팅에 붙여 넣으세요",
+        undoAutoStartedFormat: "자동으로 시작됨 · %@에서 항상 녹화"
     )
 }
 
@@ -3152,7 +3330,20 @@ extension ForkMeetingStrings {
         // MARK: Offer UI
         offerCaptureDisplayFormat: "Весь екран · звук: %1$@ · мікрофон: %2$@",
         offerNone: "немає",
-        offerMicrophoneDenied: "не дозволено"
+        offerMicrophoneDenied: "не дозволено",
+        // MARK: Fixes H2
+        offerNameHidden: "Назву сховано при показі",
+        pillStopCancels: "Скасувати запис і перемістити в Смітник",
+        voiceMeetingBack: "Зустріч триває: запис не зупиниться.",
+        noticeDiscardedTrash: "Скасовано · у Смітнику",
+        noticeDiscardedDeleted: "Скасовано · видалено",
+        noticeDiscardKept: "Скасовано · тека лишилася",
+        noticeDiscardKeptDetail: "Лишається серед зустрічей",
+        voiceDiscardedDeleted: "Запис скасовано. Його теку не вдалося перемістити в Смітник: її видалено.",
+        voiceDiscardKept: "Запис скасовано, але його теку не вдалося ні перемістити в Смітник, ні видалити: вона лишається серед зустрічей.",
+        noticeAnnouncementCopied: "Оголошення скопійовано",
+        noticeAnnouncementCopiedDetail: "Вставте його в чат зустрічі",
+        undoAutoStartedFormat: "Розпочато автоматично · Завжди для %@"
     )
 }
 
@@ -3383,7 +3574,20 @@ extension ForkMeetingStrings {
         // MARK: Offer UI
         offerCaptureDisplayFormat: "整个屏幕 · 声音：%1$@ · 麦克风：%2$@",
         offerNone: "无",
-        offerMicrophoneDenied: "未允许"
+        offerMicrophoneDenied: "未允许",
+        // MARK: Fixes H2
+        offerNameHidden: "共享屏幕时隐藏名称",
+        pillStopCancels: "取消录制并移到废纸篓",
+        voiceMeetingBack: "会议仍在进行，录制不会停止。",
+        noticeDiscardedTrash: "已取消 · 已移到废纸篓",
+        noticeDiscardedDeleted: "已取消 · 已删除",
+        noticeDiscardKept: "已取消 · 文件夹仍在",
+        noticeDiscardKeptDetail: "仍在会议文件夹中",
+        voiceDiscardedDeleted: "录制已取消。无法将文件夹移到废纸篓，已将其删除。",
+        voiceDiscardKept: "录制已取消，但无法将其文件夹移到废纸篓或删除，它仍在会议文件夹中。",
+        noticeAnnouncementCopied: "通知已复制",
+        noticeAnnouncementCopiedDetail: "粘贴到会议聊天中",
+        undoAutoStartedFormat: "已自动开始 · %@ 总是录制"
     )
 }
 
@@ -3614,7 +3818,20 @@ extension ForkMeetingStrings {
         // MARK: Offer UI
         offerCaptureDisplayFormat: "整個螢幕 · 聲音：%1$@ · 麥克風：%2$@",
         offerNone: "無",
-        offerMicrophoneDenied: "未允許"
+        offerMicrophoneDenied: "未允許",
+        // MARK: Fixes H2
+        offerNameHidden: "分享螢幕時隱藏名稱",
+        pillStopCancels: "取消錄製並丟到垃圾桶",
+        voiceMeetingBack: "會議仍在進行，錄製不會停止。",
+        noticeDiscardedTrash: "已取消 · 已丟到垃圾桶",
+        noticeDiscardedDeleted: "已取消 · 已刪除",
+        noticeDiscardKept: "已取消 · 檔案夾仍在",
+        noticeDiscardKeptDetail: "仍在會議檔案夾中",
+        voiceDiscardedDeleted: "錄製已取消。無法將檔案夾丟到垃圾桶，已將其刪除。",
+        voiceDiscardKept: "錄製已取消，但無法將其檔案夾丟到垃圾桶或刪除，它仍在會議檔案夾中。",
+        noticeAnnouncementCopied: "通知已拷貝",
+        noticeAnnouncementCopiedDetail: "貼到會議聊天中",
+        undoAutoStartedFormat: "已自動開始 · %@ 一律錄製"
     )
 }
 
@@ -3845,6 +4062,19 @@ extension ForkMeetingStrings {
         // MARK: Offer UI
         offerCaptureDisplayFormat: "整個螢幕 · 聲音：%1$@ · 咪高風：%2$@",
         offerNone: "無",
-        offerMicrophoneDenied: "未允許"
+        offerMicrophoneDenied: "未允許",
+        // MARK: Fixes H2
+        offerNameHidden: "分享螢幕時隱藏名稱",
+        pillStopCancels: "取消錄製並移到垃圾桶",
+        voiceMeetingBack: "會議仍在進行，錄製不會停止。",
+        noticeDiscardedTrash: "已取消 · 已移到垃圾桶",
+        noticeDiscardedDeleted: "已取消 · 已刪除",
+        noticeDiscardKept: "已取消 · 檔案夾仍在",
+        noticeDiscardKeptDetail: "仍在會議檔案夾中",
+        voiceDiscardedDeleted: "錄製已取消。無法將檔案夾移到垃圾桶，已將其刪除。",
+        voiceDiscardKept: "錄製已取消，但無法將其檔案夾移到垃圾桶或刪除，它仍在會議檔案夾中。",
+        noticeAnnouncementCopied: "通知已複製",
+        noticeAnnouncementCopiedDetail: "貼到會議聊天中",
+        undoAutoStartedFormat: "已自動開始 · %@ 一律錄製"
     )
 }

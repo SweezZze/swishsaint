@@ -185,7 +185,7 @@ enum ForkMeetingOfferTests {
                      "nor one named after its service alone")
         suite.expect(ForkMeetingOfferText.subtitle(meet(name: nil, calendar: "Point hebdo")) == "Google Meet · abc-defg-hij",
                      "a meeting named by its calendar event shows its service and code under it")
-        suite.expect(ForkMeetingOfferText.reminderTitle(meet()) == "Meet", "the reminder reads « ● Meet »")
+        suite.expect(ForkMeetingOfferText.reminderTitle(meet()) == "Meet", "the reminder reads « ○ Meet »")
         let french = ForkMeetingStrings.strings(.fr)
         suite.expect(ForkMeetingOfferText.blocked(.officialRecorderBusy, strings: french)
                         == "Un enregistrement d’écran est en cours.",

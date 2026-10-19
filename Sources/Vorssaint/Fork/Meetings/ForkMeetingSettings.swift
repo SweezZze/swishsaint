@@ -404,7 +404,7 @@ private struct ForkMeetingDetectionSection: View {
                     caption(text.autoStopCaption)
                 }
             }
-            Picker(text.autoStopDelay, selection: $autoStopSeconds) {
+            Picker(text.autoStopDelay, selection: delay) {
                 ForEach(delays, id: \.self) { seconds in
                     Text(label(seconds)).tag(seconds)
                 }
@@ -428,8 +428,15 @@ private struct ForkMeetingDetectionSection: View {
         return text.detectionTitlesOnly
     }
 
+    /// The delay the countdown really gives: a stored one out of bounds
+    /// (written by hand, or restored) reads as its bound, as it runs.
+    private var delay: Binding<Int> {
+        Binding(get: { ForkMeetingAutoStop.bounded(autoStopSeconds) }, set: { autoStopSeconds = $0 })
+    }
+
     private var delays: [Int] {
-        Self.choices.contains(autoStopSeconds) ? Self.choices : (Self.choices + [autoStopSeconds]).sorted()
+        let shown = ForkMeetingAutoStop.bounded(autoStopSeconds)
+        return Self.choices.contains(shown) ? Self.choices : (Self.choices + [shown]).sorted()
     }
 
     /// "15 s", in the app's language.
