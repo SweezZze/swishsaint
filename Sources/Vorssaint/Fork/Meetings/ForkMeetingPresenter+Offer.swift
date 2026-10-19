@@ -409,8 +409,9 @@ extension ForkMeetingPresenter {
             return false
         }
         // The presenter's own card is replaced in place, not taken away
-        // first, so the island does not close and open again.
-        forgetCard()
+        // first, so the island does not close and open again; it goes on in
+        // the bubble.
+        yieldIsland()
         let id = ui.islandCard?.id ?? UUID()
         ui.islandCard = (id, kind)
         guard present(card, id: id, minimum: minimum) else {
@@ -477,6 +478,7 @@ extension ForkMeetingPresenter {
         }
         let screen = kind == .offer ? offerUI.offer.map { meetingScreen($0.candidate) } ?? self.screen : self.screen
         ui.bubble.show(card, on: screen, hold: nil)
+        settleNoticeBubble()
     }
 
     private func hideOfferBubble(_ kind: ForkMeetingOfferUI.Card) {

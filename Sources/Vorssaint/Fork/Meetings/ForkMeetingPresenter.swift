@@ -45,6 +45,9 @@ final class ForkMeetingPresenter {
     private(set) var context = ForkMeetingLiveContext()
     private(set) var failureAction: ((ForkMeetingFailureAction) -> Void)?
     private var cardID: UUID?
+    /// The island's card as the bubble shows it, and its hold: where it goes
+    /// when one of the detection's cards takes the island over it.
+    private var cardInBubble: (card: ForkMeetingCard, hold: TimeInterval)?
     private var cardWork: DispatchWorkItem?
     /// The pointer rests on the island's card: its time stands still.
     private var cardHovered = false
@@ -352,6 +355,7 @@ final class ForkMeetingPresenter {
         let inBubble = make { [weak self] in self?.bubble.hide() }
         // Known before the island answers: it reports the pointer at once.
         cardID = id
+        cardInBubble = (inBubble, hold)
         cardHold = hold
         let shown = ForkMeetingIsland.present(
             make { [weak self] in self?.removeCard() }, id: id, height: height,
@@ -464,7 +468,24 @@ final class ForkMeetingPresenter {
         cardWork?.cancel()
         cardWork = nil
         cardID = nil
+        cardInBubble = nil
         cardHovered = false
+    }
+
+    /// One of the detection's cards takes the island over the presenter's
+    /// own (the microphone refused with its Settings button, a saved
+    /// meeting): that one goes on in the bubble, never lost under "Cancel".
+    func yieldIsland() {
+        guard cardID != nil, let held = cardInBubble else { return forgetCard() }
+        forgetCard()
+        _ = showInBubble(held.card, hold: held.hold)
+    }
+
+    /// The offer's bubble came above the notices' one: that one moves down
+    /// under it rather than being covered.
+    func settleNoticeBubble() {
+        guard let frame = offerUI.bubble.visibleFrame else { return }
+        bubble.settle(topInset: frame.height + 8, on: screen)
     }
 
     // MARK: - Words

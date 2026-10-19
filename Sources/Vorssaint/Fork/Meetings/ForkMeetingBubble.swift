@@ -362,6 +362,13 @@ final class ForkMeetingBubble {
         return true
     }
 
+    /// The card shown moves under `topInset`, where it stays.
+    func settle(topInset: CGFloat, on screen: NSScreen?) {
+        self.topInset = topInset
+        guard let panel, panel.isVisible, model.card != nil, let screen = screen ?? panel.screen else { return }
+        place(panel, on: screen)
+    }
+
     func hide() {
         holdWork?.cancel()
         holdWork = nil
