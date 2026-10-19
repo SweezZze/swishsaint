@@ -36,7 +36,9 @@ enum ForkDefaultsTests {
                                            ForkDefaultsKey.meetingsSystemAudio, ForkDefaultsKey.meetingsMicrophone,
                                            ForkDefaultsKey.meetingsQuality, ForkDefaultsKey.meetingsExtractAudio,
                                            ForkDefaultsKey.meetingsConsentReminder, ForkDefaultsKey.meetingsAnnouncement,
-                                           ForkDefaultsKey.meetingsShortcut]
+                                           ForkDefaultsKey.meetingsShortcut, ForkDefaultsKey.meetingsApps,
+                                           ForkDefaultsKey.meetingsAutoStop, ForkDefaultsKey.meetingsAutoStopSeconds,
+                                           ForkDefaultsKey.meetingsCalendarNaming]
         suite.expect(Set(ForkDefaults.legacyKeys.values) == Set(ForkDefaults.registered.keys).subtracting(addedSinceFork)
                         && ForkDefaults.legacyKeys.count == ForkDefaults.registered.count - addedSinceFork.count,
                      "every setting of the pre-fork test builds has its new name, and only those")
@@ -67,6 +69,15 @@ enum ForkDefaultsTests {
                         && ForkDefaults.registered[ForkDefaultsKey.meetingsExtractAudio] as? Bool == true
                         && ForkDefaults.registered[ForkDefaultsKey.meetingsConsentReminder] as? Bool == true,
                      "meetings start off; once on, they film the window with the app's sound and its microphone, in standard quality")
+        suite.expect(ForkDefaults.backupKeys.isSuperset(of: [ForkDefaultsKey.meetingsApps, ForkDefaultsKey.meetingsAutoStop,
+                                                             ForkDefaultsKey.meetingsAutoStopSeconds])
+                        && ForkDefaults.registered[ForkDefaultsKey.meetingsApps] as? String == ForkMeetingPolicies.defaultJSON
+                        && ForkDefaults.registered[ForkDefaultsKey.meetingsAutoStop] as? Bool == true
+                        && ForkDefaults.registered[ForkDefaultsKey.meetingsAutoStopSeconds] as? Int == 15,
+                     "what each meeting app does, and the stop 15 s after a meeting ends, go into the backup")
+        suite.expect(ForkDefaults.backupKeys.contains(ForkDefaultsKey.meetingsCalendarNaming)
+                        && ForkDefaults.registered[ForkDefaultsKey.meetingsCalendarNaming] as? Bool == false,
+                     "naming meetings with the calendar starts off, and the choice goes into the backup")
         let key = SettingsBackupSupport.settingsKey
         let payload: [String: Any] = [
             SettingsBackupSupport.formatVersionKey: SettingsBackupSupport.formatVersion,

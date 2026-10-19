@@ -36,29 +36,35 @@ final class ForkMeetingPresenter {
     /// A failure, or the start's reminder, holds its card this long.
     private static let cardHold: TimeInterval = 12
 
-    private let pill = ForkMeetingPill()
+    let pill = ForkMeetingPill()
     private let bubble = ForkMeetingBubble()
+    /// The offer, its reminder, "Cancel (5 s)" and the countdown
+    /// (`+Offer`).
+    let offerUI = ForkMeetingOfferUI()
     private(set) var pillState: ForkMeetingPillState = .hidden
     private(set) var context = ForkMeetingLiveContext()
-    private var failureAction: ((ForkMeetingFailureAction) -> Void)?
+    private(set) var failureAction: ((ForkMeetingFailureAction) -> Void)?
     private var cardID: UUID?
+    /// The island's card as the bubble shows it, and its hold: where it goes
+    /// when one of the detection's cards takes the island over it.
+    private var cardInBubble: (card: ForkMeetingCard, hold: TimeInterval)?
     private var cardWork: DispatchWorkItem?
     /// The pointer rests on the island's card: its time stands still.
     private var cardHovered = false
     /// How long the island's card stays once the pointer leaves it.
     private var cardHold = ForkMeetingPresenter.savedHold
-    private var lastAnnouncement: String?
+    private var spoken = ForkMeetingSpoken()
     /// Where the last notice could be shown, for its notification.
     private var lastShown: (notice: ForkMeetingNotice, shown: Shown)?
 
     private init() {}
 
-    private var text: ForkMeetingStrings { ForkMeetingStrings.current }
+    var text: ForkMeetingStrings { ForkMeetingStrings.current }
 
     /// The windows a capture filter that names windows leaves out. Ours
     /// leaves out the whole app instead, which covers them and any window
     /// made after the start; the pill's exists from `configure` on.
-    var windowNumbers: [Int] { [pill.windowNumber, bubble.windowNumber].compactMap { $0 } }
+    var windowNumbers: [Int] { ([pill.windowNumber, bubble.windowNumber] + offerUI.windowNumbers).compactMap { $0 } }
     var pillWindow: NSWindow? { pill.window }
 
     /// `levels` is read on the main thread fifteen times a second while
@@ -79,7 +85,10 @@ final class ForkMeetingPresenter {
             return
         }
         pill.configure(levels: levels, actions: ForkMeetingPill.Actions(pause: onPause, resume: onResume, stop: onStop,
-                                                                       toggleTarget: onToggleTarget))
+                                                                       toggleTarget: onToggleTarget,
+                                                                       continueRecording: {
+                                                                           ForkMeetingService.shared.continueRecording()
+                                                                       }))
         pill.prepare()
         failureAction = onFailureAction
     }
@@ -103,9 +112,25 @@ final class ForkMeetingPresenter {
         case let .notify(notice):
             notify(notice, detail: nil)
         case .startCapture, .pauseCapture, .resumeCapture, .restartStream, .switchTarget, .stopCapture,
-             .writeSidecar, .beginFinalize:
+             .writeSidecar, .beginFinalize, .silence, .setPolicy, .discard:
             break
+        case let .showOffer(offer):
+            showOffer(offer)
+        case .collapseOffer:
+            collapseOffer()
+        case .hideOffer:
+            hideOffer()
+        case let .showUndo(until):
+            showUndo(until: until)
+        case .hideUndo:
+            hideUndo()
+        case let .showEndingSoon(until):
+            showEndingSoon(until: until)
+        case .hideEndingSoon:
+            hideEndingSoon()
         }
+        // What was said of a card gone is said again for the next one.
+        if ForkMeetingSpoken.forgets(after: effect) { spoken.forget() }
     }
 
     /// The live facts changed: the pill shows them at once.
@@ -206,6 +231,20 @@ final class ForkMeetingPresenter {
         }
     }
 
+    /// After "Cancel", once the folder is gone, or not: the notice and
+    /// VoiceOver say what became of it, once ("Recording cancelled" was
+    /// said at the click), and that `askedAgain`'s meetings are offered
+    /// again when "Cancel" took back its "Always".
+    func showDiscarded(_ outcome: ForkMeetingDiscardOutcome, askedAgain: String? = nil) {
+        guard Thread.isMainThread else {
+            DispatchQueue.main.async { self.showDiscarded(outcome, askedAgain: askedAgain) }
+            return
+        }
+        let text = self.text
+        notice(.discarded(outcome), detail: outcome.detail(askedAgain: askedAgain, strings: text))
+        announce(outcome.spokenAfterCancel(askedAgain: askedAgain, strings: text))
+    }
+
     /// Said to VoiceOver only: what the pill shows without a word VoiceOver
     /// would hear change (the picture frozen).
     func say(_ message: String) {
@@ -223,7 +262,7 @@ final class ForkMeetingPresenter {
             DispatchQueue.main.async { self.resetAnnouncements() }
             return
         }
-        lastAnnouncement = nil
+        spoken.forget()
     }
 
     /// Takes everything off the screen; the configuration stays.
@@ -236,7 +275,8 @@ final class ForkMeetingPresenter {
         pill.hide()
         bubble.hide()
         removeCard()
-        lastAnnouncement = nil
+        hideOfferSurfaces()
+        spoken.forget()
     }
 
     /// The feature is off: nothing shows, nothing is held, nothing listens.
@@ -259,7 +299,7 @@ final class ForkMeetingPresenter {
         var bubble = false
     }
 
-    private var screen: NSScreen? {
+    var screen: NSScreen? {
         guard let id = context.displayID else { return nil }
         return NSScreen.screens.first { $0.displayID == id }
     }
@@ -267,9 +307,9 @@ final class ForkMeetingPresenter {
     private func showPill(_ state: ForkMeetingPillState) {
         pillState = state
         guard state != .hidden else {
+            // The next meeting says its steps again from the start
+            // (`ForkMeetingSpoken.forgets`).
             pill.hide()
-            // The next meeting says its steps again from the start.
-            lastAnnouncement = nil
             return
         }
         pill.show(state, context: context)
@@ -289,7 +329,13 @@ final class ForkMeetingPresenter {
             return present(make, height: ForkMeetingIsland.height(of: make({}), minimum: Self.savedCardHeight),
                            hold: Self.hold(for: notice))
         }
-        if ForkMeetingIsland.show(notice, detail: detail, text: text) {
+        // Seen in shares, the island names a microphone by its kind only.
+        var islandDetail = detail
+        if detail == nil, case let .microphone(name) = notice, ForkMeetingIsland.showsInCaptures {
+            let builtIn = ForkDictationAudioDevices.inputs().first { $0.name == name }?.isBuiltIn == true
+            islandDetail = ForkMeetingSharedText.detail(notice, microphoneBuiltIn: builtIn, strings: text)
+        }
+        if ForkMeetingIsland.show(notice, detail: islandDetail, text: text) {
             // The island has the newest word: an older one in the bubble
             // would contradict it.
             bubble.hide()
@@ -310,11 +356,15 @@ final class ForkMeetingPresenter {
     /// `make` builds the card for either place, with how it is dismissed.
     private func present(_ make: (@escaping () -> Void) -> ForkMeetingCard, height: CGFloat,
                          hold: TimeInterval) -> Shown {
+        // The island holds one card: an offer, "Cancel" or the countdown
+        // there moves first.
+        islandWillBeTaken()
         removeCard()
         let id = UUID()
         let inBubble = make { [weak self] in self?.bubble.hide() }
         // Known before the island answers: it reports the pointer at once.
         cardID = id
+        cardInBubble = (inBubble, hold)
         cardHold = hold
         let shown = ForkMeetingIsland.present(
             make { [weak self] in self?.removeCard() }, id: id, height: height,
@@ -353,6 +403,8 @@ final class ForkMeetingPresenter {
         guard !ForkMeetingSystemEvents.screenIsLockedNow(), CGDisplayIsAsleep(CGMainDisplayID()) == 0 else {
             return false
         }
+        // Under an offer's bubble, never over it.
+        bubble.topInset = offerUI.bubble.visibleFrame.map { $0.height + 8 } ?? 0
         return bubble.show(card, on: screen, hold: hold)
     }
 
@@ -385,14 +437,16 @@ final class ForkMeetingPresenter {
                     dismiss()
                 })
             }
-        case .resumed, .microphone, .displayChanged:
+        case .resumed, .microphone, .displayChanged, .neverOffered, .alwaysChosen, .announcementCopied, .askedAgain:
             tint = .accentColor
+        case let .discarded(outcome):
+            tint = outcome == .kept ? .orange : .secondary
         }
         return ForkMeetingCard(symbol: ForkMeetingIsland.symbol(for: notice), tint: tint, title: notice.title(text),
                                lines: lines, actions: actions)
     }
 
-    private static func title(for action: ForkMeetingFailureAction, text: ForkMeetingStrings) -> String {
+    static func title(for action: ForkMeetingFailureAction, text: ForkMeetingStrings) -> String {
         switch action {
         case .openScreenRecordingPrivacy, .openMicrophonePrivacy: return text.actionOpenSettings
         case .openStorageSettings: return text.actionOpenStorage
@@ -417,11 +471,30 @@ final class ForkMeetingPresenter {
         ForkMeetingIsland.remove(id: id)
     }
 
-    private func forgetCard() {
+    /// Forgets the island's card without taking it away: one about to be
+    /// replaced in place.
+    func forgetCard() {
         cardWork?.cancel()
         cardWork = nil
         cardID = nil
+        cardInBubble = nil
         cardHovered = false
+    }
+
+    /// One of the detection's cards takes the island over the presenter's
+    /// own (the microphone refused with its Settings button, a saved
+    /// meeting): that one goes on in the bubble, never lost under "Cancel".
+    func yieldIsland() {
+        guard cardID != nil, let held = cardInBubble else { return forgetCard() }
+        forgetCard()
+        _ = showInBubble(held.card, hold: held.hold)
+    }
+
+    /// The offer's bubble came above the notices' one: that one moves down
+    /// under it rather than being covered.
+    func settleNoticeBubble() {
+        guard let frame = offerUI.bubble.visibleFrame else { return }
+        bubble.settle(topInset: frame.height + 8, on: screen)
     }
 
     // MARK: - Words
@@ -444,19 +517,33 @@ final class ForkMeetingPresenter {
     /// one.
     private static var canNotify: Bool { Bundle.main.bundleIdentifier != nil }
 
-    /// The announcement, in the pasteboard for the meeting's chat.
-    private func copy(_ announcement: String) {
+    /// The announcement, in the pasteboard for the meeting's chat, said on
+    /// the screen and to VoiceOver.
+    func copy(_ announcement: String) {
+        guard Thread.isMainThread else {
+            DispatchQueue.main.async { self.copy(announcement) }
+            return
+        }
+        Self.write(announcement)
+        if offerUI.islandCard != nil || cardID != nil { ForkMeetingIsland.giveKeyboardBack() }
+        notice(.announcementCopied)
+        announce(text.voiceAnnouncementCopied)
+    }
+
+    /// The one way every "Copy Announcement" writes the pasteboard. Signed
+    /// as Vorssaint's, so the clipboard history does not credit the call's
+    /// app, in front, with it.
+    static func write(_ announcement: String) {
         let pasteboard = NSPasteboard.general
         pasteboard.clearContents()
+        pasteboard.declareVorssaintSource()
         pasteboard.setString(announcement, forType: .string)
-        announce(text.voiceAnnouncementCopied)
     }
 
     /// High priority, so it is not lost behind what VoiceOver is reading;
     /// the same sentence twice in a row is said once.
     private func announce(_ message: String) {
-        guard !message.isEmpty, message != lastAnnouncement else { return }
-        lastAnnouncement = message
+        guard spoken.says(message) else { return }
         NSAccessibility.post(element: NSApp as Any, notification: .announcementRequested,
                              userInfo: [.announcement: message, .priority: NSAccessibilityPriorityLevel.high.rawValue])
     }

@@ -57,6 +57,12 @@ enum ForkMeetingIsland {
         case .sourceGone: return "rectangle.on.rectangle.slash"
         case .failure: return "exclamationmark.triangle.fill"
         case .soundLost: return "speaker.slash"
+        case .neverOffered: return "bell.slash"
+        case .alwaysChosen: return "bolt.circle"
+        case .discarded(.kept): return "exclamationmark.triangle.fill"
+        case .discarded: return "trash"
+        case .announcementCopied: return "doc.on.doc"
+        case .askedAgain: return "arrow.uturn.backward.circle"
         }
     }
 
@@ -65,14 +71,25 @@ enum ForkMeetingIsland {
     /// way the card leaves (a click on the island, the capture controls, a
     /// lock) calls `close`, instead of the card staying attached unseen.
     /// `fallback` runs when the island goes away under it (turned off, its
-    /// display unplugged).
+    /// display unplugged). A card with a ⋯ menu puts it in the island's top
+    /// row, right of the camera, where the page's own controls go. The card
+    /// `id` already up is changed in place: the island, open on it, is no
+    /// longer free for a new one.
     @discardableResult
     static func present(_ card: ForkMeetingCard, id: UUID, height: CGFloat, fallback: @escaping () -> Void,
                         close: @escaping () -> Void, hover: @escaping (Bool) -> Void) -> Bool {
-        guard isAvailable else { return false }
+        guard ForkMeetingIslandCard.islandTakes(available: isAvailable, showingThisCard: isShowing(id: id)) else {
+            return false
+        }
+        let actions = card.menu.isEmpty ? nil : AnyView(ForkMeetingCardMenu(card: card))
         return NotchService.shared.presentCapture(
-            id: id, content: AnyView(ForkMeetingCardView(card: card)), actions: nil, height: height,
+            id: id, content: AnyView(ForkMeetingCardView(card: card)), actions: actions, height: height,
             takeFocus: false, closeOnCollapse: true, fallback: fallback, close: close, hover: hover)
+    }
+
+    /// Whether the island still shows the card `id`, as it was presented.
+    static func isShowing(id: UUID) -> Bool {
+        NotchService.shared.isCaptureVisible(id: id)
     }
 
     /// The card's height in the island, measured at the island's width:
@@ -87,6 +104,15 @@ enum ForkMeetingIsland {
             .fixedSize(horizontal: false, vertical: true))
         let measured = host.fittingSize.height
         return measured.isFinite ? max(minimum, measured.rounded(.up)) : minimum
+    }
+
+    /// The island's panel takes the keyboard while open (`acceptsKeyFocus`),
+    /// so a click on our card made it key. After a button that leaves the
+    /// card up ("Copy Announcement"), the keyboard goes back, so typing lands
+    /// in the call again; the buttons that take the card away give it back
+    /// with the island's collapse.
+    static func giveKeyboardBack() {
+        NotchService.shared.resignPanelKey()
     }
 
     /// Takes the card away; never calls its `close`.

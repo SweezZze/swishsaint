@@ -128,6 +128,7 @@ final class ForkMeetingStore: @unchecked Sendable {
     /// refused (`alreadyOpening`). The folder comes back claimed.
     func createMeeting(id: UUID, startedAt: Date, origin: ForkMeetingOrigin, title: String?,
                        titleSource: ForkMeetingSidecar.TitleSource?, capture: ForkMeetingSidecar.Capture,
+                       meeting: ForkMeetingCandidate? = nil,
                        completion: @escaping (Result<URL, Failure>) -> Void) {
         lock.lock()
         if let known = made[id] {
@@ -145,7 +146,9 @@ final class ForkMeetingStore: @unchecked Sendable {
 
         let root = self.root()
         let started = ForkMeetingSidecar.started(id: id, startedAt: startedAt, origin: origin, title: title,
-                                                 titleSource: titleSource, capture: capture)
+                                                 titleSource: titleSource, capture: capture,
+                                                 provider: meeting?.provider, meetCode: meeting?.meetCode,
+                                                 app: meeting?.appBundle)
         queue.async { [self] in
             let result = makeFolder(in: root, for: started, id: id,
                                     name: ForkMeetingFolder.name(startedAt: startedAt, title: title))
@@ -380,8 +383,8 @@ final class ForkMeetingStore: @unchecked Sendable {
     // MARK: - Launch
 
     /// Finds what the last run left unfinished and does what
-    /// `ForkMeetingRecoveryPlan` says: final pass again, complete, or mark
-    /// interrupted. Never touches a folder this process made, nor one
+    /// `ForkMeetingRecoveryPlan` says: final pass again, complete, mark
+    /// interrupted, or a cancelled one to the Trash. Never touches a folder this process made, nor one
     /// another copy of the app holds.
     ///
     /// Any thread; the scan runs off the main thread, final passes one at
@@ -453,6 +456,13 @@ final class ForkMeetingStore: @unchecked Sendable {
 
         switch action {
         case .leave:
+            return nil
+        case .discard:
+            // The lock first: it is in the folder.
+            release(folder)
+            let outcome = ForkMeetingDiscardOutcome.discard(trash: { try manager.trashItem(at: folder, resultingItemURL: nil) },
+                                                            remove: { try manager.removeItem(at: folder) })
+            if outcome == .kept { Self.log.error("a cancelled meeting stays in its folder") }
             return nil
         case .markInterrupted:
             if let patch { write(patch, in: folder) }

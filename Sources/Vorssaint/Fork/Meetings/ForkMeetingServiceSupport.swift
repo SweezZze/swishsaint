@@ -32,11 +32,12 @@ enum ForkMeetingServiceSupport {
         if preparingStart { return .cancelStart }
         switch phase {
         case .starting: return .cancelStart
-        case .recording, .paused: return .stop
+        case .recording, .paused, .endingSoon: return .stop
         // The file is closing: a second stop has nothing to stop, and a
         // start waits for the machine to be free.
         case .stopping: return .ignore
-        case .idle: return canStart ? .start : .ignore
+        // With an offer up, the start is by hand, of the offered meeting.
+        case .idle, .offering: return canStart ? .start : .ignore
         }
     }
 
@@ -115,8 +116,8 @@ enum ForkMeetingServiceSupport {
     /// start or a stop under way keeps the app from dozing off.
     static func awake(phase: ForkMeetingMachine.Phase) -> Awake {
         switch phase {
-        case .idle: return .free
-        case .recording: return .display
+        case .idle, .offering: return .free
+        case .recording, .endingSoon: return .display
         case .starting, .paused, .stopping: return .app
         }
     }
@@ -184,8 +185,9 @@ struct ForkMeetingPendingVerdicts: Equatable {
     static func route(_ token: ForkMeetingToken, phase: ForkMeetingMachine.Phase) -> Route {
         switch phase {
         case let .starting(pending): return pending.token == token ? .hold : .drop
-        case let .recording(session), let .paused(session, _): return session.token == token ? .now : .drop
-        case .idle, .stopping: return .drop
+        case let .recording(session), let .paused(session, _), let .endingSoon(session, _):
+            return session.token == token ? .now : .drop
+        case .idle, .offering, .stopping: return .drop
         }
     }
 

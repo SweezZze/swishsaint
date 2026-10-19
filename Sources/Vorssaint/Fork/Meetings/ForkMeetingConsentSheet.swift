@@ -172,9 +172,7 @@ private struct ForkMeetingConsentView: View {
     }
 
     private func copy() {
-        let pasteboard = NSPasteboard.general
-        pasteboard.clearContents()
-        pasteboard.setString(announcementText, forType: .string)
+        ForkMeetingPresenter.write(announcementText)
         copied = true
         NSAccessibility.post(element: NSApp as Any, notification: .announcementRequested,
                              userInfo: [.announcement: text.voiceAnnouncementCopied,

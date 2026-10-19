@@ -11,6 +11,7 @@ enum ForkMeetingStringsTests {
         failures(suite)
         liveTexts(suite)
         typography(suite)
+        trash(suite)
     }
 
     private static let languages = AppLanguage.allCases
@@ -45,7 +46,10 @@ enum ForkMeetingStringsTests {
     /// written for that room, never cut.
     private static func shortTexts(_ suite: TestSuite) {
         let notices: [ForkMeetingNotice] = [.started, .resumed, .saved, .recovered, .microphone("AirPods"),
-                                            .microphoneSilent, .diskLow(minutesLeft: 25), .displayChanged, .sourceGone]
+                                            .microphoneSilent, .diskLow(minutesLeft: 25), .displayChanged, .sourceGone,
+                                            .alwaysChosen("Meet"), .discarded(.trashed), .discarded(.deleted),
+                                            .discarded(.kept), .announcementCopied, .neverOffered("Meet"),
+                                            .askedAgain("Meet")]
             + ForkMeetingFailure.all.map { .failure($0) }
         var tooLong: [String] = []
         for (language, strings) in zip(languages, allStrings) {
@@ -59,7 +63,8 @@ enum ForkMeetingStringsTests {
             for failure in ForkMeetingFailure.all where failure.summary(strings).count > 28 {
                 tooLong.append("\(language.rawValue): \(failure.summary(strings))")
             }
-            for name in [strings.folderName, strings.untitledMeeting] where name.count > 28 {
+            // The "Cancel" card's line after a start on its own.
+            for name in [strings.folderName, strings.untitledMeeting, strings.undoAutoStarted("Meet")] where name.count > 28 {
                 tooLong.append("\(language.rawValue): \(name)")
             }
         }
@@ -146,6 +151,30 @@ enum ForkMeetingStringsTests {
         suite.expect(loose.isEmpty, "French texts use no-break spaces and typographic apostrophes: \(loose)")
         let straight = allStrings.flatMap { fields($0).map(\.1) }.filter { $0.contains("'") }
         suite.expect(straight.isEmpty, "no meetings text uses a straight apostrophe: \(straight)")
+    }
+
+    /// Cancel after a start "Always" made sends the recording to the Trash,
+    /// never deletes it: what the page and VoiceOver say names the Trash
+    /// with macOS's word, in every language.
+    private static func trash(_ suite: TestSuite) {
+        let words: [AppLanguage: String] = [
+            .enUS: "Trash", .ptBR: "Lixo", .tr: "Çöp Sepeti", .ru: "Корзин", .es: "Papelera", .sk: "Koš",
+            .de: "Papierkorb", .fr: "Corbeille", .it: "Cestino", .ja: "ゴミ箱", .ko: "휴지통", .uk: "Смітник",
+            .zhHans: "废纸篓", .zhTW: "垃圾桶", .zhHK: "垃圾桶",
+        ]
+        var missing: [String] = []
+        for (language, strings) in zip(languages, allStrings) {
+            let texts = [strings.policyAlwaysCaption, strings.voiceAutoStarted(seconds: 5), strings.voiceDiscarded]
+            if let word = words[language], !texts.allSatisfy({ $0.contains(word) }) { missing.append(language.rawValue) }
+        }
+        suite.expect(words.count == languages.count && missing.isEmpty,
+                     "what Cancel does is said as moving to the Trash, in every language: \(missing)")
+        let english = ForkMeetingStrings.strings(.enUS), french = ForkMeetingStrings.strings(.fr)
+        // Only the fallback for a volume without a Trash may say it is deleted, because then it is.
+        let fallback: Set<String> = ["noticeDiscardedDeleted", "voiceDiscardedDeleted", "voiceDiscardKept"]
+        suite.expect(!fields(english).contains { !fallback.contains($0.0) && $0.1.contains("delete") }
+                        && !fields(french).contains { !fallback.contains($0.0) && $0.1.contains("supprim") },
+                     "no meetings text says a recording is deleted, except when it really is")
     }
 
     /// Every text of the pill, the bubble and their buttons is short,

@@ -227,18 +227,33 @@ enum ForkMeetingServiceTests {
                         && all.allSatisfy { $0.failMasterHiddenRemedy.contains(".recording.mp4") },
                      "a master left hidden says, in every language, the name it is under")
         suite.expect(all.allSatisfy { strings in
-                        strings.pictureFrontWindow != strings.pictureFrontDisplay
+                        strings.pictureMeetingWindow != strings.pictureFrontDisplay
                             && strings.pillFilmTheWindow != strings.pillFilmDisplay
                             && strings.filmedDisplay != strings.filmedNoWindow
                      },
                      "the picture's two choices, ⧉'s two labels and what is filmed never read alike")
         let english = ForkMeetingStrings.strings(.enUS), french = ForkMeetingStrings.strings(.fr)
-        let page = [english.pictureFrontWindow, english.pictureFrontWindowCaption, english.consentIntroFrontWindow,
-                    english.voiceFilmedDisplayChanged, english.pillFilmTheWindow]
-        let pageFr = [french.pictureFrontWindow, french.pictureFrontWindowCaption, french.consentIntroFrontWindow,
-                      french.voiceFilmedDisplayChanged, french.pillFilmTheWindow]
+        let page = [english.voiceFilmedDisplayChanged, english.pillFilmTheWindow]
+        let pageFr = [french.voiceFilmedDisplayChanged, french.pillFilmTheWindow]
         suite.expect(page.allSatisfy { !$0.contains("meeting window") && !$0.contains("meeting’s window") }
                         && pageFr.allSatisfy { !$0.contains("fenêtre de la réunion") },
-                     "nothing speaks of the meeting's window while no meeting is detected: it is the window in front")
+                     "what a recording by hand says speaks of the window in front, never of a meeting's window")
+        suite.expect(english.consentIntroFrontWindow.contains("meeting’s window")
+                        && ["windows’ titles", "which apps use the microphone", "this Mac"].allSatisfy(english.consentIntroFrontWindow.contains)
+                        && english.consentIntroFrontWindow.contains("To offer to record a Google Meet")
+                        && ["fenêtre de la réunion", "titres des fenêtres", "repère les apps qui utilisent le micro",
+                            "Pour proposer d’enregistrer un Google Meet"]
+                            .allSatisfy(french.consentIntroFrontWindow.contains),
+                     "the first-use reminder says what the detection reads: the windows' titles and which apps use the microphone")
+        suite.expect(english.detectionCaption.contains("behind other windows") && !english.detectionCaption.contains("background")
+                        && french.detectionCaption.contains("derrière d’autres fenêtres")
+                        && english.pageHowTo.contains("by hand") && french.pageHowTo.contains("à la main"),
+                     "a meeting is found behind other windows, and only a recording started by hand goes on until stopped")
+        suite.expect(french.pictureMeetingWindow == "Fenêtre de la réunion"
+                        && french.pictureMeetingWindowCaption.contains("réunion détectée")
+                        && french.pictureMeetingWindowCaption.contains("premier plan")
+                        && english.pictureMeetingWindowCaption.contains("detected meeting")
+                        && english.pictureMeetingWindowCaption.contains("window in front"),
+                     "the picture's first choice is the meeting's window; its caption says the window in front films a start by hand")
     }
 }

@@ -3,6 +3,7 @@
 
 import AppKit
 import AVFoundation
+import EventKit
 import SwiftUI
 
 /// The Meetings page, below its switch: what a recording is doing, the
@@ -42,6 +43,8 @@ struct ForkMeetingSettings: View {
 
         ForkMeetingRecordSection(text: text)
         ForkMeetingPermissionsSection(text: text)
+        ForkMeetingDetectionSection(text: text)
+            .disabled(!enabled)
         ForkMeetingShortcutSection(text: text)
             .disabled(!enabled)
         ForkMeetingCaptureSection(text: text)
@@ -320,6 +323,179 @@ struct ForkMeetingSystemAudioRow: View {
     }
 }
 
+// MARK: - Detection
+
+/// What a detected meeting does: offered, recorded on its own, or never;
+/// named after the calendar event that links to it; and its end, which
+/// stops the recording it started after a countdown. What this Mac cannot
+/// read is said plainly: the microphones before macOS 14.4, the windows'
+/// titles without Screen Recording.
+private struct ForkMeetingDetectionSection: View {
+    let text: ForkMeetingStrings
+
+    @ObservedObject private var l10n = L10n.shared
+    @ObservedObject private var service = ForkMeetingService.shared
+    @ObservedObject private var permissions = Permissions.shared
+    @AppStorage(ForkDefaultsKey.meetingsEnabled) private var enabled = false
+    @AppStorage(ForkDefaultsKey.meetingsApps) private var apps = ForkMeetingPolicies.defaultJSON
+    @AppStorage(ForkDefaultsKey.meetingsCalendarNaming) private var calendarNaming = false
+    @AppStorage(ForkDefaultsKey.meetingsAutoStop) private var autoStop = true
+    @AppStorage(ForkDefaultsKey.meetingsAutoStopSeconds) private var autoStopSeconds = ForkMeetingAutoStop.defaultSeconds
+
+    /// The countdown's choices; a stored value outside them is shown too.
+    private static let choices = [5, 10, 15, 30, 60]
+
+    private var meetPolicy: Binding<ForkMeetingPolicy> {
+        Binding(get: { ForkMeetingPolicies(json: apps).policy(for: .googleMeet) },
+                set: { policy in
+                    var policies = ForkMeetingPolicies(json: apps)
+                    policies.set(policy, for: ForkMeetingProvider.googleMeet.id)
+                    apps = policies.json
+                })
+    }
+
+    var body: some View {
+        Section(text.detectionTitle) {
+            caption(text.detectionCaption)
+            Picker(ForkMeetingProvider.googleMeet.name, selection: meetPolicy) {
+                Text(text.policyAsk).tag(ForkMeetingPolicy.ask)
+                Text(text.policyAlways).tag(ForkMeetingPolicy.always)
+                Text(text.policyNever).tag(ForkMeetingPolicy.never)
+            }
+            caption(policyCaption)
+            // A page that copies a Meet title and uses the microphone could
+            // be offered: said once, plainly, while Meet is not "Never".
+            if ForkMeetingDetectionSupport.warnsOfLookalikes(meetPolicy.wrappedValue) {
+                caption(text.detectionLookalike)
+            }
+            if let limit {
+                Label(limit, systemImage: "info.circle")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            if !permissions.screenRecording {
+                Label(text.detectionNeedsScreenRecording, systemImage: "exclamationmark.triangle.fill")
+                    .font(.caption)
+                    .foregroundStyle(.orange)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            if enabled, let meeting = service.detectedMeeting {
+                Label(text.detected(meeting.name), systemImage: "video.fill")
+                    .font(.callout)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+            }
+
+            Toggle(isOn: $calendarNaming) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(text.calendarNaming)
+                    caption(text.calendarNamingCaption)
+                }
+            }
+            .onChange(of: calendarNaming) { _, isOn in
+                // Turned on, the calendar is asked for at once, as the
+                // official calendar's switch does.
+                if isOn, permissions.calendarAccess == .notDetermined { permissions.requestCalendar() }
+                ForkMeetingService.sync()
+            }
+            if calendarNaming {
+                ForkMeetingCalendarRow(text: text)
+            }
+
+            Toggle(isOn: $autoStop) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(text.autoStop)
+                    caption(text.autoStopCaption)
+                }
+            }
+            Picker(text.autoStopDelay, selection: delay) {
+                ForEach(delays, id: \.self) { seconds in
+                    Text(label(seconds)).tag(seconds)
+                }
+            }
+            .disabled(!autoStop)
+        }
+    }
+
+    private var policyCaption: String {
+        switch ForkMeetingPolicies(json: apps).policy(for: .googleMeet) {
+        case .ask: return text.policyAskCaption
+        case .always: return text.policyAlwaysCaption
+        case .never: return text.policyNeverCaption
+        }
+    }
+
+    /// The microphones cannot be read on this Mac: the titles alone.
+    private var limit: String? {
+        guard !ForkMeetingMicWatcher.isSupported else { return nil }
+        if #available(macOS 14.4, *) { return text.detectionMicrophoneUnreadable }
+        return text.detectionTitlesOnly
+    }
+
+    /// The delay the countdown really gives: a stored one out of bounds
+    /// (written by hand, or restored) reads as its bound, as it runs.
+    private var delay: Binding<Int> {
+        Binding(get: { ForkMeetingAutoStop.bounded(autoStopSeconds) }, set: { autoStopSeconds = $0 })
+    }
+
+    private var delays: [Int] {
+        let shown = ForkMeetingAutoStop.bounded(autoStopSeconds)
+        return Self.choices.contains(shown) ? Self.choices : (Self.choices + [shown]).sorted()
+    }
+
+    /// "15 s", in the app's language.
+    private func label(_ seconds: Int) -> String {
+        Measurement(value: Double(seconds), unit: UnitDuration.seconds)
+            .formatted(.measurement(width: .abbreviated, usage: .asProvided)
+                .locale(Locale(identifier: l10n.language.rawValue)))
+    }
+
+    private func caption(_ string: String) -> some View {
+        Text(string)
+            .font(.caption)
+            .foregroundStyle(.secondary)
+            .fixedSize(horizontal: false, vertical: true)
+    }
+}
+
+/// The calendar's permission, asked for "Name with the calendar": given,
+/// still to ask, or refused (its pane in System Settings).
+private struct ForkMeetingCalendarRow: View {
+    let text: ForkMeetingStrings
+
+    @ObservedObject private var l10n = L10n.shared
+    @ObservedObject private var permissions = Permissions.shared
+
+    private var granted: Bool { permissions.calendarAccess == .fullAccess }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 8) {
+                Image(systemName: granted ? "checkmark.circle.fill" : "exclamationmark.circle.fill")
+                    .foregroundStyle(granted ? .green : .orange)
+                    .accessibilityHidden(true)
+                Text(text.calendarPermission)
+                Spacer()
+                Text(granted ? l10n.s.permissionGranted : l10n.s.permissionMissing)
+                    .font(.caption)
+                    .foregroundStyle(granted ? .green : .orange)
+            }
+            .accessibilityElement(children: .combine)
+            if !granted {
+                HStack(spacing: 8) {
+                    if permissions.calendarAccess == .notDetermined {
+                        Button(l10n.s.permissionRequest) { permissions.requestCalendar() }
+                            .disabled(permissions.requestingCalendar)
+                    }
+                    Button(l10n.s.permissionOpenSettings) { permissions.openCalendarSettings() }
+                }
+                .controlSize(.small)
+            }
+        }
+    }
+}
+
 // MARK: - Shortcut
 
 /// One combination that starts a recording, or stops the one running, from
@@ -408,8 +584,9 @@ private struct ForkMeetingShortcutSection: View {
 
 // MARK: - Capture
 
-/// The window in front or its whole display, with what each means for a
-/// recording started by hand (no meeting is detected yet).
+/// The meeting's window or its whole display, with what each means: the
+/// detected meeting's window, else the window in front for a recording
+/// started by hand.
 struct ForkMeetingPicturePicker: View {
     let text: ForkMeetingStrings
     @Binding var target: String
@@ -417,11 +594,11 @@ struct ForkMeetingPicturePicker: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             Picker(text.pictureTitle, selection: $target) {
-                Text(text.pictureFrontWindow).tag(ForkMeetingCaptureTarget.window.rawValue)
+                Text(text.pictureMeetingWindow).tag(ForkMeetingCaptureTarget.window.rawValue)
                 Text(text.pictureFrontDisplay).tag(ForkMeetingCaptureTarget.display.rawValue)
             }
             .pickerStyle(.radioGroup)
-            Text(ForkMeetingCaptureTarget(stored: target) == .window ? text.pictureFrontWindowCaption
+            Text(ForkMeetingCaptureTarget(stored: target) == .window ? text.pictureMeetingWindowCaption
                     : text.pictureDisplayCaption)
                 .font(.caption)
                 .foregroundStyle(.secondary)

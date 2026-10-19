@@ -117,7 +117,7 @@ extension ForkMeetingService {
     /// Whether the microphone may record. Never asked yet, macOS asks now:
     /// the person just chose to record; unless no microphone is to record,
     /// which never asks. Main thread.
-    private static func microphoneAnswer(asking: Bool, _ answer: @escaping (Bool) -> Void) {
+    static func microphoneAnswer(asking: Bool, _ answer: @escaping (Bool) -> Void) {
         switch AVCaptureDevice.authorizationStatus(for: .audio) {
         case .authorized:
             answer(true)
@@ -150,9 +150,11 @@ extension ForkMeetingService {
             // stay on the page (`lastRefusal`).
             var starts = false
             switch next {
-            case .manualStart: starts = true
+            case .manualStart, .accept, .always: starts = true
             case let .captureFailed(token, _): starts = isStarting(token)
-            case .captureStarted: runsStart = true
+            case .captureStarted:
+                runsStart = true
+                machine.voiceOver = NSWorkspace.shared.isVoiceOverEnabled
             default: break
             }
             for effect in machine.handle(next, now: Date()) {
@@ -202,12 +204,19 @@ extension ForkMeetingService {
             // gauge, whatever the next start does.
             let shown = ForkMeetingServiceSupport.pill(state, finalizing: !finalizing.isEmpty)
             presenter.apply(.showPill(shown), context: context)
+        case .announce(.discarded):
+            // Said once the folder is gone, with what became of it
+            // (`discardCancelled`): it may stay, and is never deleted then.
+            break
         case let .announce(announcement) where runsStart && context.trackSound == .noApp:
             // One sentence after the other, not two that cut each other off.
             let text = ForkMeetingStrings.current
             presenter.say(ForkMeetingLiveText.sentences(announcement.text(text), text.soundNoAppDetail))
         case .announce, .notify:
             presenter.apply(effect, context: context)
+        case .showOffer, .collapseOffer, .hideOffer, .showUndo, .hideUndo, .showEndingSoon, .hideEndingSoon,
+             .silence, .setPolicy, .discard:
+            runDetection(effect)
         }
     }
 
@@ -227,7 +236,8 @@ extension ForkMeetingService {
         if case .starting = machine.phase { starting = true } else { starting = preparingStart }
         if isStarting != starting { isStarting = starting }
         ForkMeetingActivity.setRecording(machine.isBusy || preparingStart)
-        if ForkMeetingServiceSupport.hidesFinishedPill(machineIdle: machine.phase == .idle,
+        // An offer holds no session: the finished gauge goes under it too.
+        if ForkMeetingServiceSupport.hidesFinishedPill(machineIdle: !machine.isBusy,
                                                        finalizingCount: finalizing.count, pill: presenter.pillState) {
             presenter.apply(.showPill(.hidden))
         }
@@ -240,6 +250,7 @@ extension ForkMeetingService {
         }
         syncSystemEvents()
         systemEvents.hold(ForkMeetingServiceSupport.awake(phase: machine.phase))
+        syncDetectionClock()
     }
 
     /// The engine of the session recording or paused.
@@ -268,7 +279,11 @@ extension ForkMeetingService {
 
     /// The folder first, with its `meeting.json` saying `recording`, then the
     /// engine: from the first frame on, a crash leaves a meeting to recover.
-    private func startCapture(_ config: ForkMeetingCaptureConfig, token: ForkMeetingToken) {
+    private func startCapture(_ asked: ForkMeetingCaptureConfig, token: ForkMeetingToken) {
+        // A provider whose calls no app's sound carries (FaceTime's run in a
+        // system process) records the whole Mac for "the meeting app's sound".
+        var config = asked
+        config.settings = ForkMeetingDetectionSupport.settings(asked.settings, for: asked.meeting)
         let recorder = ForkMeetingRecorder(token: token, defaults: defaults)
         // "Show in Finder" of an older meeting's failed pass is not this one's.
         lastFailedVideo = nil
@@ -276,6 +291,7 @@ extension ForkMeetingService {
         recorders[token] = recorder
         context = ForkMeetingLiveContext(title: config.title, target: config.settings.target,
                                          recordsMicrophone: config.recordsMicrophone)
+        context.providerName = config.meeting?.providerName
         if defaults.bool(forKey: ForkDefaultsKey.meetingsConsentReminder) {
             context.announcement = ForkMeetingAnnouncementText.text(
                 stored: defaults.string(forKey: ForkDefaultsKey.meetingsAnnouncement) ?? "", strings: .current)
@@ -290,7 +306,9 @@ extension ForkMeetingService {
         let capture = ForkMeetingSidecar.Capture(target: config.settings.target, systemAudio: config.settings.systemAudio,
                                                  microphone: microphone, quality: config.settings.quality)
         store.createMeeting(id: UUID(), startedAt: Date(), origin: config.origin, title: config.title,
-                            titleSource: config.title == nil ? nil : .user, capture: capture) { [weak self] result in
+                            titleSource: ForkMeetingDetectionSupport.titleSource(title: config.title,
+                                                                                meeting: config.meeting),
+                            capture: capture, meeting: config.meeting) { [weak self] result in
             self?.folderMade(result, config: config, token: token)
         }
         // A folder that takes too long (a volume that hangs) fails the start
@@ -319,7 +337,10 @@ extension ForkMeetingService {
             // Never one of ours to film; in display mode the whole app is
             // left out anyway.
             let excluded = presenter.windowNumbers.compactMap { CGWindowID(exactly: $0) }
-            recorder.start(config: config, folder: folder, excludingWindows: excluded,
+            // A detected meeting is filmed in its own window, and "Meeting
+            // microphone (auto)" records the input its app uses.
+            recorder.start(config: config, folder: folder, meetingWindow: config.meeting?.windowID,
+                           meetingMicrophone: meetingMicrophone(for: config.meeting), excludingWindows: excluded,
                            titles: trackTitles) { [weak self] result in
                 self?.captureAnswered(result, config: config, folder: folder, token: token)
             }

@@ -33,6 +33,9 @@ enum ForkMeetingStopReason: String, Codable, CaseIterable {
     case featureDisabled
     /// macOS or the capture itself stopped it.
     case captureStopped
+    /// "Cancel" after a start "Always" made: its folder goes to the Trash,
+    /// at the next launch if the app ended before (never recovered).
+    case cancelled
 }
 
 /// Why a recording paused. A locked screen is not one: it pauses nothing,
@@ -238,8 +241,11 @@ struct ForkMeetingSidecar: Equatable {
     /// The sidecar written when a meeting's folder is made, before anything
     /// is recorded: from then on a missing end means the meeting did not end
     /// well.
+    /// A detected meeting adds its provider, its Google Meet code and its
+    /// app.
     static func started(id: UUID, startedAt: Date, origin: ForkMeetingOrigin, title: String?,
-                        titleSource: TitleSource?, capture: Capture) -> ForkMeetingSidecar {
+                        titleSource: TitleSource?, capture: Capture, provider: String? = nil,
+                        meetCode: String? = nil, app: String? = nil) -> ForkMeetingSidecar {
         var sidecar = ForkMeetingSidecar()
         sidecar.schema = currentSchema
         sidecar.id = id
@@ -247,6 +253,9 @@ struct ForkMeetingSidecar: Equatable {
         sidecar.origin = origin
         sidecar.title = title
         sidecar.titleSource = title == nil ? nil : titleSource
+        sidecar.provider = provider
+        sidecar.meetCode = meetCode
+        sidecar.app = app
         sidecar.startedAt = startedAt
         sidecar.recordedSeconds = 0
         sidecar.pauses = []
