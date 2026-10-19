@@ -81,8 +81,9 @@ enum ForkMeetingResolverTests {
 
     private static func providers(_ suite: TestSuite) {
         let meet = ForkMeetingProvider.googleMeet
-        suite.expect(ForkMeetingProviderTable.current.providers.map(\.id) == ["meet"],
-                     "this version detects Google Meet only; the other apps come as entries of the same table")
+        suite.expect(ForkMeetingProviderTable.current.providers.map(\.id)
+                        == ["meet", "zoom", "teams", "slack", "facetime", "webex", "discord", "web", "web", "web", "web"],
+                     "Google Meet first, then the meeting apps and the other web calls, entries of the same table")
         suite.expect(["com.google.Chrome", "com.apple.Safari", "company.thebrowser.Browser", "com.microsoft.edgemac",
                       "com.brave.Browser", "org.mozilla.firefox", "com.vivaldi.Vivaldi", "com.operasoftware.Opera",
                       "company.thebrowser.dia", "com.kagi.kagimacOS", "com.google.Chrome.canary"]
@@ -233,11 +234,12 @@ enum ForkMeetingResolverTests {
         suite.expect(microphones(&blip, 2, [zoom]).candidates.isEmpty, "a microphone closed in between starts over")
 
         var daemon = resolver(withApps)
-        let call = ForkMeetingMicSignal(appBundle: nil, pid: 77, processBundle: "com.apple.avconferenced")
-        microphones(&daemon, 0, [call])
-        let facetime = microphones(&daemon, 2, [call])
-        suite.expect(ids(facetime) == [ForkMeetingIdentity("facetime:77")] && facetime.candidates.first?.defaultSound == .all,
-                     "a system process no app owns can carry a provider's calls, with the whole Mac's sound")
+        let call = withApps.attributing([ForkMeetingMicSignal(appBundle: nil, pid: 77, processBundle: "com.apple.avconferenced")],
+                                        running: ["com.apple.FaceTime": 78])
+        microphones(&daemon, 0, call)
+        let facetime = microphones(&daemon, 2, call)
+        suite.expect(ids(facetime) == [ForkMeetingIdentity("facetime:78")] && facetime.candidates.first?.defaultSound == .all,
+                     "a system process no app owns can carry a provider's calls, given to its app, with the whole Mac's sound")
 
         var others = resolver(withApps)
         let strangers = [ForkMeetingMicSignal(appBundle: "com.apple.VoiceMemos", appPID: 40, pid: 40),

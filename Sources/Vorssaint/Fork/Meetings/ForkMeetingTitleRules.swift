@@ -22,6 +22,8 @@ enum ForkMeetingTitleRuleSet: Equatable {
     /// Google Meet in a browser or its web app. Only ever applied to a
     /// browser's windows: elsewhere "Meet – …" means nothing.
     case googleMeet
+    // MARK: Apps (`ForkMeetingAppTitleRules.swift`)
+    case zoomApp, slackHuddle, zoomWeb, whereby, jitsiMeet, teamsWeb
 }
 
 /// `String → verdict`, pure. Conservative on purpose: a false positive
@@ -39,6 +41,7 @@ enum ForkMeetingTitleRules {
     static func verdict(_ title: String, rules: ForkMeetingTitleRuleSet) -> ForkMeetingTitleVerdict {
         switch rules {
         case .googleMeet: return googleMeet(title)
+        case .zoomApp, .slackHuddle, .zoomWeb, .whereby, .jitsiMeet, .teamsWeb: return appVerdict(title, rules: rules)
         }
     }
 

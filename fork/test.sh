@@ -41,6 +41,8 @@ FORK_SOURCES=(
     Sources/Vorssaint/Fork/Gestures/ForkTrackpadModifierKeys.swift
     Sources/Vorssaint/Fork/Gestures/ForkTrackpadTuning.swift
     Sources/Vorssaint/Fork/Meetings/ForkMeetingActivity.swift
+    Sources/Vorssaint/Fork/Meetings/ForkMeetingAppTitleRules.swift
+    Sources/Vorssaint/Fork/Meetings/ForkMeetingAppsSupport.swift
     Sources/Vorssaint/Fork/Meetings/ForkMeetingCaptureSupport.swift
     Sources/Vorssaint/Fork/Meetings/ForkMeetingDetectionSupport.swift
     Sources/Vorssaint/Fork/Meetings/ForkMeetingFailure.swift

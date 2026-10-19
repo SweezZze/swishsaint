@@ -370,7 +370,9 @@ struct ForkMeetingResolver {
             guard track.meetCode != nil else { return titlesAgree && settled }
             return titlesAgree || (track.windowSeen && settled)
         case .app:
-            return titlesAgree || agreed(track.microphoneReadings, since: track.firstMicrophoneAt)
+            // A title that only names its meeting (Slack's "Huddle") waits for the microphone.
+            return (titlesAgree && track.provider.titlesMakeMeetings)
+                || agreed(track.microphoneReadings, since: track.firstMicrophoneAt)
         }
     }
 

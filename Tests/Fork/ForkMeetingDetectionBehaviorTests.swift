@@ -773,11 +773,13 @@ enum ForkMeetingDetectionBehaviorTests {
         suite.expect(own.take() == [], "nor is a window of ours, whatever its title")
     }
 
-    /// §3.2 n° 12 and n° 13: a browser using the microphone with no Meet
-    /// title (another video site, a page testing the microphone), or an app
-    /// outside the table, makes nothing in v1, however long.
+    /// §3.2 n° 12 and n° 13: a browser using the microphone with no call's
+    /// title (a video site the table does not know, a page testing the
+    /// microphone), or an app outside the table, makes nothing in v1,
+    /// however long. Whereby, Jitsi Meet and Zoom's web client are known
+    /// since PR 3 (`ForkMeetingAppsTests`).
     private static func browserMicrophoneAlone(_ suite: TestSuite) {
-        let titles = ["Whereby", "Jitsi Meet", "Zoom", "Discord | #général", "Microsoft Teams", "Slack | huddle",
+        let titles = ["Discord | #général", "Microsoft Teams", "Slack | huddle",
                       "S2 mic ON", "YouTube", "Meet", "Google Meet", "Sans titre"]
         var live = Live()
         live.read(0, microphones: [chromeMicrophone,
