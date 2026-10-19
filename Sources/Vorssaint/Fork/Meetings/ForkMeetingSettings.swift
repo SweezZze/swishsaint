@@ -848,6 +848,7 @@ private struct ForkMeetingLibrarySection: View {
     @AppStorage(ForkDefaultsKey.meetingsRetentionDays) private var retentionDays = ForkMeetingRetention.fallback
     /// A shorter delay waiting for its confirmation, with what it would take.
     @State private var retentionAsked: (days: Int, count: Int)?
+    @ObservedObject private var sweep = ForkMeetingRetentionSweep.shared
 
     /// Read with the setting and the language: the default folder is named
     /// in the person's language until a first recording saves it.
@@ -893,12 +894,31 @@ private struct ForkMeetingLibrarySection: View {
                         .fixedSize(horizontal: false, vertical: true)
                 }
             }
+            if let held = sweep.held, held.days == ForkMeetingRetention.sanitized(retentionDays) {
+                // Too many at once for the automatic bin: nothing went, and
+                // nothing goes without the person.
+                HStack(alignment: .firstTextBaseline) {
+                    Label {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(text.retentionHeld(count: held.count, days: held.days))
+                            Text(text.retentionHeldCaption)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                    } icon: {
+                        Image(systemName: "exclamationmark.circle.fill").foregroundStyle(.orange)
+                    }
+                    Spacer()
+                    Button(text.actionTrash, role: .destructive) { sweep.confirmHeld() }
+                }
+            }
         }
         .alert(text.retentionConfirmTitle, isPresented: retentionConfirming) {
             Button(text.actionTrash, role: .destructive) {
                 guard let asked = retentionAsked else { return }
                 retentionAsked = nil
-                apply(asked.days)
+                apply(asked.days, confirmed: asked.count)
             }
             Button(text.cancel, role: .cancel) { retentionAsked = nil }
         } message: {
@@ -918,7 +938,7 @@ private struct ForkMeetingLibrarySection: View {
                 apply(days)
                 return
             }
-            ForkMeetingStore.shared.retentionDue(days: days, writing: ForkMeetingService.shared.writingFolders) { due in
+            ForkMeetingStore.shared.retentionDue(days: days, writing: ForkMeetingService.shared.writingFolders) { due, _ in
                 if ForkMeetingRetention.needsConfirmation(from: old, to: days, due: due.count) {
                     retentionAsked = (days, due.count)
                 } else {
@@ -932,12 +952,13 @@ private struct ForkMeetingLibrarySection: View {
         Binding(get: { retentionAsked != nil }, set: { if !$0 { retentionAsked = nil } })
     }
 
-    private func apply(_ days: Int) {
+    /// `confirmed`: the number the person just agreed to, which the sweep
+    /// may take at once; without it, a sweep never takes many on its own.
+    private func apply(_ days: Int, confirmed: Int? = nil) {
         retentionDays = days
-        let sweep = ForkMeetingRetentionSweep.shared
         sweep.sync(enabled: false)
         sweep.sync(enabled: ForkMeetingService.shared.isWanted)
-        if days > 0, ForkMeetingService.shared.isWanted { sweep.sweep() }
+        if days > 0, ForkMeetingService.shared.isWanted { sweep.sweep(confirmed: confirmed) }
     }
 
     /// Stored with a tilde, like the official folder lists.

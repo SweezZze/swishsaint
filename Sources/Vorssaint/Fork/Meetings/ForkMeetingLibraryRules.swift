@@ -31,10 +31,11 @@ struct ForkMeetingSidecarEdit: Equatable {
 
     /// The sidecar to write, or `nil` when it must stay as it is on the
     /// disk: missing, unreadable, corrupt, or from a later version, exactly
-    /// as for the session's patch.
+    /// as for the session's patch; and, the library's own rule, one this app
+    /// did not write.
     static func rewriting(_ read: Result<ForkMeetingSidecar, ForkMeetingSidecarFault>,
                           with edit: ForkMeetingSidecarEdit) -> ForkMeetingSidecar? {
-        guard case let .success(sidecar) = read, sidecar.isRewritable else { return nil }
+        guard case let .success(sidecar) = read, sidecar.isRewritable, sidecar.isWrittenByMeetings else { return nil }
         return edit.applied(to: sidecar)
     }
 
@@ -42,6 +43,14 @@ struct ForkMeetingSidecarEdit: Equatable {
     func merged(with later: ForkMeetingSidecarEdit) -> ForkMeetingSidecarEdit {
         ForkMeetingSidecarEdit(title: later.title ?? title, notes: later.notes ?? notes)
     }
+}
+
+extension ForkMeetingSidecar {
+    /// Written by this app: `started` always writes a schema and an id. A
+    /// `meeting.json` without them was written by someone else (another
+    /// app, a script, by hand): listed, never rewritten from the library,
+    /// never judged by the automatic bin.
+    var isWrittenByMeetings: Bool { schema != nil && id != nil }
 }
 
 // MARK: - Renaming
@@ -67,6 +76,8 @@ enum ForkMeetingRename {
         case sidecarUnreadable
         /// Written by a later version: read, never rewritten.
         case sidecarFromLaterVersion
+        /// Not written by this app (`isWrittenByMeetings`).
+        case notWrittenHere
     }
 
     /// Why the folder keeps its name while the title changes.
@@ -110,6 +121,7 @@ enum ForkMeetingRename {
                      occupant: (String) -> ForkMeetingFolder.Occupant) -> Result<Plan, Refusal> {
         guard case let .success(meeting) = sidecar else { return .failure(.sidecarUnreadable) }
         guard meeting.isRewritable else { return .failure(.sidecarFromLaterVersion) }
+        guard meeting.isWrittenByMeetings else { return .failure(.notWrittenHere) }
         if live || meeting.state == .recording || meeting.state == .finalizing {
             return .failure(.meetingInProgress)
         }
@@ -228,6 +240,8 @@ struct ForkMeetingEditCoalescer {
 ///   the one the person may not have looked at yet, and nothing records
 ///   whether they did, so it waits for their hand. They are few;
 /// - a sidecar from a later version, which this one does not judge;
+/// - a `meeting.json` this app did not write (`isWrittenByMeetings`): the
+///   folder is someone else's;
 /// - a meeting whose sidecar gives no date: an age is never guessed from a
 ///   folder's name or its dates on the disk, which a copy or a restore
 ///   resets;
@@ -236,7 +250,15 @@ struct ForkMeetingEditCoalescer {
 /// The age is counted in whole days from the day the meeting ended, in the
 /// Gregorian calendar, and must be **more** than the setting: a meeting of
 /// October 18 kept 30 days is still there all of November 17 and goes on
-/// November 18, whatever the hour it was held.
+/// November 18, whatever the hour it was held. The video's date on the disk
+/// can only make a meeting younger, never older: a meeting whose video was
+/// written later than its sidecar says (a clock set back while it
+/// recorded, a file put back by hand) counts from that date.
+///
+/// **Never in bulk on its own**: a sweep that would take more than ten
+/// meetings, or more than a quarter of the library, takes none and waits
+/// for the person on the Meetings page (`plan`). A clock jumping years
+/// ahead, or a setting restored from a backup, then empties nothing.
 enum ForkMeetingRetention {
     static let choices = [0, 30, 90, 365]
     static let fallback = 0
@@ -262,6 +284,7 @@ enum ForkMeetingRetention {
         case flagged
         case laterVersion
         case undated
+        case notWrittenHere
     }
 
     enum Verdict: Equatable {
@@ -275,8 +298,10 @@ enum ForkMeetingRetention {
         guard days > 0 else { return .keep(.off) }
         if entry.status.isInProgress { return .keep(.inProgress) }
         if entry.status.isFlagged { return .keep(.flagged) }
+        if entry.isForeign { return .keep(.notWrittenHere) }
         if entry.isReadOnly { return .keep(.laterVersion) }
-        guard let reference = entry.endedAt ?? entry.startedAt else { return .keep(.undated) }
+        guard let written = entry.endedAt ?? entry.startedAt else { return .keep(.undated) }
+        let reference = max(written, entry.videoModified ?? written)
         let gregorian = ForkMeetingLibrary.gregorian(calendar)
         let distance = gregorian.dateComponents([.day], from: gregorian.startOfDay(for: reference),
                                                 to: gregorian.startOfDay(for: now)).day ?? 0
@@ -290,6 +315,30 @@ enum ForkMeetingRetention {
         entries.filter { !live.contains($0.folderName) && verdict($0, days: days, now: now, calendar: calendar) == .trash }
             .map(\.folderName)
             .sorted()
+    }
+
+    /// More than this many meetings at once, or more than a quarter of the
+    /// library, and an automatic sweep waits for the person.
+    static let bulkLimit = 10
+
+    static func isBulk(due: Int, library: Int) -> Bool {
+        due > bulkLimit || due * 4 > library
+    }
+
+    enum Sweep: Equatable {
+        case nothing
+        case trash([String])
+        /// Too many at once: nothing goes, the page asks with this number.
+        case held(Int)
+    }
+
+    /// What a sweep does with what is due. `confirmed`: the number the
+    /// person agreed to on the page; a sweep that finds more than that by
+    /// then asks again rather than take the rest unasked.
+    static func sweep(due: [String], library: Int, confirmed: Int? = nil) -> Sweep {
+        guard !due.isEmpty else { return .nothing }
+        if let confirmed { return due.count <= confirmed ? .trash(due) : .held(due.count) }
+        return isBulk(due: due.count, library: library) ? .held(due.count) : .trash(due)
     }
 
     /// Turning the bin on or lowering its delay asks first, when it would

@@ -438,11 +438,21 @@ final class ForkMeetingFolderWatch {
 
 /// `fork.meetings.retentionDays` at work: a sweep at the launch with the
 /// feature on, then once a day while the app runs (`ForkMeetingRetention`).
-/// Off, or set to Never, nothing runs.
+/// Off, or set to Never, nothing runs. A sweep that would take too many at
+/// once waits in `held`, which the Meetings page asks about.
 ///
 /// Main thread only.
-final class ForkMeetingRetentionSweep {
+final class ForkMeetingRetentionSweep: ObservableObject {
     static let shared = ForkMeetingRetentionSweep()
+
+    /// A sweep that took nothing because it would have taken too much: how
+    /// many meetings, older than how many days.
+    struct Held: Equatable {
+        let count: Int
+        let days: Int
+    }
+
+    @Published private(set) var held: Held?
 
     /// After the recovery at launch (5 s), so a meeting it finishes is
     /// judged as it ends up.
@@ -467,6 +477,7 @@ final class ForkMeetingRetentionSweep {
             timer = nil
             first?.cancel()
             first = nil
+            held = nil
             return
         }
         guard timer == nil else { return }
@@ -487,12 +498,27 @@ final class ForkMeetingRetentionSweep {
         sweep(now: now)
     }
 
-    /// Now, whatever the last sweep: the setting was just confirmed.
-    func sweep(now: Date = Date(), completion: (([String]) -> Void)? = nil) {
+    /// Now, whatever the last sweep: the setting was just changed, or the
+    /// person agreed to `confirmed` meetings going.
+    func sweep(now: Date = Date(), confirmed: Int? = nil,
+               completion: ((ForkMeetingRetention.Sweep) -> Void)? = nil) {
         lastSweep = now
-        store.sweepRetention(days: days, now: now, writing: ForkMeetingService.shared.writingFolders) { gone in
-            completion?(gone)
+        let days = self.days
+        store.sweepRetention(days: days, now: now, writing: ForkMeetingService.shared.writingFolders,
+                             confirmed: confirmed) { [weak self] outcome in
+            guard let self else { return }
+            switch outcome {
+            case let .held(count): self.held = Held(count: count, days: days)
+            case .nothing, .trash: self.held = nil
+            }
+            completion?(outcome)
         }
+    }
+
+    /// The page's "Move to Trash" under a held sweep.
+    func confirmHeld() {
+        guard let held, held.days == days else { return }
+        sweep(confirmed: held.count)
     }
 }
 

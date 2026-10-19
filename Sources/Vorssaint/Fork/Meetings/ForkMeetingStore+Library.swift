@@ -82,33 +82,62 @@ extension ForkMeetingStore {
         var measured = Set<String>()
         for name in names.sorted() where !name.hasPrefix(".") {
             let folder = root.appendingPathComponent(name, isDirectory: true)
-            guard manager.fileExists(atPath: folder.path, isDirectory: &isDirectory), isDirectory.boolValue,
-                  let inside = try? manager.contentsOfDirectory(atPath: folder.path) else { continue }
-            let contents = ForkMeetingFolder.contents(of: inside, folderName: name)
-            guard contents.hasSidecar else { continue }
-            // Read straight from the disk: every write replaces the file
-            // whole, so a read never meets half of one.
-            let sidecar = ForkMeetingSidecar.read(at: folder.appendingPathComponent(ForkMeetingFolder.sidecarName))
-            let live = isClaimedHere(folder) || writing.contains(folder.standardizedFileURL.path)
-            let bytes = Self.folderBytes(folder, names: inside)
-            let created = (try? manager.attributesOfItem(atPath: folder.path))?[.creationDate] as? Date
-            // A first look, unmeasured, tells which file the row plays.
-            guard let first = ForkMeetingLibraryEntry(folderName: name, sidecar: sidecar, contents: contents, live: live,
-                                                      bytes: bytes, folderCreated: created) else { continue }
+            guard let first = libraryEntry(folder, writing: writing) else { continue }
             var probe: ForkMeetingProbeCache.Probe?
-            if probing, let playable = first.playable {
+            if probing, let playable = first.entry.playable {
                 let url = folder.appendingPathComponent(playable)
                 probe = await ForkMeetingLibraryProbes.shared.probe(url)
                 measured.insert(url.path)
             }
             if let probe { probes[name] = probe }
-            let entry = probe?.seconds == nil ? first
-                : ForkMeetingLibraryEntry(folderName: name, sidecar: sidecar, contents: contents, live: live,
-                                          bytes: bytes, videoSeconds: probe?.seconds, folderCreated: created) ?? first
-            entries.append(entry)
+            entries.append(probe?.seconds == nil ? first.entry : first.measured(probe?.seconds) ?? first.entry)
         }
         if probing { ForkMeetingLibraryProbes.shared.keep(only: measured) }
         return LibraryScan(root: root, rootExists: true, entries: entries, probes: probes)
+    }
+
+    /// One folder as the library reads it, unmeasured: `nil` for anything
+    /// but a meeting's folder. Read straight from the disk: every write
+    /// replaces `meeting.json` whole, so a read never meets half of one.
+    private struct FolderLook {
+        let entry: ForkMeetingLibraryEntry
+        let sidecar: Result<ForkMeetingSidecar, ForkMeetingSidecarFault>
+        let contents: ForkMeetingFolder.Contents
+        let live: Bool
+        let bytes: Int64
+        let created: Date?
+
+        /// The same row with the video's length the store measured.
+        func measured(_ seconds: Double?) -> ForkMeetingLibraryEntry? {
+            ForkMeetingLibraryEntry(folderName: entry.folderName, sidecar: sidecar, contents: contents, live: live,
+                                    bytes: bytes, videoSeconds: seconds, folderCreated: created,
+                                    videoModified: entry.videoModified)
+        }
+    }
+
+    private func libraryEntry(_ folder: URL, writing: Set<String>) -> FolderLook? {
+        let manager = FileManager.default
+        let name = folder.lastPathComponent
+        var isDirectory: ObjCBool = false
+        guard manager.fileExists(atPath: folder.path, isDirectory: &isDirectory), isDirectory.boolValue,
+              let inside = try? manager.contentsOfDirectory(atPath: folder.path) else { return nil }
+        let contents = ForkMeetingFolder.contents(of: inside, folderName: name)
+        guard contents.hasSidecar else { return nil }
+        let sidecar = ForkMeetingSidecar.read(at: folder.appendingPathComponent(ForkMeetingFolder.sidecarName))
+        let live = isClaimedHere(folder) || writing.contains(folder.standardizedFileURL.path)
+        let bytes = Self.folderBytes(folder, names: inside)
+        let created = (try? manager.attributesOfItem(atPath: folder.path))?[.creationDate] as? Date
+        // A first look tells which file the row plays; its date then joins
+        // the row, for the automatic bin.
+        guard let first = ForkMeetingLibraryEntry(folderName: name, sidecar: sidecar, contents: contents, live: live,
+                                                  bytes: bytes, folderCreated: created) else { return nil }
+        let modified = first.playable.flatMap {
+            (try? manager.attributesOfItem(atPath: folder.appendingPathComponent($0).path))?[.modificationDate] as? Date
+        }
+        let entry = modified == nil ? first
+            : ForkMeetingLibraryEntry(folderName: name, sidecar: sidecar, contents: contents, live: live, bytes: bytes,
+                                      folderCreated: created, videoModified: modified) ?? first
+        return FolderLook(entry: entry, sidecar: sidecar, contents: contents, live: live, bytes: bytes, created: created)
     }
 
     /// What a meeting weighs: its files, the hidden master included.
@@ -254,30 +283,51 @@ extension ForkMeetingStore {
     // MARK: - Automatic bin
 
     /// The meetings `days` would send to the Trash now
-    /// (`ForkMeetingRetention.due`). `completion` on the callback queue.
+    /// (`ForkMeetingRetention.due`), and how many the library lists.
+    /// `completion` on the callback queue.
     func retentionDue(days: Int, now: Date = Date(), writing: Set<String> = [], calendar: Calendar = .current,
-                      completion: @escaping ([String]) -> Void) {
+                      completion: @escaping (_ due: [String], _ library: Int) -> Void) {
         scanLibrary(writing: writing, probing: false) { scan in
-            completion(ForkMeetingRetention.due(scan.entries, days: days, now: now, calendar: calendar))
+            completion(ForkMeetingRetention.due(scan.entries, days: days, now: now, calendar: calendar), scan.entries.count)
         }
     }
 
-    /// Sends what `days` makes due to the Trash, one folder after the other
-    /// on the store's queue, each checked again at its turn. `completion`
-    /// on the callback queue, with the folders that went.
+    /// Sends what `days` makes due to the Trash, unless there is too much
+    /// of it at once (`ForkMeetingRetention.sweep`): then nothing goes and
+    /// the outcome says how many wait. Each folder is its own turn on the
+    /// store's queue, its `meeting.json` read again right before it goes:
+    /// a note typed meanwhile, or a quit, never waits behind the whole
+    /// sweep, and a meeting that changed since the scan is judged as it is
+    /// now. `confirmed`: the number the person agreed to. `completion` on
+    /// the callback queue.
     func sweepRetention(days: Int, now: Date = Date(), writing: Set<String> = [], calendar: Calendar = .current,
-                        completion: (([String]) -> Void)? = nil) {
-        retentionDue(days: days, now: now, writing: writing, calendar: calendar) { [self] due in
-            let root = self.root()
-            queue.async { [self] in
-                var gone: [String] = []
-                for name in due {
-                    let folder = root.appendingPathComponent(name, isDirectory: true)
-                    if writing.contains(folder.standardizedFileURL.path) { continue }
-                    if case .success = trash(name, in: root, live: false) { gone.append(name) }
+                        confirmed: Int? = nil, completion: ((ForkMeetingRetention.Sweep) -> Void)? = nil) {
+        retentionDue(days: days, now: now, writing: writing, calendar: calendar) { [self] due, library in
+            let decided = ForkMeetingRetention.sweep(due: due, library: library, confirmed: confirmed)
+            guard case let .trash(names) = decided else {
+                if case let .held(count) = decided {
+                    Self.libraryLog.notice("automatic bin held: \(count, privacy: .public) of \(library, privacy: .public) meetings")
                 }
-                if !gone.isEmpty { Self.libraryLog.notice("automatic bin: \(gone.count, privacy: .public) meetings") }
-                callbackQueue.async { completion?(gone) }
+                callbackQueue.async { completion?(decided) }
+                return
+            }
+            let root = self.root()
+            let gone = ForkMeetingSweepTally()
+            for name in names {
+                queue.async { [self] in
+                    let folder = root.appendingPathComponent(name, isDirectory: true)
+                    // Judged again as the folder is now.
+                    guard !writing.contains(folder.standardizedFileURL.path),
+                          let look = libraryEntry(folder, writing: writing),
+                          ForkMeetingRetention.verdict(look.entry, days: days, now: now, calendar: calendar) == .trash,
+                          case .success = trash(name, in: root, live: false) else { return }
+                    gone.add(name)
+                }
+            }
+            queue.async { [self] in
+                let names = gone.names
+                if !names.isEmpty { Self.libraryLog.notice("automatic bin: \(names.count, privacy: .public) meetings") }
+                callbackQueue.async { completion?(.trash(names)) }
             }
         }
     }
@@ -357,6 +407,17 @@ extension ForkMeetingStore {
             callbackQueue.async { completion(result) }
         }
     }
+}
+
+/// The folders a sweep sent to the Trash, gathered across its turns on
+/// the store's queue.
+private final class ForkMeetingSweepTally: @unchecked Sendable {
+    private let lock = NSLock()
+    private var gone: [String] = []
+
+    var names: [String] { lock.withLock { gone } }
+
+    func add(_ name: String) { lock.withLock { gone.append(name) } }
 }
 
 /// The videos' measures, kept between scans and shared by every scan:

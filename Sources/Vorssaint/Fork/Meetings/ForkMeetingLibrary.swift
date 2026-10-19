@@ -84,8 +84,14 @@ struct ForkMeetingLibraryEntry: Equatable {
     let playable: String?
     let video: String?
     let audio: String?
-    /// From a later version of the app, or unreadable: shown, never written.
+    /// From a later version of the app, unreadable, or not written by it:
+    /// shown, never written.
     let isReadOnly: Bool
+    /// `meeting.json` was not written by this app (`isWrittenByMeetings`).
+    let isForeign: Bool
+    /// The playable file's date on the disk, as the store read it: it can
+    /// only make the meeting younger for the automatic bin.
+    let videoModified: Date?
 
     /// `nil` for a folder without `meeting.json`: what tells a meeting
     /// folder from any other folder in the same place is its sidecar.
@@ -94,6 +100,7 @@ struct ForkMeetingLibraryEntry: Equatable {
     ///   store's claim). A sidecar left in `recording` by a crash is not
     ///   live: it is interrupted until the recovery runs.
     /// - `videoSeconds`: the final video's length, when the store probed it.
+    /// - `videoModified`: the date of the file the row plays.
     init?(folderName: String,
           sidecar: Result<ForkMeetingSidecar, ForkMeetingSidecarFault>,
           contents: ForkMeetingFolder.Contents,
@@ -101,11 +108,13 @@ struct ForkMeetingLibraryEntry: Equatable {
           bytes: Int64? = nil,
           videoSeconds: Double? = nil,
           folderCreated: Date? = nil,
+          videoModified: Date? = nil,
           calendar: Calendar = .current) {
         guard contents.hasSidecar else { return nil }
         if case .failure(.absent) = sidecar { return nil }
         self.folderName = folderName
         self.bytes = bytes
+        self.videoModified = videoModified
         video = contents.video
         audio = contents.audio
         let stamped = ForkMeetingLibrary.stampDate(folderName, calendar: calendar)
@@ -121,6 +130,7 @@ struct ForkMeetingLibraryEntry: Equatable {
             meetCode = nil
             notes = ""
             isReadOnly = true
+            isForeign = false
         case let .success(meeting):
             id = meeting.id
             status = Self.status(of: meeting, contents: contents, live: live)
@@ -133,7 +143,8 @@ struct ForkMeetingLibraryEntry: Equatable {
             provider = meeting.provider
             meetCode = meeting.meetCode
             notes = meeting.notes ?? ""
-            isReadOnly = !meeting.isRewritable
+            isForeign = !meeting.isWrittenByMeetings
+            isReadOnly = !meeting.isRewritable || isForeign
         }
         if let startedAt {
             date = startedAt

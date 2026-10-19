@@ -227,6 +227,7 @@ enum ForkMeetingLibraryText {
         switch refusal {
         case .meetingInProgress: return strings.refusedWhileRecording
         case .sidecarUnreadable, .sidecarFromLaterVersion: return strings.renameUnreadable
+        case .notWrittenHere: return strings.statusForeign
         }
     }
 }
