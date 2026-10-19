@@ -92,4 +92,12 @@ enum ForkMeetingDetectionSupport {
         guard let readAt else { return true }
         return now.timeIntervalSince(readAt) >= freeSpaceRefresh || now < readAt
     }
+
+    // MARK: Fixes J
+
+    /// The page warns that a page copying a Meet title could be taken for a
+    /// meeting only while Meet's meetings may be offered or recorded.
+    static func warnsOfLookalikes(_ policy: ForkMeetingPolicy) -> Bool {
+        policy != .never
+    }
 }

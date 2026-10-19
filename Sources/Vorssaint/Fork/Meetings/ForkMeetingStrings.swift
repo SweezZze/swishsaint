@@ -336,7 +336,6 @@ struct ForkMeetingStrings {
     let offerNeverFormat: String
     /// The ⋯ button, for VoiceOver and as its tooltip.
     let offerMore: String
-    /// The consent line under the meeting's name.
     /// What will be recorded: the window's app, the sound's (an app, or
     /// `offerWholeMac`) and the microphone's name, in that order.
     let offerCaptureFormat: String
@@ -583,7 +582,7 @@ extension ForkMeetingStrings {
         // MARK: Fixes F2
         stateStarting: "Starting…",
         pictureFrontDisplay: "Its whole display",
-        consentIntroFrontWindow: "Meetings records the meeting’s window (or its display), its app’s sound and your microphone. To offer a Google Meet, it reads the windows’ titles and which apps use the microphone. Everything stays on this Mac.",
+        consentIntroFrontWindow: "Meetings records the meeting’s window (or its display), its app’s sound and your microphone. To offer to record a Google Meet, it reads the windows’ titles and which apps use the microphone. Everything stays on this Mac.",
         filmedWindowFormat: "%@ window",
         filmedWindowUnnamed: "Window in front",
         filmedDisplay: "Whole screen",
@@ -607,7 +606,7 @@ extension ForkMeetingStrings {
         failMasterMissing: "No video to keep",
         failMasterMissingRemedy: "The file could not be finished, and no video of the recording was found in the meeting’s folder: nothing of it can be played.",
         // MARK: Fixes H1
-        detectionLookalike: "A web page that copies a Google Meet title exactly and uses the microphone could be offered as a meeting.",
+        detectionLookalike: "A web page that copies a Google Meet title exactly and uses the microphone could be taken for a meeting.",
         // MARK: Detection effects
         detectionTitle: "Detection",
         detectionCaption: "Recognizes a Google Meet meeting open in your browser, even behind other windows or on another desktop, and offers to record it.",
@@ -615,7 +614,7 @@ extension ForkMeetingStrings {
         policyAlways: "Always",
         policyNever: "Never",
         policyAskCaption: "Offered as soon as you join; unanswered, the offer folds after 20 seconds.",
-        policyAlwaysCaption: "Recording starts on its own when you join. Choosing Cancel within 5 seconds moves it to the Trash.",
+        policyAlwaysCaption: "Recording starts on its own when you join. Choosing Cancel within a few seconds moves it to the Trash.",
         policyNeverCaption: "Google Meet meetings are never offered. You can still record by hand.",
         detectionTitlesOnly: "Before macOS 14.4, a meeting is recognized by its window’s title only.",
         detectionMicrophoneUnreadable: "macOS does not say here which app uses the microphone: a meeting is recognized by its window’s title only.",
@@ -656,7 +655,7 @@ extension ForkMeetingStrings {
         offerNone: "none",
         offerMicrophoneDenied: "not allowed",
         // MARK: Fixes H2
-        offerNameHidden: "Name hidden from shares",
+        offerNameHidden: "Name hidden in screen shares",
         pillStopCancels: "Cancel the recording and move it to the Trash",
         voiceMeetingBack: "The meeting goes on: the recording does not stop.",
         noticeDiscardedTrash: "Cancelled · moved to Trash",
@@ -667,7 +666,7 @@ extension ForkMeetingStrings {
         voiceDiscardKept: "Recording cancelled, but its folder could be neither moved to the Trash nor deleted: it stays with your meetings.",
         noticeAnnouncementCopied: "Announcement copied",
         noticeAnnouncementCopiedDetail: "Paste it in the meeting chat",
-        undoAutoStartedFormat: "Started on its own · Always for %@"
+        undoAutoStartedFormat: "Auto-start · Always for %@"
     )
 }
 
@@ -829,7 +828,7 @@ extension ForkMeetingStrings {
         // MARK: Fixes F2
         stateStarting: "Iniciando…",
         pictureFrontDisplay: "A tela inteira dela",
-        consentIntroFrontWindow: "Reuniões grava a janela da reunião (ou a tela dela), o som do app dela e o seu microfone. Para oferecer um Google Meet, lê os títulos das janelas e quais apps usam o microfone. Tudo fica neste Mac.",
+        consentIntroFrontWindow: "Reuniões grava a janela da reunião (ou a tela dela), o som do app dela e o seu microfone. Para oferecer a gravação de um Google Meet, lê os títulos das janelas e quais apps usam o microfone. Tudo fica neste Mac.",
         filmedWindowFormat: "Janela do %@",
         filmedWindowUnnamed: "Janela da frente",
         filmedDisplay: "Tela inteira",
@@ -853,7 +852,7 @@ extension ForkMeetingStrings {
         failMasterMissing: "Nenhum vídeo para guardar",
         failMasterMissingRemedy: "Não foi possível finalizar o arquivo, e nenhum vídeo da gravação foi encontrado na pasta da reunião: nada dela pode ser reproduzido.",
         // MARK: Fixes H1
-        detectionLookalike: "Uma página da web que copie exatamente o título de uma reunião do Google Meet e use o microfone pode ser oferecida como reunião.",
+        detectionLookalike: "Uma página da web que copie exatamente o título de uma reunião do Google Meet e use o microfone pode ser confundida com uma reunião.",
         // MARK: Detection effects
         detectionTitle: "Detecção",
         detectionCaption: "Reconhece uma reunião do Google Meet aberta no seu navegador, mesmo atrás de outras janelas ou em outra mesa, e oferece gravá-la.",
@@ -861,7 +860,7 @@ extension ForkMeetingStrings {
         policyAlways: "Sempre",
         policyNever: "Nunca",
         policyAskCaption: "A oferta aparece assim que você entra; sem resposta, ela se recolhe após 20 segundos.",
-        policyAlwaysCaption: "A gravação começa sozinha quando você entra. Escolher Cancelar em até 5 segundos move a gravação para o Lixo.",
+        policyAlwaysCaption: "A gravação começa sozinha quando você entra. Escolher Cancelar nos segundos seguintes move a gravação para o Lixo.",
         policyNeverCaption: "As reuniões do Google Meet nunca são oferecidas. Você ainda pode gravar manualmente.",
         detectionTitlesOnly: "Antes do macOS 14.4, uma reunião é reconhecida só pelo título da janela.",
         detectionMicrophoneUnreadable: "Aqui o macOS não informa qual app usa o microfone: uma reunião é reconhecida só pelo título da janela.",
@@ -913,7 +912,7 @@ extension ForkMeetingStrings {
         voiceDiscardKept: "Gravação cancelada, mas a pasta não pôde ir para o Lixo nem ser apagada: continua com suas reuniões.",
         noticeAnnouncementCopied: "Aviso copiado",
         noticeAnnouncementCopiedDetail: "Cole no chat da reunião",
-        undoAutoStartedFormat: "Iniciada sozinha · Sempre para %@"
+        undoAutoStartedFormat: "Auto · Sempre para %@"
     )
 }
 
@@ -1075,7 +1074,7 @@ extension ForkMeetingStrings {
         // MARK: Fixes F2
         stateStarting: "Başlatılıyor…",
         pictureFrontDisplay: "Bulunduğu ekranın tamamı",
-        consentIntroFrontWindow: "Toplantılar, toplantının penceresini (veya ekranını), uygulamasının sesini ve mikrofonunuzu kaydeder. Bir Google Meet önermek için pencerelerin başlıklarını ve mikrofonu hangi uygulamaların kullandığını okur. Her şey bu Mac’te kalır.",
+        consentIntroFrontWindow: "Toplantılar, toplantının penceresini (veya ekranını), uygulamasının sesini ve mikrofonunuzu kaydeder. Bir Google Meet’i kaydetmeyi önermek için pencerelerin başlıklarını ve mikrofonu hangi uygulamaların kullandığını okur. Her şey bu Mac’te kalır.",
         filmedWindowFormat: "%@ penceresi",
         filmedWindowUnnamed: "Öndeki pencere",
         filmedDisplay: "Tüm ekran",
@@ -1099,7 +1098,7 @@ extension ForkMeetingStrings {
         failMasterMissing: "Saklanacak video yok",
         failMasterMissingRemedy: "Dosya tamamlanamadı ve toplantı klasöründe kaydın hiçbir videosu bulunamadı: oynatılabilecek bir şey yok.",
         // MARK: Fixes H1
-        detectionLookalike: "Bir Google Meet başlığını birebir taklit eden ve mikrofonu kullanan bir web sayfası da toplantı olarak önerilebilir.",
+        detectionLookalike: "Bir Google Meet başlığını birebir taklit eden ve mikrofonu kullanan bir web sayfası da toplantı sanılabilir.",
         // MARK: Detection effects
         detectionTitle: "Algılama",
         detectionCaption: "Tarayıcınızda açık bir Google Meet toplantısını, başka pencerelerin arkasında ya da başka bir masaüstünde olsa bile tanır ve kaydetmeyi önerir.",
@@ -1107,7 +1106,7 @@ extension ForkMeetingStrings {
         policyAlways: "Her zaman",
         policyNever: "Asla",
         policyAskCaption: "Öneri, katıldığınız anda gelir; yanıtlanmazsa 20 saniye sonra küçülür.",
-        policyAlwaysCaption: "Kayıt, katıldığınızda kendiliğinden başlar. 5 saniye içinde Vazgeç’i seçerseniz kayıt Çöp Sepeti’ne taşınır.",
+        policyAlwaysCaption: "Kayıt, katıldığınızda kendiliğinden başlar. Birkaç saniye içinde Vazgeç’i seçerseniz kayıt Çöp Sepeti’ne taşınır.",
         policyNeverCaption: "Google Meet toplantıları hiç önerilmez. Yine de elle kaydedebilirsiniz.",
         detectionTitlesOnly: "macOS 14.4’ten önce bir toplantı yalnızca pencere başlığından tanınır.",
         detectionMicrophoneUnreadable: "macOS burada mikrofonu hangi uygulamanın kullandığını söylemiyor: bir toplantı yalnızca pencere başlığından tanınır.",
@@ -1159,7 +1158,7 @@ extension ForkMeetingStrings {
         voiceDiscardKept: "Kayıt iptal edildi, ancak klasörü Çöp Sepeti’ne taşınamadı ve silinemedi: toplantılarınızda duruyor.",
         noticeAnnouncementCopied: "Duyuru kopyalandı",
         noticeAnnouncementCopiedDetail: "Sohbete yapıştırın",
-        undoAutoStartedFormat: "Kendiliğinden başladı · %@ için her zaman"
+        undoAutoStartedFormat: "Otomatik · %@: her zaman"
     )
 }
 
@@ -1345,7 +1344,7 @@ extension ForkMeetingStrings {
         failMasterMissing: "Нет видео для сохранения",
         failMasterMissingRemedy: "Файл не удалось завершить, а видео записи в папке встречи не найдено: воспроизвести нечего.",
         // MARK: Fixes H1
-        detectionLookalike: "Веб-страница, которая точно повторяет заголовок Google Meet и использует микрофон, может быть предложена как встреча.",
+        detectionLookalike: "Веб-страница, которая точно повторяет заголовок Google Meet и использует микрофон, может быть принята за встречу.",
         // MARK: Detection effects
         detectionTitle: "Обнаружение",
         detectionCaption: "Распознаёт встречу Google Meet, открытую в браузере, даже за другими окнами или на другом рабочем столе, и предлагает её записать.",
@@ -1353,7 +1352,7 @@ extension ForkMeetingStrings {
         policyAlways: "Всегда",
         policyNever: "Никогда",
         policyAskCaption: "Предложение появляется, как только вы подключаетесь; без ответа оно сворачивается через 20 секунд.",
-        policyAlwaysCaption: "Запись начинается сама, когда вы подключаетесь. Если выбрать «Отменить» в течение 5 секунд, она перемещается в Корзину.",
+        policyAlwaysCaption: "Запись начинается сама, когда вы подключаетесь. Если выбрать «Отменить» в первые секунды, она перемещается в Корзину.",
         policyNeverCaption: "Встречи Google Meet никогда не предлагаются. Записать вручную по-прежнему можно.",
         detectionTitlesOnly: "До macOS 14.4 встреча распознаётся только по заголовку окна.",
         detectionMicrophoneUnreadable: "Здесь macOS не сообщает, какое приложение использует микрофон: встреча распознаётся только по заголовку окна.",
@@ -1394,7 +1393,7 @@ extension ForkMeetingStrings {
         offerNone: "нет",
         offerMicrophoneDenied: "не разрешён",
         // MARK: Fixes H2
-        offerNameHidden: "Имя скрыто при показе экрана",
+        offerNameHidden: "Название скрыто при показе",
         pillStopCancels: "Отменить запись и переместить в Корзину",
         voiceMeetingBack: "Встреча продолжается: запись не остановится.",
         noticeDiscardedTrash: "Отменено · в Корзине",
@@ -1405,7 +1404,7 @@ extension ForkMeetingStrings {
         voiceDiscardKept: "Запись отменена, но её папку не удалось ни переместить в Корзину, ни удалить: она среди ваших встреч.",
         noticeAnnouncementCopied: "Объявление скопировано",
         noticeAnnouncementCopiedDetail: "Вставьте его в чат встречи",
-        undoAutoStartedFormat: "Начата автоматически · Всегда для %@"
+        undoAutoStartedFormat: "Автостарт · Всегда для %@"
     )
 }
 
@@ -1567,7 +1566,7 @@ extension ForkMeetingStrings {
         // MARK: Fixes F2
         stateStarting: "Iniciando…",
         pictureFrontDisplay: "Toda su pantalla",
-        consentIntroFrontWindow: "Reuniones graba la ventana de la reunión (o su pantalla), el sonido de su app y tu micrófono. Para ofrecer un Google Meet, lee los títulos de las ventanas y qué apps usan el micrófono. Todo se queda en este Mac.",
+        consentIntroFrontWindow: "Reuniones graba la ventana de la reunión (o su pantalla), el sonido de su app y tu micrófono. Para ofrecer grabar un Google Meet, lee los títulos de las ventanas y qué apps usan el micrófono. Todo se queda en este Mac.",
         filmedWindowFormat: "Ventana de %@",
         filmedWindowUnnamed: "Ventana en primer plano",
         filmedDisplay: "Pantalla entera",
@@ -1591,7 +1590,7 @@ extension ForkMeetingStrings {
         failMasterMissing: "Ningún vídeo que guardar",
         failMasterMissingRemedy: "No se pudo terminar el archivo y no se encontró ningún vídeo de la grabación en la carpeta de la reunión: no hay nada que reproducir.",
         // MARK: Fixes H1
-        detectionLookalike: "Una página web que imite exactamente el título de Google Meet y use el micrófono podría ofrecerse como reunión.",
+        detectionLookalike: "Una página web que imite exactamente un título de Google Meet y use el micrófono podría tomarse por una reunión.",
         // MARK: Detection effects
         detectionTitle: "Detección",
         detectionCaption: "Reconoce una reunión de Google Meet abierta en tu navegador, incluso detrás de otras ventanas o en otro escritorio, y ofrece grabarla.",
@@ -1599,7 +1598,7 @@ extension ForkMeetingStrings {
         policyAlways: "Siempre",
         policyNever: "Nunca",
         policyAskCaption: "La oferta aparece en cuanto te unes; sin respuesta, se pliega a los 20 segundos.",
-        policyAlwaysCaption: "La grabación empieza sola cuando te unes. Si eliges Cancelar en los 5 segundos siguientes, se mueve a la Papelera.",
+        policyAlwaysCaption: "La grabación empieza sola cuando te unes. Si eliges Cancelar en los segundos siguientes, se mueve a la Papelera.",
         policyNeverCaption: "Las reuniones de Google Meet nunca se ofrecen. Puedes seguir grabando a mano.",
         detectionTitlesOnly: "Antes de macOS 14.4, una reunión se reconoce solo por el título de su ventana.",
         detectionMicrophoneUnreadable: "Aquí macOS no indica qué app usa el micrófono: una reunión se reconoce solo por el título de su ventana.",
@@ -1651,7 +1650,7 @@ extension ForkMeetingStrings {
         voiceDiscardKept: "Grabación cancelada, pero su carpeta no se pudo mover a la Papelera ni borrar: sigue con tus reuniones.",
         noticeAnnouncementCopied: "Aviso copiado",
         noticeAnnouncementCopiedDetail: "Pégalo en el chat",
-        undoAutoStartedFormat: "Iniciada sola · Siempre para %@"
+        undoAutoStartedFormat: "Auto · Siempre para %@"
     )
 }
 
@@ -1813,7 +1812,7 @@ extension ForkMeetingStrings {
         // MARK: Fixes F2
         stateStarting: "Spúšťa sa…",
         pictureFrontDisplay: "Celá jeho obrazovka",
-        consentIntroFrontWindow: "Stretnutia nahrávajú okno stretnutia (alebo jeho obrazovku), zvuk jeho aplikácie a váš mikrofón. Aby mohli ponúknuť Google Meet, čítajú názvy okien a to, ktoré aplikácie používajú mikrofón. Všetko zostáva na tomto Macu.",
+        consentIntroFrontWindow: "Stretnutia nahrávajú okno stretnutia (alebo jeho obrazovku), zvuk jeho aplikácie a váš mikrofón. Aby mohli ponúknuť nahratie Google Meet, čítajú názvy okien a to, ktoré aplikácie používajú mikrofón. Všetko zostáva na tomto Macu.",
         filmedWindowFormat: "Okno aplikácie %@",
         filmedWindowUnnamed: "Okno v popredí",
         filmedDisplay: "Celá obrazovka",
@@ -1837,7 +1836,7 @@ extension ForkMeetingStrings {
         failMasterMissing: "Žiadne video na uloženie",
         failMasterMissingRemedy: "Súbor sa nepodarilo dokončiť a v priečinku stretnutia sa nenašlo žiadne video záznamu: nič sa nedá prehrať.",
         // MARK: Fixes H1
-        detectionLookalike: "Webová stránka, ktorá presne napodobní názov Google Meet a používa mikrofón, môže byť ponúknutá ako stretnutie.",
+        detectionLookalike: "Webová stránka, ktorá presne napodobní názov Google Meet a používa mikrofón, môže byť považovaná za stretnutie.",
         // MARK: Detection effects
         detectionTitle: "Rozpoznávanie",
         detectionCaption: "Rozpozná stretnutie Google Meet otvorené v prehliadači, aj za inými oknami alebo na inej ploche, a ponúkne jeho nahratie.",
@@ -1845,7 +1844,7 @@ extension ForkMeetingStrings {
         policyAlways: "Vždy",
         policyNever: "Nikdy",
         policyAskCaption: "Ponuka sa zobrazí hneď, ako sa pripojíte; bez odpovede sa po 20 sekundách zbalí.",
-        policyAlwaysCaption: "Nahrávanie sa spustí samo, keď sa pripojíte. Ak do 5 sekúnd vyberiete Zrušiť, presunie sa do Koša.",
+        policyAlwaysCaption: "Nahrávanie sa spustí samo, keď sa pripojíte. Ak do niekoľkých sekúnd vyberiete Zrušiť, presunie sa do Koša.",
         policyNeverCaption: "Stretnutia Google Meet sa nikdy neponúkajú. Stále môžete nahrávať ručne.",
         detectionTitlesOnly: "Pred macOS 14.4 sa stretnutie rozpozná iba podľa názvu okna.",
         detectionMicrophoneUnreadable: "macOS tu neuvádza, ktorá aplikácia používa mikrofón: stretnutie sa rozpozná iba podľa názvu okna.",
@@ -1897,7 +1896,7 @@ extension ForkMeetingStrings {
         voiceDiscardKept: "Nahrávanie zrušené, no jeho priečinok sa nepodarilo presunúť do Koša ani vymazať: ostáva medzi stretnutiami.",
         noticeAnnouncementCopied: "Oznámenie skopírované",
         noticeAnnouncementCopiedDetail: "Vložte ho do četu stretnutia",
-        undoAutoStartedFormat: "Spustené samo · Vždy pre %@"
+        undoAutoStartedFormat: "Automaticky · Vždy pre %@"
     )
 }
 
@@ -2059,7 +2058,7 @@ extension ForkMeetingStrings {
         // MARK: Fixes F2
         stateStarting: "Wird gestartet …",
         pictureFrontDisplay: "Sein ganzer Bildschirm",
-        consentIntroFrontWindow: "Besprechungen nimmt das Fenster der Besprechung (oder seinen Bildschirm), den Ton seiner App und dein Mikrofon auf. Um ein Google Meet anzubieten, liest es die Titel der Fenster und welche Apps das Mikrofon verwenden. Alles bleibt auf diesem Mac.",
+        consentIntroFrontWindow: "Besprechungen nimmt das Fenster der Besprechung (oder seinen Bildschirm), den Ton seiner App und dein Mikrofon auf. Um die Aufnahme eines Google Meet anzubieten, liest es die Titel der Fenster und welche Apps das Mikrofon verwenden. Alles bleibt auf diesem Mac.",
         filmedWindowFormat: "Fenster von %@",
         filmedWindowUnnamed: "Vorderstes Fenster",
         filmedDisplay: "Ganzer Bildschirm",
@@ -2083,7 +2082,7 @@ extension ForkMeetingStrings {
         failMasterMissing: "Kein Video zu sichern",
         failMasterMissingRemedy: "Die Datei konnte nicht fertiggestellt werden, und im Ordner der Besprechung wurde kein Video der Aufnahme gefunden: Nichts davon lässt sich abspielen.",
         // MARK: Fixes H1
-        detectionLookalike: "Eine Webseite, die einen Titel von Google Meet genau nachahmt und das Mikrofon nutzt, könnte als Besprechung angeboten werden.",
+        detectionLookalike: "Eine Webseite, die einen Titel von Google Meet genau nachahmt und das Mikrofon nutzt, könnte für eine Besprechung gehalten werden.",
         // MARK: Detection effects
         detectionTitle: "Erkennung",
         detectionCaption: "Erkennt eine in deinem Browser geöffnete Google-Meet-Besprechung, auch hinter anderen Fenstern oder auf einem anderen Schreibtisch, und bietet an, sie aufzunehmen.",
@@ -2091,7 +2090,7 @@ extension ForkMeetingStrings {
         policyAlways: "Immer",
         policyNever: "Nie",
         policyAskCaption: "Angeboten, sobald du beitrittst; ohne Antwort klappt das Angebot nach 20 Sekunden ein.",
-        policyAlwaysCaption: "Die Aufnahme startet von selbst, wenn du beitrittst. Wählst du innerhalb von 5 Sekunden Abbrechen, kommt sie in den Papierkorb.",
+        policyAlwaysCaption: "Die Aufnahme startet von selbst, wenn du beitrittst. Wählst du innerhalb weniger Sekunden Abbrechen, kommt sie in den Papierkorb.",
         policyNeverCaption: "Google-Meet-Besprechungen werden nie angeboten. Von Hand aufnehmen kannst du weiterhin.",
         detectionTitlesOnly: "Vor macOS 14.4 wird eine Besprechung nur am Titel ihres Fensters erkannt.",
         detectionMicrophoneUnreadable: "macOS verrät hier nicht, welche App das Mikrofon nutzt: Eine Besprechung wird nur am Titel ihres Fensters erkannt.",
@@ -2138,12 +2137,12 @@ extension ForkMeetingStrings {
         noticeDiscardedTrash: "Abgebrochen · im Papierkorb",
         noticeDiscardedDeleted: "Abgebrochen · gelöscht",
         noticeDiscardKept: "Abgebrochen · Ordner bleibt",
-        noticeDiscardKeptDetail: "Bei Ihren Besprechungen",
-        voiceDiscardedDeleted: "Aufnahme abgebrochen. Ihr Ordner konnte nicht in den Papierkorb: Er wurde gelöscht.",
-        voiceDiscardKept: "Aufnahme abgebrochen, aber ihr Ordner ließ sich weder in den Papierkorb legen noch löschen: Er bleibt bei Ihren Besprechungen.",
+        noticeDiscardKeptDetail: "Bei deinen Besprechungen",
+        voiceDiscardedDeleted: "Aufnahme abgebrochen. Ihr Ordner ließ sich nicht in den Papierkorb legen: Er wurde gelöscht.",
+        voiceDiscardKept: "Aufnahme abgebrochen, aber ihr Ordner ließ sich weder in den Papierkorb legen noch löschen: Er bleibt bei deinen Besprechungen.",
         noticeAnnouncementCopied: "Ankündigung kopiert",
         noticeAnnouncementCopiedDetail: "In den Chat einfügen",
-        undoAutoStartedFormat: "Von selbst gestartet · Immer für %@"
+        undoAutoStartedFormat: "Autostart · Immer für %@"
     )
 }
 
@@ -2305,7 +2304,7 @@ extension ForkMeetingStrings {
         // MARK: Fixes F2
         stateStarting: "Démarrage…",
         pictureFrontDisplay: "Tout son écran",
-        consentIntroFrontWindow: "Réunions enregistre la fenêtre de la réunion (ou son écran), le son de son app et votre micro. Pour proposer un Google Meet, elle lit les titres des fenêtres et quelles apps utilisent le micro. Tout reste sur ce Mac.",
+        consentIntroFrontWindow: "Réunions enregistre la fenêtre de la réunion (ou son écran), le son de son app et votre micro. Pour proposer d’enregistrer un Google Meet, elle lit les titres des fenêtres et repère les apps qui utilisent le micro. Tout reste sur ce Mac.",
         filmedWindowFormat: "Fenêtre\u{00A0}: %@",
         filmedWindowUnnamed: "Fenêtre au premier plan",
         filmedDisplay: "Écran entier",
@@ -2329,7 +2328,7 @@ extension ForkMeetingStrings {
         failMasterMissing: "Aucune vidéo à garder",
         failMasterMissingRemedy: "Le fichier n’a pas pu être finalisé et aucune vidéo de l’enregistrement n’a été trouvée dans le dossier de la réunion\u{00A0}: rien n’en est lisible.",
         // MARK: Fixes H1
-        detectionLookalike: "Une page web qui imite exactement un titre Google Meet et utilise le micro pourrait être proposée comme une réunion.",
+        detectionLookalike: "Une page web qui imite exactement un titre Google Meet et utilise le micro pourrait être prise pour une réunion.",
         // MARK: Detection effects
         detectionTitle: "Détection",
         detectionCaption: "Reconnaît une réunion Google Meet ouverte dans votre navigateur, même derrière d’autres fenêtres ou sur un autre bureau, et propose de l’enregistrer.",
@@ -2337,7 +2336,7 @@ extension ForkMeetingStrings {
         policyAlways: "Toujours",
         policyNever: "Jamais",
         policyAskCaption: "Proposée dès que vous rejoignez la réunion\u{00A0}; sans réponse, la proposition se replie au bout de 20 secondes.",
-        policyAlwaysCaption: "L’enregistrement démarre seul quand vous rejoignez la réunion. Choisir Annuler dans les 5 secondes le met à la Corbeille.",
+        policyAlwaysCaption: "L’enregistrement démarre seul quand vous rejoignez la réunion. Choisir Annuler dans les quelques secondes qui suivent le met à la Corbeille.",
         policyNeverCaption: "Les réunions Google Meet ne sont jamais proposées. Vous pouvez toujours enregistrer à la main.",
         detectionTitlesOnly: "Avant macOS 14.4, une réunion est reconnue au titre de sa fenêtre seulement.",
         detectionMicrophoneUnreadable: "Ici, macOS ne dit pas quelle app utilise le micro\u{00A0}: une réunion est reconnue au titre de sa fenêtre seulement.",
@@ -2383,13 +2382,13 @@ extension ForkMeetingStrings {
         voiceMeetingBack: "La réunion continue\u{00A0}: l’enregistrement ne s’arrête pas.",
         noticeDiscardedTrash: "Annulé · mis à la Corbeille",
         noticeDiscardedDeleted: "Annulé · supprimé",
-        noticeDiscardKept: "Annulé · dossier non jeté",
+        noticeDiscardKept: "Annulé · dossier toujours là",
         noticeDiscardKeptDetail: "Il reste avec vos réunions",
         voiceDiscardedDeleted: "Enregistrement annulé. Son dossier n’a pas pu aller à la Corbeille\u{00A0}: il est supprimé.",
         voiceDiscardKept: "Enregistrement annulé, mais son dossier n’a pu être ni mis à la Corbeille ni supprimé\u{00A0}: il reste avec vos réunions.",
         noticeAnnouncementCopied: "Annonce copiée",
         noticeAnnouncementCopiedDetail: "À coller dans la discussion",
-        undoAutoStartedFormat: "Démarré seul · Toujours pour %@"
+        undoAutoStartedFormat: "Auto · Toujours pour %@"
     )
 }
 
@@ -2551,7 +2550,7 @@ extension ForkMeetingStrings {
         // MARK: Fixes F2
         stateStarting: "Avvio…",
         pictureFrontDisplay: "Tutto il suo schermo",
-        consentIntroFrontWindow: "Riunioni registra la finestra della riunione (o il suo schermo), l’audio della sua app e il tuo microfono. Per proporre un Google Meet, legge i titoli delle finestre e quali app usano il microfono. Tutto resta su questo Mac.",
+        consentIntroFrontWindow: "Riunioni registra la finestra della riunione (o il suo schermo), l’audio della sua app e il tuo microfono. Per proporre di registrare un Google Meet, legge i titoli delle finestre e quali app usano il microfono. Tutto resta su questo Mac.",
         filmedWindowFormat: "Finestra di %@",
         filmedWindowUnnamed: "Finestra in primo piano",
         filmedDisplay: "Schermo intero",
@@ -2575,7 +2574,7 @@ extension ForkMeetingStrings {
         failMasterMissing: "Nessun video da salvare",
         failMasterMissingRemedy: "Non è stato possibile completare il file e nella cartella della riunione non è stato trovato alcun video della registrazione: non c’è nulla da riprodurre.",
         // MARK: Fixes H1
-        detectionLookalike: "Una pagina web che imita esattamente un titolo di Google Meet e usa il microfono potrebbe essere proposta come riunione.",
+        detectionLookalike: "Una pagina web che imita esattamente un titolo di Google Meet e usa il microfono potrebbe essere scambiata per una riunione.",
         // MARK: Detection effects
         detectionTitle: "Rilevamento",
         detectionCaption: "Riconosce una riunione Google Meet aperta nel browser, anche dietro altre finestre o su un’altra scrivania, e propone di registrarla.",
@@ -2583,7 +2582,7 @@ extension ForkMeetingStrings {
         policyAlways: "Sempre",
         policyNever: "Mai",
         policyAskCaption: "Proposta appena entri; senza risposta, la proposta si chiude dopo 20 secondi.",
-        policyAlwaysCaption: "La registrazione parte da sola quando entri. Scegliere Annulla entro 5 secondi la sposta nel Cestino.",
+        policyAlwaysCaption: "La registrazione parte da sola quando entri. Scegliere Annulla entro pochi secondi la sposta nel Cestino.",
         policyNeverCaption: "Le riunioni Google Meet non vengono mai proposte. Puoi comunque registrare a mano.",
         detectionTitlesOnly: "Prima di macOS 14.4, una riunione è riconosciuta solo dal titolo della sua finestra.",
         detectionMicrophoneUnreadable: "Qui macOS non dice quale app usa il microfono: una riunione è riconosciuta solo dal titolo della sua finestra.",
@@ -2635,7 +2634,7 @@ extension ForkMeetingStrings {
         voiceDiscardKept: "Registrazione annullata, ma la cartella non è stata spostata nel Cestino né eliminata: resta tra le tue riunioni.",
         noticeAnnouncementCopied: "Annuncio copiato",
         noticeAnnouncementCopiedDetail: "Incollalo nella chat",
-        undoAutoStartedFormat: "Avviata da sola · Sempre per %@"
+        undoAutoStartedFormat: "Automatica · Sempre per %@"
     )
 }
 
@@ -2797,7 +2796,7 @@ extension ForkMeetingStrings {
         // MARK: Fixes F2
         stateStarting: "開始しています…",
         pictureFrontDisplay: "そのディスプレイ全体",
-        consentIntroFrontWindow: "「ミーティング」は、ミーティングのウインドウ（またはそのディスプレイ）、そのアプリの音声、あなたのマイクを録画します。Google Meet を提案するために、ウインドウのタイトルと、どのアプリがマイクを使っているかを読み取ります。すべてこのMac上に保存されます。",
+        consentIntroFrontWindow: "「ミーティング」は、ミーティングのウインドウ（またはそのディスプレイ）、そのアプリの音声、あなたのマイクを録画します。Google Meet の録画を提案するために、ウインドウのタイトルと、どのアプリがマイクを使っているかを読み取ります。すべてこのMac上に保存されます。",
         filmedWindowFormat: "%@のウインドウ",
         filmedWindowUnnamed: "最前面のウインドウ",
         filmedDisplay: "画面全体",
@@ -2821,7 +2820,7 @@ extension ForkMeetingStrings {
         failMasterMissing: "保存できるビデオがありません",
         failMasterMissingRemedy: "ファイルを仕上げられず、ミーティングのフォルダに録画のビデオも見つかりませんでした。再生できるものはありません。",
         // MARK: Fixes H1
-        detectionLookalike: "Google Meet のタイトルをそのまま真似てマイクを使う Web ページも、ミーティングとして提案されることがあります。",
+        detectionLookalike: "Google Meet のタイトルをそのまま真似てマイクを使う Web ページも、ミーティングと見なされることがあります。",
         // MARK: Detection effects
         detectionTitle: "検出",
         detectionCaption: "ブラウザで開いている Google Meet のミーティングを、ほかのウインドウの後ろや別のデスクトップにあっても認識し、録画を提案します。",
@@ -2829,7 +2828,7 @@ extension ForkMeetingStrings {
         policyAlways: "常に録画",
         policyNever: "提案しない",
         policyAskCaption: "参加するとすぐに提案します。応答がなければ 20 秒後に小さくたたまれます。",
-        policyAlwaysCaption: "参加すると録画が自動で始まります。5 秒以内に「キャンセル」を選ぶとゴミ箱に移動します。",
+        policyAlwaysCaption: "参加すると録画が自動で始まります。数秒以内に「キャンセル」を選ぶとゴミ箱に移動します。",
         policyNeverCaption: "Google Meet のミーティングは提案しません。手動での録画はいつでもできます。",
         detectionTitlesOnly: "macOS 14.4 より前は、ミーティングをウインドウのタイトルだけで認識します。",
         detectionMicrophoneUnreadable: "この Mac では、どのアプリがマイクを使っているか macOS から取得できません。ミーティングはウインドウのタイトルだけで認識します。",
@@ -2875,7 +2874,7 @@ extension ForkMeetingStrings {
         voiceMeetingBack: "ミーティングは続いています。録画は停止しません。",
         noticeDiscardedTrash: "取り消し · ゴミ箱に移動",
         noticeDiscardedDeleted: "取り消し · 削除済み",
-        noticeDiscardKept: "取り消し · フォルダは未削除",
+        noticeDiscardKept: "取り消し · フォルダはそのまま",
         noticeDiscardKeptDetail: "ミーティングのフォルダに残っています",
         voiceDiscardedDeleted: "録画を取り消しました。フォルダをゴミ箱に移せなかったため、削除しました。",
         voiceDiscardKept: "録画を取り消しましたが、フォルダをゴミ箱に移すことも削除することもできませんでした。ミーティングのフォルダに残っています。",
@@ -3043,7 +3042,7 @@ extension ForkMeetingStrings {
         // MARK: Fixes F2
         stateStarting: "시작하는 중…",
         pictureFrontDisplay: "그 윈도우의 전체 디스플레이",
-        consentIntroFrontWindow: "회의 기능은 회의 윈도우(또는 그 디스플레이), 그 앱의 소리, 내 마이크를 녹화합니다. Google Meet을 제안하기 위해 윈도우 제목과 마이크를 사용하는 앱을 읽습니다. 모든 것이 이 Mac에 남습니다.",
+        consentIntroFrontWindow: "회의 기능은 회의 윈도우(또는 그 디스플레이), 그 앱의 소리, 내 마이크를 녹화합니다. Google Meet 녹화를 제안하기 위해 윈도우 제목과 마이크를 사용하는 앱을 읽습니다. 모든 것이 이 Mac에 남습니다.",
         filmedWindowFormat: "%@ 윈도우",
         filmedWindowUnnamed: "맨 앞 윈도우",
         filmedDisplay: "전체 화면",
@@ -3067,7 +3066,7 @@ extension ForkMeetingStrings {
         failMasterMissing: "보관할 비디오 없음",
         failMasterMissingRemedy: "파일을 마무리하지 못했고, 회의 폴더에서 녹화 비디오를 찾지 못했습니다. 재생할 수 있는 것이 없습니다.",
         // MARK: Fixes H1
-        detectionLookalike: "Google Meet 제목을 그대로 흉내 내고 마이크를 사용하는 웹 페이지도 회의로 제안될 수 있습니다.",
+        detectionLookalike: "Google Meet 제목을 그대로 흉내 내고 마이크를 사용하는 웹 페이지도 회의로 인식될 수 있습니다.",
         // MARK: Detection effects
         detectionTitle: "감지",
         detectionCaption: "브라우저에 열린 Google Meet 회의를 다른 윈도우 뒤나 다른 데스크탑에 있어도 알아보고 녹화를 제안합니다.",
@@ -3075,7 +3074,7 @@ extension ForkMeetingStrings {
         policyAlways: "항상",
         policyNever: "안 함",
         policyAskCaption: "참여하자마자 제안합니다. 응답이 없으면 20초 뒤 접힙니다.",
-        policyAlwaysCaption: "참여하면 녹화가 자동으로 시작됩니다. 5초 안에 취소를 선택하면 휴지통으로 이동합니다.",
+        policyAlwaysCaption: "참여하면 녹화가 자동으로 시작됩니다. 몇 초 안에 취소를 선택하면 휴지통으로 이동합니다.",
         policyNeverCaption: "Google Meet 회의는 제안하지 않습니다. 직접 녹화는 언제든 할 수 있습니다.",
         detectionTitlesOnly: "macOS 14.4 이전에는 회의를 윈도우 제목으로만 알아봅니다.",
         detectionMicrophoneUnreadable: "이 Mac에서는 macOS가 어떤 앱이 마이크를 쓰는지 알려 주지 않아 회의를 윈도우 제목으로만 알아봅니다.",
@@ -3289,7 +3288,7 @@ extension ForkMeetingStrings {
         // MARK: Fixes F2
         stateStarting: "Запуск…",
         pictureFrontDisplay: "Увесь його екран",
-        consentIntroFrontWindow: "Зустрічі записують вікно зустрічі (або його екран), звук його програми і ваш мікрофон. Щоб запропонувати Google Meet, вони читають заголовки вікон і те, які програми використовують мікрофон. Усе лишається на цьому Mac.",
+        consentIntroFrontWindow: "Зустрічі записують вікно зустрічі (або його екран), звук його програми і ваш мікрофон. Щоб запропонувати запис Google Meet, вони читають заголовки вікон і те, які програми використовують мікрофон. Усе лишається на цьому Mac.",
         filmedWindowFormat: "Вікно %@",
         filmedWindowUnnamed: "Вікно на передньому плані",
         filmedDisplay: "Увесь екран",
@@ -3313,7 +3312,7 @@ extension ForkMeetingStrings {
         failMasterMissing: "Немає відео для збереження",
         failMasterMissingRemedy: "Файл не вдалося завершити, а відео запису в папці зустрічі не знайдено: відтворити нічого.",
         // MARK: Fixes H1
-        detectionLookalike: "Вебсторінка, яка точно повторює заголовок Google Meet і використовує мікрофон, може бути запропонована як зустріч.",
+        detectionLookalike: "Вебсторінка, яка точно повторює заголовок Google Meet і використовує мікрофон, може бути сприйнята як зустріч.",
         // MARK: Detection effects
         detectionTitle: "Виявлення",
         detectionCaption: "Розпізнає зустріч Google Meet, відкриту в браузері, навіть за іншими вікнами чи на іншому робочому столі, і пропонує її записати.",
@@ -3321,7 +3320,7 @@ extension ForkMeetingStrings {
         policyAlways: "Завжди",
         policyNever: "Ніколи",
         policyAskCaption: "Пропозиція з’являється, щойно ви приєднуєтеся; без відповіді вона згортається через 20 секунд.",
-        policyAlwaysCaption: "Запис починається сам, коли ви приєднуєтеся. Якщо вибрати «Скасувати» протягом 5 секунд, його буде переміщено в Смітник.",
+        policyAlwaysCaption: "Запис починається сам, коли ви приєднуєтеся. Якщо вибрати «Скасувати» протягом кількох секунд, його буде переміщено в Смітник.",
         policyNeverCaption: "Зустрічі Google Meet ніколи не пропонуються. Записати вручну, як і раніше, можна.",
         detectionTitlesOnly: "До macOS 14.4 зустріч розпізнається лише за заголовком вікна.",
         detectionMicrophoneUnreadable: "Тут macOS не повідомляє, яка програма використовує мікрофон: зустріч розпізнається лише за заголовком вікна.",
@@ -3373,7 +3372,7 @@ extension ForkMeetingStrings {
         voiceDiscardKept: "Запис скасовано, але його теку не вдалося ні перемістити в Смітник, ні видалити: вона лишається серед зустрічей.",
         noticeAnnouncementCopied: "Оголошення скопійовано",
         noticeAnnouncementCopiedDetail: "Вставте його в чат зустрічі",
-        undoAutoStartedFormat: "Розпочато автоматично · Завжди для %@"
+        undoAutoStartedFormat: "Автостарт · Завжди для %@"
     )
 }
 
@@ -3559,7 +3558,7 @@ extension ForkMeetingStrings {
         failMasterMissing: "没有可保留的视频",
         failMasterMissingRemedy: "无法完成文件，会议文件夹中也找不到录制的视频：没有可以播放的内容。",
         // MARK: Fixes H1
-        detectionLookalike: "完全模仿 Google Meet 标题并使用麦克风的网页，也可能被提议为会议。",
+        detectionLookalike: "完全模仿 Google Meet 标题并使用麦克风的网页，也可能被当作会议。",
         // MARK: Detection effects
         detectionTitle: "检测",
         detectionCaption: "识别在浏览器中打开的 Google Meet 会议，即使它在其他窗口后面或在另一个桌面上，并提议录制。",
@@ -3567,7 +3566,7 @@ extension ForkMeetingStrings {
         policyAlways: "总是",
         policyNever: "从不",
         policyAskCaption: "一加入会议就会提议；无人回应时，提议会在 20 秒后收起。",
-        policyAlwaysCaption: "加入会议时自动开始录制。5 秒内选择“取消”会将这段录制移到废纸篓。",
+        policyAlwaysCaption: "加入会议时自动开始录制。几秒内选择“取消”会将这段录制移到废纸篓。",
         policyNeverCaption: "从不提议 Google Meet 会议。你仍可手动录制。",
         detectionTitlesOnly: "在 macOS 14.4 之前，只能通过窗口标题识别会议。",
         detectionMicrophoneUnreadable: "在这台 Mac 上，macOS 不提供哪个 App 正在使用麦克风：只能通过窗口标题识别会议。",
@@ -3805,7 +3804,7 @@ extension ForkMeetingStrings {
         failMasterMissing: "沒有可保留的影片",
         failMasterMissingRemedy: "無法完成檔案，會議資料夾中也找不到錄製的影片：沒有可以播放的內容。",
         // MARK: Fixes H1
-        detectionLookalike: "完全模仿 Google Meet 標題並使用麥克風的網頁，也可能被提議為會議。",
+        detectionLookalike: "完全模仿 Google Meet 標題並使用麥克風的網頁，也可能被當成會議。",
         // MARK: Detection effects
         detectionTitle: "偵測",
         detectionCaption: "辨識瀏覽器中開啟的 Google Meet 會議，即使它在其他視窗後面或另一個桌面上，並提議錄製。",
@@ -3813,7 +3812,7 @@ extension ForkMeetingStrings {
         policyAlways: "一律",
         policyNever: "永不",
         policyAskCaption: "一加入會議就會提議；無人回應時，提議會在 20 秒後收合。",
-        policyAlwaysCaption: "加入會議時自動開始錄製。5 秒內選擇「取消」會將這段錄製移到垃圾桶。",
+        policyAlwaysCaption: "加入會議時自動開始錄製。幾秒內選擇「取消」會將這段錄製丟到垃圾桶。",
         policyNeverCaption: "永不提議 Google Meet 會議。你仍可手動錄製。",
         detectionTitlesOnly: "在 macOS 14.4 之前，只能透過視窗標題辨識會議。",
         detectionMicrophoneUnreadable: "在這台 Mac 上，macOS 不提供哪個 App 正在使用麥克風：只能透過視窗標題辨識會議。",
@@ -3844,7 +3843,7 @@ extension ForkMeetingStrings {
         noticeNeverFormat: "不再為 %@ 提議",
         noticeNeverDetail: "可在「會議」設定中更改",
         voiceOfferFormat: "偵測到會議：%@。要錄製嗎？",
-        voiceAutoStartedFormat: "會議錄製已自動開始。如要取消並移到垃圾桶，請在 %d 秒內選擇「取消」。",
+        voiceAutoStartedFormat: "會議錄製已自動開始。如要取消並丟到垃圾桶，請在 %d 秒內選擇「取消」。",
         voiceEndingSoonFormat: "會議似乎已結束。除非你選擇「繼續」，錄製將在 %d 秒後停止。",
         voiceContinued: "錄製繼續。",
         voiceDiscarded: "錄製已取消，將移到垃圾桶。",
@@ -4051,7 +4050,7 @@ extension ForkMeetingStrings {
         failMasterMissing: "沒有可保留的影片",
         failMasterMissingRemedy: "無法完成檔案，會議資料夾中也找不到錄製的影片：沒有可以播放的內容。",
         // MARK: Fixes H1
-        detectionLookalike: "完全模仿 Google Meet 標題並使用麥克風的網頁，也可能被提議為會議。",
+        detectionLookalike: "完全模仿 Google Meet 標題並使用麥克風的網頁，也可能被當成會議。",
         // MARK: Detection effects
         detectionTitle: "偵測",
         detectionCaption: "辨認瀏覽器中開啟的 Google Meet 會議，即使它在其他視窗後面或另一個桌面上，並提議錄製。",
@@ -4059,7 +4058,7 @@ extension ForkMeetingStrings {
         policyAlways: "一律",
         policyNever: "永不",
         policyAskCaption: "一加入會議便會提議；沒有回應時，提議會在 20 秒後收起。",
-        policyAlwaysCaption: "加入會議時自動開始錄製。5 秒內選擇「取消」會將這段錄製移至垃圾桶。",
+        policyAlwaysCaption: "加入會議時自動開始錄製。幾秒內選擇「取消」會將這段錄製移至垃圾桶。",
         policyNeverCaption: "永不提議 Google Meet 會議。你仍可手動錄製。",
         detectionTitlesOnly: "在 macOS 14.4 之前，只能透過視窗標題辨認會議。",
         detectionMicrophoneUnreadable: "在這部 Mac 上，macOS 不提供哪個 App 正在使用咪高風：只能透過視窗標題辨認會議。",
@@ -4101,14 +4100,14 @@ extension ForkMeetingStrings {
         offerMicrophoneDenied: "未允許",
         // MARK: Fixes H2
         offerNameHidden: "分享螢幕時隱藏名稱",
-        pillStopCancels: "取消錄製並移到垃圾桶",
+        pillStopCancels: "取消錄製並移至垃圾桶",
         voiceMeetingBack: "會議仍在進行，錄製不會停止。",
-        noticeDiscardedTrash: "已取消 · 已移到垃圾桶",
+        noticeDiscardedTrash: "已取消 · 已移至垃圾桶",
         noticeDiscardedDeleted: "已取消 · 已刪除",
         noticeDiscardKept: "已取消 · 檔案夾仍在",
         noticeDiscardKeptDetail: "仍在會議檔案夾中",
-        voiceDiscardedDeleted: "錄製已取消。無法將檔案夾移到垃圾桶，已將其刪除。",
-        voiceDiscardKept: "錄製已取消，但無法將其檔案夾移到垃圾桶或刪除，它仍在會議檔案夾中。",
+        voiceDiscardedDeleted: "錄製已取消。無法將檔案夾移至垃圾桶，已將其刪除。",
+        voiceDiscardKept: "錄製已取消，但無法將其檔案夾移至垃圾桶或刪除，它仍在會議檔案夾中。",
         noticeAnnouncementCopied: "通知已複製",
         noticeAnnouncementCopiedDetail: "貼到會議聊天中",
         undoAutoStartedFormat: "已自動開始 · %@ 一律錄製"

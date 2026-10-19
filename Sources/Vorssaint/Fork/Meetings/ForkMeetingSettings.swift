@@ -364,8 +364,10 @@ private struct ForkMeetingDetectionSection: View {
             }
             caption(policyCaption)
             // A page that copies a Meet title and uses the microphone could
-            // be offered: said once, plainly.
-            caption(text.detectionLookalike)
+            // be offered: said once, plainly, while Meet is not "Never".
+            if ForkMeetingDetectionSupport.warnsOfLookalikes(meetPolicy.wrappedValue) {
+                caption(text.detectionLookalike)
+            }
             if let limit {
                 Label(limit, systemImage: "info.circle")
                     .font(.caption)

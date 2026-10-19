@@ -240,7 +240,9 @@ enum ForkMeetingServiceTests {
                      "what a recording by hand says speaks of the window in front, never of a meeting's window")
         suite.expect(english.consentIntroFrontWindow.contains("meeting’s window")
                         && ["windows’ titles", "which apps use the microphone", "this Mac"].allSatisfy(english.consentIntroFrontWindow.contains)
-                        && ["fenêtre de la réunion", "titres des fenêtres", "quelles apps utilisent le micro"]
+                        && english.consentIntroFrontWindow.contains("To offer to record a Google Meet")
+                        && ["fenêtre de la réunion", "titres des fenêtres", "repère les apps qui utilisent le micro",
+                            "Pour proposer d’enregistrer un Google Meet"]
                             .allSatisfy(french.consentIntroFrontWindow.contains),
                      "the first-use reminder says what the detection reads: the windows' titles and which apps use the microphone")
         suite.expect(english.detectionCaption.contains("behind other windows") && !english.detectionCaption.contains("background")

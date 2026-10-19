@@ -21,6 +21,7 @@ enum ForkMeetingFixesJTests {
         anotherTitleIsNotTheMeeting(suite)
         endPagesWithTheMicrophoneOpen(suite)
         meetTitlesOnly(suite)
+        words(suite)
     }
 
     // MARK: - Fixtures
@@ -321,5 +322,34 @@ enum ForkMeetingFixesJTests {
         eventbrite.readEvery3s(from: 0, to: 60, windows: [chrome("Meet-up Paris – Eventbrite")])
         suite.expect(offers(eventbrite.take()).isEmpty,
                      "P5: « Meet-up Paris – Eventbrite », the microphone open: never offered as « up Paris – Eventbrite »")
+    }
+
+    // MARK: - The texts
+
+    private static func words(_ suite: TestSuite) {
+        let s = { ForkMeetingStrings.strings($0) }
+        suite.expect(s(.de).noticeDiscardKeptDetail == "Bei deinen Besprechungen"
+                        && s(.de).voiceDiscardKept.hasSuffix("Er bleibt bei deinen Besprechungen.")
+                        && s(.de).voiceDiscardedDeleted.contains("Ihr Ordner ließ sich nicht in den Papierkorb legen: "),
+                     "German says « du » throughout")
+        suite.expect(s(.fr).noticeDiscardKept == "Annulé · dossier toujours là" && s(.ja).noticeDiscardKept == "取り消し · フォルダはそのまま"
+                        && s(.enUS).offerNameHidden == "Name hidden in screen shares"
+                        && s(.ru).offerNameHidden == "Название скрыто при показе",
+                     "the reviewed short notices")
+        suite.expect(s(.zhTW).pillStopCancels.contains("丟到垃圾桶") && s(.zhTW).policyAlwaysCaption.contains("丟到垃圾桶")
+                        && s(.zhTW).voiceAutoStartedFormat.contains("丟到垃圾桶")
+                        && [s(.zhHK).pillStopCancels, s(.zhHK).noticeDiscardedTrash, s(.zhHK).voiceDiscardedDeleted,
+                            s(.zhHK).voiceDiscardKept].allSatisfy { $0.contains("移至垃圾桶") },
+                     "Taiwan throws into the Trash, Hong Kong moves to it")
+        suite.expect(s(.ptBR).voiceDiscarded.contains("Lixo") && s(.ptBR).pillStopCancels.contains("Lixo"),
+                     "Brazil keeps macOS's « Lixo »")
+        let all = AppLanguage.allCases.map(ForkMeetingStrings.strings)
+        suite.expect(s(.fr).consentIntroFrontWindow.contains("Pour proposer d’enregistrer un Google Meet, elle lit les titres des fenêtres et repère les apps qui utilisent le micro.")
+                        && s(.ja).consentIntroFrontWindow.contains("Google Meet の録画を提案するために")
+                        && s(.de).consentIntroFrontWindow.contains("Um die Aufnahme eines Google Meet anzubieten,"),
+                     "the first-use reminder offers to record, not to offer a Meet")
+        suite.expect(all.allSatisfy { !$0.detectionLookalike.contains("offered") }
+                        && s(.enUS).detectionLookalike.hasSuffix("could be taken for a meeting."),
+                     "the lookalike warning says a page could be taken for a meeting")
     }
 }

@@ -200,7 +200,7 @@ enum ForkMeetingOfferH2Tests {
         suite.expect(ForkMeetingNotice.discarded(.trashed).title(french) == "Annulé · mis à la Corbeille",
                      "« Annulé · mis à la Corbeille »")
         let kept = ForkMeetingNotice.discarded(.kept)
-        suite.expect(kept.title(french) == "Annulé · dossier non jeté"
+        suite.expect(kept.title(french) == "Annulé · dossier toujours là"
                         && kept.detail(french) == "Il reste avec vos réunions"
                         && ForkMeetingDiscardOutcome.kept.spoken(french).contains("il reste avec vos réunions"),
                      "a folder that stayed is never said deleted, on the screen or to VoiceOver")
@@ -236,8 +236,8 @@ enum ForkMeetingOfferH2Tests {
     // MARK: - H2.11 The "Cancel" card says it started on its own
 
     private static func undoCardWords(_ suite: TestSuite) {
-        suite.expect(french.undoAutoStarted("Meet") == "Démarré seul · Toujours pour Meet",
-                     "« Démarré seul · Toujours pour Meet »")
+        suite.expect(french.undoAutoStarted("Meet") == "Auto · Toujours pour Meet",
+                     "« Auto · Toujours pour Meet »")
         suite.expect(AppLanguage.allCases.map(ForkMeetingStrings.strings).allSatisfy { $0.undoAutoStarted("Meet").contains("Meet") },
                      "every language names the provider")
     }

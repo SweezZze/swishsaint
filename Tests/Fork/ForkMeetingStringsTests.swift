@@ -46,7 +46,9 @@ enum ForkMeetingStringsTests {
     /// written for that room, never cut.
     private static func shortTexts(_ suite: TestSuite) {
         let notices: [ForkMeetingNotice] = [.started, .resumed, .saved, .recovered, .microphone("AirPods"),
-                                            .microphoneSilent, .diskLow(minutesLeft: 25), .displayChanged, .sourceGone]
+                                            .microphoneSilent, .diskLow(minutesLeft: 25), .displayChanged, .sourceGone,
+                                            .alwaysChosen("Meet"), .discarded(.trashed), .discarded(.deleted),
+                                            .discarded(.kept), .announcementCopied, .neverOffered("Meet")]
             + ForkMeetingFailure.all.map { .failure($0) }
         var tooLong: [String] = []
         for (language, strings) in zip(languages, allStrings) {
@@ -60,7 +62,8 @@ enum ForkMeetingStringsTests {
             for failure in ForkMeetingFailure.all where failure.summary(strings).count > 28 {
                 tooLong.append("\(language.rawValue): \(failure.summary(strings))")
             }
-            for name in [strings.folderName, strings.untitledMeeting] where name.count > 28 {
+            // The "Cancel" card's line after a start on its own.
+            for name in [strings.folderName, strings.untitledMeeting, strings.undoAutoStarted("Meet")] where name.count > 28 {
                 tooLong.append("\(language.rawValue): \(name)")
             }
         }

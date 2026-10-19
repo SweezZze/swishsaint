@@ -591,7 +591,9 @@ enum ForkMeetingFixesH1Tests {
                         && Set(all.map(\.detectionLookalike)).count >= 14,
                      "every language says a page copying a Meet title could be offered")
         suite.expect(ForkMeetingStrings.strings(.fr).detectionLookalike
-                        == "Une page web qui imite exactement un titre Google Meet et utilise le micro pourrait être proposée comme une réunion.",
-                     "« Une page web qui imite exactement un titre Google Meet et utilise le micro… »")
+                        == "Une page web qui imite exactement un titre Google Meet et utilise le micro pourrait être prise pour une réunion.",
+                     "« Une page web qui imite exactement un titre Google Meet et utilise le micro pourrait être prise pour une réunion. »")
+        suite.expect(Support.warnsOfLookalikes(.ask) && Support.warnsOfLookalikes(.always) && !Support.warnsOfLookalikes(.never),
+                     "said while Meet may be offered or recorded, not once it is set to Never")
     }
 }
