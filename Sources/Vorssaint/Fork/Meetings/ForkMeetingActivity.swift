@@ -3,22 +3,22 @@
 
 import Foundation
 
-/// Whether a meeting is being recorded, finished or transcribed, for what
-/// must not get in its way: the fork's updater, which quits the app to
-/// replace it.
+/// Whether a meeting is being recorded, finished, transcribed or
+/// summarized, for what must not get in its way: the fork's updater, which
+/// quits the app to replace it.
 ///
-/// Three sources, kept apart so none can clear another: the service says
+/// Four sources, kept apart so none can clear another: the service says
 /// when a recording runs, the finalizer counts the final passes it holds,
-/// the transcriber says while a transcription runs or waits. A meeting is
-/// safe once all are done, and only then `didBecomeIdle` is posted, on the
-/// main thread.
+/// the transcriber says while a transcription runs or waits, the summarizer
+/// while a summary does. A meeting is safe once all are done, and only then
+/// `didBecomeIdle` is posted, on the main thread.
 ///
 /// Static and under a lock rather than an object to observe: the updater
 /// reads it from wherever it is, and must not depend on the meeting service
 /// being built.
 enum ForkMeetingActivity {
-    /// Posted on the main thread when the last recording, final pass or
-    /// transcription ends.
+    /// Posted on the main thread when the last recording, final pass,
+    /// transcription or summary ends.
     static let didBecomeIdle = Notification.Name("fork.meetings.activity.idle")
     /// Posted on the main thread after any change of the tally: the
     /// transcriber waits for the final passes to end.
@@ -28,8 +28,9 @@ enum ForkMeetingActivity {
         var recording = false
         var finalizing = 0
         var transcribing = false
+        var summarizing = false
 
-        var isBusy: Bool { recording || finalizing > 0 || transcribing }
+        var isBusy: Bool { recording || finalizing > 0 || transcribing || summarizing }
     }
 
     private final class Shared: @unchecked Sendable {
@@ -55,6 +56,12 @@ enum ForkMeetingActivity {
     /// The transcriber: a transcription runs or waits, or none any more.
     static func setTranscribing(_ transcribing: Bool) {
         change { $0.transcribing = transcribing }
+    }
+
+    /// The summarizer: a summary runs or waits, or none any more. An
+    /// update would quit the app in the middle of it.
+    static func setSummarizing(_ summarizing: Bool) {
+        change { $0.summarizing = summarizing }
     }
 
     /// The finalizer: one more final pass queued.

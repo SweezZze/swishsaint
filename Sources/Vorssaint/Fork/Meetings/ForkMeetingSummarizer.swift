@@ -19,6 +19,8 @@ import os
 ///   also waits while a meeting records.
 /// - Cancelled between two calls to the model; nothing is written then, and
 ///   a summary already there stays.
+/// - **The updater waits** while a job runs or waits (`ForkMeetingActivity`),
+///   and the Mac stays awake for the one running, like a transcription.
 ///
 /// State on the main thread only (hence `@unchecked Sendable`, like the
 /// finalizer); the work in a detached task, which hands its answers back
@@ -54,8 +56,8 @@ final class ForkMeetingSummarizer: ObservableObject, @unchecked Sendable {
         var fraction: Double
     }
 
-    @Published private(set) var running: Running?
-    @Published private(set) var waiting: [Job] = []
+    @Published private(set) var running: Running? { didSet { activityChanged() } }
+    @Published private(set) var waiting: [Job] = [] { didSet { activityChanged() } }
     /// What the last job of each meeting did, while the app runs.
     @Published private(set) var outcomes: [(job: Job, outcome: Outcome)] = []
 
@@ -150,6 +152,11 @@ final class ForkMeetingSummarizer: ObservableObject, @unchecked Sendable {
             .sink { [weak self] _ in self?.startNext() }
     }
 
+    /// Main thread: the updater holds while a job runs or waits.
+    private func activityChanged() {
+        ForkMeetingActivity.setSummarizing(running != nil || !waiting.isEmpty)
+    }
+
     // MARK: - Running
 
     private func startNext() {
@@ -165,6 +172,11 @@ final class ForkMeetingSummarizer: ObservableObject, @unchecked Sendable {
         let app = L10n.shared.language
         let store = self.store
         Task.detached(priority: .utility) { [weak self] in
+            // Like a transcription: the Mac must not doze off in the middle
+            // of a long meeting's summary.
+            let activity = ProcessInfo.processInfo.beginActivity(options: [.userInitiated],
+                                                                 reason: "Summarizing a meeting")
+            defer { ProcessInfo.processInfo.endActivity(activity) }
             let result = await Self.work(job, store: store, me: me, others: others, app: app, stop: stop) { fraction in
                 DispatchQueue.main.async { self?.progressed(fraction, of: job) }
             }

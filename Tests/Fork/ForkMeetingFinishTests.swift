@@ -11,6 +11,7 @@ enum ForkMeetingFinishTests {
         markers(suite)
         soundOnly(suite)
         notifications(suite)
+        updates(suite)
     }
 
     private static func markers(_ suite: TestSuite) {
@@ -62,5 +63,28 @@ enum ForkMeetingFinishTests {
                      "a moment marked answers a press: no switch silences it")
         suite.expect(ForkMeetingNotifyEvent.allCases.count == 5,
                      "five switches on the page: the summary's word follows the transcripts' and exports' one")
+    }
+
+    /// A summary runs for minutes on a long meeting: the updater, which
+    /// quits the app, waits for it as for a transcript.
+    private static func updates(_ suite: TestSuite) {
+        let before = ForkMeetingActivity.tally
+        guard !before.isBusy else { return suite.expect(false, "the activity starts idle") }
+        RunLoop.current.run(until: Date().addingTimeInterval(0.05))
+        var idle = 0
+        let observer = NotificationCenter.default.addObserver(forName: ForkMeetingActivity.didBecomeIdle, object: nil,
+                                                              queue: nil) { _ in idle += 1 }
+        defer { NotificationCenter.default.removeObserver(observer) }
+        func settle() { RunLoop.current.run(until: Date().addingTimeInterval(0.05)) }
+        ForkMeetingActivity.setTranscribing(true)
+        ForkMeetingActivity.setSummarizing(true)
+        ForkMeetingActivity.setTranscribing(false)
+        settle()
+        suite.expect(ForkMeetingActivity.isBusy && idle == 0,
+                     "a summary still running keeps the updater waiting once the transcript is done")
+        ForkMeetingActivity.setSummarizing(false)
+        settle()
+        suite.expect(!ForkMeetingActivity.isBusy && idle == 1 && ForkMeetingActivity.tally == before,
+                     "the updater hears idle once, when the summary ends")
     }
 }
