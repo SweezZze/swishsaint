@@ -16,8 +16,11 @@ struct ForkMeetingSidecarEdit: Equatable {
     /// the default name again. `nil`: unchanged.
     var title: String?
     var notes: String?
+    /// The transcript's names after a rename moved them
+    /// (`ForkMeetingTranscriptRecord.files`).
+    var transcriptFiles: [String]?
 
-    var isEmpty: Bool { title == nil && notes == nil }
+    var isEmpty: Bool { title == nil && notes == nil && transcriptFiles == nil }
 
     func applied(to sidecar: ForkMeetingSidecar) -> ForkMeetingSidecar {
         var result = sidecar
@@ -26,6 +29,10 @@ struct ForkMeetingSidecarEdit: Equatable {
             result.titleSource = title.isEmpty ? nil : .user
         }
         if let notes { result.notes = notes }
+        if let transcriptFiles, var record = ForkMeetingTranscriptRecord(json: result.transcript) {
+            record.files = transcriptFiles
+            result.transcript = record.replacing(result.transcript)
+        }
         return result
     }
 
@@ -41,7 +48,8 @@ struct ForkMeetingSidecarEdit: Equatable {
 
     /// The later edit wins field by field.
     func merged(with later: ForkMeetingSidecarEdit) -> ForkMeetingSidecarEdit {
-        ForkMeetingSidecarEdit(title: later.title ?? title, notes: later.notes ?? notes)
+        ForkMeetingSidecarEdit(title: later.title ?? title, notes: later.notes ?? notes,
+                               transcriptFiles: later.transcriptFiles ?? transcriptFiles)
     }
 }
 
@@ -179,7 +187,8 @@ enum ForkMeetingRename {
         case let .create(name):
             plan.folder = ForkMeetingFolder.Move(from: folderName, to: name)
             plan.media = ForkMeetingFolder.mediaRenames(from: folderName, to: name, names: names,
-                                                        alsoNamed: meeting.recordedName(calendar: calendar))
+                                                        alsoNamed: meeting.recordedName(calendar: calendar),
+                                                        transcriptFiles: meeting.transcriptFiles)
         case .adopt, .exhausted:
             plan.folderKept = .namesExhausted
         }

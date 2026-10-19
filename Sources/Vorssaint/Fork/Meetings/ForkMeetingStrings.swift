@@ -729,6 +729,52 @@ struct ForkMeetingStrings {
     func retentionHeld(count: Int, days: Int) -> String {
         count == 1 ? String(format: retentionHeldOneFormat, days) : String(format: retentionHeldFormat, count, days)
     }
+
+    // MARK: Transcript
+
+    /// The Meetings page's section, and the detail's row.
+    let transcriptTitle: String
+    let transcribeAutomatically: String
+    let transcribeCaption: String
+    /// %d: how many languages Parakeet knows (25).
+    let transcriptLanguagesFormat: String
+    let transcriptNeedsParakeet: String
+    /// Buttons and states of the detail: short.
+    let transcriptInstall: String
+    let actionTranscribe: String
+    let actionOpenTranscript: String
+    let actionRetranscribe: String
+    /// %@: the share done ("42 %").
+    let transcriptProgressFormat: String
+    let transcriptWaiting: String
+    /// %d: the words of the transcript.
+    let transcriptWordsFormat: String
+    let transcriptNoAudio: String
+    let transcriptFailedGeneric: String
+    /// The notice of an automatic transcription: 28 characters at most.
+    let noticeTranscriptReady: String
+    let noticeTranscriptFailed: String
+    /// What starts the person's paragraphs and subtitles in the files, and the
+    /// others', separator included ("Me: ", "Moi : ").
+    let transcriptMeLabel: String
+    let transcriptOthersLabel: String
+
+    func transcriptLanguages(_ count: Int) -> String { String(format: transcriptLanguagesFormat, count) }
+    func transcriptProgress(_ share: String) -> String { String(format: transcriptProgressFormat, share) }
+    func transcriptWords(_ count: Int) -> String {
+        count == 1 ? transcriptWordsOne : String(format: transcriptWordsFormat, count)
+    }
+
+    // MARK: Fixes O
+
+    /// "1 word": the singular of `transcriptWordsFormat`.
+    let transcriptWordsOne: String
+    /// The failed notice's line when Parakeet is missing: 28 characters at
+    /// most.
+    let noticeParakeetMissing: String
+    /// The detail's line when the meeting track was silent and the echo of
+    /// the speakers could not be filtered: short.
+    let transcriptMeetingSilent: String
 }
 
 extension ForkMeetingStrings {
@@ -1140,7 +1186,30 @@ extension ForkMeetingStrings {
         exportsListKeychainRefused: "The Keychain refused to keep this list’s fingerprint: nothing is sent until it accepts. Check the list, then confirm again.",
         exportFailListUnconfirmed: "The list of exports waits for your confirmation on the Meetings page: nothing was sent.",
         renameAfterExport: "This meeting is being exported: its folder takes the new name once the export is done.",
-        exportFailDropFolderFull: "The drop folder’s disk is full: the meeting could not be copied there."
+        exportFailDropFolderFull: "The drop folder’s disk is full: the meeting could not be copied there.",
+        // MARK: Transcript
+        transcriptTitle: "Transcript",
+        transcribeAutomatically: "Transcribe on this Mac after each meeting",
+        transcribeCaption: "Parakeet writes the text beside the video, a .txt and a .srt, with “Me” and “Others” apart, and applies the dictation’s replacements. Plain text on this Mac, sent nowhere unless an export is added.",
+        transcriptLanguagesFormat: "Parakeet knows %d European languages and finds the meeting’s by itself.",
+        transcriptNeedsParakeet: "Parakeet is not installed on this Mac.",
+        transcriptInstall: "Install Parakeet",
+        actionTranscribe: "Transcribe on This Mac",
+        actionOpenTranscript: "Open Transcript",
+        actionRetranscribe: "Transcribe Again",
+        transcriptProgressFormat: "Transcribing… %@",
+        transcriptWaiting: "Waiting for its turn",
+        transcriptWordsFormat: "%d words",
+        transcriptNoAudio: "This meeting has no sound to transcribe.",
+        transcriptFailedGeneric: "The transcription failed. The meeting itself is untouched: try again.",
+        noticeTranscriptReady: "Transcript ready",
+        noticeTranscriptFailed: "Transcription failed",
+        transcriptMeLabel: "Me: ",
+        transcriptOthersLabel: "Others: ",
+        // MARK: Fixes O
+        transcriptWordsOne: "1 word",
+        noticeParakeetMissing: "Parakeet not installed",
+        transcriptMeetingSilent: "Meeting track silent: echo not filtered"
     )
 }
 
@@ -1553,7 +1622,30 @@ extension ForkMeetingStrings {
         exportsListKeychainRefused: "As Chaves recusaram guardar a impressão desta lista: nada é enviado até elas aceitarem. Confira a lista e confirme de novo.",
         exportFailListUnconfirmed: "A lista de exportações aguarda sua confirmação na página Reuniões: nada foi enviado.",
         renameAfterExport: "Esta reunião está sendo exportada: a pasta recebe o novo nome quando a exportação terminar.",
-        exportFailDropFolderFull: "O disco da pasta de entrega está cheio: não foi possível copiar a reunião para lá."
+        exportFailDropFolderFull: "O disco da pasta de entrega está cheio: não foi possível copiar a reunião para lá.",
+        // MARK: Transcript
+        transcriptTitle: "Transcrição",
+        transcribeAutomatically: "Transcrever neste Mac após cada reunião",
+        transcribeCaption: "O Parakeet escreve o texto ao lado do vídeo, um .txt e um .srt, com “Eu” e “Outros” separados, e aplica as substituições do ditado. Texto simples neste Mac, enviado a lugar nenhum, a menos que uma exportação seja adicionada.",
+        transcriptLanguagesFormat: "O Parakeet conhece %d idiomas europeus e encontra sozinho o da reunião.",
+        transcriptNeedsParakeet: "O Parakeet não está instalado neste Mac.",
+        transcriptInstall: "Instalar o Parakeet",
+        actionTranscribe: "Transcrever neste Mac",
+        actionOpenTranscript: "Abrir a transcrição",
+        actionRetranscribe: "Transcrever de novo",
+        transcriptProgressFormat: "Transcrevendo… %@",
+        transcriptWaiting: "Aguardando a vez",
+        transcriptWordsFormat: "%d palavras",
+        transcriptNoAudio: "Esta reunião não tem som para transcrever.",
+        transcriptFailedGeneric: "A transcrição falhou. A reunião em si não foi alterada: tente de novo.",
+        noticeTranscriptReady: "Transcrição pronta",
+        noticeTranscriptFailed: "A transcrição falhou",
+        transcriptMeLabel: "Eu: ",
+        transcriptOthersLabel: "Outros: ",
+        // MARK: Fixes O
+        transcriptWordsOne: "1 palavra",
+        noticeParakeetMissing: "Parakeet não instalado",
+        transcriptMeetingSilent: "Faixa Reunião muda: eco não filtrado"
     )
 }
 
@@ -1966,7 +2058,30 @@ extension ForkMeetingStrings {
         exportsListKeychainRefused: "Anahtar Zinciri bu listenin parmak izini saklamayı reddetti: kabul edene kadar hiçbir şey gönderilmez. Listeyi kontrol edip yeniden onaylayın.",
         exportFailListUnconfirmed: "Dışa aktarma listesi Toplantılar sayfasında onayınızı bekliyor: hiçbir şey gönderilmedi.",
         renameAfterExport: "Bu toplantı dışa aktarılıyor: klasörü, dışa aktarma bitince yeni adı alır.",
-        exportFailDropFolderFull: "Bırakma klasörünün diski dolu: toplantı oraya kopyalanamadı."
+        exportFailDropFolderFull: "Bırakma klasörünün diski dolu: toplantı oraya kopyalanamadı.",
+        // MARK: Transcript
+        transcriptTitle: "Metin dökümü",
+        transcribeAutomatically: "Her toplantıdan sonra bu Mac’te metne dök",
+        transcribeCaption: "Parakeet metni videonun yanına bir .txt ve bir .srt olarak yazar; “Ben” ve “Diğerleri” ayrı tutulur ve dikte değiştirmeleri uygulanır. Bu Mac’te düz metin olarak kalır; bir dışa aktarma eklenmedikçe hiçbir yere gönderilmez.",
+        transcriptLanguagesFormat: "Parakeet %d Avrupa dilini tanır ve toplantının dilini kendisi bulur.",
+        transcriptNeedsParakeet: "Parakeet bu Mac’te yüklü değil.",
+        transcriptInstall: "Parakeet’i yükle",
+        actionTranscribe: "Bu Mac’te metne dök",
+        actionOpenTranscript: "Metni aç",
+        actionRetranscribe: "Yeniden metne dök",
+        transcriptProgressFormat: "Metne dökülüyor… %@",
+        transcriptWaiting: "Sırasını bekliyor",
+        transcriptWordsFormat: "%d sözcük",
+        transcriptNoAudio: "Bu toplantıda metne dökülecek ses yok.",
+        transcriptFailedGeneric: "Metne dökme başarısız oldu. Toplantının kendisine dokunulmadı: yeniden deneyin.",
+        noticeTranscriptReady: "Metin hazır",
+        noticeTranscriptFailed: "Metne dökme başarısız",
+        transcriptMeLabel: "Ben: ",
+        transcriptOthersLabel: "Diğerleri: ",
+        // MARK: Fixes O
+        transcriptWordsOne: "1 sözcük",
+        noticeParakeetMissing: "Parakeet yüklü değil",
+        transcriptMeetingSilent: "Toplantı kanalı sessiz: yankı süzülmedi"
     )
 }
 
@@ -2379,7 +2494,30 @@ extension ForkMeetingStrings {
         exportsListKeychainRefused: "Связка ключей не сохранила отпечаток этого списка: пока она его не примет, ничего не отправляется. Проверьте список и подтвердите снова.",
         exportFailListUnconfirmed: "Список экспорта ждёт вашего подтверждения на странице «Встречи»: ничего не отправлено.",
         renameAfterExport: "Эта встреча экспортируется: её папка получит новое название, когда экспорт закончится.",
-        exportFailDropFolderFull: "Диск папки выгрузки заполнен: встречу не удалось туда скопировать."
+        exportFailDropFolderFull: "Диск папки выгрузки заполнен: встречу не удалось туда скопировать.",
+        // MARK: Transcript
+        transcriptTitle: "Расшифровка",
+        transcribeAutomatically: "Расшифровывать на этом Mac после каждой встречи",
+        transcribeCaption: "Parakeet записывает текст рядом с видео, в файлы .txt и .srt, где «Я» и «Другие» разделены, и применяет замены диктовки. Это обычный текст на этом Mac, который никуда не отправляется, если не добавлен экспорт.",
+        transcriptLanguagesFormat: "Parakeet знает %d европейских языков и сам находит язык встречи.",
+        transcriptNeedsParakeet: "Parakeet не установлен на этом Mac.",
+        transcriptInstall: "Установить Parakeet",
+        actionTranscribe: "Расшифровать на этом Mac",
+        actionOpenTranscript: "Открыть расшифровку",
+        actionRetranscribe: "Расшифровать заново",
+        transcriptProgressFormat: "Расшифровка… %@",
+        transcriptWaiting: "Ждёт своей очереди",
+        transcriptWordsFormat: "Слов: %d",
+        transcriptNoAudio: "В этой встрече нет звука для расшифровки.",
+        transcriptFailedGeneric: "Расшифровка не удалась. Сама встреча не затронута: попробуйте ещё раз.",
+        noticeTranscriptReady: "Расшифровка готова",
+        noticeTranscriptFailed: "Расшифровка не удалась",
+        transcriptMeLabel: "Я: ",
+        transcriptOthersLabel: "Другие: ",
+        // MARK: Fixes O
+        transcriptWordsOne: "1 слово",
+        noticeParakeetMissing: "Parakeet не установлен",
+        transcriptMeetingSilent: "Дорожка «Встреча» пуста: эхо не убрано"
     )
 }
 
@@ -2792,7 +2930,30 @@ extension ForkMeetingStrings {
         exportsListKeychainRefused: "El Llavero se negó a guardar la huella de esta lista: no se envía nada hasta que la acepte. Revisa la lista y vuelve a confirmar.",
         exportFailListUnconfirmed: "La lista de exportaciones espera tu confirmación en la página Reuniones: no se envió nada.",
         renameAfterExport: "Esta reunión se está exportando: su carpeta tomará el nuevo nombre cuando termine la exportación.",
-        exportFailDropFolderFull: "El disco de la carpeta de entrega está lleno: no se pudo copiar allí la reunión."
+        exportFailDropFolderFull: "El disco de la carpeta de entrega está lleno: no se pudo copiar allí la reunión.",
+        // MARK: Transcript
+        transcriptTitle: "Transcripción",
+        transcribeAutomatically: "Transcribir en este Mac después de cada reunión",
+        transcribeCaption: "Parakeet escribe el texto junto al vídeo, un .txt y un .srt, con “Yo” y “Otros” por separado, y aplica las sustituciones del dictado. Texto sin formato en este Mac, que no se envía a ningún sitio salvo que se añada una exportación.",
+        transcriptLanguagesFormat: "Parakeet conoce %d idiomas europeos y encuentra por sí mismo el de la reunión.",
+        transcriptNeedsParakeet: "Parakeet no está instalado en este Mac.",
+        transcriptInstall: "Instalar Parakeet",
+        actionTranscribe: "Transcribir en este Mac",
+        actionOpenTranscript: "Abrir la transcripción",
+        actionRetranscribe: "Transcribir de nuevo",
+        transcriptProgressFormat: "Transcribiendo… %@",
+        transcriptWaiting: "Esperando su turno",
+        transcriptWordsFormat: "%d palabras",
+        transcriptNoAudio: "Esta reunión no tiene sonido que transcribir.",
+        transcriptFailedGeneric: "La transcripción ha fallado. La reunión no se ha tocado: vuelve a intentarlo.",
+        noticeTranscriptReady: "Transcripción lista",
+        noticeTranscriptFailed: "La transcripción falló",
+        transcriptMeLabel: "Yo: ",
+        transcriptOthersLabel: "Otros: ",
+        // MARK: Fixes O
+        transcriptWordsOne: "1 palabra",
+        noticeParakeetMissing: "Parakeet no instalado",
+        transcriptMeetingSilent: "Pista Reunión muda: eco sin filtrar"
     )
 }
 
@@ -3205,7 +3366,30 @@ extension ForkMeetingStrings {
         exportsListKeychainRefused: "Kľúčenka odmietla uložiť odtlačok tohto zoznamu: kým ho neprijme, nič sa neodošle. Skontrolujte zoznam a potvrďte ho znova.",
         exportFailListUnconfirmed: "Zoznam exportov čaká na vaše potvrdenie na stránke Stretnutia: nič sa neodoslalo.",
         renameAfterExport: "Toto stretnutie sa exportuje: jeho priečinok dostane nový názov, keď sa export skončí.",
-        exportFailDropFolderFull: "Disk priečinka na odovzdanie je plný: stretnutie sa tam nepodarilo skopírovať."
+        exportFailDropFolderFull: "Disk priečinka na odovzdanie je plný: stretnutie sa tam nepodarilo skopírovať.",
+        // MARK: Transcript
+        transcriptTitle: "Prepis",
+        transcribeAutomatically: "Prepísať na tomto Macu po každom stretnutí",
+        transcribeCaption: "Parakeet zapíše text vedľa videa ako .txt a .srt, so „Ja“ a „Ostatní“ zvlášť, a použije náhrady z diktovania. Obyčajný text na tomto Macu, ktorý sa nikam neposiela, kým sa nepridá export.",
+        transcriptLanguagesFormat: "Parakeet pozná %d európskych jazykov a jazyk stretnutia nájde sám.",
+        transcriptNeedsParakeet: "Parakeet nie je na tomto Macu nainštalovaný.",
+        transcriptInstall: "Nainštalovať Parakeet",
+        actionTranscribe: "Prepísať na tomto Macu",
+        actionOpenTranscript: "Otvoriť prepis",
+        actionRetranscribe: "Prepísať znova",
+        transcriptProgressFormat: "Prepisuje sa… %@",
+        transcriptWaiting: "Čaká na svoj rad",
+        transcriptWordsFormat: "Slov: %d",
+        transcriptNoAudio: "Toto stretnutie nemá zvuk na prepis.",
+        transcriptFailedGeneric: "Prepis zlyhal. Samotné stretnutie zostalo nedotknuté: skúste to znova.",
+        noticeTranscriptReady: "Prepis je hotový",
+        noticeTranscriptFailed: "Prepis zlyhal",
+        transcriptMeLabel: "Ja: ",
+        transcriptOthersLabel: "Ostatní: ",
+        // MARK: Fixes O
+        transcriptWordsOne: "1 slovo",
+        noticeParakeetMissing: "Parakeet chýba",
+        transcriptMeetingSilent: "Stopa Stretnutie je tichá: ozvena zostala"
     )
 }
 
@@ -3618,7 +3802,30 @@ extension ForkMeetingStrings {
         exportsListKeychainRefused: "Der Schlüsselbund hat den Fingerabdruck dieser Liste nicht gesichert: Bis er ihn annimmt, wird nichts gesendet. Prüfe die Liste und bestätige erneut.",
         exportFailListUnconfirmed: "Die Liste der Exporte wartet auf deine Bestätigung auf der Seite „Besprechungen“: Es wurde nichts gesendet.",
         renameAfterExport: "Diese Besprechung wird gerade exportiert: Ihr Ordner erhält den neuen Namen, sobald der Export fertig ist.",
-        exportFailDropFolderFull: "Das Volume des Ablageordners ist voll: Die Besprechung konnte nicht dorthin kopiert werden."
+        exportFailDropFolderFull: "Das Volume des Ablageordners ist voll: Die Besprechung konnte nicht dorthin kopiert werden.",
+        // MARK: Transcript
+        transcriptTitle: "Transkript",
+        transcribeAutomatically: "Nach jeder Besprechung auf diesem Mac transkribieren",
+        transcribeCaption: "Parakeet schreibt den Text neben das Video, als .txt und .srt, mit „Ich“ und „Andere“ getrennt, und wendet die Ersetzungen der Diktierfunktion an. Reiner Text auf diesem Mac, der nirgendwohin gesendet wird, solange kein Export hinzugefügt ist.",
+        transcriptLanguagesFormat: "Parakeet kennt %d europäische Sprachen und erkennt die der Besprechung selbst.",
+        transcriptNeedsParakeet: "Parakeet ist auf diesem Mac nicht installiert.",
+        transcriptInstall: "Parakeet installieren",
+        actionTranscribe: "Auf dem Mac transkribieren",
+        actionOpenTranscript: "Transkript öffnen",
+        actionRetranscribe: "Erneut transkribieren",
+        transcriptProgressFormat: "Wird transkribiert… %@",
+        transcriptWaiting: "In der Warteschlange",
+        transcriptWordsFormat: "%d Wörter",
+        transcriptNoAudio: "Diese Besprechung hat keinen Ton zum Transkribieren.",
+        transcriptFailedGeneric: "Die Transkription ist fehlgeschlagen. Die Besprechung selbst bleibt unverändert: erneut versuchen.",
+        noticeTranscriptReady: "Transkript fertig",
+        noticeTranscriptFailed: "Transkription fehlgeschlagen",
+        transcriptMeLabel: "Ich: ",
+        transcriptOthersLabel: "Andere: ",
+        // MARK: Fixes O
+        transcriptWordsOne: "1 Wort",
+        noticeParakeetMissing: "Parakeet nicht installiert",
+        transcriptMeetingSilent: "Spur „Besprechung“ stumm: Echo nicht gefiltert"
     )
 }
 
@@ -4031,7 +4238,30 @@ extension ForkMeetingStrings {
         exportsListKeychainRefused: "Le trousseau a refusé de garder l’empreinte de cette liste\u{00A0}: rien ne part tant qu’il ne l’accepte pas. Vérifiez la liste, puis confirmez à nouveau.",
         exportFailListUnconfirmed: "La liste des exports attend votre confirmation sur la page Réunions\u{00A0}: rien n’a été envoyé.",
         renameAfterExport: "Cette réunion est en cours d’export\u{00A0}: son dossier prendra le nouveau nom une fois l’export terminé.",
-        exportFailDropFolderFull: "Le disque du dossier de dépôt est plein\u{00A0}: la réunion n’a pas pu y être copiée."
+        exportFailDropFolderFull: "Le disque du dossier de dépôt est plein\u{00A0}: la réunion n’a pas pu y être copiée.",
+        // MARK: Transcript
+        transcriptTitle: "Transcription",
+        transcribeAutomatically: "Transcrire sur ce Mac après chaque réunion",
+        transcribeCaption: "Parakeet écrit le texte à côté de la vidéo, un .txt et un .srt, avec «\u{00A0}Moi\u{00A0}» et «\u{00A0}Participants\u{00A0}» à part, et applique les remplacements de la dictée. Du texte simple sur ce Mac, envoyé nulle part sauf si un export est ajouté.",
+        transcriptLanguagesFormat: "Parakeet connaît %d langues européennes et trouve seul celle de la réunion.",
+        transcriptNeedsParakeet: "Parakeet n’est pas installé sur ce Mac.",
+        transcriptInstall: "Installer Parakeet",
+        actionTranscribe: "Transcrire sur ce Mac",
+        actionOpenTranscript: "Ouvrir la transcription",
+        actionRetranscribe: "Retranscrire",
+        transcriptProgressFormat: "Transcription… %@",
+        transcriptWaiting: "En attente de son tour",
+        transcriptWordsFormat: "%d mots",
+        transcriptNoAudio: "Cette réunion n’a pas de son à transcrire.",
+        transcriptFailedGeneric: "La transcription a échoué. La réunion elle-même reste intacte\u{00A0}: réessayez.",
+        noticeTranscriptReady: "Transcription prête",
+        noticeTranscriptFailed: "Transcription impossible",
+        transcriptMeLabel: "Moi\u{00A0}: ",
+        transcriptOthersLabel: "Participants\u{00A0}: ",
+        // MARK: Fixes O
+        transcriptWordsOne: "1 mot",
+        noticeParakeetMissing: "Parakeet non installé",
+        transcriptMeetingSilent: "Piste Réunion muette\u{00A0}: écho non filtré"
     )
 }
 
@@ -4444,7 +4674,30 @@ extension ForkMeetingStrings {
         exportsListKeychainRefused: "Il Portachiavi ha rifiutato di conservare l’impronta di questo elenco: finché non la accetta, non viene inviato nulla. Controlla l’elenco e conferma di nuovo.",
         exportFailListUnconfirmed: "L’elenco delle esportazioni attende la tua conferma nella pagina Riunioni: non è stato inviato nulla.",
         renameAfterExport: "Questa riunione è in esportazione: la sua cartella prenderà il nuovo nome a esportazione finita.",
-        exportFailDropFolderFull: "Il disco della cartella di consegna è pieno: non è stato possibile copiarvi la riunione."
+        exportFailDropFolderFull: "Il disco della cartella di consegna è pieno: non è stato possibile copiarvi la riunione.",
+        // MARK: Transcript
+        transcriptTitle: "Trascrizione",
+        transcribeAutomatically: "Trascrivi su questo Mac dopo ogni riunione",
+        transcribeCaption: "Parakeet scrive il testo accanto al video, un .txt e un .srt, con “Io” e “Altri” separati, e applica le sostituzioni della dettatura. Testo semplice su questo Mac, inviato da nessuna parte a meno che non venga aggiunta un’esportazione.",
+        transcriptLanguagesFormat: "Parakeet conosce %d lingue europee e trova da solo quella della riunione.",
+        transcriptNeedsParakeet: "Parakeet non è installato su questo Mac.",
+        transcriptInstall: "Installa Parakeet",
+        actionTranscribe: "Trascrivi su questo Mac",
+        actionOpenTranscript: "Apri la trascrizione",
+        actionRetranscribe: "Trascrivi di nuovo",
+        transcriptProgressFormat: "Trascrizione… %@",
+        transcriptWaiting: "In attesa del suo turno",
+        transcriptWordsFormat: "%d parole",
+        transcriptNoAudio: "Questa riunione non ha audio da trascrivere.",
+        transcriptFailedGeneric: "La trascrizione non è riuscita. La riunione non è stata toccata: riprova.",
+        noticeTranscriptReady: "Trascrizione pronta",
+        noticeTranscriptFailed: "Trascrizione non riuscita",
+        transcriptMeLabel: "Io: ",
+        transcriptOthersLabel: "Altri: ",
+        // MARK: Fixes O
+        transcriptWordsOne: "1 parola",
+        noticeParakeetMissing: "Parakeet non installato",
+        transcriptMeetingSilent: "Traccia Riunione muta: eco non filtrata"
     )
 }
 
@@ -4857,7 +5110,30 @@ extension ForkMeetingStrings {
         exportsListKeychainRefused: "キーチェーンがこのリストの指紋の保存を拒否しました。受け入れられるまで何も送信されません。リストを確認して、もう一度確認してください。",
         exportFailListUnconfirmed: "書き出し先のリストが「ミーティング」ページでの確認を待っています。何も送信されていません。",
         renameAfterExport: "このミーティングは書き出し中です。書き出しが終わるとフォルダに新しい名前が付きます。",
-        exportFailDropFolderFull: "ドロップフォルダのディスクがいっぱいです。ミーティングをコピーできませんでした。"
+        exportFailDropFolderFull: "ドロップフォルダのディスクがいっぱいです。ミーティングをコピーできませんでした。",
+        // MARK: Transcript
+        transcriptTitle: "文字起こし",
+        transcribeAutomatically: "ミーティングのたびにこの Mac で文字起こし",
+        transcribeCaption: "Parakeet がビデオの横にテキストを .txt と .srt で書き出し、「自分」と「他の参加者」を分け、音声入力の置き換えを適用します。この Mac 上のプレーンテキストで、書き出し先を追加しない限りどこにも送信されません。",
+        transcriptLanguagesFormat: "Parakeet は %d のヨーロッパ言語を認識し、ミーティングの言語を自動で判別します。",
+        transcriptNeedsParakeet: "この Mac には Parakeet がインストールされていません。",
+        transcriptInstall: "Parakeet をインストール",
+        actionTranscribe: "この Mac で文字起こし",
+        actionOpenTranscript: "文字起こしを開く",
+        actionRetranscribe: "もう一度文字起こし",
+        transcriptProgressFormat: "文字起こし中… %@",
+        transcriptWaiting: "順番を待っています",
+        transcriptWordsFormat: "%d 語",
+        transcriptNoAudio: "このミーティングには文字起こしする音声がありません。",
+        transcriptFailedGeneric: "文字起こしに失敗しました。ミーティング自体は変更されていません。もう一度お試しください。",
+        noticeTranscriptReady: "文字起こしが完了",
+        noticeTranscriptFailed: "文字起こしに失敗",
+        transcriptMeLabel: "自分：",
+        transcriptOthersLabel: "他の参加者：",
+        // MARK: Fixes O
+        transcriptWordsOne: "1 語",
+        noticeParakeetMissing: "Parakeet 未インストール",
+        transcriptMeetingSilent: "ミーティングのトラックが無音：エコー未除去"
     )
 }
 
@@ -5270,7 +5546,30 @@ extension ForkMeetingStrings {
         exportsListKeychainRefused: "키체인이 이 목록의 지문 저장을 거부했습니다. 받아들일 때까지 아무것도 보내지 않습니다. 목록을 확인한 다음 다시 확인하세요.",
         exportFailListUnconfirmed: "내보내기 목록이 회의 페이지에서 확인을 기다리고 있습니다. 아무것도 보내지 않았습니다.",
         renameAfterExport: "이 회의를 내보내는 중입니다. 내보내기가 끝나면 폴더가 새 이름을 받습니다.",
-        exportFailDropFolderFull: "드롭 폴더의 디스크가 가득 찼습니다. 회의를 그곳에 복사하지 못했습니다."
+        exportFailDropFolderFull: "드롭 폴더의 디스크가 가득 찼습니다. 회의를 그곳에 복사하지 못했습니다.",
+        // MARK: Transcript
+        transcriptTitle: "전사",
+        transcribeAutomatically: "회의가 끝날 때마다 이 Mac에서 전사",
+        transcribeCaption: "Parakeet이 비디오 옆에 .txt와 .srt로 텍스트를 쓰고, ‘나’와 ‘다른 참가자’를 구분하며, 받아쓰기 대치어를 적용합니다. 이 Mac에 있는 일반 텍스트이며, 내보내기를 추가하지 않는 한 어디로도 전송되지 않습니다.",
+        transcriptLanguagesFormat: "Parakeet은 %d개의 유럽 언어를 알고, 회의 언어를 스스로 찾습니다.",
+        transcriptNeedsParakeet: "이 Mac에 Parakeet이 설치되어 있지 않습니다.",
+        transcriptInstall: "Parakeet 설치",
+        actionTranscribe: "이 Mac에서 전사",
+        actionOpenTranscript: "전사본 열기",
+        actionRetranscribe: "다시 전사",
+        transcriptProgressFormat: "전사 중… %@",
+        transcriptWaiting: "차례를 기다리는 중",
+        transcriptWordsFormat: "%d단어",
+        transcriptNoAudio: "이 회의에는 전사할 소리가 없습니다.",
+        transcriptFailedGeneric: "전사에 실패했습니다. 회의 자체는 변경되지 않았습니다. 다시 시도하세요.",
+        noticeTranscriptReady: "전사 완료",
+        noticeTranscriptFailed: "전사 실패",
+        transcriptMeLabel: "나: ",
+        transcriptOthersLabel: "다른 참가자: ",
+        // MARK: Fixes O
+        transcriptWordsOne: "1단어",
+        noticeParakeetMissing: "Parakeet 미설치",
+        transcriptMeetingSilent: "회의 트랙 무음: 에코 미제거"
     )
 }
 
@@ -5683,7 +5982,30 @@ extension ForkMeetingStrings {
         exportsListKeychainRefused: "В’язка ключів не зберегла відбиток цього списку: поки вона його не прийме, нічого не надсилається. Перевірте список і підтвердіть знову.",
         exportFailListUnconfirmed: "Список експорту чекає вашого підтвердження на сторінці «Зустрічі»: нічого не надіслано.",
         renameAfterExport: "Ця зустріч експортується: її папка отримає нову назву, коли експорт завершиться.",
-        exportFailDropFolderFull: "Диск папки вивантаження заповнено: зустріч не вдалося туди скопіювати."
+        exportFailDropFolderFull: "Диск папки вивантаження заповнено: зустріч не вдалося туди скопіювати.",
+        // MARK: Transcript
+        transcriptTitle: "Розшифрування",
+        transcribeAutomatically: "Розшифровувати на цьому Mac після кожної зустрічі",
+        transcribeCaption: "Parakeet записує текст поруч із відео, у файли .txt і .srt, де «Я» та «Інші» окремо, і застосовує заміни диктування. Це звичайний текст на цьому Mac, який нікуди не надсилається, якщо не додано експорт.",
+        transcriptLanguagesFormat: "Parakeet знає %d європейських мов і сам визначає мову зустрічі.",
+        transcriptNeedsParakeet: "Parakeet не встановлено на цьому Mac.",
+        transcriptInstall: "Установити Parakeet",
+        actionTranscribe: "Розшифрувати на цьому Mac",
+        actionOpenTranscript: "Відкрити розшифрування",
+        actionRetranscribe: "Розшифрувати знову",
+        transcriptProgressFormat: "Розшифрування… %@",
+        transcriptWaiting: "Чекає своєї черги",
+        transcriptWordsFormat: "Слів: %d",
+        transcriptNoAudio: "У цій зустрічі немає звуку для розшифрування.",
+        transcriptFailedGeneric: "Розшифрування не вдалося. Саму зустріч не змінено: спробуйте ще раз.",
+        noticeTranscriptReady: "Розшифрування готове",
+        noticeTranscriptFailed: "Розшифрування не вдалося",
+        transcriptMeLabel: "Я: ",
+        transcriptOthersLabel: "Інші: ",
+        // MARK: Fixes O
+        transcriptWordsOne: "1 слово",
+        noticeParakeetMissing: "Parakeet не встановлено",
+        transcriptMeetingSilent: "Доріжка «Зустріч» порожня: луну не прибрано"
     )
 }
 
@@ -6096,7 +6418,30 @@ extension ForkMeetingStrings {
         exportsListKeychainRefused: "钥匙串拒绝保存此列表的指纹：在它接受之前不会发送任何内容。请检查列表，然后再次确认。",
         exportFailListUnconfirmed: "导出列表正在等待你在“会议”页面中确认：未发送任何内容。",
         renameAfterExport: "此会议正在导出：导出完成后，其文件夹会采用新名称。",
-        exportFailDropFolderFull: "投放文件夹所在磁盘已满：无法将会议拷贝到那里。"
+        exportFailDropFolderFull: "投放文件夹所在磁盘已满：无法将会议拷贝到那里。",
+        // MARK: Transcript
+        transcriptTitle: "转写",
+        transcribeAutomatically: "每次会议后在此 Mac 上转写",
+        transcribeCaption: "Parakeet 会在视频旁写出文本（.txt 和 .srt），将“我”和“其他人”分开，并应用听写的替换规则。这是此 Mac 上的纯文本，除非添加导出，否则不会发送到任何地方。",
+        transcriptLanguagesFormat: "Parakeet 能识别 %d 种欧洲语言，并自行判断会议所用的语言。",
+        transcriptNeedsParakeet: "此 Mac 上未安装 Parakeet。",
+        transcriptInstall: "安装 Parakeet",
+        actionTranscribe: "在此 Mac 上转写",
+        actionOpenTranscript: "打开转写",
+        actionRetranscribe: "重新转写",
+        transcriptProgressFormat: "正在转写… %@",
+        transcriptWaiting: "正在排队",
+        transcriptWordsFormat: "%d 个词",
+        transcriptNoAudio: "此会议没有可转写的声音。",
+        transcriptFailedGeneric: "转写失败。会议本身未被改动，请重试。",
+        noticeTranscriptReady: "转写已完成",
+        noticeTranscriptFailed: "转写失败",
+        transcriptMeLabel: "我：",
+        transcriptOthersLabel: "其他人：",
+        // MARK: Fixes O
+        transcriptWordsOne: "1 个词",
+        noticeParakeetMissing: "未安装 Parakeet",
+        transcriptMeetingSilent: "会议音轨无声：未过滤回声"
     )
 }
 
@@ -6509,7 +6854,30 @@ extension ForkMeetingStrings {
         exportsListKeychainRefused: "鑰匙圈拒絕保存此列表的指紋：在它接受之前不會傳送任何內容。請檢查列表，然後再次確認。",
         exportFailListUnconfirmed: "輸出列表正在等待你在「會議」頁面中確認：未傳送任何內容。",
         renameAfterExport: "此會議正在輸出：輸出完成後，其資料夾會採用新名稱。",
-        exportFailDropFolderFull: "投放資料夾所在磁碟已滿：無法將會議拷貝到那裡。"
+        exportFailDropFolderFull: "投放資料夾所在磁碟已滿：無法將會議拷貝到那裡。",
+        // MARK: Transcript
+        transcriptTitle: "轉寫",
+        transcribeAutomatically: "每次會議後在此 Mac 上轉寫",
+        transcribeCaption: "Parakeet 會在影片旁寫出文字（.txt 和 .srt），將「我」和「其他人」分開，並套用聽寫的取代規則。這是此 Mac 上的純文字，除非加入匯出，否則不會傳送到任何地方。",
+        transcriptLanguagesFormat: "Parakeet 能辨識 %d 種歐洲語言，並自行判斷會議所用的語言。",
+        transcriptNeedsParakeet: "此 Mac 上未安裝 Parakeet。",
+        transcriptInstall: "安裝 Parakeet",
+        actionTranscribe: "在此 Mac 上轉寫",
+        actionOpenTranscript: "打開轉寫",
+        actionRetranscribe: "重新轉寫",
+        transcriptProgressFormat: "正在轉寫… %@",
+        transcriptWaiting: "正在排隊",
+        transcriptWordsFormat: "%d 個詞",
+        transcriptNoAudio: "此會議沒有可轉寫的聲音。",
+        transcriptFailedGeneric: "轉寫失敗。會議本身未被更動，請再試一次。",
+        noticeTranscriptReady: "轉寫已完成",
+        noticeTranscriptFailed: "轉寫失敗",
+        transcriptMeLabel: "我：",
+        transcriptOthersLabel: "其他人：",
+        // MARK: Fixes O
+        transcriptWordsOne: "1 個詞",
+        noticeParakeetMissing: "未安裝 Parakeet",
+        transcriptMeetingSilent: "會議音軌無聲：未過濾回音"
     )
 }
 
@@ -6922,6 +7290,29 @@ extension ForkMeetingStrings {
         exportsListKeychainRefused: "鑰匙圈拒絕保存此列表的指紋：在它接受之前不會傳送任何內容。請檢查列表，然後再次確認。",
         exportFailListUnconfirmed: "匯出列表正在等待你在「會議」頁面中確認：未傳送任何內容。",
         renameAfterExport: "此會議正在匯出：匯出完成後，其資料夾會採用新名稱。",
-        exportFailDropFolderFull: "投放資料夾所在磁碟已滿：無法將會議複製到那裡。"
+        exportFailDropFolderFull: "投放資料夾所在磁碟已滿：無法將會議複製到那裡。",
+        // MARK: Transcript
+        transcriptTitle: "轉寫",
+        transcribeAutomatically: "每次會議後在此 Mac 上轉寫",
+        transcribeCaption: "Parakeet 會在影片旁寫出文字（.txt 和 .srt），將「我」和「其他人」分開，並套用聽寫的取代規則。這是此 Mac 上的純文字，除非加入匯出，否則不會傳送到任何地方。",
+        transcriptLanguagesFormat: "Parakeet 能辨識 %d 種歐洲語言，並自行判斷會議所用的語言。",
+        transcriptNeedsParakeet: "此 Mac 上未安裝 Parakeet。",
+        transcriptInstall: "安裝 Parakeet",
+        actionTranscribe: "在此 Mac 上轉寫",
+        actionOpenTranscript: "開啟轉寫",
+        actionRetranscribe: "重新轉寫",
+        transcriptProgressFormat: "正在轉寫… %@",
+        transcriptWaiting: "正在排隊",
+        transcriptWordsFormat: "%d 個詞",
+        transcriptNoAudio: "此會議沒有可轉寫的聲音。",
+        transcriptFailedGeneric: "轉寫失敗。會議本身未被更動，請再試一次。",
+        noticeTranscriptReady: "轉寫已完成",
+        noticeTranscriptFailed: "轉寫失敗",
+        transcriptMeLabel: "我：",
+        transcriptOthersLabel: "其他人：",
+        // MARK: Fixes O
+        transcriptWordsOne: "1 個詞",
+        noticeParakeetMissing: "未安裝 Parakeet",
+        transcriptMeetingSilent: "會議音軌無聲：未過濾回音"
     )
 }

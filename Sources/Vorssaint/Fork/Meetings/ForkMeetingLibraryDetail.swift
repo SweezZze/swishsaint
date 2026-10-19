@@ -54,6 +54,7 @@ struct ForkMeetingLibraryDetail: View {
                 facts
                 ForkMeetingExportStatus(folder: model.folderURL(entry), live: model.isLive(entry), text: text, language: language)
                 notesField
+                ForkMeetingTranscriptRow(model: model, entry: entry, text: text)
                 actions
             }
             .padding(20)

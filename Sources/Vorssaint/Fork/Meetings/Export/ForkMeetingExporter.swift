@@ -669,17 +669,14 @@ enum ForkMeetingExportDocument {
         return text.trimmingCharacters(in: separators)
     }
 
-    /// The transcript of the folder, when there is one: the `.txt` named
-    /// after the folder, else the only `.txt` there.
-    /// The transcript file of the folder: only the `.txt` named after the
-    /// folder or after its video, never another text the person left
-    /// there.
-    static func transcript(in names: [String], folderName: String, video: String? = nil) -> String? {
-        let stems = [folderName] + (video.map { [($0 as NSString).deletingPathExtension] } ?? [])
-        return names.first { name in
-            !name.hasPrefix(".") && (name as NSString).pathExtension.lowercased() == transcriptExtension
-                && stems.contains((name as NSString).deletingPathExtension)
-        }
+    /// The transcript file of the folder: the `.txt` the transcription
+    /// wrote, by the names `meeting.json` keeps (`transcript.files`), still
+    /// in the folder; never another text the person left there, even one
+    /// named after the folder or the video.
+    static func transcript(in names: [String], files: [String]) -> String? {
+        files.lazy.filter { ($0 as NSString).pathExtension.lowercased() == transcriptExtension && !$0.hasPrefix(".") }
+            .compactMap { file in names.first { $0.lowercased() == file.lowercased() } }
+            .first
     }
 
     /// The `transcript` of `meeting.json`, as its own list of fields: the

@@ -288,6 +288,48 @@ final class ForkMeetingPresenter {
         announce(outcome.spokenAfterCancel(askedAgain: askedAgain, strings: text))
     }
 
+    /// "Transcript ready · 3 412 words [Show]", or "Transcription failed
+    /// [Show]", when a transcription the person did not ask for by a click
+    /// ends: a card in the island when it is free, else the bubble, else a
+    /// notification. No meeting name: an island may be seen in a share.
+    /// [Show] opens the meeting, whose detail says the rest.
+    func showTranscript(folder: URL, outcome: ForkMeetingTranscriber.Outcome) {
+        guard Thread.isMainThread else {
+            DispatchQueue.main.async { self.showTranscript(folder: folder, outcome: outcome) }
+            return
+        }
+        let text = self.text
+        let title: String
+        let lines: [String]
+        let symbol: String
+        let tint: Color
+        switch outcome {
+        case let .done(words):
+            title = text.noticeTranscriptReady
+            lines = [text.transcriptWords(words)]
+            symbol = "text.bubble.fill"
+            tint = .green
+        case let .failed(failure):
+            title = text.noticeTranscriptFailed
+            // The one reason the person can act on from the notice itself.
+            lines = failure == .modelMissing ? [text.noticeParakeetMissing] : []
+            symbol = "exclamationmark.bubble.fill"
+            tint = .orange
+        }
+        announce(lines.first.map { ForkMeetingLiveText.sentences(title, $0) } ?? title)
+        let shown = present({ dismiss in
+            ForkMeetingCard(symbol: symbol, tint: tint, title: title, lines: lines,
+                            actions: [ForkMeetingCard.Action(title: text.actionShowMeeting, prominent: true) {
+                                ForkMeetingLibraryWindow.shared.show(folder: folder)
+                                dismiss()
+                            }])
+        }, height: Self.savedCardHeight, hold: Self.savedHold)
+        if ForkMeetingServiceSupport.notifies(shownInIsland: shown.island, shownInBubble: shown.bubble,
+                                              canNotify: Self.canNotify) {
+            Notifier.post(title: title, body: lines.first ?? "")
+        }
+    }
+
     /// Said to VoiceOver only: what the pill shows without a word VoiceOver
     /// would hear change (the picture frozen).
     func say(_ message: String) {

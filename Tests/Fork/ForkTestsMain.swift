@@ -22,6 +22,7 @@ struct ForkTests {
             ("fork-dictation-history-search", { ForkDictationHistorySearchTests.run(suite) }),
             ("fork-parakeet", { ForkParakeetTests.run(suite) }),
             ("fork-parakeet-store", { ForkParakeetStoreTests.run(suite) }),
+            ("fork-parakeet-long", { ForkParakeetLongTests.run(suite) }),
             ("fork-meetings-machine", { ForkMeetingMachineTests.run(suite) }),
             ("fork-meetings-quality", { ForkMeetingQualityTests.run(suite) }),
             ("fork-meetings-folder", { ForkMeetingFolderTests.run(suite) }),
@@ -51,6 +52,8 @@ struct ForkTests {
             ("fork-meetings-library-effects", { ForkMeetingLibraryEffectsTests.run(suite) }),
             ("fork-meetings-fixes-m", { ForkMeetingFixesMTests.run(suite) }),
             ("fork-meetings-fixes-l", { ForkMeetingFixesLTests.run(suite) }),
+            ("fork-meetings-transcript", { ForkMeetingTranscriptTests.run(suite) }),
+            ("fork-meetings-fixes-o", { ForkMeetingFixesOTests.run(suite) }),
             ("fork-meetings-export", { ForkMeetingExportTests.run(suite) }),
             ("fork-meetings-fixes-n", { ForkMeetingFixesNTests.run(suite) }),
         ]

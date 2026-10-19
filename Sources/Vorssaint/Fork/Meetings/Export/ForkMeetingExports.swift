@@ -527,7 +527,7 @@ final class ForkMeetingExports: ObservableObject {
         let manager = FileManager.default
         let name = folder.lastPathComponent
         guard let names = try? manager.contentsOfDirectory(atPath: folder.path) else { throw ForkMeetingExportFailure.unreadable }
-        let contents = ForkMeetingFolder.contents(of: names, folderName: name)
+        let contents = ForkMeetingFolder.contents(of: names, folderName: name, transcriptFiles: sidecar.transcriptFiles)
         guard let entry = ForkMeetingLibraryEntry(folderName: name, sidecar: .success(sidecar), contents: contents) else {
             throw ForkMeetingExportFailure.unreadable
         }
@@ -561,7 +561,7 @@ final class ForkMeetingExports: ObservableObject {
                     : ForkMeetingExportFailure.noAudio
             }
         }
-        let transcript = ForkMeetingExportDocument.transcript(in: names, folderName: name, video: contents.video)
+        let transcript = ForkMeetingExportDocument.transcript(in: names, files: sidecar.transcriptFiles)
             .map { folder.appendingPathComponent($0) }
         return ForkMeetingExportPackage(folderName: name, sidecar: sidecar, audio: audio, transcript: transcript)
     }
