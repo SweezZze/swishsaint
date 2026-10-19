@@ -488,14 +488,21 @@ final class ForkMeetingFolderWatch {
     /// Gathered during the quarter of a second.
     private var gathered: ForkMeetingLibrary.Rescan?
     /// FSEvents names the real path: a meetings folder reached through a
-    /// symbolic link (`/tmp`) is compared as it resolves.
+    /// symbolic link is compared as it resolves, by `realpath`, which keeps
+    /// `/private` where `resolvingSymlinksInPath` drops it.
     private let realPath: String
     static let debounce: TimeInterval = 0.25
 
     init(path: String, onChange: @escaping (ForkMeetingLibrary.Rescan) -> Void) {
         self.path = path
         self.onChange = onChange
-        realPath = URL(fileURLWithPath: path).resolvingSymlinksInPath().path
+        realPath = Self.realPath(path)
+    }
+
+    static func realPath(_ path: String) -> String {
+        guard let resolved = realpath(path, nil) else { return path }
+        defer { free(resolved) }
+        return String(cString: resolved)
     }
 
     deinit { stop() }
