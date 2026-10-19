@@ -101,6 +101,8 @@ extension ForkMeetingService {
         lastSaved = ForkMeetingSaved(folder: outcome.folder, seconds: outcome.seconds, bytes: bytes > 0 ? bytes : nil,
                                      recovered: recovered)
         presenter.showSaved(folder: outcome.folder, detail: detail, recovered: recovered)
+        // A meeting recovered at launch did not end well: sent with a click only.
+        if !recovered { ForkMeetingExports.shared.meetingFinished(outcome.folder) }
     }
 
     // MARK: - Launch
