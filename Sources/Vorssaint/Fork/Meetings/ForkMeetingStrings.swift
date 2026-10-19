@@ -377,6 +377,10 @@ struct ForkMeetingStrings {
     /// after a start "Always" made: it cancels then, as "Cancel" does.
     let pillStopCancels: String
 
+    /// Said when the meeting comes back during "Meeting over?": the
+    /// countdown goes, the recording goes on.
+    let voiceMeetingBack: String
+
     func offerAlways(_ provider: String) -> String { String(format: offerAlwaysFormat, provider) }
     func offerNever(_ provider: String) -> String { String(format: offerNeverFormat, provider) }
     func offerCapture(window: String, sound: String, microphone: String) -> String {
@@ -626,7 +630,8 @@ extension ForkMeetingStrings {
         offerMicrophoneDenied: "not allowed",
         // MARK: Fixes H2
         offerNameHidden: "Name hidden from shares",
-        pillStopCancels: "Cancel the recording and move it to the Trash"
+        pillStopCancels: "Cancel the recording and move it to the Trash",
+        voiceMeetingBack: "The meeting goes on: the recording does not stop."
     )
 }
 
@@ -861,7 +866,8 @@ extension ForkMeetingStrings {
         offerMicrophoneDenied: "não permitido",
         // MARK: Fixes H2
         offerNameHidden: "Nome oculto ao compartilhar",
-        pillStopCancels: "Cancelar a gravação e movê-la para o Lixo"
+        pillStopCancels: "Cancelar a gravação e movê-la para o Lixo",
+        voiceMeetingBack: "A reunião continua: a gravação não para."
     )
 }
 
@@ -1096,7 +1102,8 @@ extension ForkMeetingStrings {
         offerMicrophoneDenied: "izin yok",
         // MARK: Fixes H2
         offerNameHidden: "Paylaşımda ad gizli",
-        pillStopCancels: "Kaydı iptal et ve Çöp Sepeti’ne taşı"
+        pillStopCancels: "Kaydı iptal et ve Çöp Sepeti’ne taşı",
+        voiceMeetingBack: "Toplantı sürüyor: kayıt durmuyor."
     )
 }
 
@@ -1331,7 +1338,8 @@ extension ForkMeetingStrings {
         offerMicrophoneDenied: "не разрешён",
         // MARK: Fixes H2
         offerNameHidden: "Имя скрыто при показе экрана",
-        pillStopCancels: "Отменить запись и переместить в Корзину"
+        pillStopCancels: "Отменить запись и переместить в Корзину",
+        voiceMeetingBack: "Встреча продолжается: запись не остановится."
     )
 }
 
@@ -1566,7 +1574,8 @@ extension ForkMeetingStrings {
         offerMicrophoneDenied: "no permitido",
         // MARK: Fixes H2
         offerNameHidden: "Nombre oculto al compartir",
-        pillStopCancels: "Cancelar la grabación y moverla a la Papelera"
+        pillStopCancels: "Cancelar la grabación y moverla a la Papelera",
+        voiceMeetingBack: "La reunión continúa: la grabación no se detiene."
     )
 }
 
@@ -1801,7 +1810,8 @@ extension ForkMeetingStrings {
         offerMicrophoneDenied: "nepovolený",
         // MARK: Fixes H2
         offerNameHidden: "Názov skrytý pri zdieľaní",
-        pillStopCancels: "Zrušiť nahrávanie a presunúť ho do Koša"
+        pillStopCancels: "Zrušiť nahrávanie a presunúť ho do Koša",
+        voiceMeetingBack: "Stretnutie pokračuje: nahrávanie sa nezastaví."
     )
 }
 
@@ -2036,7 +2046,8 @@ extension ForkMeetingStrings {
         offerMicrophoneDenied: "nicht erlaubt",
         // MARK: Fixes H2
         offerNameHidden: "Name beim Teilen verborgen",
-        pillStopCancels: "Aufnahme abbrechen und in den Papierkorb legen"
+        pillStopCancels: "Aufnahme abbrechen und in den Papierkorb legen",
+        voiceMeetingBack: "Die Besprechung geht weiter: Die Aufnahme stoppt nicht."
     )
 }
 
@@ -2271,7 +2282,8 @@ extension ForkMeetingStrings {
         offerMicrophoneDenied: "non autorisé",
         // MARK: Fixes H2
         offerNameHidden: "Nom masqué pour les partages",
-        pillStopCancels: "Annuler l’enregistrement et le mettre à la Corbeille"
+        pillStopCancels: "Annuler l’enregistrement et le mettre à la Corbeille",
+        voiceMeetingBack: "La réunion continue\u{00A0}: l’enregistrement ne s’arrête pas."
     )
 }
 
@@ -2506,7 +2518,8 @@ extension ForkMeetingStrings {
         offerMicrophoneDenied: "non consentito",
         // MARK: Fixes H2
         offerNameHidden: "Nome nascosto se condividi",
-        pillStopCancels: "Annulla la registrazione e spostala nel Cestino"
+        pillStopCancels: "Annulla la registrazione e spostala nel Cestino",
+        voiceMeetingBack: "La riunione continua: la registrazione non si ferma."
     )
 }
 
@@ -2741,7 +2754,8 @@ extension ForkMeetingStrings {
         offerMicrophoneDenied: "未許可",
         // MARK: Fixes H2
         offerNameHidden: "画面共有では名前を非表示",
-        pillStopCancels: "録画を取り消してゴミ箱に入れる"
+        pillStopCancels: "録画を取り消してゴミ箱に入れる",
+        voiceMeetingBack: "ミーティングは続いています。録画は停止しません。"
     )
 }
 
@@ -2976,7 +2990,8 @@ extension ForkMeetingStrings {
         offerMicrophoneDenied: "허용 안 됨",
         // MARK: Fixes H2
         offerNameHidden: "화면 공유 시 이름 숨김",
-        pillStopCancels: "녹화를 취소하고 휴지통으로 이동"
+        pillStopCancels: "녹화를 취소하고 휴지통으로 이동",
+        voiceMeetingBack: "회의가 계속됩니다. 녹화는 중지되지 않습니다."
     )
 }
 
@@ -3211,7 +3226,8 @@ extension ForkMeetingStrings {
         offerMicrophoneDenied: "не дозволено",
         // MARK: Fixes H2
         offerNameHidden: "Назву сховано при показі",
-        pillStopCancels: "Скасувати запис і перемістити в Смітник"
+        pillStopCancels: "Скасувати запис і перемістити в Смітник",
+        voiceMeetingBack: "Зустріч триває: запис не зупиниться."
     )
 }
 
@@ -3446,7 +3462,8 @@ extension ForkMeetingStrings {
         offerMicrophoneDenied: "未允许",
         // MARK: Fixes H2
         offerNameHidden: "共享屏幕时隐藏名称",
-        pillStopCancels: "取消录制并移到废纸篓"
+        pillStopCancels: "取消录制并移到废纸篓",
+        voiceMeetingBack: "会议仍在进行，录制不会停止。"
     )
 }
 
@@ -3681,7 +3698,8 @@ extension ForkMeetingStrings {
         offerMicrophoneDenied: "未允許",
         // MARK: Fixes H2
         offerNameHidden: "分享螢幕時隱藏名稱",
-        pillStopCancels: "取消錄製並丟到垃圾桶"
+        pillStopCancels: "取消錄製並丟到垃圾桶",
+        voiceMeetingBack: "會議仍在進行，錄製不會停止。"
     )
 }
 
@@ -3916,6 +3934,7 @@ extension ForkMeetingStrings {
         offerMicrophoneDenied: "未允許",
         // MARK: Fixes H2
         offerNameHidden: "分享螢幕時隱藏名稱",
-        pillStopCancels: "取消錄製並移到垃圾桶"
+        pillStopCancels: "取消錄製並移到垃圾桶",
+        voiceMeetingBack: "會議仍在進行，錄製不會停止。"
     )
 }

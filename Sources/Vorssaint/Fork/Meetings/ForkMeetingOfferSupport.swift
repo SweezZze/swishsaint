@@ -133,6 +133,32 @@ enum ForkMeetingOfferTiming {
     }
 }
 
+/// VoiceOver's last sentence: the same one twice in a row is said once.
+/// It is forgotten when what it spoke of goes away (the offer, the
+/// countdown, the recording's pill), so the next offer or countdown is said
+/// in full, even in the same words.
+struct ForkMeetingSpoken: Equatable {
+    private(set) var last: String?
+
+    /// Whether `message` is to be said now; it becomes the last one.
+    mutating func says(_ message: String) -> Bool {
+        guard !message.isEmpty, message != last else { return false }
+        last = message
+        return true
+    }
+
+    mutating func forget() {
+        last = nil
+    }
+
+    static func forgets(after effect: ForkMeetingMachine.Effect) -> Bool {
+        switch effect {
+        case .hideOffer, .hideEndingSoon, .showPill(.hidden): return true
+        default: return false
+        }
+    }
+}
+
 /// What the microphone line of an offer says.
 enum ForkMeetingOfferMicrophone: Equatable {
     case named(String)

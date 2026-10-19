@@ -50,7 +50,7 @@ final class ForkMeetingPresenter {
     private var cardHovered = false
     /// How long the island's card stays once the pointer leaves it.
     private var cardHold = ForkMeetingPresenter.savedHold
-    private var lastAnnouncement: String?
+    private var spoken = ForkMeetingSpoken()
     /// Where the last notice could be shown, for its notification.
     private var lastShown: (notice: ForkMeetingNotice, shown: Shown)?
 
@@ -126,6 +126,8 @@ final class ForkMeetingPresenter {
         case .hideEndingSoon:
             hideEndingSoon()
         }
+        // What was said of a card gone is said again for the next one.
+        if ForkMeetingSpoken.forgets(after: effect) { spoken.forget() }
     }
 
     /// The live facts changed: the pill shows them at once.
@@ -243,7 +245,7 @@ final class ForkMeetingPresenter {
             DispatchQueue.main.async { self.resetAnnouncements() }
             return
         }
-        lastAnnouncement = nil
+        spoken.forget()
     }
 
     /// Takes everything off the screen; the configuration stays.
@@ -257,7 +259,7 @@ final class ForkMeetingPresenter {
         bubble.hide()
         removeCard()
         hideOfferSurfaces()
-        lastAnnouncement = nil
+        spoken.forget()
     }
 
     /// The feature is off: nothing shows, nothing is held, nothing listens.
@@ -288,9 +290,9 @@ final class ForkMeetingPresenter {
     private func showPill(_ state: ForkMeetingPillState) {
         pillState = state
         guard state != .hidden else {
+            // The next meeting says its steps again from the start
+            // (`ForkMeetingSpoken.forgets`).
             pill.hide()
-            // The next meeting says its steps again from the start.
-            lastAnnouncement = nil
             return
         }
         pill.show(state, context: context)
@@ -483,8 +485,7 @@ final class ForkMeetingPresenter {
     /// High priority, so it is not lost behind what VoiceOver is reading;
     /// the same sentence twice in a row is said once.
     private func announce(_ message: String) {
-        guard !message.isEmpty, message != lastAnnouncement else { return }
-        lastAnnouncement = message
+        guard spoken.says(message) else { return }
         NSAccessibility.post(element: NSApp as Any, notification: .announcementRequested,
                              userInfo: [.announcement: message, .priority: NSAccessibilityPriorityLevel.high.rawValue])
     }

@@ -12,6 +12,7 @@ enum ForkMeetingOfferH2Tests {
         microphone(suite)
         islandCards(suite)
         undoWindow(suite)
+        voiceOver(suite)
     }
 
     private static let zero = Date(timeIntervalSinceReferenceDate: 800_000_000)
@@ -133,5 +134,47 @@ enum ForkMeetingOfferH2Tests {
         let labels = AppLanguage.allCases.map(ForkMeetingStrings.strings)
         suite.expect(labels.allSatisfy { !$0.pillStopCancels.isEmpty && $0.pillStopCancels != $0.pillStop },
                      "the pill's stop says it cancels, in every language")
+    }
+
+    // MARK: - H2.7 VoiceOver
+
+    /// The sentences a presenter would say for these effects, in order.
+    private static func said(_ effects: [ForkMeetingMachine.Effect]) -> [String] {
+        var spoken = ForkMeetingSpoken()
+        var said: [String] = []
+        for effect in effects {
+            if case let .announce(announcement) = effect, spoken.says(announcement.text(french)) {
+                said.append(announcement.text(french))
+            }
+            if ForkMeetingSpoken.forgets(after: effect) { spoken.forget() }
+        }
+        return said
+    }
+
+    private static func voiceOver(_ suite: TestSuite) {
+        let countdown = ForkMeetingMachine.Effect.announce(.endingSoon(seconds: 15))
+        suite.expect(said([countdown, .hideEndingSoon, countdown]).count == 2,
+                     "a second countdown is said in full once the first is gone")
+        suite.expect(said([countdown, countdown]).count == 1, "the same sentence twice in a row is said once")
+        let offered = ForkMeetingMachine.Effect.announce(.offered("Point hebdo"))
+        suite.expect(said([offered, .hideOffer, offered]).count == 2, "an offer offered again is said again")
+        suite.expect(said([offered, .showPill(.hidden), offered]).count == 2
+                        && said([offered, .collapseOffer, offered]).count == 1,
+                     "the recording's pill gone forgets too; a fold does not")
+
+        var machine = ForkMeetingMachine()
+        var meeting = meet()
+        meeting.silenced = false
+        machine.handle(.candidates([meeting], request()), now: zero)
+        machine.handle(.accept(request()), now: at(1))
+        machine.handle(.captureStarted(token1, folder: folder), now: at(2))
+        machine.handle(.endProbable(meeting.identity, countdown: 15), now: at(600))
+        let back = machine.handle(.candidates([meeting], request()), now: at(605))
+        suite.expect(back == [.hideEndingSoon, .announce(.meetingBack)]
+                        && said(back) == ["La réunion continue\u{00A0}: l’enregistrement ne s’arrête pas."],
+                     "its meeting back during the countdown, VoiceOver hears « La réunion continue »: \(back)")
+        let again = machine.handle(.endProbable(meeting.identity, countdown: 15), now: at(700))
+        suite.expect(said(back + again).last == ForkMeetingAnnouncement.endingSoon(seconds: 15).text(french),
+                     "and the next countdown is said again")
     }
 }

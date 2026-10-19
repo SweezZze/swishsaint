@@ -169,6 +169,9 @@ enum ForkMeetingAnnouncement: Equatable {
     case continued
     case discarded
     case neverOffered(String)
+    /// The meeting came back during the countdown: it goes on, so does
+    /// the recording.
+    case meetingBack
 
     func text(_ s: ForkMeetingStrings) -> String {
         switch self {
@@ -195,6 +198,7 @@ enum ForkMeetingAnnouncement: Equatable {
         case .continued: return s.voiceContinued
         case .discarded: return s.voiceDiscarded
         case let .neverOffered(provider): return s.voiceNever(provider)
+        case .meetingBack: return s.voiceMeetingBack
         }
     }
 }
@@ -956,7 +960,7 @@ struct ForkMeetingMachine {
             var back = session
             back.meetingGone = false
             phase = .recording(back)
-            return [.hideEndingSoon]
+            return [.hideEndingSoon, .announce(.meetingBack)]
         case .endProbable:
             return []
         case .tick where now >= until:
