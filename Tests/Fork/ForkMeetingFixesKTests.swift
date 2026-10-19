@@ -26,6 +26,7 @@ enum ForkMeetingFixesKTests {
         neverForTheOtherWebCalls(suite)
         anAppByItsName(suite)
         noAlwaysBeforeMacOS14_4(suite)
+        namedByTheCalendar(suite)
     }
 
     // MARK: - Fixtures
@@ -503,5 +504,64 @@ enum ForkMeetingFixesKTests {
         suite.expect(french.detectionAlwaysUnavailable.hasPrefix("«\u{00A0}Toujours\u{00A0}» n’est pas disponible")
                         && AppLanguage.allCases.allSatisfy { !ForkMeetingStrings.strings($0).detectionAlwaysUnavailable.isEmpty },
                      "and the page says so, in every language")
+    }
+
+    // MARK: - K.I10: an app's meeting named by the calendar
+
+    private static func namedByTheCalendar(_ suite: TestSuite) {
+        typealias Link = ForkMeetingCalendarLink
+        suite.expect(Link.found(in: "Join: https://us02web.zoom.us/j/81234567890?pwd=abc") == [.zoom]
+                        && Link.found(in: "<https://teams.microsoft.com/l/meetup-join/19%3ameeting_x%40thread.v2/0>")
+                            == [.teams]
+                        && Link.found(in: "https://acme.webex.com/acme/j.php?MTID=m123") == [.webex]
+                        && Link.found(in: "https://acme.webex.com/meet/alice") == [.webex]
+                        && Link.found(in: "Salle : https://whereby.com/point-hebdo") == [.whereby]
+                        && Link.found(in: "https://meet.jit.si/PointHebdo\nhttps://zoom.us/j/123") == [.jitsi, .zoom],
+                     "an event's Zoom, Teams, Webex, Whereby or Jitsi Meet link is told by its kind")
+        suite.expect(Link.found(in: "Notes about zoom.us pricing; https://teams.microsoft.com/v2/; webex.com; whereby")
+                        .isEmpty && Link.found(in: "").isEmpty,
+                     "a page of Zoom, Teams' own site or a word is no meeting link")
+
+        func event(_ title: String, _ link: Link?, from start: TimeInterval, to end: TimeInterval) -> ForkMeetingCalendarHint {
+            ForkMeetingCalendarHint(title: title, meetCode: nil, startsAt: at(start), endsAt: at(end),
+                                    links: link.map { [$0] } ?? [])
+        }
+        let weekly = event("Point hebdo", .zoom, from: -300, to: 1500)
+        var zoom = Live()
+        zoom.read(-1, calendar: [weekly, event("Déjeuner", nil, from: -300, to: 1500)])
+        zoom.read(0, microphones: [zoomMicrophone])
+        let named = zoom.read(2, microphones: [zoomMicrophone]).candidates.first
+        suite.expect(named?.calendarTitle == "Point hebdo" && named?.name == "Point hebdo",
+                     "a Zoom call while the only event going on holds a Zoom link: named after it")
+
+        var early = Live()
+        early.read(-1, calendar: [event("Point hebdo", .zoom, from: 500, to: 2000)])
+        early.read(0, microphones: [zoomMicrophone])
+        suite.expect(early.read(2, microphones: [zoomMicrophone]).candidates.first?.calendarTitle == "Point hebdo",
+                     "starting within 10 minutes counts as going on")
+        var later = Live()
+        later.read(-1, calendar: [event("Point hebdo", .zoom, from: 900, to: 2000),
+                                  event("Hier", .zoom, from: -4000, to: -720)])
+        later.read(0, microphones: [zoomMicrophone])
+        suite.expect(later.read(2, microphones: [zoomMicrophone]).candidates.first?.calendarTitle == nil,
+                     "one in 15 minutes, or over 12 minutes ago, names nothing")
+        var two = Live()
+        two.read(-1, calendar: [weekly, event("Revue client", .zoom, from: 0, to: 1800)])
+        two.read(0, microphones: [zoomMicrophone])
+        suite.expect(two.read(2, microphones: [zoomMicrophone]).candidates.first?.name == "Zoom",
+                     "two events going on with a Zoom link: neither names it")
+        var teams = Live()
+        teams.read(-1, calendar: [weekly])
+        let teamsMicrophone = Microphone(appBundle: "com.microsoft.teams2", appPID: 700, pid: 701)
+        teams.read(0, microphones: [teamsMicrophone])
+        suite.expect(teams.read(2, microphones: [teamsMicrophone]).candidates.first?.name == "Microsoft Teams",
+                     "a Zoom event never names a Teams call")
+
+        var whereby = Live()
+        whereby.read(-6, microphones: [chromeMicrophone], calendar: [event("Atelier", .whereby, from: -60, to: 3600)])
+        whereby.read(0, windows: [chrome("Whereby")], microphones: [chromeMicrophone])
+        suite.expect(whereby.read(3, windows: [chrome("Whereby")], microphones: [chromeMicrophone]).candidates.first?.name
+                        == "Atelier",
+                     "a Whereby call in a browser too")
     }
 }

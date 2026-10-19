@@ -57,6 +57,10 @@ struct ForkMeetingProvider: Equatable {
     /// only name it and point at its window once its microphone made it
     /// (Slack's "Huddle", which a channel may be called).
     var titlesMakeMeetings = true
+    /// The link a calendar event holds for one of its meetings (Zoom's
+    /// `zoom.us/j/`…): with "Name with the calendar", the event going on
+    /// that holds one names the meeting. Google Meet goes by its code.
+    var calendarLink: ForkMeetingCalendarLink? = nil
 
     /// What lets "Always" start one of its meetings on its own, once its
     /// microphone has been open for a second on a screen not locked.
@@ -147,14 +151,15 @@ extension ForkMeetingProvider {
     /// their sound are Zoom's (S3).
     static let zoom = ForkMeetingProvider(
         id: "zoom", name: "Zoom", shortName: "Zoom", kind: .app, bundles: ["us.zoom.xos"], webAppHosts: [:],
-        processBundles: [], titles: .zoomApp, identity: .appProcess, defaultSound: .app, defaultPolicy: .ask)
+        processBundles: [], titles: .zoomApp, identity: .appProcess, defaultSound: .app, defaultPolicy: .ask,
+        calendarLink: .zoom)
 
     /// The new Teams and the classic one: its microphone. Its titles say
     /// as much in a chat as in a call, so they are not read.
     static let teams = ForkMeetingProvider(
         id: "teams", name: "Microsoft Teams", shortName: "Teams", kind: .app,
         bundles: ["com.microsoft.teams2", "com.microsoft.teams"], webAppHosts: [:], processBundles: [], titles: nil,
-        identity: .appProcess, defaultSound: .app, defaultPolicy: .ask)
+        identity: .appProcess, defaultSound: .app, defaultPolicy: .ask, calendarLink: .teams)
 
     /// A huddle: Slack's microphone (its audio helper is Slack's); a
     /// "Huddle" window names it and is the one filmed, never makes it.
@@ -176,7 +181,7 @@ extension ForkMeetingProvider {
     static let webex = ForkMeetingProvider(
         id: "webex", name: "Webex", shortName: "Webex", kind: .app,
         bundles: ["Cisco-Systems.Spark", "com.webex.meetingmanager"], webAppHosts: [:], processBundles: [],
-        titles: nil, identity: .appProcess, defaultSound: .app, defaultPolicy: .ask)
+        titles: nil, identity: .appProcess, defaultSound: .app, defaultPolicy: .ask, calendarLink: .webex)
 
     /// Off by default: much of its voice chat is leisure.
     static let discord = ForkMeetingProvider(
@@ -189,15 +194,15 @@ extension ForkMeetingProvider {
     /// titles are plain words an article may use too, so a title only ever
     /// makes a meeting with the browser's microphone in use.
     static let otherWebCalls: [ForkMeetingProvider] = [
-        web("Zoom", .zoomWeb), web("Whereby", .whereby), web("Jitsi Meet", .jitsiMeet),
-        web("Microsoft Teams", .teamsWeb, shortName: "Teams"),
+        web("Zoom", .zoomWeb, link: .zoom), web("Whereby", .whereby, link: .whereby),
+        web("Jitsi Meet", .jitsiMeet, link: .jitsi), web("Microsoft Teams", .teamsWeb, shortName: "Teams", link: .teams),
     ]
 
-    private static func web(_ name: String, _ titles: ForkMeetingTitleRuleSet,
-                            shortName: String? = nil) -> ForkMeetingProvider {
+    private static func web(_ name: String, _ titles: ForkMeetingTitleRuleSet, shortName: String? = nil,
+                            link: ForkMeetingCalendarLink) -> ForkMeetingProvider {
         ForkMeetingProvider(id: "web", name: name, shortName: shortName ?? name, kind: .web, bundles: browsers,
                             webAppHosts: webAppHosts, processBundles: [], titles: titles, identity: .codeOrWindow,
-                            defaultSound: .app, defaultPolicy: .ask, titlesMakeMeetings: false)
+                            defaultSound: .app, defaultPolicy: .ask, titlesMakeMeetings: false, calendarLink: link)
     }
 }
 
@@ -374,6 +379,45 @@ struct ForkMeetingPolicies: Equatable {
 
     func save(_ defaults: UserDefaults = .standard) {
         defaults.set(json, forKey: ForkDefaultsKey.meetingsApps)
+    }
+}
+
+// MARK: Fixes K
+
+/// The meeting links a calendar event may hold, other than Google Meet's
+/// (which gives a code): an app's or a web call's. Only the kind of link
+/// leaves the calendar's queue, never the link.
+enum ForkMeetingCalendarLink: String, CaseIterable, Equatable {
+    case zoom, teams, webex, whereby, jitsi
+
+    /// The links found in an event's link, place or notes: `zoom.us/j/`,
+    /// `teams.microsoft.com/l/meetup-join`, `webex.com/meet` or a
+    /// `<site>.webex.com/…/j.php`, `whereby.com/`, `meet.jit.si/`.
+    static func found(in text: String) -> Set<ForkMeetingCalendarLink> {
+        let words = text.lowercased().split { $0.isWhitespace || "<>\"'()[]".contains($0) }
+        var links = Set<ForkMeetingCalendarLink>()
+        for word in words {
+            if word.contains("zoom.us/j/") { links.insert(.zoom) }
+            if word.contains("teams.microsoft.com/l/meetup-join") { links.insert(.teams) }
+            if word.contains("webex.com/meet") || (word.contains(".webex.com/") && word.contains("/j.php")) {
+                links.insert(.webex)
+            }
+            if word.contains("whereby.com/") { links.insert(.whereby) }
+            if word.contains("meet.jit.si/") { links.insert(.jitsi) }
+        }
+        return links
+    }
+
+    /// The event going on (10 minutes either way) that holds this link,
+    /// when it is the only one; two of them, or none, name nothing.
+    static func event(_ link: ForkMeetingCalendarLink, at now: Date,
+                      in hints: [ForkMeetingCalendarHint]) -> ForkMeetingCalendarHint? {
+        let margin: TimeInterval = 10 * 60
+        let going = hints.filter {
+            $0.links.contains(link) && $0.startsAt.addingTimeInterval(-margin) <= now
+                && now <= $0.endsAt.addingTimeInterval(margin)
+        }
+        return going.count == 1 ? going[0] : nil
     }
 }
 

@@ -170,7 +170,7 @@ struct ForkMeetingResolver {
             guard let endedAt else { return true }
             return now.timeIntervalSince(endedAt) < tuning.silenceAfterEnd
         }
-        return ForkMeetingResolution(candidates: candidates(), ended: ended.sorted { $0.value < $1.value },
+        return ForkMeetingResolution(candidates: candidates(at: now), ended: ended.sorted { $0.value < $1.value },
                                      onMicrophone: onMicrophone(at: now))
     }
 
@@ -457,12 +457,15 @@ struct ForkMeetingResolver {
 
     // MARK: - Candidates
 
-    private func candidates() -> [ForkMeetingCandidate] {
+    private func candidates(at now: Date) -> [ForkMeetingCandidate] {
         let born = tracks.values.compactMap { track -> ForkMeetingCandidate? in
             guard let bornAt = track.bornAt else { return nil }
             let policy = policies.policy(for: track.provider)
             guard policy != .never else { return nil }
+            // Google Meet by its code; an app or another web call by the
+            // only event going on with its link.
             let hint = track.meetCode.flatMap { code in calendar.first { $0.meetCode == code } }
+                ?? track.provider.calendarLink.flatMap { ForkMeetingCalendarLink.event($0, at: now, in: calendar) }
             return ForkMeetingCandidate(
                 identity: track.identity, provider: track.provider.id, providerName: track.provider.name,
                 providerShortName: track.provider.shortName, titleName: track.titleName, meetCode: track.meetCode,

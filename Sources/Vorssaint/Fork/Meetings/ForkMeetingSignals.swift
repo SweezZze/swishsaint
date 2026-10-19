@@ -53,6 +53,9 @@ struct ForkMeetingCalendarHint: Equatable {
     var meetCode: String?
     var startsAt: Date
     var endsAt: Date
+    /// The other meeting links found there (Zoom, Teams, Webex, Whereby,
+    /// Jitsi Meet), by kind.
+    var links: Set<ForkMeetingCalendarLink> = []
 }
 
 /// What the detection read at one moment. A source left `nil` was not read

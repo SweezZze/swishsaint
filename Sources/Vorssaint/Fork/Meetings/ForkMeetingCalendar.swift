@@ -4,15 +4,17 @@
 import EventKit
 import Foundation
 
-/// Names a detected Google Meet after the calendar event that links to it,
+/// Names a detected meeting after the calendar event that links to it,
 /// when the person turned "Name with the calendar" on and gave full access.
 /// It never makes a meeting: the resolver only takes the event's title for
-/// the meeting whose code its link, notes or place holds.
+/// the Google Meet whose code its link, notes or place holds, or for an
+/// app's call or another web call when it is the only event going on with
+/// that service's link (`ForkMeetingCalendarLink`).
 ///
 /// The events from 10 minutes ago to 10 minutes from now are read when it
 /// starts and once a minute, on a utility serial queue that keeps the
-/// EventKit store; only their titles, codes and times leave it, and nothing
-/// is kept on disk.
+/// EventKit store; only their titles, codes, kinds of link and times leave
+/// it, and nothing is kept on disk.
 final class ForkMeetingCalendar {
     static let interval: TimeInterval = 60
     /// Around now, either way.
@@ -74,10 +76,11 @@ final class ForkMeetingCalendar {
             guard event.status != .canceled, !event.isAllDay,
                   let start = event.startDate, let end = event.endDate,
                   let title = event.title, !ForkMeetingTitleRules.displayName(title).isEmpty else { return nil }
-            let code = [event.url?.absoluteString, event.location, event.notes].lazy
-                .compactMap { $0.flatMap(ForkMeetingTitleRules.meetCode(inLink:)) }.first
-            guard let code else { return nil }
-            return ForkMeetingCalendarHint(title: title, meetCode: code, startsAt: start, endsAt: end)
+            let texts = [event.url?.absoluteString, event.location, event.notes].compactMap { $0 }
+            let code = texts.lazy.compactMap(ForkMeetingTitleRules.meetCode(inLink:)).first
+            let links = ForkMeetingCalendarLink.found(in: texts.joined(separator: "\n"))
+            guard code != nil || !links.isEmpty else { return nil }
+            return ForkMeetingCalendarHint(title: title, meetCode: code, startsAt: start, endsAt: end, links: links)
         }
         // The event nearest to now first: the resolver takes the first one
         // with the meeting's code.
