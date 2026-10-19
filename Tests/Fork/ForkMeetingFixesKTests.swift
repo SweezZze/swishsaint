@@ -29,6 +29,7 @@ enum ForkMeetingFixesKTests {
         namedByTheCalendar(suite)
         oneWebexCall(suite)
         tenNewTapsAtMost(suite)
+        thePageRows(suite)
     }
 
     // MARK: - Fixtures
@@ -605,5 +606,40 @@ enum ForkMeetingFixesKTests {
         var fresh = ForkMeetingTapRepair()
         suite.expect(fresh.tryAgain() && fresh.tryAgain() && !fresh.tryAgain(),
                      "still two in a row at most without hearing anything")
+    }
+
+    // MARK: - K.m: the page's rows and words
+
+    private static func thePageRows(_ suite: TestSuite) {
+        let rows = ForkMeetingProviderTable.current.policyRows
+        let faceTime = rows.first { $0.id == "facetime" }
+        suite.expect(faceTime?.warnsWholeMac(.ask, sound: .app) == true && faceTime?.warnsWholeMac(.never, sound: .app) == false
+                        && faceTime?.warnsWholeMac(.ask, sound: .all) == false
+                        && faceTime?.warnsWholeMac(.ask, sound: .off) == false
+                        && faceTime?.notesRelayedCalls(.ask) == true && faceTime?.notesRelayedCalls(.never) == false
+                        && rows.filter { $0.warnsWholeMac(.ask, sound: .app) }.map(\.id) == ["facetime"],
+                     "FaceTime's whole-Mac warning only while it is offered with the meeting app's sound chosen")
+        suite.expect(rows.first { $0.id == "teams" }?.appBundles == ["com.microsoft.teams2", "com.microsoft.teams"]
+                        && rows.first { $0.id == "webex" }?.appBundles == ["Cisco-Systems.Spark", "com.webex.meetingmanager"],
+                     "Teams' row shows the new Teams' icon first")
+
+        let s = { ForkMeetingStrings.strings($0) }
+        suite.expect(s(.fr).detectionCaption.hasPrefix("Reconnaît vos visios Google Meet, Zoom, Teams, Slack, FaceTime, Webex et Discord")
+                        && !s(.enUS).detectionCaption.contains("in their app or in your browser")
+                        && AppLanguage.allCases.allSatisfy { language in
+                            ["Whereby", "Jitsi Meet", "Discord", "FaceTime"].allSatisfy(s(language).detectionCaption.contains)
+                        },
+                     "the page says which calls are recognized, and which of them in a browser too")
+        suite.expect(s(.enUS).detectionUnavailable == "Not recognized on this Mac" && s(.fr).detectionUnavailable == "Non reconnu sur ce Mac"
+                        && s(.uk).detectionUnavailable == "Тут не розпізнається" && s(.zhHK).detectionUnavailable == "此 Mac 無法辨認",
+                     "a row this Mac cannot recognize says « Non reconnu sur ce Mac »")
+        suite.expect(s(.fr).detectionFaceTimeWholeMac
+                        == "Pour FaceTime, c’est le son de tout le Mac qui est enregistré, notifications et musique comprises."
+                        && s(.enUS).detectionFaceTimeWholeMac
+                            == "For FaceTime, the whole Mac’s sound is recorded, notifications and music included.",
+                     "FaceTime's warning names FaceTime first")
+        suite.expect(s(.tr).policyNeverCaption.hasPrefix("“Asla”") && s(.ja).policyNeverCaption.hasPrefix("「提案しない」")
+                        && s(.ptBR).policyNeverCaption.hasPrefix("Um serviço definido como “Nunca”"),
+                     "Never's caption quotes the choice's own word")
     }
 }

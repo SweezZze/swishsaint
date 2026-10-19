@@ -62,6 +62,8 @@ struct ForkMeetingProvider: Equatable {
     /// `zoom.us/j/`…): with "Name with the calendar", the event going on
     /// that holds one names the meeting. Google Meet goes by its code.
     var calendarLink: ForkMeetingCalendarLink? = nil
+    /// Of its apps, the one whose icon the page shows first (the new Teams).
+    var iconBundle: String? = nil
 
     /// What lets "Always" start one of its meetings on its own, once its
     /// microphone has been open for a second on a screen not locked.
@@ -160,7 +162,8 @@ extension ForkMeetingProvider {
     static let teams = ForkMeetingProvider(
         id: "teams", name: "Microsoft Teams", shortName: "Teams", kind: .app,
         bundles: ["com.microsoft.teams2", "com.microsoft.teams"], webAppHosts: [:], processBundles: [], titles: nil,
-        identity: .appProcess, defaultSound: .app, defaultPolicy: .ask, calendarLink: .teams)
+        identity: .appProcess, defaultSound: .app, defaultPolicy: .ask, calendarLink: .teams,
+        iconBundle: "com.microsoft.teams2")
 
     /// A huddle: Slack's microphone (its audio helper is Slack's); a
     /// "Huddle" window names it and is the one filmed, never makes it.
@@ -292,9 +295,16 @@ struct ForkMeetingPolicyRow: Equatable {
     }
 
     /// The apps whose icon stands for the row, the first installed one
-    /// shown; none for the browsers' rows.
+    /// shown (the new Teams before the classic one); none for the browsers'
+    /// rows.
     var appBundles: [String] {
-        providers.first?.kind == .app ? providers.flatMap { $0.bundles.sorted() } : []
+        guard providers.first?.kind == .app else { return [] }
+        return providers.flatMap { provider in
+            provider.bundles.sorted { first, second in
+                let preferred = (first == provider.iconBundle, second == provider.iconBundle)
+                return preferred.0 != preferred.1 ? preferred.0 : first < second
+            }
+        }
     }
 
     /// Whether its meetings are recognized on a Mac that cannot say which
@@ -335,6 +345,20 @@ struct ForkMeetingPolicyRow: Equatable {
     /// "Offer", as it acts.
     func shown(_ policy: ForkMeetingPolicy, microphoneSignal: Bool) -> ForkMeetingPolicy {
         policy == .always && !showsAlways(microphoneSignal: microphoneSignal) ? .ask : policy
+    }
+
+    /// FaceTime's warning that the whole Mac is recorded: while its calls
+    /// may be offered, with the meeting app's sound chosen (the whole Mac
+    /// for FaceTime). "Whole Mac" chosen says it already; no sound records
+    /// none of it.
+    func warnsWholeMac(_ policy: ForkMeetingPolicy, sound: ForkMeetingSystemAudio) -> Bool {
+        recordsWholeMac && policy != .never && sound == .app
+    }
+
+    /// "A phone call relayed from your iPhone may be offered too", while
+    /// FaceTime's calls may be.
+    func notesRelayedCalls(_ policy: ForkMeetingPolicy) -> Bool {
+        offersRelayedCalls && policy != .never
     }
 }
 

@@ -470,6 +470,7 @@ private struct ForkMeetingProviderRow: View {
     @Binding var apps: String
     let microphoneSignal: Bool
 
+    @AppStorage(ForkDefaultsKey.meetingsSystemAudio) private var sound = ForkMeetingSystemAudio.fallback.rawValue
     @State private var icon: NSImage?
 
     private var policy: Binding<ForkMeetingPolicy> {
@@ -511,13 +512,14 @@ private struct ForkMeetingProviderRow: View {
                     } else if row.name == nil {
                         note(text.detectionOtherWebCallsCaption)
                     }
-                    if recognized, row.recordsWholeMac {
+                    if recognized, row.warnsWholeMac(policy.wrappedValue,
+                                                     sound: ForkMeetingSystemAudio(rawValue: sound) ?? .fallback) {
                         Label(text.detectionFaceTimeWholeMac, systemImage: "exclamationmark.triangle.fill")
                             .font(.caption)
                             .foregroundStyle(.orange)
                             .fixedSize(horizontal: false, vertical: true)
                     }
-                    if recognized, row.offersRelayedCalls {
+                    if recognized, row.notesRelayedCalls(policy.wrappedValue) {
                         note(text.detectionFaceTimeRelayed)
                     }
                 }
