@@ -626,7 +626,7 @@ enum ForkMeetingFixesKTests {
                      "Teams' row shows the new Teams' icon first")
 
         let s = { ForkMeetingStrings.strings($0) }
-        suite.expect(s(.fr).detectionCaption.hasPrefix("Reconnaît vos visios Google Meet, Zoom, Teams, Slack, FaceTime, Webex et Discord")
+        suite.expect(s(.fr).detectionCaption.hasPrefix("Reconnaît vos appels dans les apps Zoom, Teams, Slack, FaceTime, Webex et Discord")
                         && !s(.enUS).detectionCaption.contains("in their app or in your browser")
                         && AppLanguage.allCases.allSatisfy { language in
                             ["Whereby", "Jitsi Meet", "Discord", "FaceTime"].allSatisfy(s(language).detectionCaption.contains)

@@ -24,6 +24,7 @@ enum ForkMeetingFixesLTests {
         theProofDuringTheOffer(suite)
         alwaysInTheMenuOnlyWithTheMicrophone(suite)
         moreCalendarLinks(suite)
+        theWords(suite)
     }
 
     // MARK: - Fixtures
@@ -474,5 +475,27 @@ enum ForkMeetingFixesLTests {
         zoom.read(0, microphones: [zoomMicrophone])
         suite.expect(zoom.read(2, microphones: [zoomMicrophone]).candidates.first?.name == "Point hebdo",
                      "the Zoom call is named after it")
+    }
+
+    // MARK: - L: the words
+
+    private static func theWords(_ suite: TestSuite) {
+        let s = { ForkMeetingStrings.strings($0) }
+        suite.expect(s(.fr).policyNeverCaption == "Un service réglé sur Jamais n’est jamais proposé. Vous pouvez quand même enregistrer à la main."
+                        && s(.fr).voiceNeverWebCalls == "Les visios dans un navigateur, sauf Google Meet, ne seront plus proposées."
+                        && s(.tr).detectionUnavailable == "Bu Mac’te tanınmıyor",
+                     "« Vous pouvez quand même enregistrer à la main », « sauf Google Meet », « tanınmıyor »")
+        suite.expect(s(.enUS).detectionCaption
+                        == "Recognizes your calls in the Zoom, Teams, Slack, FaceTime, Webex and Discord apps, and in a browser in Google Meet, Zoom, Teams, Whereby and Jitsi Meet, even behind other windows or on another desktop, and offers to record them."
+                        && s(.fr).detectionCaption
+                            == "Reconnaît vos appels dans les apps Zoom, Teams, Slack, FaceTime, Webex et Discord, et dans un navigateur sur Google Meet, Zoom, Teams, Whereby et Jitsi Meet, même derrière d’autres fenêtres ou sur un autre bureau, et propose de les enregistrer.",
+                     "the page says which apps, and which calls in a browser, are recognized")
+        let names = ["Zoom", "Teams", "Slack", "FaceTime", "Webex", "Discord", "Google Meet", "Whereby", "Jitsi Meet"]
+        let short = AppLanguage.allCases.filter { language in
+            let caption = s(language).detectionCaption
+            return !names.allSatisfy(caption.contains) || caption.components(separatedBy: "Zoom").count != 3
+                || caption.components(separatedBy: "Teams").count != 3
+        }
+        suite.expect(short.isEmpty, "in every language, Zoom and Teams named once as apps, once in a browser: \(short)")
     }
 }

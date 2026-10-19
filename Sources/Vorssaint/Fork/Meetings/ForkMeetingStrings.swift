@@ -665,7 +665,7 @@ extension ForkMeetingStrings {
         detectionLookalike: "A web page that copies a Google Meet title exactly and uses the microphone could be taken for a meeting.",
         // MARK: Detection effects
         detectionTitle: "Detection",
-        detectionCaption: "Recognizes your calls in Google Meet, Zoom, Teams, Slack, FaceTime, Webex and Discord, even behind other windows or on another desktop, and offers to record them. Google Meet, Zoom, Teams, Whereby and Jitsi Meet are recognized in a browser too.",
+        detectionCaption: "Recognizes your calls in the Zoom, Teams, Slack, FaceTime, Webex and Discord apps, and in a browser in Google Meet, Zoom, Teams, Whereby and Jitsi Meet, even behind other windows or on another desktop, and offers to record them.",
         policyAsk: "Offer",
         policyAlways: "Always",
         policyNever: "Never",
@@ -930,7 +930,7 @@ extension ForkMeetingStrings {
         detectionLookalike: "Uma página da web que copie exatamente o título de uma reunião do Google Meet e use o microfone pode ser confundida com uma reunião.",
         // MARK: Detection effects
         detectionTitle: "Detecção",
-        detectionCaption: "Reconhece suas chamadas no Google Meet, Zoom, Teams, Slack, FaceTime, Webex e Discord, mesmo atrás de outras janelas ou em outra mesa, e oferece gravá-las. Google Meet, Zoom, Teams, Whereby e Jitsi Meet também são reconhecidos no navegador.",
+        detectionCaption: "Reconhece suas chamadas nos apps Zoom, Teams, Slack, FaceTime, Webex e Discord, e no navegador no Google Meet, Zoom, Teams, Whereby e Jitsi Meet, mesmo atrás de outras janelas ou em outra mesa, e oferece gravá-las.",
         policyAsk: "Oferecer",
         policyAlways: "Sempre",
         policyNever: "Nunca",
@@ -1195,7 +1195,7 @@ extension ForkMeetingStrings {
         detectionLookalike: "Bir Google Meet başlığını birebir taklit eden ve mikrofonu kullanan bir web sayfası da toplantı sanılabilir.",
         // MARK: Detection effects
         detectionTitle: "Algılama",
-        detectionCaption: "Google Meet, Zoom, Teams, Slack, FaceTime, Webex ve Discord görüşmelerinizi, başka pencerelerin arkasında veya başka bir masaüstünde olsa bile tanır ve kaydetmeyi önerir. Google Meet, Zoom, Teams, Whereby ve Jitsi Meet tarayıcıda da tanınır.",
+        detectionCaption: "Zoom, Teams, Slack, FaceTime, Webex ve Discord uygulamalarındaki ve tarayıcıda Google Meet, Zoom, Teams, Whereby ve Jitsi Meet’teki görüşmelerinizi, başka pencerelerin arkasında veya başka bir masaüstünde olsa bile tanır ve kaydetmeyi önerir.",
         policyAsk: "Öner",
         policyAlways: "Her zaman",
         policyNever: "Asla",
@@ -1256,7 +1256,7 @@ extension ForkMeetingStrings {
         // MARK: Apps
         detectionOtherWebCalls: "Diğer web görüşmeleri",
         detectionOtherWebCallsCaption: "Tarayıcıda Zoom, Whereby, Jitsi Meet veya Teams: yalnızca tarayıcı mikrofonu kullanırken önerilir.",
-        detectionUnavailable: "Bu Mac’te tanınmaz",
+        detectionUnavailable: "Bu Mac’te tanınmıyor",
         detectionFaceTimeWholeMac: "FaceTime için, bildirimler ve müzik dahil tüm Mac’in sesi kaydedilir.",
         // MARK: Fixes J
         microphoneExternal: "Harici mikrofon",
@@ -1460,7 +1460,7 @@ extension ForkMeetingStrings {
         detectionLookalike: "Веб-страница, которая точно повторяет заголовок Google Meet и использует микрофон, может быть принята за встречу.",
         // MARK: Detection effects
         detectionTitle: "Обнаружение",
-        detectionCaption: "Распознаёт ваши звонки в Google Meet, Zoom, Teams, Slack, FaceTime, Webex и Discord, даже за другими окнами или на другом рабочем столе, и предлагает их записать. Google Meet, Zoom, Teams, Whereby и Jitsi Meet распознаются и в браузере.",
+        detectionCaption: "Распознаёт ваши звонки в приложениях Zoom, Teams, Slack, FaceTime, Webex и Discord, а в браузере — в Google Meet, Zoom, Teams, Whereby и Jitsi Meet, даже за другими окнами или на другом рабочем столе, и предлагает их записать.",
         policyAsk: "Предлагать",
         policyAlways: "Всегда",
         policyNever: "Никогда",
@@ -1725,7 +1725,7 @@ extension ForkMeetingStrings {
         detectionLookalike: "Una página web que imite exactamente un título de Google Meet y use el micrófono podría tomarse por una reunión.",
         // MARK: Detection effects
         detectionTitle: "Detección",
-        detectionCaption: "Reconoce tus llamadas de Google Meet, Zoom, Teams, Slack, FaceTime, Webex y Discord, incluso detrás de otras ventanas o en otro escritorio, y ofrece grabarlas. Google Meet, Zoom, Teams, Whereby y Jitsi Meet también se reconocen en el navegador.",
+        detectionCaption: "Reconoce tus llamadas en las apps Zoom, Teams, Slack, FaceTime, Webex y Discord, y en el navegador en Google Meet, Zoom, Teams, Whereby y Jitsi Meet, incluso detrás de otras ventanas o en otro escritorio, y ofrece grabarlas.",
         policyAsk: "Ofrecer",
         policyAlways: "Siempre",
         policyNever: "Nunca",
@@ -1990,7 +1990,7 @@ extension ForkMeetingStrings {
         detectionLookalike: "Webová stránka, ktorá presne napodobní názov Google Meet a používa mikrofón, môže byť považovaná za stretnutie.",
         // MARK: Detection effects
         detectionTitle: "Rozpoznávanie",
-        detectionCaption: "Rozpozná vaše hovory v Google Meet, Zoom, Teams, Slack, FaceTime, Webex a Discord, aj za inými oknami alebo na inej ploche, a ponúkne ich nahratie. Google Meet, Zoom, Teams, Whereby a Jitsi Meet rozpozná aj v prehliadači.",
+        detectionCaption: "Rozpozná vaše hovory v aplikáciách Zoom, Teams, Slack, FaceTime, Webex a Discord a v prehliadači v Google Meet, Zoom, Teams, Whereby a Jitsi Meet, aj za inými oknami alebo na inej ploche, a ponúkne ich nahratie.",
         policyAsk: "Ponúknuť",
         policyAlways: "Vždy",
         policyNever: "Nikdy",
@@ -2255,7 +2255,7 @@ extension ForkMeetingStrings {
         detectionLookalike: "Eine Webseite, die einen Titel von Google Meet genau nachahmt und das Mikrofon nutzt, könnte für eine Besprechung gehalten werden.",
         // MARK: Detection effects
         detectionTitle: "Erkennung",
-        detectionCaption: "Erkennt deine Anrufe in Google Meet, Zoom, Teams, Slack, FaceTime, Webex und Discord, auch hinter anderen Fenstern oder auf einem anderen Schreibtisch, und bietet an, sie aufzunehmen. Google Meet, Zoom, Teams, Whereby und Jitsi Meet werden auch im Browser erkannt.",
+        detectionCaption: "Erkennt deine Anrufe in den Apps Zoom, Teams, Slack, FaceTime, Webex und Discord und im Browser in Google Meet, Zoom, Teams, Whereby und Jitsi Meet, auch hinter anderen Fenstern oder auf einem anderen Schreibtisch, und bietet an, sie aufzunehmen.",
         policyAsk: "Anbieten",
         policyAlways: "Immer",
         policyNever: "Nie",
@@ -2520,13 +2520,13 @@ extension ForkMeetingStrings {
         detectionLookalike: "Une page web qui imite exactement un titre Google Meet et utilise le micro pourrait être prise pour une réunion.",
         // MARK: Detection effects
         detectionTitle: "Détection",
-        detectionCaption: "Reconnaît vos visios Google Meet, Zoom, Teams, Slack, FaceTime, Webex et Discord, même derrière d’autres fenêtres ou sur un autre bureau, et propose de les enregistrer. Google Meet, Zoom, Teams, Whereby et Jitsi Meet sont aussi reconnus dans un navigateur.",
+        detectionCaption: "Reconnaît vos appels dans les apps Zoom, Teams, Slack, FaceTime, Webex et Discord, et dans un navigateur sur Google Meet, Zoom, Teams, Whereby et Jitsi Meet, même derrière d’autres fenêtres ou sur un autre bureau, et propose de les enregistrer.",
         policyAsk: "Proposer",
         policyAlways: "Toujours",
         policyNever: "Jamais",
         policyAskCaption: "Proposée dès que vous rejoignez la réunion\u{00A0}; sans réponse, la proposition se replie au bout de 20 secondes.",
         policyAlwaysCaption: "L’enregistrement démarre seul quand vous rejoignez la réunion. Choisir Annuler dans les quelques secondes qui suivent le met à la Corbeille.",
-        policyNeverCaption: "Un service réglé sur Jamais n’est jamais proposé. Vous pouvez toujours enregistrer à la main.",
+        policyNeverCaption: "Un service réglé sur Jamais n’est jamais proposé. Vous pouvez quand même enregistrer à la main.",
         detectionTitlesOnly: "Avant macOS 14.4, macOS ne dit pas quelle app utilise le micro\u{00A0}: seuls Google Meet et Zoom sont reconnus, au titre de leur fenêtre.",
         detectionMicrophoneUnreadable: "Ici, macOS ne dit pas quelle app utilise le micro\u{00A0}: seuls Google Meet et Zoom sont reconnus, au titre de leur fenêtre.",
         detectionNeedsScreenRecording: "Sans l’enregistrement de l’écran, les titres des fenêtres restent illisibles\u{00A0}: aucun appel dans un navigateur n’est reconnu, et les apps seulement par leur micro.",
@@ -2592,7 +2592,7 @@ extension ForkMeetingStrings {
         detectionFaceTimeRelayed: "Un appel téléphonique relayé par l’iPhone peut aussi être proposé.",
         offerNeverWebCalls: "Jamais pour les autres visios web",
         noticeNeverWebCalls: "Autres visios web\u{00A0}: Jamais",
-        voiceNeverWebCalls: "Les visios dans un navigateur autres que Google Meet ne seront plus proposées.",
+        voiceNeverWebCalls: "Les visios dans un navigateur, sauf Google Meet, ne seront plus proposées.",
         detectionAlwaysUnavailable: "«\u{00A0}Toujours\u{00A0}» n’est pas disponible sur ce Mac\u{00A0}: les réunions sont proposées, jamais enregistrées d’elles-mêmes.",
         // MARK: Fixes L
         detectionAlwaysDelay: "Teams, Webex et Discord\u{00A0}: enregistrés seuls 15\u{00A0}s après le début de l’appel. Zoom et Slack\u{00A0}: dès que leur fenêtre de réunion s’ouvre, sinon proposés.",
@@ -2785,7 +2785,7 @@ extension ForkMeetingStrings {
         detectionLookalike: "Una pagina web che imita esattamente un titolo di Google Meet e usa il microfono potrebbe essere scambiata per una riunione.",
         // MARK: Detection effects
         detectionTitle: "Rilevamento",
-        detectionCaption: "Riconosce le tue chiamate su Google Meet, Zoom, Teams, Slack, FaceTime, Webex e Discord, anche dietro altre finestre o su un’altra scrivania, e propone di registrarle. Google Meet, Zoom, Teams, Whereby e Jitsi Meet vengono riconosciuti anche nel browser.",
+        detectionCaption: "Riconosce le tue chiamate nelle app Zoom, Teams, Slack, FaceTime, Webex e Discord, e nel browser su Google Meet, Zoom, Teams, Whereby e Jitsi Meet, anche dietro altre finestre o su un’altra scrivania, e propone di registrarle.",
         policyAsk: "Proponi",
         policyAlways: "Sempre",
         policyNever: "Mai",
@@ -3050,7 +3050,7 @@ extension ForkMeetingStrings {
         detectionLookalike: "Google Meet のタイトルをそのまま真似てマイクを使う Web ページも、ミーティングと見なされることがあります。",
         // MARK: Detection effects
         detectionTitle: "検出",
-        detectionCaption: "Google Meet、Zoom、Teams、Slack、FaceTime、Webex、Discord の通話を、ほかのウインドウの後ろや別のデスクトップにあっても認識し、録画を提案します。Google Meet、Zoom、Teams、Whereby、Jitsi Meet はブラウザでも認識します。",
+        detectionCaption: "Zoom、Teams、Slack、FaceTime、Webex、Discord の App と、ブラウザの Google Meet、Zoom、Teams、Whereby、Jitsi Meet での通話を、ほかのウインドウの後ろや別のデスクトップにあっても認識し、録画を提案します。",
         policyAsk: "提案する",
         policyAlways: "常に録画",
         policyNever: "提案しない",
@@ -3315,7 +3315,7 @@ extension ForkMeetingStrings {
         detectionLookalike: "Google Meet 제목을 그대로 흉내 내고 마이크를 사용하는 웹 페이지도 회의로 인식될 수 있습니다.",
         // MARK: Detection effects
         detectionTitle: "감지",
-        detectionCaption: "Google Meet, Zoom, Teams, Slack, FaceTime, Webex, Discord 통화를 다른 윈도우 뒤나 다른 데스크탑에 있어도 알아보고 녹화를 제안합니다. Google Meet, Zoom, Teams, Whereby, Jitsi Meet은 브라우저에서도 알아봅니다.",
+        detectionCaption: "Zoom, Teams, Slack, FaceTime, Webex, Discord 앱과 브라우저의 Google Meet, Zoom, Teams, Whereby, Jitsi Meet 통화를 다른 윈도우 뒤나 다른 데스크탑에 있어도 알아보고 녹화를 제안합니다.",
         policyAsk: "제안",
         policyAlways: "항상",
         policyNever: "안 함",
@@ -3580,7 +3580,7 @@ extension ForkMeetingStrings {
         detectionLookalike: "Вебсторінка, яка точно повторює заголовок Google Meet і використовує мікрофон, може бути сприйнята як зустріч.",
         // MARK: Detection effects
         detectionTitle: "Виявлення",
-        detectionCaption: "Розпізнає ваші дзвінки в Google Meet, Zoom, Teams, Slack, FaceTime, Webex і Discord, навіть за іншими вікнами чи на іншому робочому столі, і пропонує їх записати. Google Meet, Zoom, Teams, Whereby і Jitsi Meet розпізнаються й у браузері.",
+        detectionCaption: "Розпізнає ваші дзвінки в застосунках Zoom, Teams, Slack, FaceTime, Webex і Discord, а в браузері — у Google Meet, Zoom, Teams, Whereby і Jitsi Meet, навіть за іншими вікнами чи на іншому робочому столі, і пропонує їх записати.",
         policyAsk: "Пропонувати",
         policyAlways: "Завжди",
         policyNever: "Ніколи",
@@ -3845,7 +3845,7 @@ extension ForkMeetingStrings {
         detectionLookalike: "完全模仿 Google Meet 标题并使用麦克风的网页，也可能被当作会议。",
         // MARK: Detection effects
         detectionTitle: "检测",
-        detectionCaption: "识别你在 Google Meet、Zoom、Teams、Slack、FaceTime、Webex 和 Discord 中的通话，即使在其他窗口后面或在另一个桌面上，并提议录制。Google Meet、Zoom、Teams、Whereby 和 Jitsi Meet 在浏览器中也能识别。",
+        detectionCaption: "识别你在 Zoom、Teams、Slack、FaceTime、Webex 和 Discord App 中，以及在浏览器中 Google Meet、Zoom、Teams、Whereby 和 Jitsi Meet 上的通话，即使在其他窗口后面或在另一个桌面上，并提议录制。",
         policyAsk: "提议",
         policyAlways: "总是",
         policyNever: "从不",
@@ -4110,7 +4110,7 @@ extension ForkMeetingStrings {
         detectionLookalike: "完全模仿 Google Meet 標題並使用麥克風的網頁，也可能被當成會議。",
         // MARK: Detection effects
         detectionTitle: "偵測",
-        detectionCaption: "辨識你在 Google Meet、Zoom、Teams、Slack、FaceTime、Webex 和 Discord 中的通話，即使在其他視窗後面或另一個桌面上，並提議錄製。Google Meet、Zoom、Teams、Whereby 和 Jitsi Meet 在瀏覽器中也能辨識。",
+        detectionCaption: "辨識你在 Zoom、Teams、Slack、FaceTime、Webex 和 Discord App 中，以及在瀏覽器中 Google Meet、Zoom、Teams、Whereby 和 Jitsi Meet 上的通話，即使在其他視窗後面或另一個桌面上，並提議錄製。",
         policyAsk: "提議",
         policyAlways: "一律",
         policyNever: "永不",
@@ -4375,7 +4375,7 @@ extension ForkMeetingStrings {
         detectionLookalike: "完全模仿 Google Meet 標題並使用麥克風的網頁，也可能被當成會議。",
         // MARK: Detection effects
         detectionTitle: "偵測",
-        detectionCaption: "辨認你在 Google Meet、Zoom、Teams、Slack、FaceTime、Webex 和 Discord 中的通話，即使在其他視窗後面或另一個桌面上，並提議錄製。Google Meet、Zoom、Teams、Whereby 和 Jitsi Meet 在瀏覽器中也能辨認。",
+        detectionCaption: "辨認你在 Zoom、Teams、Slack、FaceTime、Webex 和 Discord App 中，以及在瀏覽器中 Google Meet、Zoom、Teams、Whereby 和 Jitsi Meet 上的通話，即使在其他視窗後面或另一個桌面上，並提議錄製。",
         policyAsk: "提議",
         policyAlways: "一律",
         policyNever: "永不",
