@@ -478,7 +478,6 @@ struct ForkMeetingStrings {
 
     /// The detail's facts and the list's columns.
     let columnTitle: String
-    let columnDate: String
     let columnDuration: String
     let columnSize: String
     let columnApp: String
@@ -581,6 +580,23 @@ struct ForkMeetingStrings {
     let voiceTrashed: String
 
     func emptyWhere(_ path: String) -> String { String(format: emptyWhereFormat, path) }
+
+    // MARK: Fixes M
+
+    /// An automatic sweep that would take more than ten meetings, or more
+    /// than a quarter of the library, waits on the Meetings page for this:
+    /// %1$d meetings older than %2$d days; the same with one meeting.
+    let retentionHeldFormat: String
+    let retentionHeldOneFormat: String
+    let retentionHeldCaption: String
+    /// The folder moved but `meeting.json` refused the title.
+    let renameTitleNotSaved: String
+    /// The detail of a folder whose `meeting.json` another app wrote.
+    let statusForeign: String
+
+    func retentionHeld(count: Int, days: Int) -> String {
+        count == 1 ? String(format: retentionHeldOneFormat, days) : String(format: retentionHeldFormat, count, days)
+    }
 }
 
 extension ForkMeetingStrings {
@@ -847,7 +863,6 @@ extension ForkMeetingStrings {
         groupYesterday: "Yesterday",
         groupUndated: "No date",
         columnTitle: "Title",
-        columnDate: "Date and time",
         columnDuration: "Length",
         columnSize: "Size",
         columnApp: "App",
@@ -906,7 +921,13 @@ extension ForkMeetingStrings {
         exportFailed: "The audio could not be exported.",
         trimFailed: "The copy for the editor could not be made. The meeting itself is untouched.",
         causeCancelled: "cancelled",
-        voiceTrashed: "Meeting moved to the Trash."
+        voiceTrashed: "Meeting moved to the Trash.",
+        // MARK: Fixes M
+        retentionHeldFormat: "%1$d meetings older than %2$d days: move them to the Trash?",
+        retentionHeldOneFormat: "1 meeting older than %d days: move it to the Trash?",
+        retentionHeldCaption: "More than the automatic Trash takes on its own: nothing goes until you confirm.",
+        renameTitleNotSaved: "The folder was renamed, but its new title could not be saved.",
+        statusForeign: "Its meeting.json was not written by Vorssaint: shown, never changed."
     )
 }
 
@@ -1174,7 +1195,6 @@ extension ForkMeetingStrings {
         groupYesterday: "Ontem",
         groupUndated: "Sem data",
         columnTitle: "Título",
-        columnDate: "Data e hora",
         columnDuration: "Duração",
         columnSize: "Tamanho",
         columnApp: "Aplicativo",
@@ -1233,7 +1253,13 @@ extension ForkMeetingStrings {
         exportFailed: "Não foi possível exportar o áudio.",
         trimFailed: "Não foi possível fazer a cópia para o editor. A reunião em si não foi alterada.",
         causeCancelled: "cancelada",
-        voiceTrashed: "Reunião movida para o Lixo."
+        voiceTrashed: "Reunião movida para o Lixo.",
+        // MARK: Fixes M
+        retentionHeldFormat: "%1$d reuniões com mais de %2$d dias: movê-las para o Lixo?",
+        retentionHeldOneFormat: "1 reunião com mais de %d dias: movê-la para o Lixo?",
+        retentionHeldCaption: "Mais do que o Lixo automático leva sozinho: nada sai antes de você confirmar.",
+        renameTitleNotSaved: "A pasta foi renomeada, mas não foi possível salvar o novo título.",
+        statusForeign: "O meeting.json não foi escrito pelo Vorssaint: exibida, nunca alterada."
     )
 }
 
@@ -1501,19 +1527,18 @@ extension ForkMeetingStrings {
         groupYesterday: "Dün",
         groupUndated: "Tarihsiz",
         columnTitle: "Başlık",
-        columnDate: "Tarih ve saat",
         columnDuration: "Süre",
         columnSize: "Boyut",
         columnApp: "Uygulama",
         columnMeetCode: "Toplantı kodu",
-        actionRename: "Yeniden Adlandır",
+        actionRename: "Adını Değiştir",
         actionExportAudio: "Sesi Dışa Aktar (M4A)…",
         actionCopyPath: "Yolu Kopyala",
-        actionTrash: "Çöp Kutusu’na Taşı",
+        actionTrash: "Çöp Sepeti’ne Taşı",
         actionTrim: "Düzenleyicide Kırp",
         noticePathCopied: "Yol kopyalandı",
-        confirmTrashFormat: "“%@” Çöp Kutusu’na taşınsın mı?",
-        confirmTrashMessage: "Toplantının klasörü videosu, sesi ve notlarıyla Çöp Kutusu’na gider. Çöp Kutusu boşaltılana kadar geri alabilirsiniz.",
+        confirmTrashFormat: "“%@” Çöp Sepeti’ne taşınsın mı?",
+        confirmTrashMessage: "Toplantının klasörü videosu, sesi ve notlarıyla Çöp Sepeti’ne gider. Çöp Sepeti boşaltılana kadar geri alabilirsiniz.",
         statusRecovered: "Kurtarıldı",
         statusInterruptedFormat: "Yarıda kaldı: %@",
         statusUnreadable: "Kayıt okunamıyor",
@@ -1538,12 +1563,12 @@ extension ForkMeetingStrings {
         emptyTitle: "Henüz toplantı yok",
         emptyCaption: "Kaydettiğiniz her toplantı kendi klasöründe burada görünür.",
         notesPlaceholder: "Not ekle",
-        retentionTitle: "Otomatik Çöp Kutusu",
+        retentionTitle: "Otomatik Çöp Sepeti",
         retentionNever: "Hiçbir zaman",
         retentionDaysFormat: "%d gün sonra",
-        retentionCaption: "Daha eski toplantılar açılışta, sonra günde bir kez Çöp Kutusu’na gider. Kaydedilen ya da ⚠ ile işaretli bir toplantı asla gitmez.",
-        retentionConfirmTitle: "Eski toplantılar Çöp Kutusu’na taşınsın mı?",
-        retentionConfirmFormat: "%2$d günden eski toplantılar: %1$d. Çöp Kutusu boşaltılana kadar orada kalırlar.",
+        retentionCaption: "Daha eski toplantılar açılışta, sonra günde bir kez Çöp Sepeti’ne gider. Kaydedilen ya da ⚠ ile işaretli bir toplantı asla gitmez.",
+        retentionConfirmTitle: "Eski toplantılar Çöp Sepeti’ne taşınsın mı?",
+        retentionConfirmFormat: "%2$d günden eski toplantılar: %1$d. Çöp Sepeti boşaltılana kadar orada kalırlar.",
         trimCaption: "Düzenleyici bir kopya açar: toplantının kendisine dokunulmaz.",
         trimNeedsEditor: "Düzenleyici Ekran Kaydı’na aittir: bir toplantıyı kırpmak için Vorssaint’te onu açın.",
         trimNoVideo: "Bu toplantının kırpılacak videosu yok.",
@@ -1555,12 +1580,18 @@ extension ForkMeetingStrings {
         playerNoVideo: "Oynatılacak video yok",
         statusRecoveredHelp: "Uygulama beklenmedik şekilde durduktan sonra kurtarıldı: son birkaç saniye eksik olabilir.",
         statusInterruptedHelp: "Bu toplantı normal şekilde bitmedi. Kaydedilen her şey klasöründe saklanıyor.",
-        trashFailed: "Toplantı Çöp Kutusu’na taşınamadı.",
+        trashFailed: "Toplantı Çöp Sepeti’ne taşınamadı.",
         renameFailed: "Klasörün adı değiştirilemedi: başlık değişti, klasör adını korudu.",
         exportFailed: "Ses dışa aktarılamadı.",
         trimFailed: "Düzenleyici için kopya oluşturulamadı. Toplantının kendisine dokunulmadı.",
         causeCancelled: "iptal edildi",
-        voiceTrashed: "Toplantı Çöp Kutusu’na taşındı."
+        voiceTrashed: "Toplantı Çöp Sepeti’ne taşındı.",
+        // MARK: Fixes M
+        retentionHeldFormat: "%2$d günden eski %1$d toplantı: Çöp Sepeti’ne taşınsın mı?",
+        retentionHeldOneFormat: "%d günden eski 1 toplantı: Çöp Sepeti’ne taşınsın mı?",
+        retentionHeldCaption: "Otomatik Çöp Sepeti’nin kendi başına aldığından fazla: siz onaylayana kadar hiçbiri taşınmaz.",
+        renameTitleNotSaved: "Klasörün adı değişti, ancak yeni başlık kaydedilemedi.",
+        statusForeign: "meeting.json dosyası Vorssaint tarafından yazılmadı: gösterilir, hiç değiştirilmez."
     )
 }
 
@@ -1828,7 +1859,6 @@ extension ForkMeetingStrings {
         groupYesterday: "Вчера",
         groupUndated: "Без даты",
         columnTitle: "Название",
-        columnDate: "Дата и время",
         columnDuration: "Длительность",
         columnSize: "Размер",
         columnApp: "Приложение",
@@ -1847,7 +1877,7 @@ extension ForkMeetingStrings {
         statusUnreadableHelp: "Не удалось прочитать её meeting.json. Он никогда не перезаписывается: видео остаётся в папке, а карточку ещё можно исправить вручную.",
         statusLaterVersion: "Создана более новой версией Vorssaint: показывается, но не изменяется.",
         causeCrash: "сбой",
-        causeQuit: "выход из app",
+        causeQuit: "приложение закрыто",
         causeDisk: "диск заполнен",
         causePermission: "доступ отозван",
         causeSleep: "режим сна",
@@ -1865,7 +1895,7 @@ extension ForkMeetingStrings {
         emptyTitle: "Встреч пока нет",
         emptyCaption: "Каждая записанная встреча появляется здесь, в своей папке.",
         notesPlaceholder: "Добавить заметки",
-        retentionTitle: "Автоочистка в Корзину",
+        retentionTitle: "Автоматически в Корзину",
         retentionNever: "Никогда",
         retentionDaysFormat: "Через %d дн.",
         retentionCaption: "Старые встречи отправляются в Корзину при запуске, затем раз в день. Никогда — записываемая встреча или отмеченная ⚠.",
@@ -1887,7 +1917,13 @@ extension ForkMeetingStrings {
         exportFailed: "Не удалось экспортировать звук.",
         trimFailed: "Не удалось сделать копию для редактора. Сама встреча не затронута.",
         causeCancelled: "отменена",
-        voiceTrashed: "Встреча перемещена в Корзину."
+        voiceTrashed: "Встреча перемещена в Корзину.",
+        // MARK: Fixes M
+        retentionHeldFormat: "Встречи старше %2$d дн.: %1$d. Переместить их в Корзину?",
+        retentionHeldOneFormat: "Одна встреча старше %d дн.: переместить её в Корзину?",
+        retentionHeldCaption: "Это больше, чем автоочистка перемещает сама: ничего не будет перемещено без вашего подтверждения.",
+        renameTitleNotSaved: "Папка переименована, но новое название не удалось сохранить.",
+        statusForeign: "Файл meeting.json записан не Vorssaint: показывается, но не изменяется."
     )
 }
 
@@ -2155,7 +2191,6 @@ extension ForkMeetingStrings {
         groupYesterday: "Ayer",
         groupUndated: "Sin fecha",
         columnTitle: "Título",
-        columnDate: "Fecha y hora",
         columnDuration: "Duración",
         columnSize: "Tamaño",
         columnApp: "Aplicación",
@@ -2214,7 +2249,13 @@ extension ForkMeetingStrings {
         exportFailed: "No se ha podido exportar el audio.",
         trimFailed: "No se ha podido hacer la copia para el editor. La reunión no se ha tocado.",
         causeCancelled: "cancelada",
-        voiceTrashed: "Reunión trasladada a la papelera."
+        voiceTrashed: "Reunión trasladada a la papelera.",
+        // MARK: Fixes M
+        retentionHeldFormat: "%1$d reuniones de más de %2$d días: ¿trasladarlas a la papelera?",
+        retentionHeldOneFormat: "1 reunión de más de %d días: ¿trasladarla a la papelera?",
+        retentionHeldCaption: "Es más de lo que la papelera automática se lleva por sí sola: nada se traslada hasta que lo confirmes.",
+        renameTitleNotSaved: "La carpeta se ha renombrado, pero no se ha podido guardar el nuevo título.",
+        statusForeign: "Su meeting.json no lo ha escrito Vorssaint: se muestra, nunca se modifica."
     )
 }
 
@@ -2482,7 +2523,6 @@ extension ForkMeetingStrings {
         groupYesterday: "Včera",
         groupUndated: "Bez dátumu",
         columnTitle: "Názov",
-        columnDate: "Dátum a čas",
         columnDuration: "Dĺžka",
         columnSize: "Veľkosť",
         columnApp: "Aplikácia",
@@ -2541,7 +2581,13 @@ extension ForkMeetingStrings {
         exportFailed: "Zvuk sa nepodarilo exportovať.",
         trimFailed: "Kópiu pre editor sa nepodarilo vytvoriť. Samotné stretnutie zostalo nedotknuté.",
         causeCancelled: "zrušené",
-        voiceTrashed: "Stretnutie bolo presunuté do koša."
+        voiceTrashed: "Stretnutie bolo presunuté do koša.",
+        // MARK: Fixes M
+        retentionHeldFormat: "Stretnutia staršie ako %2$d dní: %1$d. Presunúť ich do koša?",
+        retentionHeldOneFormat: "Jedno stretnutie staršie ako %d dní: presunúť ho do koša?",
+        retentionHeldCaption: "Je to viac, než automatický kôš vezme sám: nič sa nepresunie, kým to nepotvrdíte.",
+        renameTitleNotSaved: "Priečinok sa premenoval, ale nový názov sa nepodarilo uložiť.",
+        statusForeign: "Súbor meeting.json nezapísal Vorssaint: zobrazuje sa, nikdy sa nemení."
     )
 }
 
@@ -2809,7 +2855,6 @@ extension ForkMeetingStrings {
         groupYesterday: "Gestern",
         groupUndated: "Ohne Datum",
         columnTitle: "Titel",
-        columnDate: "Datum und Uhrzeit",
         columnDuration: "Dauer",
         columnSize: "Größe",
         columnApp: "Anwendung",
@@ -2823,7 +2868,7 @@ extension ForkMeetingStrings {
         confirmTrashFormat: "„%@“ in den Papierkorb legen?",
         confirmTrashMessage: "Der Ordner der Besprechung kommt mit Video, Audio und Notizen in den Papierkorb. Du kannst ihn zurückholen, solange der Papierkorb nicht geleert ist.",
         statusRecovered: "Wiederhergestellt",
-        statusInterruptedFormat: "Abgebrochen: %@",
+        statusInterruptedFormat: "Unterbrochen: %@",
         statusUnreadable: "Datei unlesbar",
         statusUnreadableHelp: "Ihre meeting.json konnte nicht gelesen werden. Sie wird nie überschrieben: Das Video bleibt im Ordner, und die Datei lässt sich noch von Hand reparieren.",
         statusLaterVersion: "Von einer neueren Version von Vorssaint erstellt: angezeigt, nie geändert.",
@@ -2868,7 +2913,13 @@ extension ForkMeetingStrings {
         exportFailed: "Das Audio konnte nicht exportiert werden.",
         trimFailed: "Die Kopie für den Editor konnte nicht erstellt werden. Die Besprechung selbst bleibt unverändert.",
         causeCancelled: "abgebrochen",
-        voiceTrashed: "Besprechung in den Papierkorb gelegt."
+        voiceTrashed: "Besprechung in den Papierkorb gelegt.",
+        // MARK: Fixes M
+        retentionHeldFormat: "%1$d Besprechungen älter als %2$d Tage: in den Papierkorb legen?",
+        retentionHeldOneFormat: "1 Besprechung älter als %d Tage: in den Papierkorb legen?",
+        retentionHeldCaption: "Mehr, als der automatische Papierkorb von sich aus nimmt: Nichts wird verschoben, bevor du bestätigst.",
+        renameTitleNotSaved: "Der Ordner wurde umbenannt, aber der neue Titel konnte nicht gesichert werden.",
+        statusForeign: "Die meeting.json stammt nicht von Vorssaint: angezeigt, nie geändert."
     )
 }
 
@@ -3136,7 +3187,6 @@ extension ForkMeetingStrings {
         groupYesterday: "Hier",
         groupUndated: "Sans date",
         columnTitle: "Titre",
-        columnDate: "Date et heure",
         columnDuration: "Durée",
         columnSize: "Taille",
         columnApp: "Application",
@@ -3144,7 +3194,7 @@ extension ForkMeetingStrings {
         actionRename: "Renommer",
         actionExportAudio: "Exporter l’audio (M4A)…",
         actionCopyPath: "Copier le chemin",
-        actionTrash: "Mettre à la Corbeille",
+        actionTrash: "Placer dans la corbeille",
         actionTrim: "Couper dans l’éditeur",
         noticePathCopied: "Chemin copié",
         confirmTrashFormat: "Mettre «\u{00A0}%@\u{00A0}» à la Corbeille\u{00A0}?",
@@ -3171,7 +3221,7 @@ extension ForkMeetingStrings {
         searchPlaceholder: "Rechercher",
         searchNoResultsFormat: "Aucune réunion ne correspond à «\u{00A0}%@\u{00A0}»",
         emptyTitle: "Aucune réunion enregistrée",
-        emptyCaption: "Chaque réunion enregistrée arrive ici, dans son propre dossier.",
+        emptyCaption: "Chaque réunion que vous enregistrez arrive ici, dans son propre dossier.",
         notesPlaceholder: "Ajouter des notes",
         retentionTitle: "Corbeille automatique",
         retentionNever: "Jamais",
@@ -3195,7 +3245,13 @@ extension ForkMeetingStrings {
         exportFailed: "L’audio n’a pas pu être exporté.",
         trimFailed: "La copie pour l’éditeur n’a pas pu être faite. La réunion elle-même reste intacte.",
         causeCancelled: "annulée",
-        voiceTrashed: "Réunion mise à la Corbeille."
+        voiceTrashed: "Réunion mise à la Corbeille.",
+        // MARK: Fixes M
+        retentionHeldFormat: "%1$d\u{00A0}réunions de plus de %2$d\u{00A0}jours\u{00A0}: les mettre à la Corbeille\u{00A0}?",
+        retentionHeldOneFormat: "1\u{00A0}réunion de plus de %d\u{00A0}jours\u{00A0}: la mettre à la Corbeille\u{00A0}?",
+        retentionHeldCaption: "C’est plus que ce que la Corbeille automatique prend d’elle-même\u{00A0}: rien ne part avant votre accord.",
+        renameTitleNotSaved: "Le dossier a été renommé, mais son nouveau titre n’a pas pu être enregistré.",
+        statusForeign: "Son meeting.json n’a pas été écrit par Vorssaint\u{00A0}: affichée, jamais modifiée."
     )
 }
 
@@ -3463,7 +3519,6 @@ extension ForkMeetingStrings {
         groupYesterday: "Ieri",
         groupUndated: "Senza data",
         columnTitle: "Titolo",
-        columnDate: "Data e ora",
         columnDuration: "Durata",
         columnSize: "Dimensione",
         columnApp: "Applicazione",
@@ -3485,7 +3540,7 @@ extension ForkMeetingStrings {
         causeQuit: "app chiusa",
         causeDisk: "disco pieno",
         causePermission: "accesso revocato",
-        causeSleep: "standby",
+        causeSleep: "Mac in stop",
         causeFeatureOff: "disattivazione",
         causeCaptureStopped: "cattura fermata",
         causeFinalPass: "finalizzazione",
@@ -3522,7 +3577,13 @@ extension ForkMeetingStrings {
         exportFailed: "Impossibile esportare l’audio.",
         trimFailed: "Impossibile creare la copia per l’editor. La riunione non è stata toccata.",
         causeCancelled: "annullata",
-        voiceTrashed: "Riunione spostata nel Cestino."
+        voiceTrashed: "Riunione spostata nel Cestino.",
+        // MARK: Fixes M
+        retentionHeldFormat: "%1$d riunioni con più di %2$d giorni: spostarle nel Cestino?",
+        retentionHeldOneFormat: "1 riunione con più di %d giorni: spostarla nel Cestino?",
+        retentionHeldCaption: "È più di quanto il Cestino automatico sposti da solo: nulla viene spostato finché non confermi.",
+        renameTitleNotSaved: "La cartella è stata rinominata, ma non è stato possibile salvare il nuovo titolo.",
+        statusForeign: "Il suo meeting.json non è stato scritto da Vorssaint: mostrata, mai modificata."
     )
 }
 
@@ -3790,7 +3851,6 @@ extension ForkMeetingStrings {
         groupYesterday: "昨日",
         groupUndated: "日付なし",
         columnTitle: "タイトル",
-        columnDate: "日時",
         columnDuration: "長さ",
         columnSize: "サイズ",
         columnApp: "アプリ",
@@ -3849,7 +3909,13 @@ extension ForkMeetingStrings {
         exportFailed: "オーディオを書き出せませんでした。",
         trimFailed: "エディタ用のコピーを作成できませんでした。ミーティング自体は変更されていません。",
         causeCancelled: "キャンセル済み",
-        voiceTrashed: "ミーティングをゴミ箱に入れました。"
+        voiceTrashed: "ミーティングをゴミ箱に入れました。",
+        // MARK: Fixes M
+        retentionHeldFormat: "%2$d日より古いミーティングが%1$d件あります。ゴミ箱に入れますか？",
+        retentionHeldOneFormat: "%d日より古いミーティングが1件あります。ゴミ箱に入れますか？",
+        retentionHeldCaption: "自動でゴミ箱へ移す量を超えています。確認するまで何も移動しません。",
+        renameTitleNotSaved: "フォルダの名前は変更されましたが、新しいタイトルを保存できませんでした。",
+        statusForeign: "このmeeting.jsonはVorssaintが書いたものではありません：表示のみで、変更されません。"
     )
 }
 
@@ -4117,7 +4183,6 @@ extension ForkMeetingStrings {
         groupYesterday: "어제",
         groupUndated: "날짜 없음",
         columnTitle: "제목",
-        columnDate: "날짜 및 시간",
         columnDuration: "길이",
         columnSize: "크기",
         columnApp: "앱",
@@ -4176,7 +4241,13 @@ extension ForkMeetingStrings {
         exportFailed: "오디오를 내보낼 수 없습니다.",
         trimFailed: "편집기용 사본을 만들 수 없습니다. 회의 자체는 변경되지 않았습니다.",
         causeCancelled: "취소됨",
-        voiceTrashed: "회의를 휴지통으로 이동했습니다."
+        voiceTrashed: "회의를 휴지통으로 이동했습니다.",
+        // MARK: Fixes M
+        retentionHeldFormat: "%2$d일이 지난 회의 %1$d개: 휴지통으로 이동할까요?",
+        retentionHeldOneFormat: "%d일이 지난 회의 1개: 휴지통으로 이동할까요?",
+        retentionHeldCaption: "자동 휴지통이 스스로 옮기는 양보다 많습니다. 확인하기 전까지는 아무것도 이동하지 않습니다.",
+        renameTitleNotSaved: "폴더 이름은 변경되었지만 새 제목을 저장할 수 없습니다.",
+        statusForeign: "이 meeting.json은 Vorssaint가 작성한 것이 아닙니다. 표시만 하고 변경하지 않습니다."
     )
 }
 
@@ -4444,7 +4515,6 @@ extension ForkMeetingStrings {
         groupYesterday: "Учора",
         groupUndated: "Без дати",
         columnTitle: "Назва",
-        columnDate: "Дата й час",
         columnDuration: "Тривалість",
         columnSize: "Розмір",
         columnApp: "Застосунок",
@@ -4463,7 +4533,7 @@ extension ForkMeetingStrings {
         statusUnreadableHelp: "Не вдалося прочитати її meeting.json. Він ніколи не перезаписується: відео лишається в папці, а картку ще можна виправити вручну.",
         statusLaterVersion: "Створено новішою версією Vorssaint: показується, але не змінюється.",
         causeCrash: "збій",
-        causeQuit: "вихід з app",
+        causeQuit: "вихід із програми",
         causeDisk: "диск заповнено",
         causePermission: "доступ відкликано",
         causeSleep: "режим сну",
@@ -4481,7 +4551,7 @@ extension ForkMeetingStrings {
         emptyTitle: "Зустрічей ще немає",
         emptyCaption: "Кожна записана зустріч з’являється тут, у власній папці.",
         notesPlaceholder: "Додати нотатки",
-        retentionTitle: "Автоочищення у Смітник",
+        retentionTitle: "Автоматично у Смітник",
         retentionNever: "Ніколи",
         retentionDaysFormat: "Через %d дн.",
         retentionCaption: "Старіші зустрічі йдуть у Смітник під час запуску, потім раз на день. Ніколи — та, що записується, чи позначена ⚠.",
@@ -4503,7 +4573,13 @@ extension ForkMeetingStrings {
         exportFailed: "Не вдалося експортувати звук.",
         trimFailed: "Не вдалося створити копію для редактора. Саму зустріч не змінено.",
         causeCancelled: "скасовано",
-        voiceTrashed: "Зустріч переміщено в Смітник."
+        voiceTrashed: "Зустріч переміщено в Смітник.",
+        // MARK: Fixes M
+        retentionHeldFormat: "Зустрічі, старші за %2$d дн.: %1$d. Перемістити їх у Смітник?",
+        retentionHeldOneFormat: "Одна зустріч, старша за %d дн.: перемістити її у Смітник?",
+        retentionHeldCaption: "Це більше, ніж автоочищення переміщує саме: нічого не буде переміщено без вашого підтвердження.",
+        renameTitleNotSaved: "Папку перейменовано, але нову назву не вдалося зберегти.",
+        statusForeign: "Файл meeting.json записано не Vorssaint: показується, але не змінюється."
     )
 }
 
@@ -4771,7 +4847,6 @@ extension ForkMeetingStrings {
         groupYesterday: "昨天",
         groupUndated: "无日期",
         columnTitle: "标题",
-        columnDate: "日期和时间",
         columnDuration: "时长",
         columnSize: "大小",
         columnApp: "应用",
@@ -4826,11 +4901,17 @@ extension ForkMeetingStrings {
         statusRecoveredHelp: "在 App 意外停止后恢复：最后几秒可能缺失。",
         statusInterruptedHelp: "此会议未正常结束。录制的所有内容都保留在其文件夹中。",
         trashFailed: "无法将会议移到废纸篓。",
-        renameFailed: "无法重命名文件夹：标题已更改，文件夹保留原名。",
+        renameFailed: "无法重新命名文件夹：标题已更改，文件夹保留原名。",
         exportFailed: "无法导出音频。",
         trimFailed: "无法创建供编辑器使用的副本。会议本身未被改动。",
         causeCancelled: "已取消",
-        voiceTrashed: "会议已移到废纸篓。"
+        voiceTrashed: "会议已移到废纸篓。",
+        // MARK: Fixes M
+        retentionHeldFormat: "%1$d 个会议超过 %2$d 天：要移到废纸篓吗？",
+        retentionHeldOneFormat: "1 个会议超过 %d 天：要移到废纸篓吗？",
+        retentionHeldCaption: "超过了自动移到废纸篓一次会处理的数量：在你确认之前不会移动任何会议。",
+        renameTitleNotSaved: "文件夹已重新命名，但无法存储新标题。",
+        statusForeign: "此 meeting.json 并非由 Vorssaint 写入：仅显示，不会更改。"
     )
 }
 
@@ -5098,7 +5179,6 @@ extension ForkMeetingStrings {
         groupYesterday: "昨天",
         groupUndated: "無日期",
         columnTitle: "標題",
-        columnDate: "日期與時間",
         columnDuration: "長度",
         columnSize: "大小",
         columnApp: "應用程式",
@@ -5157,7 +5237,13 @@ extension ForkMeetingStrings {
         exportFailed: "無法輸出音訊。",
         trimFailed: "無法建立供編輯器使用的拷貝。會議本身未被更動。",
         causeCancelled: "已取消",
-        voiceTrashed: "會議已丟到垃圾桶。"
+        voiceTrashed: "會議已丟到垃圾桶。",
+        // MARK: Fixes M
+        retentionHeldFormat: "%1$d 個會議超過 %2$d 天：要丟到垃圾桶嗎？",
+        retentionHeldOneFormat: "1 個會議超過 %d 天：要丟到垃圾桶嗎？",
+        retentionHeldCaption: "超過自動丟到垃圾桶一次會處理的數量：在你確認之前不會移動任何會議。",
+        renameTitleNotSaved: "資料夾已重新命名，但無法儲存新標題。",
+        statusForeign: "此 meeting.json 並非由 Vorssaint 寫入：僅顯示，不會變更。"
     )
 }
 
@@ -5425,19 +5511,18 @@ extension ForkMeetingStrings {
         groupYesterday: "昨天",
         groupUndated: "無日期",
         columnTitle: "標題",
-        columnDate: "日期與時間",
         columnDuration: "長度",
         columnSize: "大小",
         columnApp: "應用程式",
         columnMeetCode: "會議代碼",
         actionRename: "重新命名",
         actionExportAudio: "輸出音訊（M4A）⋯",
-        actionCopyPath: "拷貝路徑",
-        actionTrash: "丟到垃圾桶",
+        actionCopyPath: "複製路徑",
+        actionTrash: "移至垃圾桶",
         actionTrim: "在編輯器中剪輯",
-        noticePathCopied: "已拷貝路徑",
-        confirmTrashFormat: "要將「%@」丟到垃圾桶嗎？",
-        confirmTrashMessage: "會議資料夾會連同影片、音訊和備註一起丟到垃圾桶。清空垃圾桶之前都可以放回。",
+        noticePathCopied: "已複製路徑",
+        confirmTrashFormat: "要將「%@」移至垃圾桶嗎？",
+        confirmTrashMessage: "會議資料夾會連同影片、音訊和備註一起移至垃圾桶。清空垃圾桶之前都可以放回。",
         statusRecovered: "已復原",
         statusInterruptedFormat: "已中斷：%@",
         statusUnreadable: "記錄無法讀取",
@@ -5462,13 +5547,13 @@ extension ForkMeetingStrings {
         emptyTitle: "還沒有會議",
         emptyCaption: "你錄製的每個會議都會顯示在這裡，各有自己的資料夾。",
         notesPlaceholder: "加入備註",
-        retentionTitle: "自動丟到垃圾桶",
+        retentionTitle: "自動移至垃圾桶",
         retentionNever: "永不",
         retentionDaysFormat: "%d 天後",
-        retentionCaption: "較舊的會議會在啟動時丟到垃圾桶，之後每天一次。正在錄製的會議或標示 ⚠ 的會議永遠不會丟掉。",
-        retentionConfirmTitle: "要將較舊的會議丟到垃圾桶嗎？",
+        retentionCaption: "較舊的會議會在啟動時移至垃圾桶，之後每天一次。正在錄製的會議或標示 ⚠ 的會議永遠不會移走。",
+        retentionConfirmTitle: "要將較舊的會議移至垃圾桶嗎？",
         retentionConfirmFormat: "超過 %2$d 天的會議：%1$d 個。清空垃圾桶之前它們會一直留在垃圾桶中。",
-        trimCaption: "編輯器會打開一份拷貝：會議本身保持不變。",
+        trimCaption: "編輯器會開啟一份副本：會議本身保持不變。",
         trimNeedsEditor: "編輯器屬於「螢幕錄製」功能：請在 Vorssaint 中開啟它才能剪輯會議。",
         trimNoVideo: "此會議沒有可剪輯的影片。",
         // MARK: Library effects
@@ -5479,11 +5564,17 @@ extension ForkMeetingStrings {
         playerNoVideo: "沒有可播放的影片",
         statusRecoveredHelp: "在 App 意外停止後復原：最後幾秒可能缺少。",
         statusInterruptedHelp: "此會議未正常結束。錄製的所有內容都保留在其資料夾中。",
-        trashFailed: "無法將會議丟到垃圾桶。",
+        trashFailed: "無法將會議移至垃圾桶。",
         renameFailed: "無法重新命名資料夾：標題已變更，資料夾保留原名稱。",
         exportFailed: "無法輸出音訊。",
-        trimFailed: "無法建立供編輯器使用的拷貝。會議本身未被更動。",
+        trimFailed: "無法建立供編輯器使用的副本。會議本身未被更動。",
         causeCancelled: "已取消",
-        voiceTrashed: "會議已丟到垃圾桶。"
+        voiceTrashed: "會議已移至垃圾桶。",
+        // MARK: Fixes M
+        retentionHeldFormat: "%1$d 個會議超過 %2$d 天：要移至垃圾桶嗎？",
+        retentionHeldOneFormat: "1 個會議超過 %d 天：要移至垃圾桶嗎？",
+        retentionHeldCaption: "超過自動移至垃圾桶一次會處理的數量：在你確認之前不會移動任何會議。",
+        renameTitleNotSaved: "資料夾已重新命名，但無法儲存新標題。",
+        statusForeign: "此 meeting.json 並非由 Vorssaint 寫入：僅顯示，不會變更。"
     )
 }

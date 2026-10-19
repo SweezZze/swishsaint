@@ -610,7 +610,7 @@ enum ForkMeetingLibraryTests {
 
     private static func texts(_ suite: TestSuite) {
         let short: [KeyPath<ForkMeetingStrings, String>] = [
-            \.groupToday, \.groupYesterday, \.groupUndated, \.columnTitle, \.columnDate, \.columnDuration, \.columnSize,
+            \.groupToday, \.groupYesterday, \.groupUndated, \.columnTitle, \.columnDuration, \.columnSize,
             \.columnApp, \.columnMeetCode, \.actionRename, \.actionExportAudio, \.actionCopyPath, \.actionTrash,
             \.actionTrim, \.noticePathCopied, \.statusRecovered, \.statusUnreadable, \.searchPlaceholder, \.emptyTitle,
             \.notesPlaceholder, \.retentionTitle, \.retentionNever, \.openLibrary, \.actionShowMeeting, \.actionMore,
@@ -649,8 +649,8 @@ enum ForkMeetingLibraryTests {
                      "every action of the menu has its own words in every language")
         suite.expect(ForkMeetingStrings.strings(.fr).actionTrim == "Couper dans l’éditeur"
                         && ForkMeetingStrings.strings(.fr).retentionTitle == "Corbeille automatique"
-                        && ForkMeetingStrings.strings(.fr).actionTrash == "Mettre à la Corbeille",
-                     "in French: Couper dans l’éditeur, Corbeille automatique, Mettre à la Corbeille")
+                        && ForkMeetingStrings.strings(.fr).actionTrash == "Placer dans la corbeille",
+                     "in French: Couper dans l’éditeur, Corbeille automatique, Placer dans la corbeille")
     }
 
     // MARK: - Folders the recorder leaves today
