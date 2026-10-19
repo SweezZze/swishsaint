@@ -165,8 +165,9 @@ extension ForkMeetingStore {
 
     /// Another copy of the app holds the folder's lock: its meeting records
     /// or finishes there. Asked only at the moment of an action on a folder
-    /// whose sidecar says it is unfinished, never while scanning: the brief
-    /// shared lock it takes would make that copy's recovery pass by.
+    /// that shows signs of it (`ForkMeetingLibraryLock`), never while
+    /// scanning: the brief shared lock it takes would make that copy's
+    /// recovery pass by.
     static func isLockedElsewhere(_ folder: URL) -> Bool {
         let descriptor = open(folder.path + "/" + lockName, O_RDONLY | O_CLOEXEC)
         guard descriptor >= 0 else { return false }
