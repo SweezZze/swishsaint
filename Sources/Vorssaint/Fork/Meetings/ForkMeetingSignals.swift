@@ -56,6 +56,9 @@ struct ForkMeetingCalendarHint: Equatable {
     /// The other meeting links found there (Zoom, Teams, Webex, Whereby,
     /// Jitsi Meet), by kind.
     var links: Set<ForkMeetingCalendarLink> = []
+    /// A print of each of those links (`ForkMeetingCalendarLink.prints`),
+    /// never the link: one event in two calendars holds the same.
+    var linkPrints: Set<Int> = []
 }
 
 /// What the detection read at one moment. A source left `nil` was not read

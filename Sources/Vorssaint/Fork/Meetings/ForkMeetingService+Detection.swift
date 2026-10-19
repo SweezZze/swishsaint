@@ -140,11 +140,13 @@ extension ForkMeetingService {
             reading.microphones = owned
             detection.lastMicrophones = owned
         }
-        // The page may have changed a provider's choice since.
+        // The page may have changed a provider's choice since, or the
+        // countdown, during which an app's meeting back is the same one.
+        let countdown = ForkMeetingAutoStop.load(defaults).countdown
         detection.resolver.policies = ForkMeetingPolicies.load(defaults)
+        detection.resolver.endCountdown = countdown
         let resolution = detection.resolver.resolve(reading)
         detection.onMicrophone = resolution.onMicrophone
-        let countdown = ForkMeetingAutoStop.load(defaults).countdown
         for identity in resolution.ended {
             log.notice("meeting probably over: \(identity.value, privacy: .private)")
             send(.endProbable(identity, countdown: countdown))

@@ -446,6 +446,17 @@ struct ForkMeetingStrings {
     /// 14.4): "Always", which needs it, is not offered on the page.
     let detectionAlwaysUnavailable: String
 
+    // MARK: Fixes L
+
+    /// Under the apps' rows while one of them is on "Always": what it waits
+    /// for before starting on its own.
+    let detectionAlwaysDelay: String
+    /// The offer's window for a call filmed in its app's main window, not a
+    /// meeting window of its own: %@ is the app ("Teams (main window)").
+    let offerMainWindowFormat: String
+
+    func offerMainWindow(_ app: String) -> String { String(format: offerMainWindowFormat, app) }
+
     func noticeAskAgain(_ provider: String) -> String { String(format: noticeAskAgainFormat, provider) }
     func voiceAskAgain(_ provider: String) -> String { String(format: voiceAskAgainFormat, provider) }
 
@@ -686,8 +697,10 @@ extension ForkMeetingStrings {
         consentPledge: "I will inform the participants",
         consentPledgeNeeded: "Tick “I will inform the participants” to continue.",
         consentConfirm: "Turn On Meetings",
+        // MARK: Library folder and names
         folderName: "Meetings",
         untitledMeeting: "Meeting",
+        // MARK: Island, pill and bubble notices: short
         noticeStarted: "Recording started",
         noticeResumed: "Recording resumed",
         noticeSaved: "Meeting saved",
@@ -697,6 +710,7 @@ extension ForkMeetingStrings {
         noticeDiskLow: "Disk almost full",
         noticeDisplayChanged: "Display changed",
         diskMinutesFormat: "~%d min of disk left",
+        // MARK: VoiceOver
         voiceStarted: "Meeting recording started.",
         voicePaused: "Meeting recording paused.",
         voiceResumed: "Meeting recording resumed.",
@@ -704,6 +718,7 @@ extension ForkMeetingStrings {
         voiceMicrophoneFormat: "The recording now uses the microphone %@.",
         voiceMicrophoneSilent: "The microphone sends no sound. Check the microphone chosen for meetings.",
         voiceDiskLowFormat: "The disk is almost full. Minutes of recording left: %d.",
+        // MARK: Failures: a short summary, then what to do
         failScreenDenied: "Screen Recording not allowed",
         failScreenDeniedRemedy: "Without it, nothing can be filmed. Allow Vorssaint in System Settings › Privacy & Security › Screen & System Audio Recording.",
         failScreenRevoked: "Screen access withdrawn",
@@ -784,7 +799,7 @@ extension ForkMeetingStrings {
         detectionLookalike: "A web page that copies a Google Meet title exactly and uses the microphone could be taken for a meeting.",
         // MARK: Detection effects
         detectionTitle: "Detection",
-        detectionCaption: "Recognizes your calls in Google Meet, Zoom, Teams, Slack, FaceTime, Webex and Discord, even behind other windows or on another desktop, and offers to record them. Google Meet, Zoom, Teams, Whereby and Jitsi Meet are recognized in a browser too.",
+        detectionCaption: "Recognizes your calls in the Zoom, Teams, Slack, FaceTime, Webex and Discord apps, and in a browser in Google Meet, Zoom, Teams, Whereby and Jitsi Meet, even behind other windows or on another desktop, and offers to record them.",
         policyAsk: "Offer",
         policyAlways: "Always",
         policyNever: "Never",
@@ -858,6 +873,9 @@ extension ForkMeetingStrings {
         noticeNeverWebCalls: "Other web calls: Never",
         voiceNeverWebCalls: "Calls in a browser other than Google Meet will no longer be offered.",
         detectionAlwaysUnavailable: "Always is not available on this Mac: meetings are offered, never recorded on their own.",
+        // MARK: Fixes L
+        detectionAlwaysDelay: "Teams, Webex and Discord: recorded on their own 15 s into the call. Zoom and Slack: once their meeting window opens, otherwise offered.",
+        offerMainWindowFormat: "%@ (main window)",
         // MARK: Library
         groupToday: "Today",
         groupYesterday: "Yesterday",
@@ -1018,8 +1036,10 @@ extension ForkMeetingStrings {
         consentPledge: "Vou avisar os participantes",
         consentPledgeNeeded: "Marque “Vou avisar os participantes” para continuar.",
         consentConfirm: "Ativar Reuniões",
+        // MARK: Library folder and names
         folderName: "Reuniões",
         untitledMeeting: "Reunião",
+        // MARK: Island, pill and bubble notices: short
         noticeStarted: "Gravação iniciada",
         noticeResumed: "Gravação retomada",
         noticeSaved: "Reunião salva",
@@ -1029,6 +1049,7 @@ extension ForkMeetingStrings {
         noticeDiskLow: "Disco quase cheio",
         noticeDisplayChanged: "Tela alterada",
         diskMinutesFormat: "~%d min de disco",
+        // MARK: VoiceOver
         voiceStarted: "Gravação da reunião iniciada.",
         voicePaused: "Gravação da reunião pausada.",
         voiceResumed: "Gravação da reunião retomada.",
@@ -1036,6 +1057,7 @@ extension ForkMeetingStrings {
         voiceMicrophoneFormat: "A gravação agora usa o microfone %@.",
         voiceMicrophoneSilent: "O microfone não envia som. Verifique o microfone escolhido para as reuniões.",
         voiceDiskLowFormat: "O disco está quase cheio. Minutos de gravação restantes: %d.",
+        // MARK: Failures: a short summary, then what to do
         failScreenDenied: "Acesso à tela negado",
         failScreenDeniedRemedy: "Sem ele, nada pode ser filmado. Permita o Vorssaint em Ajustes do Sistema › Privacidade e Segurança › Gravação de Tela e Áudio do Sistema.",
         failScreenRevoked: "Acesso à tela retirado",
@@ -1116,7 +1138,7 @@ extension ForkMeetingStrings {
         detectionLookalike: "Uma página da web que copie exatamente o título de uma reunião do Google Meet e use o microfone pode ser confundida com uma reunião.",
         // MARK: Detection effects
         detectionTitle: "Detecção",
-        detectionCaption: "Reconhece suas chamadas no Google Meet, Zoom, Teams, Slack, FaceTime, Webex e Discord, mesmo atrás de outras janelas ou em outra mesa, e oferece gravá-las. Google Meet, Zoom, Teams, Whereby e Jitsi Meet também são reconhecidos no navegador.",
+        detectionCaption: "Reconhece suas chamadas nos apps Zoom, Teams, Slack, FaceTime, Webex e Discord, e no navegador no Google Meet, Zoom, Teams, Whereby e Jitsi Meet, mesmo atrás de outras janelas ou em outra mesa, e oferece gravá-las.",
         policyAsk: "Oferecer",
         policyAlways: "Sempre",
         policyNever: "Nunca",
@@ -1190,6 +1212,9 @@ extension ForkMeetingStrings {
         noticeNeverWebCalls: "Outras chamadas web: Nunca",
         voiceNeverWebCalls: "As chamadas no navegador que não sejam do Google Meet não serão mais oferecidas.",
         detectionAlwaysUnavailable: "“Sempre” não está disponível neste Mac: as reuniões são oferecidas, nunca gravadas sozinhas.",
+        // MARK: Fixes L
+        detectionAlwaysDelay: "Teams, Webex e Discord: gravados sozinhos 15 s após o início da chamada. Zoom e Slack: assim que a janela da reunião abre; senão, oferecidos.",
+        offerMainWindowFormat: "%@ (janela principal)",
         // MARK: Library
         groupToday: "Hoje",
         groupYesterday: "Ontem",
@@ -1350,8 +1375,10 @@ extension ForkMeetingStrings {
         consentPledge: "Katılımcıları bilgilendireceğim",
         consentPledgeNeeded: "Devam etmek için “Katılımcıları bilgilendireceğim” kutusunu işaretleyin.",
         consentConfirm: "Toplantılar’ı aç",
+        // MARK: Library folder and names
         folderName: "Toplantılar",
         untitledMeeting: "Toplantı",
+        // MARK: Island, pill and bubble notices: short
         noticeStarted: "Kayıt başladı",
         noticeResumed: "Kayıt sürdürüldü",
         noticeSaved: "Toplantı kaydedildi",
@@ -1361,6 +1388,7 @@ extension ForkMeetingStrings {
         noticeDiskLow: "Disk neredeyse dolu",
         noticeDisplayChanged: "Ekran değişti",
         diskMinutesFormat: "~%d dk disk kaldı",
+        // MARK: VoiceOver
         voiceStarted: "Toplantı kaydı başladı.",
         voicePaused: "Toplantı kaydı duraklatıldı.",
         voiceResumed: "Toplantı kaydı sürdürüldü.",
@@ -1368,6 +1396,7 @@ extension ForkMeetingStrings {
         voiceMicrophoneFormat: "Kayıt artık %@ mikrofonunu kullanıyor.",
         voiceMicrophoneSilent: "Mikrofon ses göndermiyor. Toplantılar için seçilen mikrofonu kontrol edin.",
         voiceDiskLowFormat: "Disk neredeyse dolu. Kalan kayıt dakikası: %d.",
+        // MARK: Failures: a short summary, then what to do
         failScreenDenied: "Ekran erişimi reddedildi",
         failScreenDeniedRemedy: "Bu izin olmadan hiçbir şey kaydedilemez. Sistem Ayarları › Gizlilik ve Güvenlik › Ekran ve Sistem Sesi Kaydı’ndan Vorssaint’e izin verin.",
         failScreenRevoked: "Ekran erişimi kaldırıldı",
@@ -1448,7 +1477,7 @@ extension ForkMeetingStrings {
         detectionLookalike: "Bir Google Meet başlığını birebir taklit eden ve mikrofonu kullanan bir web sayfası da toplantı sanılabilir.",
         // MARK: Detection effects
         detectionTitle: "Algılama",
-        detectionCaption: "Google Meet, Zoom, Teams, Slack, FaceTime, Webex ve Discord görüşmelerinizi, başka pencerelerin arkasında veya başka bir masaüstünde olsa bile tanır ve kaydetmeyi önerir. Google Meet, Zoom, Teams, Whereby ve Jitsi Meet tarayıcıda da tanınır.",
+        detectionCaption: "Zoom, Teams, Slack, FaceTime, Webex ve Discord uygulamalarındaki ve tarayıcıda Google Meet, Zoom, Teams, Whereby ve Jitsi Meet’teki görüşmelerinizi, başka pencerelerin arkasında veya başka bir masaüstünde olsa bile tanır ve kaydetmeyi önerir.",
         policyAsk: "Öner",
         policyAlways: "Her zaman",
         policyNever: "Asla",
@@ -1509,7 +1538,7 @@ extension ForkMeetingStrings {
         // MARK: Apps
         detectionOtherWebCalls: "Diğer web görüşmeleri",
         detectionOtherWebCallsCaption: "Tarayıcıda Zoom, Whereby, Jitsi Meet veya Teams: yalnızca tarayıcı mikrofonu kullanırken önerilir.",
-        detectionUnavailable: "Bu Mac’te tanınmaz",
+        detectionUnavailable: "Bu Mac’te tanınmıyor",
         detectionFaceTimeWholeMac: "FaceTime için, bildirimler ve müzik dahil tüm Mac’in sesi kaydedilir.",
         // MARK: Fixes J
         microphoneExternal: "Harici mikrofon",
@@ -1522,6 +1551,9 @@ extension ForkMeetingStrings {
         noticeNeverWebCalls: "Diğer web görüşmeleri: Asla",
         voiceNeverWebCalls: "Google Meet dışındaki tarayıcı görüşmeleri artık önerilmeyecek.",
         detectionAlwaysUnavailable: "“Her zaman” bu Mac’te kullanılamaz: toplantılar önerilir, hiçbir zaman kendiliğinden kaydedilmez.",
+        // MARK: Fixes L
+        detectionAlwaysDelay: "Teams, Webex ve Discord: görüşme başladıktan 15 sn sonra kendiliğinden kaydedilir. Zoom ve Slack: toplantı pencereleri açılır açılmaz, aksi hâlde önerilir.",
+        offerMainWindowFormat: "%@ (ana pencere)",
         // MARK: Library
         groupToday: "Bugün",
         groupYesterday: "Dün",
@@ -1682,8 +1714,10 @@ extension ForkMeetingStrings {
         consentPledge: "Я предупрежу участников",
         consentPledgeNeeded: "Отметьте «Я предупрежу участников», чтобы продолжить.",
         consentConfirm: "Включить Встречи",
+        // MARK: Library folder and names
         folderName: "Встречи",
         untitledMeeting: "Встреча",
+        // MARK: Island, pill and bubble notices: short
         noticeStarted: "Запись начата",
         noticeResumed: "Запись продолжена",
         noticeSaved: "Встреча сохранена",
@@ -1693,6 +1727,7 @@ extension ForkMeetingStrings {
         noticeDiskLow: "Диск почти заполнен",
         noticeDisplayChanged: "Экран сменился",
         diskMinutesFormat: "Диск: ~%d мин",
+        // MARK: VoiceOver
         voiceStarted: "Запись встречи начата.",
         voicePaused: "Запись встречи приостановлена.",
         voiceResumed: "Запись встречи продолжена.",
@@ -1700,6 +1735,7 @@ extension ForkMeetingStrings {
         voiceMicrophoneFormat: "Теперь запись идёт с микрофона %@.",
         voiceMicrophoneSilent: "Микрофон не передаёт звук. Проверьте микрофон, выбранный для встреч.",
         voiceDiskLowFormat: "Диск почти заполнен. Осталось минут записи: %d.",
+        // MARK: Failures: a short summary, then what to do
         failScreenDenied: "Нет доступа к экрану",
         failScreenDeniedRemedy: "Без него ничего не записать. Разрешите Vorssaint в Системных настройках › Конфиденциальность и безопасность › Запись экрана и системного аудио.",
         failScreenRevoked: "Доступ к экрану отозван",
@@ -1780,7 +1816,7 @@ extension ForkMeetingStrings {
         detectionLookalike: "Веб-страница, которая точно повторяет заголовок Google Meet и использует микрофон, может быть принята за встречу.",
         // MARK: Detection effects
         detectionTitle: "Обнаружение",
-        detectionCaption: "Распознаёт ваши звонки в Google Meet, Zoom, Teams, Slack, FaceTime, Webex и Discord, даже за другими окнами или на другом рабочем столе, и предлагает их записать. Google Meet, Zoom, Teams, Whereby и Jitsi Meet распознаются и в браузере.",
+        detectionCaption: "Распознаёт ваши звонки в приложениях Zoom, Teams, Slack, FaceTime, Webex и Discord, а в браузере — в Google Meet, Zoom, Teams, Whereby и Jitsi Meet, даже за другими окнами или на другом рабочем столе, и предлагает их записать.",
         policyAsk: "Предлагать",
         policyAlways: "Всегда",
         policyNever: "Никогда",
@@ -1854,6 +1890,9 @@ extension ForkMeetingStrings {
         noticeNeverWebCalls: "Другие веб-звонки: Никогда",
         voiceNeverWebCalls: "Звонки в браузере, кроме Google Meet, больше не будут предлагаться.",
         detectionAlwaysUnavailable: "«Всегда» недоступно на этом Mac: встречи предлагаются, но никогда не записываются сами.",
+        // MARK: Fixes L
+        detectionAlwaysDelay: "Teams, Webex и Discord: запись сама начинается через 15 с после начала звонка. Zoom и Slack: как только откроется окно встречи, иначе предлагается.",
+        offerMainWindowFormat: "%@ (главное окно)",
         // MARK: Library
         groupToday: "Сегодня",
         groupYesterday: "Вчера",
@@ -2014,8 +2053,10 @@ extension ForkMeetingStrings {
         consentPledge: "Avisaré a los participantes",
         consentPledgeNeeded: "Marca «Avisaré a los participantes» para continuar.",
         consentConfirm: "Activar Reuniones",
+        // MARK: Library folder and names
         folderName: "Reuniones",
         untitledMeeting: "Reunión",
+        // MARK: Island, pill and bubble notices: short
         noticeStarted: "Grabación iniciada",
         noticeResumed: "Grabación reanudada",
         noticeSaved: "Reunión guardada",
@@ -2025,6 +2066,7 @@ extension ForkMeetingStrings {
         noticeDiskLow: "Disco casi lleno",
         noticeDisplayChanged: "Pantalla cambiada",
         diskMinutesFormat: "~%d min de disco libres",
+        // MARK: VoiceOver
         voiceStarted: "Grabación de la reunión iniciada.",
         voicePaused: "Grabación de la reunión en pausa.",
         voiceResumed: "Grabación de la reunión reanudada.",
@@ -2032,6 +2074,7 @@ extension ForkMeetingStrings {
         voiceMicrophoneFormat: "La grabación usa ahora el micrófono %@.",
         voiceMicrophoneSilent: "El micrófono no envía sonido. Revisa el micrófono elegido para las reuniones.",
         voiceDiskLowFormat: "El disco está casi lleno. Minutos de grabación restantes: %d.",
+        // MARK: Failures: a short summary, then what to do
         failScreenDenied: "Acceso a pantalla denegado",
         failScreenDeniedRemedy: "Sin él no se puede grabar nada. Permite a Vorssaint en Ajustes del Sistema › Privacidad y seguridad › Grabación de pantalla y audio del sistema.",
         failScreenRevoked: "Acceso a pantalla retirado",
@@ -2112,7 +2155,7 @@ extension ForkMeetingStrings {
         detectionLookalike: "Una página web que imite exactamente un título de Google Meet y use el micrófono podría tomarse por una reunión.",
         // MARK: Detection effects
         detectionTitle: "Detección",
-        detectionCaption: "Reconoce tus llamadas de Google Meet, Zoom, Teams, Slack, FaceTime, Webex y Discord, incluso detrás de otras ventanas o en otro escritorio, y ofrece grabarlas. Google Meet, Zoom, Teams, Whereby y Jitsi Meet también se reconocen en el navegador.",
+        detectionCaption: "Reconoce tus llamadas en las apps Zoom, Teams, Slack, FaceTime, Webex y Discord, y en el navegador en Google Meet, Zoom, Teams, Whereby y Jitsi Meet, incluso detrás de otras ventanas o en otro escritorio, y ofrece grabarlas.",
         policyAsk: "Ofrecer",
         policyAlways: "Siempre",
         policyNever: "Nunca",
@@ -2186,6 +2229,9 @@ extension ForkMeetingStrings {
         noticeNeverWebCalls: "Otras llamadas web: Nunca",
         voiceNeverWebCalls: "Las llamadas en el navegador que no sean de Google Meet ya no se ofrecerán.",
         detectionAlwaysUnavailable: "«Siempre» no está disponible en este Mac: las reuniones se ofrecen, nunca se graban solas.",
+        // MARK: Fixes L
+        detectionAlwaysDelay: "Teams, Webex y Discord: se graban solos 15 s después de empezar la llamada. Zoom y Slack: en cuanto se abre su ventana de reunión; si no, se ofrecen.",
+        offerMainWindowFormat: "%@ (ventana principal)",
         // MARK: Library
         groupToday: "Hoy",
         groupYesterday: "Ayer",
@@ -2346,8 +2392,10 @@ extension ForkMeetingStrings {
         consentPledge: "Upozorním účastníkov",
         consentPledgeNeeded: "Pokračujte zaškrtnutím „Upozorním účastníkov“.",
         consentConfirm: "Zapnúť Stretnutia",
+        // MARK: Library folder and names
         folderName: "Stretnutia",
         untitledMeeting: "Stretnutie",
+        // MARK: Island, pill and bubble notices: short
         noticeStarted: "Nahrávanie spustené",
         noticeResumed: "Nahrávanie pokračuje",
         noticeSaved: "Stretnutie uložené",
@@ -2357,6 +2405,7 @@ extension ForkMeetingStrings {
         noticeDiskLow: "Disk je takmer plný",
         noticeDisplayChanged: "Obrazovka sa zmenila",
         diskMinutesFormat: "Disk: ~%d min",
+        // MARK: VoiceOver
         voiceStarted: "Nahrávanie stretnutia sa spustilo.",
         voicePaused: "Nahrávanie stretnutia je pozastavené.",
         voiceResumed: "Nahrávanie stretnutia pokračuje.",
@@ -2364,6 +2413,7 @@ extension ForkMeetingStrings {
         voiceMicrophoneFormat: "Nahrávanie teraz používa mikrofón %@.",
         voiceMicrophoneSilent: "Mikrofón neposiela žiadny zvuk. Skontrolujte mikrofón zvolený pre stretnutia.",
         voiceDiskLowFormat: "Disk je takmer plný. Zostávajúce minúty nahrávania: %d.",
+        // MARK: Failures: a short summary, then what to do
         failScreenDenied: "Obrazovka nie je povolená",
         failScreenDeniedRemedy: "Bez toho sa nedá nič nahrať. Povoľte Vorssaint v Systémových nastaveniach › Súkromie a bezpečnosť › Nahrávanie obrazovky a systémového audia.",
         failScreenRevoked: "Prístup k obrazovke odobratý",
@@ -2444,7 +2494,7 @@ extension ForkMeetingStrings {
         detectionLookalike: "Webová stránka, ktorá presne napodobní názov Google Meet a používa mikrofón, môže byť považovaná za stretnutie.",
         // MARK: Detection effects
         detectionTitle: "Rozpoznávanie",
-        detectionCaption: "Rozpozná vaše hovory v Google Meet, Zoom, Teams, Slack, FaceTime, Webex a Discord, aj za inými oknami alebo na inej ploche, a ponúkne ich nahratie. Google Meet, Zoom, Teams, Whereby a Jitsi Meet rozpozná aj v prehliadači.",
+        detectionCaption: "Rozpozná vaše hovory v aplikáciách Zoom, Teams, Slack, FaceTime, Webex a Discord a v prehliadači v Google Meet, Zoom, Teams, Whereby a Jitsi Meet, aj za inými oknami alebo na inej ploche, a ponúkne ich nahratie.",
         policyAsk: "Ponúknuť",
         policyAlways: "Vždy",
         policyNever: "Nikdy",
@@ -2518,6 +2568,9 @@ extension ForkMeetingStrings {
         noticeNeverWebCalls: "Iné hovory na webe: Nikdy",
         voiceNeverWebCalls: "Hovory v prehliadači okrem Google Meet sa už nebudú ponúkať.",
         detectionAlwaysUnavailable: "Možnosť „Vždy“ nie je na tomto Macu k dispozícii: stretnutia sa ponúknu, nikdy sa nenahrajú samy.",
+        // MARK: Fixes L
+        detectionAlwaysDelay: "Teams, Webex a Discord: nahrávajú sa samy 15 s po začiatku hovoru. Zoom a Slack: hneď ako sa otvorí ich okno schôdze, inak sa ponúknu.",
+        offerMainWindowFormat: "%@ (hlavné okno)",
         // MARK: Library
         groupToday: "Dnes",
         groupYesterday: "Včera",
@@ -2678,8 +2731,10 @@ extension ForkMeetingStrings {
         consentPledge: "Ich werde die Teilnehmenden informieren",
         consentPledgeNeeded: "Kreuze „Ich werde die Teilnehmenden informieren“ an, um fortzufahren.",
         consentConfirm: "Besprechungen aktivieren",
+        // MARK: Library folder and names
         folderName: "Besprechungen",
         untitledMeeting: "Besprechung",
+        // MARK: Island, pill and bubble notices: short
         noticeStarted: "Aufnahme gestartet",
         noticeResumed: "Aufnahme fortgesetzt",
         noticeSaved: "Besprechung gespeichert",
@@ -2689,6 +2744,7 @@ extension ForkMeetingStrings {
         noticeDiskLow: "Speicher fast voll",
         noticeDisplayChanged: "Bildschirm gewechselt",
         diskMinutesFormat: "~%d Min. Speicher übrig",
+        // MARK: VoiceOver
         voiceStarted: "Aufnahme der Besprechung gestartet.",
         voicePaused: "Aufnahme der Besprechung pausiert.",
         voiceResumed: "Aufnahme der Besprechung fortgesetzt.",
@@ -2696,6 +2752,7 @@ extension ForkMeetingStrings {
         voiceMicrophoneFormat: "Die Aufnahme verwendet jetzt das Mikrofon %@.",
         voiceMicrophoneSilent: "Das Mikrofon liefert keinen Ton. Prüfe das für Besprechungen gewählte Mikrofon.",
         voiceDiskLowFormat: "Der Speicher ist fast voll. Verbleibende Aufnahmeminuten: %d.",
+        // MARK: Failures: a short summary, then what to do
         failScreenDenied: "Bildschirmzugriff verweigert",
         failScreenDeniedRemedy: "Ohne ihn kann nichts gefilmt werden. Erlaube Vorssaint unter Systemeinstellungen › Datenschutz & Sicherheit › Aufnahme von Bildschirm und Systemaudio.",
         failScreenRevoked: "Bildschirmzugriff entzogen",
@@ -2776,7 +2833,7 @@ extension ForkMeetingStrings {
         detectionLookalike: "Eine Webseite, die einen Titel von Google Meet genau nachahmt und das Mikrofon nutzt, könnte für eine Besprechung gehalten werden.",
         // MARK: Detection effects
         detectionTitle: "Erkennung",
-        detectionCaption: "Erkennt deine Anrufe in Google Meet, Zoom, Teams, Slack, FaceTime, Webex und Discord, auch hinter anderen Fenstern oder auf einem anderen Schreibtisch, und bietet an, sie aufzunehmen. Google Meet, Zoom, Teams, Whereby und Jitsi Meet werden auch im Browser erkannt.",
+        detectionCaption: "Erkennt deine Anrufe in den Apps Zoom, Teams, Slack, FaceTime, Webex und Discord und im Browser in Google Meet, Zoom, Teams, Whereby und Jitsi Meet, auch hinter anderen Fenstern oder auf einem anderen Schreibtisch, und bietet an, sie aufzunehmen.",
         policyAsk: "Anbieten",
         policyAlways: "Immer",
         policyNever: "Nie",
@@ -2850,6 +2907,9 @@ extension ForkMeetingStrings {
         noticeNeverWebCalls: "Andere Web-Anrufe: Nie",
         voiceNeverWebCalls: "Anrufe im Browser außer Google Meet werden nicht mehr angeboten.",
         detectionAlwaysUnavailable: "„Immer“ ist auf diesem Mac nicht verfügbar: Besprechungen werden angeboten, nie von selbst aufgenommen.",
+        // MARK: Fixes L
+        detectionAlwaysDelay: "Teams, Webex und Discord: 15 s nach Beginn des Anrufs von selbst aufgenommen. Zoom und Slack: sobald ihr Meeting-Fenster aufgeht, sonst angeboten.",
+        offerMainWindowFormat: "%@ (Hauptfenster)",
         // MARK: Library
         groupToday: "Heute",
         groupYesterday: "Gestern",
@@ -3010,8 +3070,10 @@ extension ForkMeetingStrings {
         consentPledge: "J’informerai les participants",
         consentPledgeNeeded: "Cochez «\u{00A0}J’informerai les participants\u{00A0}» pour continuer.",
         consentConfirm: "Activer Réunions",
+        // MARK: Library folder and names
         folderName: "Réunions",
         untitledMeeting: "Réunion",
+        // MARK: Island, pill and bubble notices: short
         noticeStarted: "Enregistrement démarré",
         noticeResumed: "Enregistrement repris",
         noticeSaved: "Réunion enregistrée",
@@ -3021,6 +3083,7 @@ extension ForkMeetingStrings {
         noticeDiskLow: "Disque presque plein",
         noticeDisplayChanged: "Écran changé",
         diskMinutesFormat: "~%d min de disque",
+        // MARK: VoiceOver
         voiceStarted: "Enregistrement de la réunion démarré.",
         voicePaused: "Enregistrement de la réunion en pause.",
         voiceResumed: "Enregistrement de la réunion repris.",
@@ -3028,6 +3091,7 @@ extension ForkMeetingStrings {
         voiceMicrophoneFormat: "L’enregistrement utilise maintenant le micro %@.",
         voiceMicrophoneSilent: "Le micro n’envoie aucun son. Vérifiez le micro choisi pour les réunions.",
         voiceDiskLowFormat: "Le disque est presque plein. Minutes d’enregistrement restantes\u{00A0}: %d.",
+        // MARK: Failures: a short summary, then what to do
         failScreenDenied: "Accès à l’écran refusé",
         failScreenDeniedRemedy: "Sans lui, rien ne peut être filmé. Autorisez Vorssaint dans Réglages Système › Confidentialité et sécurité › Enregistrement de l’écran et de l’audio du système.",
         failScreenRevoked: "Accès à l’écran retiré",
@@ -3108,13 +3172,13 @@ extension ForkMeetingStrings {
         detectionLookalike: "Une page web qui imite exactement un titre Google Meet et utilise le micro pourrait être prise pour une réunion.",
         // MARK: Detection effects
         detectionTitle: "Détection",
-        detectionCaption: "Reconnaît vos visios Google Meet, Zoom, Teams, Slack, FaceTime, Webex et Discord, même derrière d’autres fenêtres ou sur un autre bureau, et propose de les enregistrer. Google Meet, Zoom, Teams, Whereby et Jitsi Meet sont aussi reconnus dans un navigateur.",
+        detectionCaption: "Reconnaît vos appels dans les apps Zoom, Teams, Slack, FaceTime, Webex et Discord, et dans un navigateur sur Google Meet, Zoom, Teams, Whereby et Jitsi Meet, même derrière d’autres fenêtres ou sur un autre bureau, et propose de les enregistrer.",
         policyAsk: "Proposer",
         policyAlways: "Toujours",
         policyNever: "Jamais",
         policyAskCaption: "Proposée dès que vous rejoignez la réunion\u{00A0}; sans réponse, la proposition se replie au bout de 20 secondes.",
         policyAlwaysCaption: "L’enregistrement démarre seul quand vous rejoignez la réunion. Choisir Annuler dans les quelques secondes qui suivent le met à la Corbeille.",
-        policyNeverCaption: "Un service réglé sur Jamais n’est jamais proposé. Vous pouvez toujours enregistrer à la main.",
+        policyNeverCaption: "Un service réglé sur Jamais n’est jamais proposé. Vous pouvez quand même enregistrer à la main.",
         detectionTitlesOnly: "Avant macOS 14.4, macOS ne dit pas quelle app utilise le micro\u{00A0}: seuls Google Meet et Zoom sont reconnus, au titre de leur fenêtre.",
         detectionMicrophoneUnreadable: "Ici, macOS ne dit pas quelle app utilise le micro\u{00A0}: seuls Google Meet et Zoom sont reconnus, au titre de leur fenêtre.",
         detectionNeedsScreenRecording: "Sans l’enregistrement de l’écran, les titres des fenêtres restent illisibles\u{00A0}: aucun appel dans un navigateur n’est reconnu, et les apps seulement par leur micro.",
@@ -3180,8 +3244,11 @@ extension ForkMeetingStrings {
         detectionFaceTimeRelayed: "Un appel téléphonique relayé par l’iPhone peut aussi être proposé.",
         offerNeverWebCalls: "Jamais pour les autres visios web",
         noticeNeverWebCalls: "Autres visios web\u{00A0}: Jamais",
-        voiceNeverWebCalls: "Les visios dans un navigateur autres que Google Meet ne seront plus proposées.",
+        voiceNeverWebCalls: "Les visios dans un navigateur, sauf Google Meet, ne seront plus proposées.",
         detectionAlwaysUnavailable: "«\u{00A0}Toujours\u{00A0}» n’est pas disponible sur ce Mac\u{00A0}: les réunions sont proposées, jamais enregistrées d’elles-mêmes.",
+        // MARK: Fixes L
+        detectionAlwaysDelay: "Teams, Webex et Discord\u{00A0}: enregistrés seuls 15\u{00A0}s après le début de l’appel. Zoom et Slack\u{00A0}: dès que leur fenêtre de réunion s’ouvre, sinon proposés.",
+        offerMainWindowFormat: "%@ (fenêtre principale)",
         // MARK: Library
         groupToday: "Aujourd’hui",
         groupYesterday: "Hier",
@@ -3342,8 +3409,10 @@ extension ForkMeetingStrings {
         consentPledge: "Avviserò i partecipanti",
         consentPledgeNeeded: "Spunta «Avviserò i partecipanti» per continuare.",
         consentConfirm: "Attiva Riunioni",
+        // MARK: Library folder and names
         folderName: "Riunioni",
         untitledMeeting: "Riunione",
+        // MARK: Island, pill and bubble notices: short
         noticeStarted: "Registrazione avviata",
         noticeResumed: "Registrazione ripresa",
         noticeSaved: "Riunione salvata",
@@ -3353,6 +3422,7 @@ extension ForkMeetingStrings {
         noticeDiskLow: "Disco quasi pieno",
         noticeDisplayChanged: "Schermo cambiato",
         diskMinutesFormat: "~%d min di disco",
+        // MARK: VoiceOver
         voiceStarted: "Registrazione della riunione avviata.",
         voicePaused: "Registrazione della riunione in pausa.",
         voiceResumed: "Registrazione della riunione ripresa.",
@@ -3360,6 +3430,7 @@ extension ForkMeetingStrings {
         voiceMicrophoneFormat: "La registrazione ora usa il microfono %@.",
         voiceMicrophoneSilent: "Il microfono non invia alcun suono. Controlla il microfono scelto per le riunioni.",
         voiceDiskLowFormat: "Il disco è quasi pieno. Minuti di registrazione rimasti: %d.",
+        // MARK: Failures: a short summary, then what to do
         failScreenDenied: "Accesso allo schermo negato",
         failScreenDeniedRemedy: "Senza di esso non si può riprendere nulla. Autorizza Vorssaint in Impostazioni di Sistema › Privacy e sicurezza › Registrazione schermo e audio di sistema.",
         failScreenRevoked: "Accesso allo schermo tolto",
@@ -3440,7 +3511,7 @@ extension ForkMeetingStrings {
         detectionLookalike: "Una pagina web che imita esattamente un titolo di Google Meet e usa il microfono potrebbe essere scambiata per una riunione.",
         // MARK: Detection effects
         detectionTitle: "Rilevamento",
-        detectionCaption: "Riconosce le tue chiamate su Google Meet, Zoom, Teams, Slack, FaceTime, Webex e Discord, anche dietro altre finestre o su un’altra scrivania, e propone di registrarle. Google Meet, Zoom, Teams, Whereby e Jitsi Meet vengono riconosciuti anche nel browser.",
+        detectionCaption: "Riconosce le tue chiamate nelle app Zoom, Teams, Slack, FaceTime, Webex e Discord, e nel browser su Google Meet, Zoom, Teams, Whereby e Jitsi Meet, anche dietro altre finestre o su un’altra scrivania, e propone di registrarle.",
         policyAsk: "Proponi",
         policyAlways: "Sempre",
         policyNever: "Mai",
@@ -3514,6 +3585,9 @@ extension ForkMeetingStrings {
         noticeNeverWebCalls: "Altre chiamate web: Mai",
         voiceNeverWebCalls: "Le chiamate nel browser diverse da Google Meet non saranno più proposte.",
         detectionAlwaysUnavailable: "«Sempre» non è disponibile su questo Mac: le riunioni vengono proposte, mai registrate da sole.",
+        // MARK: Fixes L
+        detectionAlwaysDelay: "Teams, Webex e Discord: registrati da soli 15 s dopo l’inizio della chiamata. Zoom e Slack: appena si apre la loro finestra della riunione, altrimenti proposti.",
+        offerMainWindowFormat: "%@ (finestra principale)",
         // MARK: Library
         groupToday: "Oggi",
         groupYesterday: "Ieri",
@@ -3674,8 +3748,10 @@ extension ForkMeetingStrings {
         consentPledge: "参加者に知らせます",
         consentPledgeNeeded: "続けるには「参加者に知らせます」をチェックしてください。",
         consentConfirm: "ミーティングをオンにする",
+        // MARK: Library folder and names
         folderName: "ミーティング",
         untitledMeeting: "ミーティング",
+        // MARK: Island, pill and bubble notices: short
         noticeStarted: "録画を開始しました",
         noticeResumed: "録画を再開しました",
         noticeSaved: "ミーティングを保存しました",
@@ -3685,6 +3761,7 @@ extension ForkMeetingStrings {
         noticeDiskLow: "ディスクの空きがわずかです",
         noticeDisplayChanged: "ディスプレイが変わりました",
         diskMinutesFormat: "ディスク残り約%d分",
+        // MARK: VoiceOver
         voiceStarted: "ミーティングの録画を開始しました。",
         voicePaused: "ミーティングの録画を一時停止しました。",
         voiceResumed: "ミーティングの録画を再開しました。",
@@ -3692,6 +3769,7 @@ extension ForkMeetingStrings {
         voiceMicrophoneFormat: "録画に使うマイクが「%@」に変わりました。",
         voiceMicrophoneSilent: "マイクから音が届いていません。ミーティング用に選んだマイクを確認してください。",
         voiceDiskLowFormat: "ディスクの空きがわずかです。あと約%d分録画できます。",
+        // MARK: Failures: a short summary, then what to do
         failScreenDenied: "画面収録が許可されていません",
         failScreenDeniedRemedy: "許可がないと何も録画できません。システム設定 › プライバシーとセキュリティ › 画面とシステムオーディオ収録で Vorssaint を許可してください。",
         failScreenRevoked: "画面収録の許可が取り消されました",
@@ -3772,7 +3850,7 @@ extension ForkMeetingStrings {
         detectionLookalike: "Google Meet のタイトルをそのまま真似てマイクを使う Web ページも、ミーティングと見なされることがあります。",
         // MARK: Detection effects
         detectionTitle: "検出",
-        detectionCaption: "Google Meet、Zoom、Teams、Slack、FaceTime、Webex、Discord の通話を、ほかのウインドウの後ろや別のデスクトップにあっても認識し、録画を提案します。Google Meet、Zoom、Teams、Whereby、Jitsi Meet はブラウザでも認識します。",
+        detectionCaption: "Zoom、Teams、Slack、FaceTime、Webex、Discord の App と、ブラウザの Google Meet、Zoom、Teams、Whereby、Jitsi Meet での通話を、ほかのウインドウの後ろや別のデスクトップにあっても認識し、録画を提案します。",
         policyAsk: "提案する",
         policyAlways: "常に録画",
         policyNever: "提案しない",
@@ -3846,6 +3924,9 @@ extension ForkMeetingStrings {
         noticeNeverWebCalls: "その他の Web 通話：提案しない",
         voiceNeverWebCalls: "Google Meet 以外のブラウザの通話は今後提案されません。",
         detectionAlwaysUnavailable: "この Mac では「常に録画」は使えません。会議は提案されるだけで、自動では録画されません。",
+        // MARK: Fixes L
+        detectionAlwaysDelay: "Teams、Webex、Discord：通話開始から 15 秒で自動的に録画します。Zoom と Slack：ミーティングウインドウが開いたらすぐに録画し、開かなければ提案します。",
+        offerMainWindowFormat: "%@（メインウインドウ）",
         // MARK: Library
         groupToday: "今日",
         groupYesterday: "昨日",
@@ -4006,8 +4087,10 @@ extension ForkMeetingStrings {
         consentPledge: "참가자에게 알리겠습니다",
         consentPledgeNeeded: "계속하려면 ‘참가자에게 알리겠습니다’를 선택하세요.",
         consentConfirm: "회의 켜기",
+        // MARK: Library folder and names
         folderName: "회의",
         untitledMeeting: "회의",
+        // MARK: Island, pill and bubble notices: short
         noticeStarted: "녹화 시작됨",
         noticeResumed: "녹화 재개됨",
         noticeSaved: "회의 저장됨",
@@ -4017,6 +4100,7 @@ extension ForkMeetingStrings {
         noticeDiskLow: "디스크 공간 부족",
         noticeDisplayChanged: "디스플레이 변경됨",
         diskMinutesFormat: "디스크 약 %d분 남음",
+        // MARK: VoiceOver
         voiceStarted: "회의 녹화를 시작했습니다.",
         voicePaused: "회의 녹화를 일시 정지했습니다.",
         voiceResumed: "회의 녹화를 재개했습니다.",
@@ -4024,6 +4108,7 @@ extension ForkMeetingStrings {
         voiceMicrophoneFormat: "이제 %@ 마이크로 녹음합니다.",
         voiceMicrophoneSilent: "마이크에서 소리가 들어오지 않습니다. 회의용으로 선택한 마이크를 확인하세요.",
         voiceDiskLowFormat: "디스크 공간이 거의 없습니다. 남은 녹화 시간(분): %d.",
+        // MARK: Failures: a short summary, then what to do
         failScreenDenied: "화면 녹화가 허용되지 않음",
         failScreenDeniedRemedy: "허용하지 않으면 아무것도 녹화할 수 없습니다. 시스템 설정 › 개인정보 보호 및 보안 › 화면 및 시스템 오디오 녹음에서 Vorssaint를 허용하세요.",
         failScreenRevoked: "화면 녹화 권한이 철회됨",
@@ -4104,7 +4189,7 @@ extension ForkMeetingStrings {
         detectionLookalike: "Google Meet 제목을 그대로 흉내 내고 마이크를 사용하는 웹 페이지도 회의로 인식될 수 있습니다.",
         // MARK: Detection effects
         detectionTitle: "감지",
-        detectionCaption: "Google Meet, Zoom, Teams, Slack, FaceTime, Webex, Discord 통화를 다른 윈도우 뒤나 다른 데스크탑에 있어도 알아보고 녹화를 제안합니다. Google Meet, Zoom, Teams, Whereby, Jitsi Meet은 브라우저에서도 알아봅니다.",
+        detectionCaption: "Zoom, Teams, Slack, FaceTime, Webex, Discord 앱과 브라우저의 Google Meet, Zoom, Teams, Whereby, Jitsi Meet 통화를 다른 윈도우 뒤나 다른 데스크탑에 있어도 알아보고 녹화를 제안합니다.",
         policyAsk: "제안",
         policyAlways: "항상",
         policyNever: "안 함",
@@ -4178,6 +4263,9 @@ extension ForkMeetingStrings {
         noticeNeverWebCalls: "기타 웹 통화: 안 함",
         voiceNeverWebCalls: "Google Meet 외의 브라우저 통화는 더 이상 제안되지 않습니다.",
         detectionAlwaysUnavailable: "이 Mac에서는 ‘항상’을 사용할 수 없습니다. 회의는 제안만 되고 자동으로 녹화되지 않습니다.",
+        // MARK: Fixes L
+        detectionAlwaysDelay: "Teams, Webex, Discord: 통화 시작 15초 후 자동으로 녹화합니다. Zoom과 Slack: 회의 윈도우가 열리면 바로 녹화하고, 아니면 제안합니다.",
+        offerMainWindowFormat: "%@ (메인 윈도우)",
         // MARK: Library
         groupToday: "오늘",
         groupYesterday: "어제",
@@ -4338,8 +4426,10 @@ extension ForkMeetingStrings {
         consentPledge: "Я попереджу учасників",
         consentPledgeNeeded: "Позначте «Я попереджу учасників», щоб продовжити.",
         consentConfirm: "Увімкнути Зустрічі",
+        // MARK: Library folder and names
         folderName: "Зустрічі",
         untitledMeeting: "Зустріч",
+        // MARK: Island, pill and bubble notices: short
         noticeStarted: "Запис розпочато",
         noticeResumed: "Запис продовжено",
         noticeSaved: "Зустріч збережено",
@@ -4349,6 +4439,7 @@ extension ForkMeetingStrings {
         noticeDiskLow: "Диск майже заповнений",
         noticeDisplayChanged: "Екран змінено",
         diskMinutesFormat: "Диск: ~%d хв",
+        // MARK: VoiceOver
         voiceStarted: "Запис зустрічі розпочато.",
         voicePaused: "Запис зустрічі призупинено.",
         voiceResumed: "Запис зустрічі продовжено.",
@@ -4356,6 +4447,7 @@ extension ForkMeetingStrings {
         voiceMicrophoneFormat: "Тепер запис іде з мікрофона %@.",
         voiceMicrophoneSilent: "Мікрофон не передає звуку. Перевірте мікрофон, вибраний для зустрічей.",
         voiceDiskLowFormat: "Диск майже заповнений. Залишилося хвилин запису: %d.",
+        // MARK: Failures: a short summary, then what to do
         failScreenDenied: "Немає доступу до екрана",
         failScreenDeniedRemedy: "Без нього нічого не записати. Дозвольте Vorssaint у Системних параметрах › Приватність і безпека › Записування системного звуку й екрана.",
         failScreenRevoked: "Доступ до екрана відкликано",
@@ -4436,7 +4528,7 @@ extension ForkMeetingStrings {
         detectionLookalike: "Вебсторінка, яка точно повторює заголовок Google Meet і використовує мікрофон, може бути сприйнята як зустріч.",
         // MARK: Detection effects
         detectionTitle: "Виявлення",
-        detectionCaption: "Розпізнає ваші дзвінки в Google Meet, Zoom, Teams, Slack, FaceTime, Webex і Discord, навіть за іншими вікнами чи на іншому робочому столі, і пропонує їх записати. Google Meet, Zoom, Teams, Whereby і Jitsi Meet розпізнаються й у браузері.",
+        detectionCaption: "Розпізнає ваші дзвінки в застосунках Zoom, Teams, Slack, FaceTime, Webex і Discord, а в браузері — у Google Meet, Zoom, Teams, Whereby і Jitsi Meet, навіть за іншими вікнами чи на іншому робочому столі, і пропонує їх записати.",
         policyAsk: "Пропонувати",
         policyAlways: "Завжди",
         policyNever: "Ніколи",
@@ -4510,6 +4602,9 @@ extension ForkMeetingStrings {
         noticeNeverWebCalls: "Інші веб-дзвінки: Ніколи",
         voiceNeverWebCalls: "Дзвінки в браузері, крім Google Meet, більше не пропонуватимуться.",
         detectionAlwaysUnavailable: "«Завжди» недоступне на цьому Mac: зустрічі пропонуються, але ніколи не записуються самі.",
+        // MARK: Fixes L
+        detectionAlwaysDelay: "Teams, Webex і Discord: запис сам починається через 15 с після початку дзвінка. Zoom і Slack: щойно відкриється вікно зустрічі, інакше пропонується.",
+        offerMainWindowFormat: "%@ (головне вікно)",
         // MARK: Library
         groupToday: "Сьогодні",
         groupYesterday: "Учора",
@@ -4670,8 +4765,10 @@ extension ForkMeetingStrings {
         consentPledge: "我会告知参与者",
         consentPledgeNeeded: "勾选“我会告知参与者”以继续。",
         consentConfirm: "打开会议",
+        // MARK: Library folder and names
         folderName: "会议",
         untitledMeeting: "会议",
+        // MARK: Island, pill and bubble notices: short
         noticeStarted: "已开始录制",
         noticeResumed: "已恢复录制",
         noticeSaved: "会议已保存",
@@ -4681,6 +4778,7 @@ extension ForkMeetingStrings {
         noticeDiskLow: "磁盘几乎已满",
         noticeDisplayChanged: "显示器已更换",
         diskMinutesFormat: "磁盘约剩 %d 分钟",
+        // MARK: VoiceOver
         voiceStarted: "已开始录制会议。",
         voicePaused: "会议录制已暂停。",
         voiceResumed: "会议录制已恢复。",
@@ -4688,6 +4786,7 @@ extension ForkMeetingStrings {
         voiceMicrophoneFormat: "现在使用麦克风“%@”录制。",
         voiceMicrophoneSilent: "麦克风没有传来声音。请检查为会议选择的麦克风。",
         voiceDiskLowFormat: "磁盘几乎已满。剩余可录制分钟数：%d。",
+        // MARK: Failures: a short summary, then what to do
         failScreenDenied: "未允许屏幕录制",
         failScreenDeniedRemedy: "没有该权限就无法录制任何内容。请在“系统设置”›“隐私与安全性”›“屏幕与系统音频录制”中允许 Vorssaint。",
         failScreenRevoked: "屏幕录制权限已撤销",
@@ -4768,7 +4867,7 @@ extension ForkMeetingStrings {
         detectionLookalike: "完全模仿 Google Meet 标题并使用麦克风的网页，也可能被当作会议。",
         // MARK: Detection effects
         detectionTitle: "检测",
-        detectionCaption: "识别你在 Google Meet、Zoom、Teams、Slack、FaceTime、Webex 和 Discord 中的通话，即使在其他窗口后面或在另一个桌面上，并提议录制。Google Meet、Zoom、Teams、Whereby 和 Jitsi Meet 在浏览器中也能识别。",
+        detectionCaption: "识别你在 Zoom、Teams、Slack、FaceTime、Webex 和 Discord App 中，以及在浏览器中 Google Meet、Zoom、Teams、Whereby 和 Jitsi Meet 上的通话，即使在其他窗口后面或在另一个桌面上，并提议录制。",
         policyAsk: "提议",
         policyAlways: "总是",
         policyNever: "从不",
@@ -4842,6 +4941,9 @@ extension ForkMeetingStrings {
         noticeNeverWebCalls: "其他网页通话：从不",
         voiceNeverWebCalls: "将不再提议录制浏览器中除 Google Meet 以外的通话。",
         detectionAlwaysUnavailable: "此 Mac 上无法使用“总是”：会议只会被提议，不会自动录制。",
+        // MARK: Fixes L
+        detectionAlwaysDelay: "Teams、Webex 和 Discord：通话开始 15 秒后自动录制。Zoom 和 Slack：会议窗口一打开就录制，否则提议录制。",
+        offerMainWindowFormat: "%@（主窗口）",
         // MARK: Library
         groupToday: "今天",
         groupYesterday: "昨天",
@@ -5002,8 +5104,10 @@ extension ForkMeetingStrings {
         consentPledge: "我會告知與會者",
         consentPledgeNeeded: "勾選「我會告知與會者」以繼續。",
         consentConfirm: "開啟會議",
+        // MARK: Library folder and names
         folderName: "會議",
         untitledMeeting: "會議",
+        // MARK: Island, pill and bubble notices: short
         noticeStarted: "已開始錄製",
         noticeResumed: "已繼續錄製",
         noticeSaved: "會議已儲存",
@@ -5013,6 +5117,7 @@ extension ForkMeetingStrings {
         noticeDiskLow: "磁碟空間快用完了",
         noticeDisplayChanged: "顯示器已變更",
         diskMinutesFormat: "磁碟約剩 %d 分鐘",
+        // MARK: VoiceOver
         voiceStarted: "已開始錄製會議。",
         voicePaused: "會議錄製已暫停。",
         voiceResumed: "會議錄製已繼續。",
@@ -5020,6 +5125,7 @@ extension ForkMeetingStrings {
         voiceMicrophoneFormat: "現在使用麥克風「%@」錄製。",
         voiceMicrophoneSilent: "麥克風沒有傳來聲音。請檢查為會議選擇的麥克風。",
         voiceDiskLowFormat: "磁碟空間快用完了。剩餘可錄製分鐘數：%d。",
+        // MARK: Failures: a short summary, then what to do
         failScreenDenied: "未允許螢幕錄製",
         failScreenDeniedRemedy: "沒有此權限就無法錄製任何內容。請在「系統設定」›「隱私權與安全性」›「螢幕與系統音訊錄製」中允許 Vorssaint。",
         failScreenRevoked: "螢幕錄製權限已撤銷",
@@ -5100,7 +5206,7 @@ extension ForkMeetingStrings {
         detectionLookalike: "完全模仿 Google Meet 標題並使用麥克風的網頁，也可能被當成會議。",
         // MARK: Detection effects
         detectionTitle: "偵測",
-        detectionCaption: "辨識你在 Google Meet、Zoom、Teams、Slack、FaceTime、Webex 和 Discord 中的通話，即使在其他視窗後面或另一個桌面上，並提議錄製。Google Meet、Zoom、Teams、Whereby 和 Jitsi Meet 在瀏覽器中也能辨識。",
+        detectionCaption: "辨識你在 Zoom、Teams、Slack、FaceTime、Webex 和 Discord App 中，以及在瀏覽器中 Google Meet、Zoom、Teams、Whereby 和 Jitsi Meet 上的通話，即使在其他視窗後面或另一個桌面上，並提議錄製。",
         policyAsk: "提議",
         policyAlways: "一律",
         policyNever: "永不",
@@ -5174,6 +5280,9 @@ extension ForkMeetingStrings {
         noticeNeverWebCalls: "其他網頁通話：永不",
         voiceNeverWebCalls: "將不再提議錄製瀏覽器中 Google Meet 以外的通話。",
         detectionAlwaysUnavailable: "此 Mac 無法使用「一律」：會議只會被提議，不會自動錄製。",
+        // MARK: Fixes L
+        detectionAlwaysDelay: "Teams、Webex 和 Discord：通話開始 15 秒後自動錄製。Zoom 和 Slack：會議視窗一打開就錄製，否則提議錄製。",
+        offerMainWindowFormat: "%@（主視窗）",
         // MARK: Library
         groupToday: "今天",
         groupYesterday: "昨天",
@@ -5334,8 +5443,10 @@ extension ForkMeetingStrings {
         consentPledge: "我會通知與會者",
         consentPledgeNeeded: "剔選「我會通知與會者」以繼續。",
         consentConfirm: "開啟會議",
+        // MARK: Library folder and names
         folderName: "會議",
         untitledMeeting: "會議",
+        // MARK: Island, pill and bubble notices: short
         noticeStarted: "已開始錄製",
         noticeResumed: "已恢復錄製",
         noticeSaved: "會議已儲存",
@@ -5345,6 +5456,7 @@ extension ForkMeetingStrings {
         noticeDiskLow: "磁碟空間差不多用完",
         noticeDisplayChanged: "顯示器已變更",
         diskMinutesFormat: "磁碟約剩 %d 分鐘",
+        // MARK: VoiceOver
         voiceStarted: "已開始錄製會議。",
         voicePaused: "會議錄製已暫停。",
         voiceResumed: "會議錄製已恢復。",
@@ -5352,6 +5464,7 @@ extension ForkMeetingStrings {
         voiceMicrophoneFormat: "現在使用咪高風「%@」錄製。",
         voiceMicrophoneSilent: "咪高風沒有傳來聲音。請檢查為會議選擇的咪高風。",
         voiceDiskLowFormat: "磁碟空間差不多用完。剩餘可錄製分鐘數：%d。",
+        // MARK: Failures: a short summary, then what to do
         failScreenDenied: "未允許螢幕錄製",
         failScreenDeniedRemedy: "沒有此權限就無法錄製任何內容。請在「系統設定」›「私隱與保安」›「螢幕與系統音訊錄製」中允許 Vorssaint。",
         failScreenRevoked: "螢幕錄製權限已撤銷",
@@ -5432,7 +5545,7 @@ extension ForkMeetingStrings {
         detectionLookalike: "完全模仿 Google Meet 標題並使用麥克風的網頁，也可能被當成會議。",
         // MARK: Detection effects
         detectionTitle: "偵測",
-        detectionCaption: "辨認你在 Google Meet、Zoom、Teams、Slack、FaceTime、Webex 和 Discord 中的通話，即使在其他視窗後面或另一個桌面上，並提議錄製。Google Meet、Zoom、Teams、Whereby 和 Jitsi Meet 在瀏覽器中也能辨認。",
+        detectionCaption: "辨認你在 Zoom、Teams、Slack、FaceTime、Webex 和 Discord App 中，以及在瀏覽器中 Google Meet、Zoom、Teams、Whereby 和 Jitsi Meet 上的通話，即使在其他視窗後面或另一個桌面上，並提議錄製。",
         policyAsk: "提議",
         policyAlways: "一律",
         policyNever: "永不",
@@ -5506,6 +5619,9 @@ extension ForkMeetingStrings {
         noticeNeverWebCalls: "其他網頁通話：永不",
         voiceNeverWebCalls: "將不再提議錄製瀏覽器中 Google Meet 以外的通話。",
         detectionAlwaysUnavailable: "此 Mac 無法使用「一律」：會議只會被提議，不會自動錄製。",
+        // MARK: Fixes L
+        detectionAlwaysDelay: "Teams、Webex 和 Discord：通話開始 15 秒後自動錄製。Zoom 和 Slack：會議視窗一打開便錄製，否則提議錄製。",
+        offerMainWindowFormat: "%@（主視窗）",
         // MARK: Library
         groupToday: "今天",
         groupYesterday: "昨天",

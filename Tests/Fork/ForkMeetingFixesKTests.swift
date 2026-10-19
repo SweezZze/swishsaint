@@ -301,7 +301,7 @@ enum ForkMeetingFixesKTests {
         for second in stride(from: 0.0, through: 30, by: 2) { faceTime.read(second, microphones: call) }
         let offer = faceTime.offers.first
         suite.expect(faceTime.starts.isEmpty && faceTime.offers.count == 1
-                        && offer.map(ForkMeetingOfferText.showsAlways) == false,
+                        && offer.map { ForkMeetingOfferText.showsAlways($0, microphoneSignal: true) } == false,
                      "a FaceTime call (or an iPhone's relayed) with Always stored: offered, its menu without Always")
         faceTime.effects = []
         faceTime.send(.always(request()), 31)
@@ -397,8 +397,9 @@ enum ForkMeetingFixesKTests {
                      "a call found by its microphone is filmed in its app's window most in front, not its largest")
         let away = [window(1, pid: 42, 1600, 1000), window(20, pid: slackPID, 1400, 900, onScreen: false, titled: false),
                     window(21, pid: slackPID, 1400, 900, onScreen: false)]
-        suite.expect(ForkMeetingAppsSupport.window(for: slack, in: away, ownPID: ownPID) == 21,
-                     "minimized or on another Space, its titled window is filmed; a spare one never shown is not")
+        // L.I3: only a window on screen; a titled one off screen may be closed.
+        suite.expect(ForkMeetingAppsSupport.window(for: slack, in: away, ownPID: ownPID) == nil,
+                     "no window of its app on screen: the display is filmed, never one off screen")
         suite.expect(ForkMeetingAppsSupport.window(for: slack, in: [window(1, pid: 42, 1600, 1000)], ownPID: ownPID) == nil,
                      "no window of its own: the display is filmed, never the other app's window in front")
         let french = ForkMeetingStrings.strings(.fr)
@@ -625,7 +626,7 @@ enum ForkMeetingFixesKTests {
                      "Teams' row shows the new Teams' icon first")
 
         let s = { ForkMeetingStrings.strings($0) }
-        suite.expect(s(.fr).detectionCaption.hasPrefix("Reconnaît vos visios Google Meet, Zoom, Teams, Slack, FaceTime, Webex et Discord")
+        suite.expect(s(.fr).detectionCaption.hasPrefix("Reconnaît vos appels dans les apps Zoom, Teams, Slack, FaceTime, Webex et Discord")
                         && !s(.enUS).detectionCaption.contains("in their app or in your browser")
                         && AppLanguage.allCases.allSatisfy { language in
                             ["Whereby", "Jitsi Meet", "Discord", "FaceTime"].allSatisfy(s(language).detectionCaption.contains)
@@ -648,12 +649,14 @@ enum ForkMeetingFixesKTests {
 
     private static func teamsOnTheWeb(_ suite: TestSuite) {
         let rules = ForkMeetingTitleRuleSet.teamsWeb
-        suite.expect(["Réunion | Microsoft Teams", "Meeting with Alice | Microsoft Teams", "Chat | Microsoft Teams",
-                      "https://teams.microsoft.com/v2/"]
+        // L.B1: its chat, or its address alone, is no call.
+        suite.expect(["Réunion | Microsoft Teams", "Meeting with Alice | Microsoft Teams",
+                      "https://teams.microsoft.com/l/meetup-join/19%3ameeting_x/0"]
                         .allSatisfy { ForkMeetingTitleRules.verdict($0, rules: rules) == .meeting(code: nil, name: nil) }
-                        && ["Microsoft Teams", " | Microsoft Teams", "Microsoft Teams review", "Teams tips | Microsoft Teams Blog"]
+                        && ["Chat | Microsoft Teams", "https://teams.microsoft.com/v2/", "Microsoft Teams", " | Microsoft Teams",
+                            "Microsoft Teams review", "Teams tips | Microsoft Teams Blog"]
                             .allSatisfy { ForkMeetingTitleRules.verdict($0, rules: rules) == .none },
-                     "Teams on the web: « <page> | Microsoft Teams », or its address")
+                     "Teams on the web: « <call> | Microsoft Teams », or a meeting's address; never its chat")
         let tab = chrome("Réunion | Microsoft Teams")
         var silent = Live()
         for second in stride(from: 0.0, through: 30, by: 3) { silent.read(second, windows: [tab]) }

@@ -247,6 +247,10 @@ struct ForkMeetingOffer: Equatable {
     /// Why it cannot be recorded now (the official recorder runs, Screen
     /// Recording is off, the disk is full): the offer shows it, greyed out.
     var blocked: ForkMeetingFailure?
+    /// "Always" waited 15 s for the call to prove itself, then offered it:
+    /// a proof that comes while it is unanswered (Zoom's meeting window
+    /// after its microphone) starts it, as "Always" would have.
+    var awaitedProof = false
 }
 
 /// "Not now" sets this meeting aside; "Never" the provider.
@@ -309,7 +313,8 @@ enum ForkMeetingDismissal: Equatable {
 ///   open for 15 s; FaceTime and the other web calls never) whose app has
 ///   used the microphone for a second, on a screen not locked: otherwise,
 ///   and once an offer was shown, it waits for a click. An app's call that
-///   may still prove itself is waited for, not offered.
+///   may still prove itself is waited for, not offered; offered after the
+///   15 s, it still starts on its own if its proof comes before an answer.
 struct ForkMeetingMachine {
     /// An unanswered offer folds after this long.
     static let offerCollapse: TimeInterval = 20
@@ -976,8 +981,9 @@ struct ForkMeetingMachine {
         // leaving and rejoining within 10 minutes, offers nothing new.
         var offered = candidate
         offered.silenced = true
-        let offer = ForkMeetingOffer(candidate: offered, collapsesAt: now.addingTimeInterval(Self.offerCollapse),
+        var offer = ForkMeetingOffer(candidate: offered, collapsesAt: now.addingTimeInterval(Self.offerCollapse),
                                      blocked: blocked)
+        offer.awaitedProof = Self.waitsOnProof(candidate, request: request, locked: locked)
         phase = .offering(offer)
         return [.silence(candidate.identity), .showOffer(offer), .announce(.offered(candidate.name))]
     }
@@ -993,6 +999,16 @@ struct ForkMeetingMachine {
                 // most recent.
                 phase = .idle
                 return [.hideOffer] + offerOrStart(candidates, request: request, now: now)
+            }
+            // Offered once "Always" had waited 15 s, unanswered: its proof
+            // now (Zoom's meeting window, the microphone 15 s without a
+            // break) starts it on its own, "Cancel" at hand.
+            if offer.awaitedProof, Self.waitsOnProof(current, request: request, locked: locked),
+               current.provesItself(at: now) {
+                var proved = offer
+                proved.candidate = current
+                proved.candidate.silenced = true
+                return startOffered(.always, request: request, offer: proved)
             }
             var updated = offer
             updated.candidate = current
@@ -1077,6 +1093,17 @@ struct ForkMeetingMachine {
              .cancelAutoStart, .continueRecording:
             return []
         }
+    }
+
+    /// "Always" would start it on its own but for its proof: set to it,
+    /// the start not refused, the screen not locked, its app on the
+    /// microphone, and a proof of its own to wait for (a meeting window, or
+    /// the microphone for 15 s).
+    private static func waitsOnProof(_ candidate: ForkMeetingCandidate, request: ForkMeetingStartRequest,
+                                    locked: Bool) -> Bool {
+        candidate.policy == .always && refusal(request) == nil && !locked
+            && request.facts.meetingsOnMicrophone.contains(candidate.identity)
+            && [.meetingWindow, .longMicrophone].contains(candidate.alwaysProof)
     }
 
     /// Starts the offered meeting; a refused start leaves the offer up,

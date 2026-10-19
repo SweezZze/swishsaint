@@ -361,6 +361,10 @@ private struct ForkMeetingDetectionSection: View {
                 ForkMeetingProviderRow(row: row, text: text, apps: $apps,
                                        microphoneSignal: ForkMeetingMicWatcher.isSupported)
             }
+            if ForkMeetingDetectionSupport.saysAlwaysDelay(ForkMeetingPolicies(json: apps),
+                                                           microphoneSignal: ForkMeetingMicWatcher.isSupported) {
+                caption(text.detectionAlwaysDelay)
+            }
             ForEach(policyCaptions, id: \.self) { line in caption(line) }
             // A page that copies a Meet title and uses the microphone could
             // be offered: said once, plainly, while Meet is not "Never".
