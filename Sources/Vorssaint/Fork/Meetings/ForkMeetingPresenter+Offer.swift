@@ -267,7 +267,9 @@ extension ForkMeetingPresenter {
             soundApp: Self.appName(pid: nil, bundle: candidate.appBundle),
             microphone: Self.microphone(settings.microphone, meetingInput: service.meetingMicrophone(for: candidate)),
             consentReminder: UserDefaults.standard.bool(forKey: ForkDefaultsKey.meetingsConsentReminder),
-            seenInShares: inIsland && ForkMeetingIsland.showsInCaptures)
+            seenInShares: inIsland && ForkMeetingIsland.showsInCaptures,
+            hasWindow: ForkMeetingAppsSupport.window(for: candidate, in: ForkMeetingRecorder.onScreenWindows(),
+                                                     ownPID: ProcessInfo.processInfo.processIdentifier) != nil)
         let actions = OfferActions(record: { service.acceptOffer() }, notNow: { service.dismissOffer(.thisTime) },
                                    always: { service.alwaysForOffer() }, never: { service.dismissOffer(.never) },
                                    copyAnnouncement: { service.copyAnnouncement() }, fix: failureAction)
@@ -284,6 +286,8 @@ extension ForkMeetingPresenter {
         var consentReminder: Bool
         /// Someone else's screen share would show the card.
         var seenInShares = false
+        /// A window will be filmed (an app found by its microphone: its largest); `nil`: the meeting's own.
+        var hasWindow: Bool?
     }
 
     /// What the offer's buttons and menu do. `fix` runs a refusal's way out
@@ -318,7 +322,7 @@ extension ForkMeetingPresenter {
         card.icon = facts.icon
         card.lines = [heading.subtitle].compactMap { $0 }
         card.lines.append(ForkMeetingOfferText.capture(
-            target: settings.target, windowApp: facts.windowApp, hasWindow: candidate.windowID != nil,
+            target: settings.target, windowApp: facts.windowApp, hasWindow: facts.hasWindow ?? (candidate.windowID != nil),
             sound: ForkMeetingOfferText.sound(setting: settings.systemAudio, providerDefault: candidate.defaultSound),
             soundApp: facts.soundApp, microphone: facts.microphone, strings: text))
         if facts.consentReminder { card.info = text.consentRemind }

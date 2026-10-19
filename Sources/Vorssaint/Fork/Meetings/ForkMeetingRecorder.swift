@@ -158,6 +158,10 @@ final class ForkMeetingRecorder: @unchecked Sendable {
     private var stopResult: ForkMeetingWriterResult?
     private var stopWaiters: [(ForkMeetingWriterResult) -> Void] = []
     private var stopRequested = false
+    /// What the tap hears (an app's pid, or `nil` for the whole Mac), for a
+    /// new one when it loses its reader, and how many were tried.
+    private var tapHears: pid_t?
+    private var tapRepair = ForkMeetingTapRepair()
 
     /// Makes a tap of one app (a pid) or of the whole Mac but this app
     /// (`nil`); `nil` when the audio system refuses.
@@ -187,12 +191,17 @@ final class ForkMeetingRecorder: @unchecked Sendable {
     ///   opened later included.
     /// - `titles`: the master's two sound tracks are named with them, in the
     ///   person's language.
+    /// - `meetingSound`: a detected meeting's app, whose sound is heard
+    ///   whatever is filmed, and whether its call's sound is no app's
+    ///   (FaceTime); `nil` hears the filmed window's app. With it and no
+    ///   window, the display is filmed, never another app's window in front.
     func start(config: ForkMeetingCaptureConfig, folder: URL, meetingWindow: CGWindowID? = nil,
                meetingMicrophone: String? = nil, excludingWindows: [CGWindowID] = [],
-               titles: ForkMeetingFinalizer.TrackTitles = .standard,
+               titles: ForkMeetingFinalizer.TrackTitles = .standard, meetingSound: MeetingSound? = nil,
                completion: @escaping (Result<ForkMeetingRecorderStart, ForkMeetingFailure>) -> Void) {
         let request = Request(config: config, folder: folder, window: meetingWindow,
-                              microphone: meetingMicrophone, excluded: Set(excludingWindows), titles: titles)
+                              microphone: meetingMicrophone, excluded: Set(excludingWindows), titles: titles,
+                              meeting: meetingSound)
         let finish = MainOnce(completion)
         Task { [self] in
             let result = await launch(request)
@@ -212,6 +221,17 @@ final class ForkMeetingRecorder: @unchecked Sendable {
         let microphone: String?
         let excluded: Set<CGWindowID>
         let titles: ForkMeetingFinalizer.TrackTitles
+        let meeting: MeetingSound?
+    }
+
+    // MARK: Apps
+
+    /// A detected meeting's sound: its app's process, and whether its call
+    /// plays in a system process instead (FaceTime's `avconferenced`), which
+    /// only the whole Mac hears.
+    struct MeetingSound: Equatable {
+        var appPID: pid_t?
+        var outsideApp: Bool
     }
 
     private func launch(_ request: Request) async -> Result<ForkMeetingRecorderStart, ForkMeetingFailure> {
@@ -219,8 +239,9 @@ final class ForkMeetingRecorder: @unchecked Sendable {
         defer { gate.finish() }
         let settings = request.config.settings
 
-        // What to film.
-        let window = request.window ?? Self.frontWindow(excluding: request.excluded)
+        // What to film: a detected meeting's window, else its display; a
+        // start by hand, the window in front.
+        let window = request.window ?? (request.meeting == nil ? Self.frontWindow(excluding: request.excluded) : nil)
         var aim = Self.aim(for: settings.target, window: window)
         var resolved = await Self.resolve(aim, excluding: request.excluded)
         if case .failure(.sourceGone) = resolved, case .window = aim {
@@ -268,13 +289,16 @@ final class ForkMeetingRecorder: @unchecked Sendable {
         let ownPID = ProcessInfo.processInfo.processIdentifier
         var tapAvailable = false
         if #available(macOS 14.4, *) { tapAvailable = true }
-        var sound = ForkMeetingSoundSource.choose(settings.systemAudio, appPID: target.ownerPID, ownPID: ownPID,
+        let appPID = request.meeting?.appPID ?? target.ownerPID
+        var sound = ForkMeetingSoundSource.choose(settings.systemAudio, appPID: appPID, ownPID: ownPID,
                                                   filmsWindow: target.isWindow, tapAvailable: tapAvailable)
         var tap: ForkMeetingAudioTap?
         var witness: ForkMeetingAudioTap?
+        var hears: pid_t?
         switch sound {
         case let .appTap(pid):
             tap = await makeTap(pid)
+            hears = pid
             if tap != nil { witness = await makeTap(nil) }
         case .macTap:
             tap = await makeTap(nil)
@@ -286,14 +310,19 @@ final class ForkMeetingRecorder: @unchecked Sendable {
         if tap == nil { sound = sound.refused(filmsWindow: target.isWindow) }
         let macTap = sound == .macTap
         let appOnly = settings.systemAudio == .app && sound == .stream
+        // A call no app plays (FaceTime): the Mac's tap writes it from the
+        // start, and a window's stream, which lacks it, never stands in.
+        let callOutsideApp = request.meeting?.outsideApp == true && settings.systemAudio == .all
         lock.withLock {
             self.tap = tap
             self.witness = witness
             self.sound = sound
+            tapHears = hears
             setting = settings.systemAudio
             judge = macTap ? tap : witness
             arbiter = ForkMeetingSoundArbiter(hasTap: tap != nil, hasWitness: macTap || witness != nil,
-                                              tapFirst: !macTap, appOnly: appOnly)
+                                              tapFirst: !macTap || callOutsideApp, appOnly: appOnly,
+                                              macOnly: callOutsideApp)
         }
         tap?.onSample = { [weak self] sample in self?.tapSample(sample) }
         tap?.onReaderLost = { [weak self] in self?.tapGone() }
@@ -646,6 +675,7 @@ final class ForkMeetingRecorder: @unchecked Sendable {
     private func tapSample(_ sample: CMSampleBuffer) {
         let heard = RecorderAudioProbe.containsSound(sample)
         let (writer, writes, proved) = lock.withLock { () -> (ForkMeetingWriter?, Bool, Bool) in
+            if heard { tapRepair.heard() }
             let proved = arbiter.tapBuffer(heard: heard)
             return (self.writer, arbiter.writesTap, proved)
         }
@@ -660,9 +690,38 @@ final class ForkMeetingRecorder: @unchecked Sendable {
     }
 
     /// The tap's own queue: it lost its reader for good (a device change it
-    /// could not follow). The stream takes the track if it may (the whole
-    /// Mac asked for, or a window filmed); otherwise silence, said once.
+    /// could not follow). A new tap of the same sound is tried first, a
+    /// second later, twice at most (S3); the track keeps its silence
+    /// meanwhile. Only then the track gives up on it (`tapLost`).
     private func tapGone() {
+        let attempt = lock.withLock { () -> (ForkMeetingAudioTap, pid_t?)? in
+            guard !stopRequested, let tap, tapRepair.tryAgain() else { return nil }
+            return (tap, tapHears)
+        }
+        guard let (old, hears) = attempt else { return tapLost() }
+        Task { [self] in
+            await old.stop()
+            try? await Task.sleep(nanoseconds: UInt64(ForkMeetingTapRepair.delay * 1_000_000_000))
+            guard !lock.withLock({ stopRequested }) else { return }
+            guard let fresh = await makeTap(hears) else { return tapGone() }
+            fresh.onSample = { [weak self] sample in self?.tapSample(sample) }
+            fresh.onReaderLost = { [weak self] in self?.tapGone() }
+            // Let go meanwhile (stopped, or a missing permission): not put back.
+            let installed = lock.withLock { () -> Bool in
+                guard !stopRequested, tap === old else { return false }
+                tap = fresh
+                if judge === old { judge = fresh }
+                return true
+            }
+            guard installed else { return await fresh.stop() }
+            if await fresh.start(synchronizingTo: CMClockGetHostTimeClock()) == false { tapGone() }
+        }
+    }
+
+    /// No new tap could take over: the stream takes the track if it may
+    /// (the whole Mac asked for, or a window filmed, never a window's for a
+    /// call no app plays); otherwise silence, said once.
+    private func tapLost() {
         let (changed, witness) = lock.withLock { () -> (Bool, ForkMeetingAudioTap?) in
             let changed = arbiter.tapReaderLost()
             judge = nil
@@ -794,10 +853,17 @@ final class ForkMeetingRecorder: @unchecked Sendable {
     /// The frontmost ordinary window of another regular app, front to back
     /// as the window server orders them.
     static func frontWindow(excluding excluded: Set<CGWindowID>) -> CGWindowID? {
+        ForkMeetingCaptureSupport.frontWindow(onScreenWindows(), ownPID: ProcessInfo.processInfo.processIdentifier,
+                                              excluded: excluded)?.id
+    }
+
+    /// The windows on screen, front to back as the window server orders
+    /// them.
+    static func onScreenWindows() -> [ForkMeetingWindowCandidate] {
         guard let list = CGWindowListCopyWindowInfo([.optionOnScreenOnly, .excludeDesktopElements],
-                                                    kCGNullWindowID) as? [[String: Any]] else { return nil }
+                                                    kCGNullWindowID) as? [[String: Any]] else { return [] }
         var regular: [pid_t: Bool] = [:]
-        let candidates = list.compactMap { info -> ForkMeetingWindowCandidate? in
+        return list.compactMap { info -> ForkMeetingWindowCandidate? in
             guard let id = info[kCGWindowNumber as String] as? UInt32,
                   let pid = info[kCGWindowOwnerPID as String] as? pid_t,
                   let bounds = (info[kCGWindowBounds as String] as? NSDictionary)
@@ -809,8 +875,6 @@ final class ForkMeetingRecorder: @unchecked Sendable {
                                               alpha: info[kCGWindowAlpha as String] as? Double ?? 1,
                                               bounds: bounds, ownerIsRegularApp: regular[pid] ?? false)
         }
-        return ForkMeetingCaptureSupport.frontWindow(candidates, ownPID: ProcessInfo.processInfo.processIdentifier,
-                                                     excluded: excluded)?.id
     }
 
     /// A completion called once, on the main thread.

@@ -336,11 +336,25 @@ extension ForkMeetingService {
             // Never one of ours to film; in display mode the whole app is
             // left out anyway.
             let excluded = presenter.windowNumbers.compactMap { CGWindowID(exactly: $0) }
-            // A detected meeting is filmed in its own window, and "Meeting
-            // microphone (auto)" records the input its app uses.
-            recorder.start(config: config, folder: folder, meetingWindow: config.meeting?.windowID,
+            // A detected meeting is filmed in its own window (an app found
+            // by its microphone, its largest one), its app heard, and
+            // "Meeting microphone (auto)" records the input its app uses.
+            let meeting = config.meeting
+            let window = meeting.flatMap {
+                ForkMeetingAppsSupport.window(for: $0, in: ForkMeetingRecorder.onScreenWindows(),
+                                              ownPID: ProcessInfo.processInfo.processIdentifier,
+                                              excluded: Set(excluded))
+            }
+            let sound = meeting.map { meeting in
+                ForkMeetingRecorder.MeetingSound(
+                    appPID: ForkMeetingAppsSupport.soundPID(
+                        for: meeting, running: NSRunningApplication.runningApplications(
+                            withBundleIdentifier: meeting.appBundle).map(\.processIdentifier)),
+                    outsideApp: ForkMeetingAppsSupport.soundOutsideApp(meeting))
+            }
+            recorder.start(config: config, folder: folder, meetingWindow: window,
                            meetingMicrophone: meetingMicrophone(for: config.meeting), excludingWindows: excluded,
-                           titles: trackTitles) { [weak self] result in
+                           titles: trackTitles, meetingSound: sound) { [weak self] result in
                 self?.captureAnswered(result, config: config, folder: folder, token: token)
             }
         }
