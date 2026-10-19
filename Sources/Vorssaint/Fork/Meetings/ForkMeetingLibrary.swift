@@ -79,6 +79,8 @@ struct ForkMeetingLibraryEntry: Equatable {
     let provider: String?
     let meetCode: String?
     let notes: String
+    /// Its exports' history, for the row's ✓ or ✗ (§4.5).
+    let exports: [ForkMeetingSidecar.Export]
     /// The file the player opens: the final video, or, for an interrupted
     /// meeting, its master, readable up to its last fragment.
     private(set) var playable: String?
@@ -136,6 +138,7 @@ struct ForkMeetingLibraryEntry: Equatable {
             provider = nil
             meetCode = nil
             notes = ""
+            exports = []
             isReadOnly = true
             isForeign = false
         case let .success(meeting):
@@ -150,6 +153,7 @@ struct ForkMeetingLibraryEntry: Equatable {
             provider = meeting.provider
             meetCode = meeting.meetCode
             notes = meeting.notes ?? ""
+            exports = meeting.exports ?? []
             isForeign = !meeting.isWrittenByMeetings
             isReadOnly = !meeting.isRewritable || isForeign
         }
