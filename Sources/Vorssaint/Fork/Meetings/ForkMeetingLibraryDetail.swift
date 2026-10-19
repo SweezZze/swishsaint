@@ -125,7 +125,7 @@ struct ForkMeetingLibraryDetail: View {
         let lines: (String, String)?
         switch entry.status {
         case .complete:
-            lines = entry.isReadOnly ? (text.statusLaterVersion, "") : nil
+            lines = entry.isReadOnly ? (entry.isForeign ? text.statusForeign : text.statusLaterVersion, "") : nil
         case .recovered:
             lines = (text.statusRecovered, text.statusRecoveredHelp)
         case let .interrupted(cause):
