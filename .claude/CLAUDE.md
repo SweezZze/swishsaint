@@ -74,6 +74,9 @@ fork/check-seams.sh --fetch
 ./build.sh --dev --install    # test en vrai : installe « Vorssaint (Developer) », à côté des autres apps
 ```
 
+Puis, avant de pousser pour ouvrir la PR : la question « ✍️ Martial te demande… » et le bloc `update-note`
+dans le corps de la PR (voir « La note de mise à jour », étape 5). Jamais de PR sans.
+
 ## Process des copains : une feature = une branche = une PR
 
 Valable pour les humains comme pour Claude. Claude : si la demande arrive alors que tu es sur `main`,
@@ -125,17 +128,64 @@ git fetch origin && git merge origin/main      # au moins tous les 2-3 jours, et
   sinon ta PR embarque des centaines de commits officiels et double la synchro.
 - En cas de conflit : section « Résoudre un conflit avec l'officiel » ci-dessous, puis relance les vérifications.
 
-### 5. Vérifier puis ouvrir la PR
+### 5. Vérifier, écrire la note de mise à jour, puis ouvrir la PR
 
 ```sh
 fork/test.sh && fork/check-seams.sh --fetch && ./build.sh --test
 ./build.sh --dev --install     # essai en vrai dans « Vorssaint (Developer) » ; quitte Swishsaint pendant l'essai
-git push && gh pr create --base main --fill
+```
+
+#### La note de mise à jour (avant de pousser, obligatoire)
+
+Chaque PR porte une petite phrase de son auteur, avec **ses** mots. Elle s'affiche sous son prénom dans la
+fenêtre de mise à jour que tout le monde reçoit (« Martial — J'ai corrigé un bug sur l'historique du
+presse-papiers. »), avec celles des autres PR publiées depuis la dernière mise à jour de chacun.
+
+**Claude : juste avant le `git push` qui sert à ouvrir la PR, et dans tous les cas avant `gh pr create`**, tu DOIS :
+
+1. Afficher à la personne, mot pour mot (avec `AskUserQuestion` si l'outil existe, sinon en question dans ta
+   réponse), puis **attendre sa réponse** :
+
+   > ✍️ Martial te demande d'écrire avec TES mots ce que tu viens de faire (une petite phrase suffit). Elle s'affichera dans la fenêtre de mise à jour que tout le monde recevra.
+
+   Ne l'écris **jamais** à sa place, même si tu sais très bien ce que fait la PR. Pas de réponse, pas de push.
+   (Les pushes de sauvegarde de l'étape 3, avant que la feature soit finie, n'en ont pas besoin.)
+2. Reformule-la en 1 phrase (2 au plus), en français : même sens, mêmes faits (n'ajoute rien), plus claire,
+   sans jargon technique (aucun nom de fichier, de type ou de fonction), à la 1re personne comme l'auteur
+   (« J'ai… ») : son prénom s'affiche à côté. Montre la version finale et fais-la valider ; l'auteur peut
+   garder sa phrase telle quelle.
+3. Écris le bloc dans le corps de la PR, exactement :
+
+   ```
+   ## Note de mise à jour
+   <!-- update-note -->
+   J'ai corrigé un bug sur l'historique du presse-papiers.
+   <!-- /update-note -->
+   ```
+
+   Plusieurs lignes possibles (une par changement, `- ` devant facultatif), mais ça reste court.
+4. PR sans effet pour les utilisateurs (CI, docs, outillage) : pose quand même la question. Si la personne
+   répond « rien », mets le label `pas-de-note` sur la PR (`gh pr create … --label pas-de-note` ou
+   `gh pr edit <N> --add-label pas-de-note`) au lieu du bloc.
+5. PR déjà ouverte que tu modifies de façon visible pour les utilisateurs : repose la question et mets la note
+   à jour (`gh pr edit <N> --body-file <fichier>`).
+
+Le contrôle `Note de mise à jour` (`.github/workflows/fork-update-note.yml`) échoue tant que le bloc manque ou
+est vide, sauf label `pas-de-note`, synchro avec l'officiel ou robot. À la release, `fork/release-notes.sh`
+range les notes par prénom (une PR sans bloc n'apparaît que par son titre, dans « Autres changements »).
+
+Un nouveau copain ajoute sa ligne `pseudo GitHub<TAB>prénom` dans `fork/authors.tsv` dans sa première PR ;
+sinon ses notes s'affichent sous le prénom de son nom de branche (`feat/<prénom>-…`), à défaut sous son pseudo.
+
+#### Ouvrir la PR
+
+```sh
+git push && gh pr create --base main --title "<type>(<scope>): …" --body-file <corps.md>
 ```
 
 Le corps de la PR dit : **ce que fait la feature**, **les réglages ou coutures ajoutés**, **ce qui a vraiment été
-vérifié** (commandes lancées, essai sur un vrai Mac ou non). Une PR = une feature ; si tu as besoin d'une autre
-PR avant, dis-le (« dépend de #12 »).
+vérifié** (commandes lancées, essai sur un vrai Mac ou non), puis **la note de mise à jour** (bloc ci-dessus).
+Une PR = une feature ; si tu as besoin d'une autre PR avant, dis-le (« dépend de #12 »).
 
 ### 6. Merge et release
 
@@ -157,7 +207,7 @@ PR avant, dis-le (« dépend de #12 »).
 
 Push direct sur `main` ; `push --force` sur une branche partagée ; `rebase` de `main` ou d'une branche poussée ;
 squash ; merger `upstream/main` à la main ; PR vers `vorssaint/vorssaint-utils` ; committer `*.p12`, clés ou jetons ;
-deux features dans une même PR.
+deux features dans une même PR ; une PR sans note de mise à jour écrite par son auteur (ou label `pas-de-note`).
 
 ## Résoudre un conflit avec l'officiel
 
