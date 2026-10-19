@@ -40,7 +40,7 @@ enum ForkDefaultsTests {
                                            ForkDefaultsKey.meetingsShortcut, ForkDefaultsKey.meetingsApps,
                                            ForkDefaultsKey.meetingsAutoStop, ForkDefaultsKey.meetingsAutoStopSeconds,
                                            ForkDefaultsKey.meetingsCalendarNaming, ForkDefaultsKey.meetingsRetentionDays,
-                                           ForkDefaultsKey.meetingsTranscribe]
+                                           ForkDefaultsKey.meetingsTranscribe, ForkDefaultsKey.meetingsSummarize]
         suite.expect(Set(ForkDefaults.legacyKeys.values) == Set(ForkDefaults.registered.keys).subtracting(addedSinceFork)
                         && ForkDefaults.legacyKeys.count == ForkDefaults.registered.count - addedSinceFork.count,
                      "every setting of the pre-fork test builds has its new name, and only those")
@@ -76,8 +76,10 @@ enum ForkDefaultsTests {
                         && ForkDefaults.registered[ForkDefaultsKey.meetingsConsentReminder] as? Bool == true
                         && ForkDefaults.registered[ForkDefaultsKey.meetingsRetentionDays] as? Int == 0
                         && ForkDefaults.registered[ForkDefaultsKey.meetingsTranscribe] as? Bool == false
-                        && ForkDefaults.backupKeys.contains(ForkDefaultsKey.meetingsTranscribe),
-                     "meetings start off; once on, they film the window with the app's sound and its microphone, in standard quality, never go to the Trash on their own, and are transcribed only when asked (a choice that follows the backup)")
+                        && ForkDefaults.backupKeys.contains(ForkDefaultsKey.meetingsTranscribe)
+                        && ForkDefaults.registered[ForkDefaultsKey.meetingsSummarize] as? Bool == false
+                        && ForkDefaults.backupKeys.contains(ForkDefaultsKey.meetingsSummarize),
+                     "meetings start off; once on, they film the window with the app's sound and its microphone, in standard quality, never go to the Trash on their own, are transcribed only when asked, and summarized only when asked (choices that follow the backup)")
         suite.expect(ForkDefaults.backupKeys.isSuperset(of: [ForkDefaultsKey.meetingsApps, ForkDefaultsKey.meetingsAutoStop,
                                                              ForkDefaultsKey.meetingsAutoStopSeconds])
                         && ForkDefaults.registered[ForkDefaultsKey.meetingsApps] as? String == ForkMeetingPolicies.defaultJSON

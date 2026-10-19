@@ -68,7 +68,8 @@ struct ForkDropFolderExporter: ForkMeetingExporter {
         let json: Data
         do {
             json = try ForkMeetingExportDocument.json(package.sidecar, includesMeetCode: config.includesMeetCode,
-                                                      includesNotes: config.includesNotes)
+                                                      includesNotes: config.includesNotes,
+                                                      includesSummary: config.includesSummary, summary: package.summary)
         } catch {
             throw ForkMeetingExportFailure.unreadable
         }

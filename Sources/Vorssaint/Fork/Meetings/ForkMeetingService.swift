@@ -235,6 +235,7 @@ final class ForkMeetingService: ObservableObject {
         syncSystemEvents()
         syncDetection()
         ForkMeetingTranscriber.shared.sync(enabled: wanted)
+        ForkMeetingSummarizer.shared.sync(enabled: wanted)
         ForkMeetingRetentionSweep.shared.sync(enabled: wanted)
         if !wanted {
             ForkMeetingLibraryWindow.shared.close()

@@ -23,6 +23,8 @@ struct ForkMeetingLibraryDetail: View {
 
     @State private var title: String
     @State private var notes: String
+    /// The player the transcript and the markers follow (Finish E).
+    @StateObject private var playback = ForkMeetingPlaybackController()
     /// Typed since the last commit: only then is the folder renamed.
     @State private var titleTyped = false
     @FocusState private var titleFocused: Bool
@@ -47,14 +49,18 @@ struct ForkMeetingLibraryDetail: View {
                 // As wide as the detail, low enough to leave the facts, the
                 // notes and the buttons in sight in a window of the default
                 // size; the player fits the picture inside.
-                ForkMeetingLibraryPlayer(url: model.playableURL(entry), placeholder: text.playerNoVideo)
+                ForkMeetingLibraryPlayer(url: model.playableURL(entry), placeholder: text.playerNoVideo, playback: playback)
                     .frame(maxWidth: .infinity)
                     .frame(height: 250)
                     .clipShape(RoundedRectangle(cornerRadius: 8))
+                ForkMeetingReviewBar(playback: playback, markers: entry.markers, fallbackDuration: entry.seconds,
+                                     text: text, language: language)
+                ForkMeetingReviewTranscript(model: model, entry: entry, playback: playback, text: text)
                 facts
                 ForkMeetingExportStatus(folder: model.folderURL(entry), live: model.isLive(entry), text: text, language: language)
                 notesField
                 ForkMeetingTranscriptRow(model: model, entry: entry, text: text)
+                ForkMeetingSummaryRow(model: model, entry: entry, text: text)
                 actions
             }
             .padding(20)
@@ -253,6 +259,8 @@ struct ForkMeetingLibraryDetail: View {
 struct ForkMeetingLibraryPlayer: NSViewRepresentable {
     let url: URL?
     let placeholder: String
+    /// The player's owner, which the transcript and the markers follow.
+    let playback: ForkMeetingPlaybackController
 
     func makeNSView(context: Context) -> NSView {
         let container = NSView()
@@ -297,14 +305,16 @@ struct ForkMeetingLibraryPlayer: NSViewRepresentable {
     static func dismantleNSView(_ view: NSView, coordinator: Coordinator) {
         coordinator.player?.player?.pause()
         coordinator.player?.player = nil
+        coordinator.playback?.unload()
     }
 
     private func load(_ coordinator: Coordinator) {
         coordinator.url = url
         coordinator.file = url.map(Self.fileID)
         coordinator.player?.player?.pause()
+        coordinator.playback = playback
         let playable = url.map { FileManager.default.fileExists(atPath: $0.path) } ?? false
-        coordinator.player?.player = playable ? url.map { AVPlayer(url: $0) } : nil
+        coordinator.player?.player = playback.load(playable ? url : nil)
         coordinator.player?.isHidden = !playable
         coordinator.label?.isHidden = playable
     }
@@ -325,5 +335,6 @@ struct ForkMeetingLibraryPlayer: NSViewRepresentable {
         var file: [Int]?
         weak var player: AVPlayerView?
         weak var label: NSTextField?
+        weak var playback: ForkMeetingPlaybackController?
     }
 }

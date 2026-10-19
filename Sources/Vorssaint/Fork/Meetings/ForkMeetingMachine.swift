@@ -128,6 +128,8 @@ enum ForkMeetingNotice: Equatable {
     /// "Cancel" took back the "Always" just chosen by hand, before anything
     /// was recorded; the provider's short name.
     case askedAgain(String)
+    /// "Mark This Moment": the time marked comes as its detail.
+    case marked
 
     /// 28 characters at most.
     func title(_ s: ForkMeetingStrings) -> String {
@@ -151,6 +153,7 @@ enum ForkMeetingNotice: Equatable {
         case .discarded(.kept): return s.noticeDiscardKept
         case .announcementCopied: return s.noticeAnnouncementCopied
         case let .askedAgain(provider): return s.noticeAskAgain(provider)
+        case .marked: return s.noticeMarked
         }
     }
 
@@ -164,7 +167,7 @@ enum ForkMeetingNotice: Equatable {
         case .discarded(.kept): return s.noticeDiscardKeptDetail
         case .announcementCopied: return s.noticeAnnouncementCopiedDetail
         case .started, .resumed, .saved, .recovered, .microphoneSilent, .displayChanged, .sourceGone, .failure,
-             .soundLost, .discarded:
+             .soundLost, .discarded, .marked:
             return nil
         }
     }

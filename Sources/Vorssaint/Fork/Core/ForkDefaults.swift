@@ -99,6 +99,10 @@ enum ForkDefaultsKey {
     /// (`ForkMeetingTranscriber`). Off until a real meeting has been read
     /// back (plan §10).
     static let meetingsTranscribe = "fork.meetings.transcribe"
+    /// Each transcript written is summarized on this Mac by Apple
+    /// Intelligence (`ForkMeetingSummarizer`), when it can run here. Off by
+    /// default (Finish E).
+    static let meetingsSummarize = "fork.meetings.summarize"
     /// The meetings folder's path; empty: a folder in Movies, named in the
     /// person's language and saved here at the first recording. Machine
     /// state, like the official recorder's folder: kept out of the backup.
@@ -173,6 +177,7 @@ enum ForkDefaults {
         ForkDefaultsKey.meetingsCalendarNaming: false,
         ForkDefaultsKey.meetingsRetentionDays: ForkMeetingRetention.fallback,
         ForkDefaultsKey.meetingsTranscribe: false,
+        ForkDefaultsKey.meetingsSummarize: false,
     ]
 
     /// Where each setting lived in the test builds made before the fork

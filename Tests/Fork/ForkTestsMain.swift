@@ -57,6 +57,7 @@ struct ForkTests {
             ("fork-meetings-fixes-o", { ForkMeetingFixesOTests.run(suite) }),
             ("fork-meetings-export", { ForkMeetingExportTests.run(suite) }),
             ("fork-meetings-fixes-n", { ForkMeetingFixesNTests.run(suite) }),
+            ("fork-meetings-finish-e", { ForkMeetingFinishETests.run(suite) }),
         ]
         var selected = Set<String>()
         var listOnly = false

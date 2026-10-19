@@ -434,15 +434,25 @@ enum ForkMeetingTranscriptFormat {
     /// Paragraphs "[00:01:05] Me: …", one per run of the same speaker.
     /// `label` gives what starts a paragraph after its time ("Me: ",
     /// "Moi : "); `rewrite` changes what was heard (the dictation's
-    /// replacements), a paragraph at a time.
+    /// replacements), a paragraph at a time. Each moment marked while
+    /// recording is a line of its own, "★ [00:12:03]", before the first
+    /// paragraph that starts after it (`ForkMeetingMarkers`).
     static func text(_ merged: [Segment], label: (ForkMeetingSpeaker) -> String,
-                     rewrite: (String) -> String = { $0 }) -> String {
+                     rewrite: (String) -> String = { $0 }, markers: [Double] = []) -> String {
         var paragraphs: [String] = []
         var speaker: ForkMeetingSpeaker?
         var start: TimeInterval = 0
         var parts: [String] = []
+        var pending = markers.sorted()[...]
+        func mark(before time: TimeInterval?) {
+            while let next = pending.first, time.map({ next < $0 }) ?? true {
+                paragraphs.append(ForkMeetingMarkers.transcriptLine(next))
+                pending = pending.dropFirst()
+            }
+        }
         func flush() {
             guard let speaker, !parts.isEmpty else { return }
+            mark(before: start)
             paragraphs.append("[\(timestamp(start, milliseconds: false))] \(label(speaker))\(rewrite(parts.joined(separator: " ")))")
         }
         for segment in merged where !segment.words.isEmpty {
@@ -455,6 +465,7 @@ enum ForkMeetingTranscriptFormat {
             parts.append(segment.text)
         }
         flush()
+        mark(before: nil)
         return paragraphs.isEmpty ? "" : paragraphs.joined(separator: "\n\n") + "\n"
     }
 
@@ -523,7 +534,8 @@ enum ForkMeetingTranscriptFormat {
     static func document(me: [ForkParakeetWord], participants: [ForkParakeetWord],
                          microEnvelope: ForkMeetingEnvelope?, meetingEnvelope: ForkMeetingEnvelope?,
                          label: (ForkMeetingSpeaker) -> String, rewrite: (String) -> String = { $0 },
-                         echo settings: ForkMeetingEcho.Settings = ForkMeetingEcho.Settings()) -> Document {
+                         echo settings: ForkMeetingEcho.Settings = ForkMeetingEcho.Settings(),
+                         markers: [Double] = []) -> Document {
         var kept = me
         var report: ForkMeetingEcho.Report?
         if !me.isEmpty, !participants.isEmpty, let microEnvelope, let meetingEnvelope {
@@ -533,7 +545,7 @@ enum ForkMeetingTranscriptFormat {
             kept = me.enumerated().filter { !found.echo.contains($0.offset) }.map(\.element)
         }
         let merged = merge(segments(kept, speaker: .me), segments(participants, speaker: .participants))
-        return Document(text: text(merged, label: label, rewrite: rewrite),
+        return Document(text: text(merged, label: label, rewrite: rewrite, markers: markers),
                         srt: srt(cues(merged, label: label, rewrite: rewrite)),
                         words: kept.count + participants.count, echo: report,
                         meetingSilent: !me.isEmpty && participants.isEmpty)

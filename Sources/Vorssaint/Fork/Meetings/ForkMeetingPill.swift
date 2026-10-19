@@ -29,6 +29,8 @@ final class ForkMeetingPill {
         var toggleTarget: () -> Void = {}
         /// "Continue" while the countdown of a meeting that seems over runs.
         var continueRecording: () -> Void = {}
+        /// ★ "Mark This Moment" (Finish E).
+        var mark: () -> Void = { ForkMeetingService.shared.addMarker() }
     }
 
     private let model = ForkMeetingPillModel()
@@ -559,6 +561,9 @@ struct ForkMeetingPillView: View {
             // VoiceOver has them at any time.
             .accessibilityValue(accessibilityValue)
             .accessibilityActions {
+                if model.look?.showsControls == true {
+                    Button(model.text.pillMark) { actions.mark() }
+                }
                 if model.look?.showsControls == true, model.context.canSwitchTarget {
                     Button(toggleLabel) { actions.toggleTarget() }
                 }
@@ -703,6 +708,10 @@ struct ForkMeetingPillView: View {
             }
             pillButton(symbol: "stop.fill", color: Color(nsColor: .systemRed),
                        label: model.cancelsUntil == nil ? text.pillStop : text.pillStopCancels, action: actions.stop)
+            if model.hovering {
+                pillButton(symbol: "star", color: .white, label: text.pillMark, action: actions.mark)
+                    .transition(.opacity)
+            }
             if model.hovering, model.context.canSwitchTarget {
                 let window = model.context.target == .window
                 pillButton(symbol: window ? "display" : "macwindow", color: .white,
