@@ -23,6 +23,12 @@ import Foundation
 /// - `meeting.json` says it with `capture.target: "audioOnly"`; an older
 ///   `meeting.json` (window, display, or no capture at all) reads as before.
 enum ForkMeetingAudioOnly {
+    /// The Command Bar's "Record a Meeting" asks for Screen Recording only
+    /// for a picture to film, not yet allowed, and before a recording runs.
+    static func needsScreenRecording(filmsPicture: Bool, allowed: Bool, running: Bool) -> Bool {
+        filmsPicture && !allowed && !running
+    }
+
     /// The finished `.m4a`: the mix and the two sources, as a video's
     /// sound. An estimate, like `ForkMeetingQuality.totalBitRate`.
     static var totalBitRate: Int {

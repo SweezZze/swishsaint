@@ -42,7 +42,10 @@ enum ForkMeetingCommandBar {
             shortcut: enabled ? shortcut(.toggle) : nil,
             isActive: running,
             // Return asks macOS for it, as the screen recorder's row does.
-            trouble: setup ?? (Permissions.shared.screenRecording || running ? nil : .needsPermission),
+            // Sound only needs no Screen Recording, so asks for none.
+            trouble: setup ?? (ForkMeetingAudioOnly.needsScreenRecording(
+                filmsPicture: service.captureSettings().target.filmsPicture,
+                allowed: Permissions.shared.screenRecording, running: running) ? .needsPermission : nil),
             run: { _ in afterBeat { ForkMeetingService.shared.toggleRecording() } }))
         if enabled, service.isRecording {
             entries.append(CommandBarEntry(

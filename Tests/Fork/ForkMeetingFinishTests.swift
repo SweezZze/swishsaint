@@ -40,6 +40,11 @@ enum ForkMeetingFinishTests {
         context.target = .audioOnly
         suite.expect(!context.offersTargetSwitch,
                      "a meeting recorded for its sound alone offers neither the screen nor the window, even with a window known")
+        suite.expect(!ForkMeetingAudioOnly.needsScreenRecording(filmsPicture: false, allowed: false, running: false)
+                        && ForkMeetingAudioOnly.needsScreenRecording(filmsPicture: true, allowed: false, running: false)
+                        && !ForkMeetingAudioOnly.needsScreenRecording(filmsPicture: true, allowed: true, running: false)
+                        && !ForkMeetingAudioOnly.needsScreenRecording(filmsPicture: true, allowed: false, running: true),
+                     "the Command Bar asks for Screen Recording only for a picture: never for sound only")
         context.target = .display
         context.canSwitchTarget = false
         suite.expect(!context.offersTargetSwitch, "nor does a display filmed without a window to come back to")
