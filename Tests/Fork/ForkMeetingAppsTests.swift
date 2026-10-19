@@ -158,12 +158,15 @@ enum ForkMeetingAppsTests {
     }
 
     private static func slackTitles(_ suite: TestSuite) {
-        let huddles = ["Huddle", "Huddle: #design", "Slack | Huddle with Alice", "Acme – Huddle", "huddle"]
-        suite.expect(huddles.allSatisfy { verdict($0, .slackHuddle) == meeting }, "a huddle's window is told")
+        let huddles = ["Huddle", "Huddle: #design", "Huddle – Acme – Slack", "Huddle | Acme", "huddle", "Huddle:design"]
+        suite.expect(huddles.allSatisfy { verdict($0, .slackHuddle) == meeting },
+                     "a huddle's window is told by « Huddle » at the head of its title")
         let channels = ["Slack | #meeting | Acme", "#meeting (Channel) - Acme - Slack", "#huddle-notes - Acme - Slack",
-                        "Huddles - Acme - Slack", "Meeting notes – Slack", "Slack"]
+                        "Huddles - Acme - Slack", "Meeting notes – Slack", "Slack", "huddle-notes (Channel) - Acme - Slack",
+                        "huddle (Channel) - Acme - Slack", "Huddle notes - Acme - Slack", "Slack | Huddle with Alice",
+                        "Acme – Huddle"]
         suite.expect(channels.allSatisfy { verdict($0, .slackHuddle) == .none },
-                     "a channel called #meeting or #huddle-notes, or the huddles list, is no huddle")
+                     "a channel called meeting, huddle or huddle-notes, the huddles list, a huddle further on: no huddle")
     }
 
     private static func webTitles(_ suite: TestSuite) {

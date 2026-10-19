@@ -21,6 +21,7 @@ enum ForkMeetingFixesKTests {
         aLongMicrophoneProvesTeams(suite)
         faceTimeIsOnlyOffered(suite)
         aWebCallLivesOnItsMicrophone(suite)
+        aChannelCalledHuddle(suite)
     }
 
     // MARK: - Fixtures
@@ -341,5 +342,30 @@ enum ForkMeetingFixesKTests {
             lives = lives && resolution.candidates.map(\.name) == ["Point hebdo"]
         }
         suite.expect(lives, "another tab in front, the browser's microphone open: the Jitsi room goes on, named")
+    }
+
+    // MARK: - K.I4: Slack's huddle window, exactly
+
+    /// Probes P3a and P3b: a Slack channel named huddle-notes (Slack writes
+    /// its title without the "#").
+    private static func aChannelCalledHuddle(_ suite: TestSuite) {
+        let rules = ForkMeetingTitleRuleSet.slackHuddle
+        suite.expect(ForkMeetingTitleRules.verdict("huddle-notes (Channel) - Acme - Slack", rules: rules) == .none
+                        && ForkMeetingTitleRules.verdict("huddle (Channel) - Acme - Slack", rules: rules) == .none
+                        && ForkMeetingTitleRules.verdict("Huddle – Acme – Slack", rules: rules)
+                            == .meeting(code: nil, name: nil),
+                     "« huddle-notes (Channel) - Acme - Slack » is no huddle window, « Huddle – Acme – Slack » is")
+        let channel = slackWindow("huddle-notes (Channel) - Acme - Slack")
+        var slack = Live()
+        slack.read(0, windows: [channel], microphones: [slackMicrophone])
+        let born = slack.read(2, windows: [channel], microphones: [slackMicrophone])
+        suite.expect(born.candidates.map(\.identity) == [identity("slack:300#1")] && born.candidates.first?.windowID == nil,
+                     "a call in Slack with that channel open: Slack's, its window not that channel's")
+        var ended: [ForkMeetingIdentity] = []
+        for second in stride(from: 4.0, through: 60, by: 2) {
+            ended += slack.read(second, windows: [channel], microphones: []).ended
+        }
+        suite.expect(ended == [identity("slack:300#1")],
+                     "its microphone gone, the channel still open: the call ends after 20 s")
     }
 }
