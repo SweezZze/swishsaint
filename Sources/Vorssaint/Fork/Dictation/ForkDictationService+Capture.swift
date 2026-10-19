@@ -18,9 +18,9 @@ extension ForkDictationService {
     }
 
     func startCapture() {
-        // The Dictations panel takes keys while open: the text must go to
+        // The dictation history takes keys while open: the text must go to
         // the app the person dictates into, not to its search field.
-        ForkDictationHistoryPanel.shared.hide()
+        ForkNotchDictations.stepAsideForDictation()
         if let failure = pendingFailure {
             // Said once the person clearly meant to dictate, never for a
             // shortcut that only lingered on its modifier.

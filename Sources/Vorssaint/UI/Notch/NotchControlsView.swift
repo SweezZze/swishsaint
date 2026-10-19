@@ -93,6 +93,7 @@ struct NotchControlsView: View {
 
     @ViewBuilder private func shortcut(_ item: NotchControlItem) -> some View {
         switch item {
+        case .dictation: ForkNotchDictationTile() // FORK(notch-dictation3)
         case .keepAwake: NotchAwakeButton()
         case .microphone: NotchMicButton()
         case .screenshot:
@@ -120,6 +121,7 @@ struct NotchControlsView: View {
 extension NotchControlItem {
     func title(_ l10n: L10n) -> String {
         switch self {
+        case .dictation: return ForkNotchDictations.title(l10n.language) // FORK(notch-dictation3)
         case .volume: return FeatureStrings.notch(l10n.language).volume
         case .brightness: return FeatureStrings.notch(l10n.language).brightness
         case .keyboardLight: return FeatureStrings.brightness(l10n.language).keyboardLight

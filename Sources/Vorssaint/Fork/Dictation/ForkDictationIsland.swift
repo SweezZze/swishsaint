@@ -27,11 +27,25 @@ enum ForkDictationIsland {
         guard isAvailable, let notice = notice(for: presentation, level: level, now: now, text: text) else {
             return false
         }
+        lastShown = notice
         return NotchService.shared.show(notice)
     }
 
     static func retract() {
         NotchService.shared.retractMicrophoneNotice()
+    }
+
+    /// The last notice dictation sent, to tell it from the microphone's own.
+    private static var lastShown: NotchNotice?
+
+    /// A click on the island's notice (seam `notch-dictation4`): the final
+    /// step of a dictation kept in the history opens it in the island's
+    /// Dictations tab. False for any other notice, which the island handles.
+    static func activate(_ notice: NotchNotice) -> Bool {
+        guard notice.event == .microphone, let shown = lastShown,
+              notice.title == shown.title, notice.symbol == shown.symbol, notice.detail == shown.detail
+        else { return false }
+        return ForkDictationPresenter.shared.openHistoryFromIsland()
     }
 
     static func notice(for presentation: ForkDictationPresentation, level: Float, now: Date,

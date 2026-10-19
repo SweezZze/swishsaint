@@ -3,7 +3,7 @@
 
 import Foundation
 
-/// How the history panel lists the dictations: pinned ones first, then the
+/// How the dictation history lists the dictations: pinned ones first, then the
 /// others by day, newest first. A search lists its matches alone, newest
 /// first, without the days.
 enum ForkDictationHistoryListing {
@@ -43,7 +43,7 @@ enum ForkDictationHistoryListing {
         return sections
     }
 
-    /// The records in the order the panel shows them, for the arrow keys
+    /// The records in the order the history shows them, for the arrow keys
     /// and ⌘1 to ⌘9.
     static func ordered(_ sections: [Section]) -> [ForkDictationRecord] {
         sections.flatMap(\.records)
