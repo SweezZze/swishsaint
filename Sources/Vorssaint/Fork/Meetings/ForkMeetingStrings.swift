@@ -2860,7 +2860,7 @@ extension ForkMeetingStrings {
         voiceMeetingBack: "ミーティングは続いています。録画は停止しません。",
         noticeDiscardedTrash: "取り消し · ゴミ箱に移動",
         noticeDiscardedDeleted: "取り消し · 削除済み",
-        noticeDiscardKept: "取り消し · フォルダは残っています",
+        noticeDiscardKept: "取り消し · フォルダは未削除",
         noticeDiscardKeptDetail: "ミーティングのフォルダに残っています",
         voiceDiscardedDeleted: "録画を取り消しました。フォルダをゴミ箱に移せなかったため、削除しました。",
         voiceDiscardKept: "録画を取り消しましたが、フォルダをゴミ箱に移すことも削除することもできませんでした。ミーティングのフォルダに残っています。",
