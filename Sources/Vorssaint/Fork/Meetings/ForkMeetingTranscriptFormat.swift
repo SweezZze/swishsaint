@@ -69,12 +69,15 @@ struct ForkMeetingEnvelope: Equatable {
 ///    the speakers' delay (a correlation over 0.7). Parakeet hears the
 ///    speakers through the room differently from the clean track
 ///    ("Pifrance" for "Bpifrance"): about one echoed word in ten has no exact
-///    twin, but it keeps the meeting's syllables. A word said over a
-///    participant mixes in the person's own, and follows them less.
+///    twin, but it keeps the meeting's syllables. Such a word must also
+///    never rise above the echo the path predicts: more than 6 dB over it
+///    on more than one 10 ms in ten, it holds a voice of its own. A word
+///    said over a participant mixes in the person's syllables, which do: it
+///    stays. Losing a word said costs more than keeping an echo.
 ///
 /// The twin words calibrate the path: fewer than `minimumMatches`, or a gain
 /// too high to be an echo (both sides saying "yes" at once), and nothing goes.
-/// Measured in S6 on an hour: 94 to 96 % of the echoed words removed, none of
+/// Measured in S6 on an hour: 92 to 94 % of the echoed words removed, none of
 /// the 2 935 words really said (interjections included).
 enum ForkMeetingEcho {
     struct Settings: Equatable {
@@ -108,6 +111,11 @@ enum ForkMeetingEcho {
         /// A word whose energy follows the meeting's this closely (Pearson,
         /// on the log of each 10 ms) is the meeting's.
         var following: Float = 0.7
+        /// A word without a twin goes only if no more than `burstShare` of
+        /// its 10 ms rise `burst` above the predicted echo (a power ratio:
+        /// 4 = +6 dB).
+        var burst: Float = 4
+        var burstShare: Float = 0.1
     }
 
     /// The microphone words that start just after a near-identical meeting
@@ -249,8 +257,10 @@ enum ForkMeetingEcho {
                 continue
             }
             if twins.contains(index)
-                || following(micro: microEnvelope, meeting: meetingEnvelope, word.start, word.end, shift: lag, path: path)
-                    > settings.following {
+                || (following(micro: microEnvelope, meeting: meetingEnvelope, word.start, word.end, shift: lag, path: path)
+                        > settings.following
+                    && rising(micro: microEnvelope, meeting: meetingEnvelope, word.start, word.end, shift: lag,
+                              path: path, over: settings.burst) <= settings.burstShare) {
                 echo.insert(index)
             }
         }
@@ -305,6 +315,23 @@ enum ForkMeetingEcho {
         guard !values.isEmpty else { return 0 }
         let sorted = values.sorted()
         return sorted[min(sorted.count - 1, Int(Double(sorted.count - 1) * share))]
+    }
+
+    /// The share of a word's 10 ms where the microphone rises `over` (a power
+    /// ratio) above the echo the path predicts from the meeting track: a
+    /// voice of the person's own, over the echo.
+    static func rising(micro: ForkMeetingEnvelope, meeting: ForkMeetingEnvelope,
+                       _ start: TimeInterval, _ end: TimeInterval, shift: TimeInterval,
+                       path: Path, over: Float) -> Float {
+        let hop = ForkMeetingEnvelope.hopSeconds
+        let lag = Int((shift / hop).rounded())
+        let from = max(lag, Int((start / hop).rounded(.down)))
+        let to = min(micro.meanSquares.count, meeting.meanSquares.count + lag, Int((end / hop).rounded(.up)))
+        guard to > from else { return 1 }
+        let above = (from..<to).filter {
+            micro.meanSquares[$0] > over * (path.gain * meeting.meanSquares[$0 - lag] + path.floor)
+        }.count
+        return Float(above) / Float(to - from)
     }
 
     /// How closely the microphone's energy follows the meeting's over a word

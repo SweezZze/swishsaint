@@ -58,8 +58,10 @@ enum ForkMeetingTranscriptTests {
                      "the speakers' delay is found in the two tracks' energy: \(report.delay) s for 120 ms")
         suite.expect(report.gain.map { $0 < 0.25 } == true && report.matches >= 20,
                      "the words heard on both sides calibrate an echo path well under the voice (\(report.matches) matches)")
-        suite.expect(Double(removedGhosts) >= 0.9 * Double(ghosts.count),
-                     "nine echoed words in ten or more go: \(removedGhosts) of \(ghosts.count)")
+        // A word said is worth more than an echo kept: the ones without a
+        // twin that rise above the predicted echo stay (`ForkMeetingEcho`).
+        suite.expect(Double(removedGhosts) >= 0.85 * Double(ghosts.count),
+                     "85 % of the echoed words or more go: \(removedGhosts) of \(ghosts.count)")
         suite.expect(removedSaid.isEmpty,
                      "no word the person said goes with them: \(removedSaid.map { echoed[$0].0 })")
 
@@ -227,7 +229,7 @@ enum ForkMeetingTranscriptTests {
             microEnvelope: energy(Data.microphoneWithEchoEnergy), meetingEnvelope: energy(Data.meetingEnergy),
             label: labels)
         let said = Data.microphoneWithEcho.filter(\.3).count
-        suite.expect(made.words >= Data.meeting.count + said && made.words <= Data.meeting.count + said + 10,
+        suite.expect(made.words >= Data.meeting.count + said && made.words <= Data.meeting.count + said + 15,
                      "the document counts the words kept, the echo out (\(made.words))")
         suite.expect(made.text.hasPrefix("[00:00:00] Moi\u{00A0}: Bonjour à tous") && made.text.contains("Participants\u{00A0}: Bonjour Camille."),
                      "the spike's minute reads as the person, then the participants")
