@@ -15,7 +15,8 @@ enum ForkMeetingDetectionEffectsTests {
     private static let settings = ForkMeetingCaptureSettings(target: .window, systemAudio: .app, microphone: "meeting",
                                                              quality: .standard)
     private static let ready = ForkMeetingStartFacts(freeBytes: 50_000_000_000, screenRecordingAllowed: true,
-                                                     microphoneAllowed: true, officialRecorderBusy: false)
+                                                     microphoneAllowed: true, officialRecorderBusy: false,
+                                                     meetingsOnMicrophone: [ForkMeetingIdentity("meet:abc-defg-hij")])
 
     static func run(_ suite: TestSuite) {
         running(suite)

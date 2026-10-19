@@ -142,7 +142,10 @@ enum ForkMeetingDetectionBehaviorTests {
             resolver.policies = apps
             let resolution = resolver.resolve(ForkMeetingReading(at: now, windows: windows, microphones: microphones))
             for identity in resolution.ended { run(.endProbable(identity, countdown: countdown), now) }
-            run(.candidates(resolution.candidates, ForkMeetingStartRequest(settings: settings, facts: facts)), now)
+            // As `ForkMeetingService.detectionRequest` asks it.
+            var asked = facts
+            asked.meetingsOnMicrophone = resolution.onMicrophone
+            run(.candidates(resolution.candidates, ForkMeetingStartRequest(settings: settings, facts: asked)), now)
             run(.tick, now)
         }
 
@@ -358,12 +361,8 @@ enum ForkMeetingDetectionBehaviorTests {
         // An hour later, the weekly meeting on the same link.
         live.read(3598, microphones: [chromeMicrophone])
         live.read(3600, windows: [chrome("Meet – " + codeA)])
-        // FAILS: a reading of a set-aside meeting that is never born marks its set-aside "alive" again
-        // (ForkMeetingResolver.swift:254) and the track is then dropped without an end
-        // (ForkMeetingResolver.swift:242-244), so the end time is never written back and the meeting is
-        // never offered again until the feature is turned off.
-        // suite.expect(offers(live.take()).count == 1,
-        //              "an hour after its end, a meeting whose link was opened for a moment is offered again")
+        suite.expect(offers(live.take()).count == 1,
+                     "an hour after its end, a meeting whose link was opened for a moment is offered again")
     }
 
     /// §3.2 n° 17: an unanswered offer folds after 20 s and stays as a
@@ -420,7 +419,10 @@ enum ForkMeetingDetectionBehaviorTests {
 
     /// Two Meet in two tabs of one window: only the active tab gives its
     /// title. Leaving the second one must not stop the recording of the
-    /// first, which still goes on behind (§3.2 n° 5 and n° 18).
+    /// first, which still goes on behind (§3.2 n° 5 and n° 18). The second
+    /// tab stays in front less than 20 s: longer, the first meeting would
+    /// end, the browser's microphone being the newer meeting's (H1.2, two
+    /// Meet in a row).
     private static func twoMeetingsInOneWindow(_ suite: TestSuite) {
         var live = Live()
         live.read(-5, microphones: [chromeMicrophone])
@@ -429,17 +431,14 @@ enum ForkMeetingDetectionBehaviorTests {
         live.send(.captureStarted(token1, folder: folder), 3)
         live.readEvery3s(from: 6, to: 60, windows: [chrome("Meet – " + codeA)])
         // The second tab in front: another meeting, in the same window.
-        live.readEvery3s(from: 63, to: 120, windows: [chrome("Meet – " + codeB)])
+        live.readEvery3s(from: 63, to: 75, windows: [chrome("Meet – " + codeB)])
         _ = live.take()
         // Left there; the first meeting goes on in its tab.
-        live.read(123, windows: [chrome("Vous avez quitté la réunion")])
-        live.readEvery3s(from: 126, to: 150, windows: [chrome("Vous avez quitté la réunion")])
-        // let effects = live.take()
-        // FAILS: an end page ends every meeting last seen in that window (ForkMeetingResolver.swift:236-239),
-        // so leaving the call in the front tab ends the recorded call of the tab behind, whose microphone
-        // still runs: its recording stops 15 s later.
-        // suite.expect(countdowns(effects).isEmpty && !stops(effects) && live.machine.activeSession != nil,
-        //              "leaving a second call in another tab of the window does not stop the first one's recording")
+        live.read(78, windows: [chrome("Vous avez quitté la réunion")])
+        live.readEvery3s(from: 81, to: 150, windows: [chrome("Vous avez quitté la réunion")])
+        let effects = live.take()
+        suite.expect(countdowns(effects).isEmpty && !stops(effects) && live.machine.activeSession != nil,
+                     "leaving a second call in another tab of the window does not stop the first one's recording")
     }
 
     /// §3.2 n° 19: a second meeting during a recording stops nothing and is
@@ -860,12 +859,9 @@ enum ForkMeetingDetectionBehaviorTests {
         suite.expect(offers(live.take()).map(\.candidate.name) == ["Point hebdo"],
                      "a named meeting without its code is offered after two readings")
         live.readEvery3s(from: 6, to: 9, windows: [chrome("Meet – Point hebdo – " + codeA)])
-        // let effects = live.take()
-        // FAILS: only a code that disappears is followed in the same window (ForkMeetingResolver.swift:195-199);
-        // a code that appears gives a new identity `meet:<code>`, born at once on the browser's microphone,
-        // newer, so the same meeting is offered a second time (ForkMeetingMachine.swift:847-853).
-        // suite.expect(offers(effects).isEmpty && !effects.contains(.hideOffer),
-        //              "its code appearing in the title changes nothing: the same meeting, not offered again")
+        let effects = live.take()
+        suite.expect(offers(effects).isEmpty && !effects.contains(.hideOffer),
+                     "its code appearing in the title changes nothing: the same meeting, not offered again")
     }
 
     /// §12.1 false positives: a browser title that is not a Google Meet.

@@ -33,6 +33,10 @@ struct ForkMeetingStartFacts: Equatable {
     var microphoneAllowed: Bool
     /// The official screen recorder is running.
     var officialRecorderBusy: Bool
+    /// The detected meetings whose app has used a microphone for a second
+    /// at least (`ForkMeetingResolution.onMicrophone`): "Always" starts only
+    /// those on its own; a title alone, which any page can copy, is offered.
+    var meetingsOnMicrophone: Set<ForkMeetingIdentity> = []
 }
 
 struct ForkMeetingStartRequest: Equatable {
@@ -261,7 +265,10 @@ enum ForkMeetingDismissal: Equatable {
 /// - an offer is greyed out, never started, while the official recorder
 ///   runs (or anything else would refuse the start);
 /// - a recording "Always" started can be cancelled for 5 s: its folder is
-///   deleted, never finalized.
+///   deleted, never finalized;
+/// - "Always" starts on its own only a meeting whose app has used the
+///   microphone for a second, on a screen not locked: otherwise, and once
+///   an offer was shown, it waits for a click.
 struct ForkMeetingMachine {
     /// An unanswered offer folds after this long.
     static let offerCollapse: TimeInterval = 20
@@ -820,14 +827,17 @@ struct ForkMeetingMachine {
     // MARK: - Detection
 
     /// From idle: offers the most recent meeting not set aside, or starts it
-    /// when its provider is set to "Always" and nothing refuses the start.
+    /// when its provider is set to "Always" and nothing refuses the start:
+    /// its app has used the microphone for a second (a page can copy a
+    /// title, not a call) and the screen is not locked (nobody to cancel).
     private mutating func offerOrStart(_ candidates: [ForkMeetingCandidate], request: ForkMeetingStartRequest,
                                        now: Date) -> [Effect] {
         guard !terminating, let candidate = candidates.first(where: { !$0.silenced && $0.policy != .never }) else {
             return []
         }
         let blocked = Self.refusal(request)
-        if candidate.policy == .always, blocked == nil {
+        if candidate.policy == .always, blocked == nil, !locked,
+           request.facts.meetingsOnMicrophone.contains(candidate.identity) {
             return [.silence(candidate.identity)] + start(origin: .always, request: request, meeting: candidate)
         }
         // Set aside as soon as it is offered: coming back to its tab, or

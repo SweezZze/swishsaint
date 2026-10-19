@@ -22,6 +22,9 @@ struct ForkMeetingDetection {
     var freeBytes: Int64?
     var freeBytesReadAt: Date?
     var readingFreeBytes = false
+    /// The meetings whose app has used a microphone for a second, from the
+    /// last resolution: "Always" starts only those.
+    var onMicrophone: Set<ForkMeetingIdentity> = []
 }
 
 /// A meeting found on its own: the windows' titles and the microphones are
@@ -60,8 +63,9 @@ extension ForkMeetingService {
         detection.generation += 1
         let generation = detection.generation
         detection.resolver = ForkMeetingResolver(policies: ForkMeetingPolicies.load(defaults))
-        let windows = ForkMeetingWindowScanner { [weak self] signals in
-            self?.take(ForkMeetingReading(at: Date(), windows: signals), generation: generation)
+        let windows = ForkMeetingWindowScanner { [weak self] signals, unreadable in
+            self?.take(ForkMeetingReading(at: Date(), windows: signals, titlesUnreadable: unreadable),
+                       generation: generation)
         }
         detection.windows = windows
         windows.start()
@@ -94,6 +98,7 @@ extension ForkMeetingService {
         detection.lastMicrophones = []
         detection.freeBytes = nil
         detection.freeBytesReadAt = nil
+        detection.onMicrophone = []
         if detectedMeeting != nil { detectedMeeting = nil }
         // An offer goes with the feature; a recording is stopped by `sync()`.
         if case .offering = machine.phase { send(.featureDisabled) }
@@ -127,6 +132,7 @@ extension ForkMeetingService {
         // The page may have changed a provider's choice since.
         detection.resolver.policies = ForkMeetingPolicies.load(defaults)
         let resolution = detection.resolver.resolve(reading)
+        detection.onMicrophone = resolution.onMicrophone
         let countdown = ForkMeetingAutoStop.load(defaults).countdown
         for identity in resolution.ended {
             log.notice("meeting probably over: \(identity.value, privacy: .private)")
@@ -141,13 +147,14 @@ extension ForkMeetingService {
 
     /// What a start would be asked with now, for an offer and for "Always":
     /// like a start by hand, with the free space last read off the main
-    /// thread, and the microphone as it is allowed (never asked: nothing
-    /// may pop up on its own).
+    /// thread, the microphone as it is allowed (never asked: nothing may
+    /// pop up on its own), and the meetings whose app uses the microphone.
     func detectionRequest() -> ForkMeetingStartRequest {
-        let facts = ForkMeetingStartFacts(freeBytes: detection.freeBytes,
+        var facts = ForkMeetingStartFacts(freeBytes: detection.freeBytes,
                                           screenRecordingAllowed: CGPreflightScreenCaptureAccess(),
                                           microphoneAllowed: AVCaptureDevice.authorizationStatus(for: .audio) == .authorized,
                                           officialRecorderBusy: officialRecorderBusy())
+        facts.meetingsOnMicrophone = detection.onMicrophone
         return ForkMeetingStartRequest(settings: captureSettings(), facts: facts, title: nil)
     }
 

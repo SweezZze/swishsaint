@@ -15,7 +15,16 @@ enum ForkMeetingFixesH1Tests {
 
     static func run(_ suite: TestSuite) {
         codesOnlyInMeetTitles(suite)
+        namedTitlesNeedTheMicrophone(suite)
+        alwaysNeedsAMicrophoneAndAnUnlockedScreen(suite)
+        greyedAlwaysWaitsForAClick(suite)
+        twoMeetInARow(suite)
+        endPageOfAnotherTab(suite)
+        setAsideAfterAGlimpse(suite)
+        codeAppearing(suite)
         cleanNames(suite)
+        titlesGone(suite)
+        pageText(suite)
     }
 
     // MARK: - Fixtures
@@ -53,6 +62,76 @@ enum ForkMeetingFixesH1Tests {
 
     private static func verdict(_ title: String) -> ForkMeetingTitleVerdict {
         ForkMeetingTitleRules.verdict(title, rules: .googleMeet)
+    }
+
+    /// The service's loop, pure (as `ForkMeetingDetectionBehaviorTests`
+    /// plays it): each end, the meetings on with what a start would be
+    /// asked with, then the time; `silence` and `setPolicy` fed back.
+    private struct Live {
+        var resolver: ForkMeetingResolver
+        var machine = Machine()
+        var apps: ForkMeetingPolicies
+        var facts = ForkMeetingFixesH1Tests.ready
+        private var log: [Effect] = []
+        private var lastTick: TimeInterval = -.infinity
+
+        init(apps json: String = ForkMeetingPolicies.defaultJSON) {
+            apps = ForkMeetingPolicies(json: json)
+            resolver = ForkMeetingResolver(ownPID: ForkMeetingFixesH1Tests.ownPID, policies: apps)
+        }
+
+        mutating func read(_ seconds: TimeInterval, windows: [Window]? = nil, microphones: [Microphone]? = nil,
+                           titlesUnreadable: Bool = false) {
+            let now = ForkMeetingFixesH1Tests.at(seconds)
+            resolver.policies = apps
+            let resolution = resolver.resolve(ForkMeetingReading(at: now, windows: windows, microphones: microphones,
+                                                                 titlesUnreadable: titlesUnreadable))
+            for identity in resolution.ended { run(.endProbable(identity, countdown: 15), now) }
+            var asked = facts
+            asked.meetingsOnMicrophone = resolution.onMicrophone
+            run(.candidates(resolution.candidates, ForkMeetingStartRequest(settings: settings, facts: asked)), now)
+            run(.tick, now)
+        }
+
+        mutating func readEvery3s(from start: TimeInterval, to end: TimeInterval, windows: [Window]) {
+            for seconds in stride(from: start, through: end, by: 3) {
+                clock(until: seconds)
+                read(seconds, windows: windows)
+            }
+        }
+
+        mutating func send(_ event: Machine.Event, _ seconds: TimeInterval) {
+            clock(until: seconds)
+            run(event, ForkMeetingFixesH1Tests.at(seconds))
+        }
+
+        mutating func clock(until seconds: TimeInterval) {
+            var next = lastTick.isFinite ? lastTick + 1 : seconds.rounded(.down)
+            while next <= seconds {
+                if Support.clockRuns(phase: machine.phase) { run(.tick, ForkMeetingFixesH1Tests.at(next)) }
+                lastTick = next
+                next += 1
+            }
+        }
+
+        private mutating func run(_ event: Machine.Event, _ now: Date) {
+            let effects = machine.handle(event, now: now)
+            for effect in effects {
+                switch effect {
+                case let .silence(identity): resolver.silence(identity, at: now)
+                case let .setPolicy(policy, provider):
+                    apps.set(policy, for: provider)
+                    resolver.policies = apps
+                default: break
+                }
+            }
+            log += effects
+        }
+
+        mutating func take() -> [Effect] {
+            defer { log = [] }
+            return log
+        }
     }
 
     private static func offers(_ effects: [Effect]) -> [ForkMeetingOffer] {
@@ -107,6 +186,201 @@ enum ForkMeetingFixesH1Tests {
                      "« Meet - Glass Animals (Official Video) - YouTube » is a name without a code")
     }
 
+    private static func namedTitlesNeedTheMicrophone(_ suite: TestSuite) {
+        var github = Live()
+        github.read(-5, microphones: [chromeMicrophone])
+        github.readEvery3s(from: 0, to: 60, windows: [chrome("Comparing main...fix-auth-bug · octo/app · GitHub"),
+                                                      chrome("Fix the-null-ptr bug · Pull Request", window: 8),
+                                                      chrome("Bitcoin hits all-time-low – Le Monde", window: 9)])
+        suite.expect(github.take().isEmpty, "a branch, a pull request and an article, the microphone open: nothing offered")
+
+        var video = Live()
+        video.readEvery3s(from: 0, to: 120, windows: [chrome("Meet - Glass Animals (Official Video) - YouTube")])
+        suite.expect(video.take().isEmpty, "a video called « Meet - … » without the microphone: nothing, however long")
+
+        var probe = Live()
+        probe.read(0, windows: [chrome("Meet – Point hebdo")], microphones: [chromeMicrophone])
+        probe.read(0.4, microphones: [])
+        probe.readEvery3s(from: 3, to: 60, windows: [chrome("Meet – Point hebdo")])
+        suite.expect(probe.take().isEmpty, "nor with a microphone opened 400 ms and closed")
+
+        var call = Live()
+        call.read(-5, microphones: [chromeMicrophone])
+        call.read(0, windows: [chrome("Meet – Point hebdo – " + codeA)])
+        suite.expect(offers(call.take()).map(\.candidate.name) == ["Point hebdo"],
+                     "« Meet – Point hebdo – abc-defg-hij », Chrome's microphone open: offered at once")
+
+        var named = Live()
+        named.read(-5, microphones: [chromeMicrophone])
+        named.readEvery3s(from: 0, to: 3, windows: [chrome("Meet – Point hebdo")])
+        suite.expect(offers(named.take()).map(\.candidate.name) == ["Point hebdo"],
+                     "« Meet – Point hebdo », the microphone open: offered at the second reading")
+
+        // The page says it: a page copying a Meet title and using the
+        // microphone could be offered.
+        var copy = Live()
+        copy.read(-5, microphones: [chromeMicrophone])
+        copy.readEvery3s(from: 0, to: 3, windows: [chrome("Meet - Glass Animals (Official Video) - YouTube")])
+        suite.expect(offers(copy.take()).count == 1,
+                     "a page imitating a Meet title while the microphone runs is offered, never recorded on its own")
+    }
+
+    private static func alwaysNeedsAMicrophoneAndAnUnlockedScreen(_ suite: TestSuite) {
+        let always = #"{"meet":"always"}"#
+        var silent = Live(apps: always)
+        silent.readEvery3s(from: 0, to: 3, windows: [chrome("Meet – " + codeA)])
+        let silentEffects = silent.take()
+        suite.expect(starts(silentEffects).isEmpty && offers(silentEffects).map(\.candidate.identity) == [meetA],
+                     "Always without the microphone: offered, not started")
+
+        var justOpened = Live(apps: always)
+        justOpened.read(0, windows: [chrome("Meet – " + codeA)])
+        justOpened.read(2.5, microphones: [chromeMicrophone])
+        justOpened.read(3, windows: [chrome("Meet – " + codeA)])
+        let justEffects = justOpened.take()
+        suite.expect(starts(justEffects).isEmpty && offers(justEffects).count == 1,
+                     "nor with a microphone open for half a second")
+
+        var locked = Live(apps: always)
+        locked.send(.locked, -10)
+        locked.read(-5, microphones: [chromeMicrophone])
+        locked.read(0, windows: [chrome("Meet – " + codeA)])
+        let lockedEffects = locked.take()
+        suite.expect(starts(lockedEffects).isEmpty && offers(lockedEffects).count == 1,
+                     "a locked screen: offered, nobody being there to cancel")
+
+        var unlocked = Live(apps: always)
+        unlocked.send(.locked, -10)
+        unlocked.send(.unlocked, -8)
+        unlocked.read(-5, microphones: [chromeMicrophone])
+        unlocked.read(0, windows: [chrome("Meet – " + codeA)])
+        let unlockedEffects = unlocked.take()
+        suite.expect(starts(unlockedEffects).map(\.origin) == [.always] && offers(unlockedEffects).isEmpty,
+                     "the microphone open for a second and the screen unlocked: Always starts it on its own")
+    }
+
+    /// H1.11: an offer greyed at its birth (or offered for want of the
+    /// microphone) is seen by the person: freed, it waits for a click.
+    private static func greyedAlwaysWaitsForAClick(_ suite: TestSuite) {
+        var greyed = Live(apps: #"{"meet":"always"}"#)
+        greyed.facts = recorderBusy
+        greyed.read(-5, microphones: [chromeMicrophone])
+        greyed.read(0, windows: [chrome("Meet – " + codeA)])
+        greyed.readEvery3s(from: 3, to: 9, windows: [chrome("Meet – " + codeA)])
+        greyed.facts = ready
+        greyed.readEvery3s(from: 12, to: 60, windows: [chrome("Meet – " + codeA)])
+        let effects = greyed.take()
+        suite.expect(starts(effects).isEmpty && offers(effects).last?.blocked == nil
+                        && offers(effects).first?.blocked == .officialRecorderBusy,
+                     "Always greyed by the official recorder, then freed: the offer lights up and waits")
+
+        var late = Live(apps: #"{"meet":"always"}"#)
+        late.readEvery3s(from: 0, to: 3, windows: [chrome("Meet – " + codeA)])
+        late.read(4, microphones: [chromeMicrophone])
+        late.readEvery3s(from: 6, to: 30, windows: [chrome("Meet – " + codeA)])
+        suite.expect(starts(late.take()).isEmpty, "offered for want of the microphone, it is not started when it opens")
+        late.send(.accept(request()), 31)
+        suite.expect(starts(late.take()).map(\.origin) == [.offered], "Record still records it")
+    }
+
+    // MARK: - H1.2, H1.3
+
+    /// One Meet closed with ⌘W, the next one opened in the same browser: the
+    /// browser's microphone is the new meeting's.
+    private static func twoMeetInARow(_ suite: TestSuite) {
+        var live = Live()
+        live.read(-5, microphones: [chromeMicrophone])
+        live.read(0, windows: [chrome("Meet – " + codeA)])
+        live.send(.accept(request()), 2)
+        live.send(.captureStarted(token1, folder: folder), 3)
+        live.readEvery3s(from: 6, to: 99, windows: [chrome("Meet – " + codeA)])
+        _ = live.take()
+        // ⌘W: the tab goes, the next Meet opens in another one.
+        live.readEvery3s(from: 102, to: 117, windows: [chrome("Meet – " + codeB, window: 8)])
+        suite.expect(countdowns(live.take()).isEmpty, "the first meeting has its 20 s")
+        live.readEvery3s(from: 120, to: 123, windows: [chrome("Meet – " + codeB, window: 8)])
+        suite.expect(countdowns(live.take()) == [at(138)],
+                     "then it ends, the microphone being the second meeting's: the countdown starts")
+        live.readEvery3s(from: 126, to: 138, windows: [chrome("Meet – " + codeB, window: 8)])
+        suite.expect(stops(live.take()), "and its recording stops 15 s later")
+        live.send(.writerFinished(token1, .finished(recordedSeconds: nil)), 139)
+        live.read(141, windows: [chrome("Meet – " + codeB, window: 8)])
+        suite.expect(offers(live.take()).map(\.candidate.identity) == [meetB], "the second Meet is offered")
+        live.send(.accept(request()), 142)
+        live.send(.captureStarted(token2, folder: second), 143)
+        suite.expect(live.machine.activeSession?.meeting == meetB, "and recorded")
+
+        var notNow = Live()
+        notNow.read(-5, microphones: [chromeMicrophone])
+        notNow.read(0, windows: [chrome("Meet – " + codeA)])
+        notNow.send(.dismiss(.thisTime), 2)
+        notNow.readEvery3s(from: 3, to: 30, windows: [chrome("Meet – " + codeA)])
+        _ = notNow.take()
+        notNow.read(33, windows: [chrome("Meet – " + codeB)])
+        suite.expect(offers(notNow.take()).map(\.candidate.identity) == [meetB],
+                     "the first set aside with Not now: the second Meet in the same tab is offered at once")
+    }
+
+    private static func endPageOfAnotherTab(_ suite: TestSuite) {
+        var resolver = ForkMeetingResolver(ownPID: ownPID)
+        _ = resolver.resolve(ForkMeetingReading(at: at(-5), microphones: [chromeMicrophone]))
+        _ = resolver.resolve(ForkMeetingReading(at: at(0), windows: [chrome("Meet – " + codeA)]))
+        _ = resolver.resolve(ForkMeetingReading(at: at(3), windows: [chrome("Meet – " + codeB)]))
+        let left = resolver.resolve(ForkMeetingReading(at: at(6), windows: [chrome("Vous avez quitté la réunion")]))
+        suite.expect(left.ended == [meetB] && left.candidates.map(\.identity) == [meetA],
+                     "two calls in two tabs of a window: the end page ends the one it showed, not the other")
+        let still = resolver.resolve(ForkMeetingReading(at: at(9), windows: [chrome("Vous avez quitté la réunion")]))
+        suite.expect(still.ended.isEmpty, "a page that stays ends nothing more")
+
+        var freed = ForkMeetingResolver(ownPID: ownPID)
+        _ = freed.resolve(ForkMeetingReading(at: at(-5), microphones: [chromeMicrophone]))
+        _ = freed.resolve(ForkMeetingReading(at: at(0), windows: [chrome("Meet – " + codeA)]))
+        _ = freed.resolve(ForkMeetingReading(at: at(3), windows: [chrome("Meet – " + codeB)]))
+        _ = freed.resolve(ForkMeetingReading(at: at(5), microphones: []))
+        let both = freed.resolve(ForkMeetingReading(at: at(6), windows: [chrome("You left the meeting")]))
+        suite.expect(both.ended == [meetA, meetB], "the microphone free as well: both end")
+
+        var alone = ForkMeetingResolver(ownPID: ownPID)
+        _ = alone.resolve(ForkMeetingReading(at: at(-5), microphones: [chromeMicrophone]))
+        _ = alone.resolve(ForkMeetingReading(at: at(0), windows: [chrome("Meet – " + codeA)]))
+        _ = alone.resolve(ForkMeetingReading(at: at(3), windows: [chrome("Gmail")]))
+        let back = alone.resolve(ForkMeetingReading(at: at(6), windows: [chrome("Vous avez quitté la réunion")]))
+        suite.expect(back.ended == [meetA], "a window's only meeting ends with its end page, whatever tab was in front")
+    }
+
+    // MARK: - H1.4, H1.5, H1.6, H1.7
+
+    private static func setAsideAfterAGlimpse(_ suite: TestSuite) {
+        var resolver = ForkMeetingResolver(ownPID: ownPID)
+        _ = resolver.resolve(ForkMeetingReading(at: at(-5), microphones: [chromeMicrophone]))
+        _ = resolver.resolve(ForkMeetingReading(at: at(0), windows: [chrome("Meet – " + codeA)]))
+        resolver.silence(meetA, at: at(1))
+        _ = resolver.resolve(ForkMeetingReading(at: at(9), microphones: []))
+        _ = resolver.resolve(ForkMeetingReading(at: at(10), windows: [chrome("Vous avez quitté la réunion")]))
+        // Its link opened for one reading, the microphone shut: never born.
+        _ = resolver.resolve(ForkMeetingReading(at: at(300), windows: [chrome("Meet – " + codeA)]))
+        _ = resolver.resolve(ForkMeetingReading(at: at(303), windows: []))
+        _ = resolver.resolve(ForkMeetingReading(at: at(609)))
+        suite.expect(resolver.isSilenced(meetA), "9 min 59 s after its end, still aside")
+        _ = resolver.resolve(ForkMeetingReading(at: at(611)))
+        suite.expect(!resolver.isSilenced(meetA),
+                     "a glimpse of its link, never a meeting, does not keep its set-aside alive: forgotten 10 min after its end")
+    }
+
+    private static func codeAppearing(_ suite: TestSuite) {
+        var resolver = ForkMeetingResolver(ownPID: ownPID)
+        _ = resolver.resolve(ForkMeetingReading(at: at(-5), microphones: [chromeMicrophone]))
+        _ = resolver.resolve(ForkMeetingReading(at: at(0), windows: [chrome("Meet – Point hebdo")]))
+        let born = resolver.resolve(ForkMeetingReading(at: at(3), windows: [chrome("Meet – Point hebdo")]))
+        let coded = resolver.resolve(ForkMeetingReading(at: at(6), windows: [chrome("Meet – Point hebdo – " + codeA)]))
+        let bare = resolver.resolve(ForkMeetingReading(at: at(9), windows: [chrome("Meet – " + codeA)]))
+        suite.expect(born.candidates.count == 1 && coded.candidates == born.candidates && bare.candidates == born.candidates,
+                     "« Meet – Point hebdo », then its code in the title, then the code alone: one meeting, unchanged")
+        let elsewhere = resolver.resolve(ForkMeetingReading(at: at(12), windows: [chrome("Meet – " + codeA),
+                                                                                  chrome("Meet – " + codeB, window: 8)]))
+        suite.expect(elsewhere.candidates.count == 2, "another window's code is another meeting")
+    }
+
     // MARK: - H1.14
 
     private static func cleanNames(_ suite: TestSuite) {
@@ -136,5 +410,30 @@ enum ForkMeetingFixesH1Tests {
                      "and its source says so")
         suite.expect(verdict("\u{202E}Meet – Point hebdo") == .meeting(code: nil, name: "Point hebdo"),
                      "a title read past its bidi controls")
+    }
+
+    // MARK: - H1.15
+
+    private static func titlesGone(_ suite: TestSuite) {
+        var live = Live()
+        live.read(-5, microphones: [chromeMicrophone])
+        live.read(0, windows: [chrome("Meet – " + codeA)])
+        _ = live.take()
+        live.read(10, windows: [], titlesUnreadable: true)
+        suite.expect(live.take().first == .hideOffer, "Screen Recording taken away during an offer: the offer goes")
+        live.readEvery3s(from: 13, to: 60, windows: [])
+        suite.expect(live.take().isEmpty, "and the browser's microphone alone brings nothing back")
+        live.readEvery3s(from: 63, to: 66, windows: [chrome("Meet – " + codeA)])
+        suite.expect(offers(live.take()).isEmpty, "allowed again: the same meeting, offered once already, stays aside")
+    }
+
+    private static func pageText(_ suite: TestSuite) {
+        let all = AppLanguage.allCases.map(ForkMeetingStrings.strings)
+        suite.expect(all.allSatisfy { $0.detectionLookalike.contains("Google Meet") }
+                        && Set(all.map(\.detectionLookalike)).count >= 14,
+                     "every language says a page copying a Meet title could be offered")
+        suite.expect(ForkMeetingStrings.strings(.fr).detectionLookalike
+                        == "Une page web qui imite exactement un titre Google Meet et utilise le micro pourrait être proposée comme une réunion.",
+                     "« Une page web qui imite exactement un titre Google Meet et utilise le micro… »")
     }
 }

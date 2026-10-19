@@ -13,8 +13,10 @@ enum ForkMeetingDetectionTests {
     private static let folder = URL(fileURLWithPath: "/tmp/Meetings/2026-10-18 10h02 — Point hebdo", isDirectory: true)
     private static let settings = ForkMeetingCaptureSettings(target: .window, systemAudio: .app, microphone: "meeting",
                                                              quality: .standard)
+    /// The meetings' browser uses the microphone: "Always" may start them.
     private static let ready = ForkMeetingStartFacts(freeBytes: 50_000_000_000, screenRecordingAllowed: true,
-                                                     microphoneAllowed: true, officialRecorderBusy: false)
+                                                     microphoneAllowed: true, officialRecorderBusy: false,
+                                                     meetingsOnMicrophone: [meetA, meetB])
     private static let busy = ForkMeetingStartFacts(freeBytes: 50_000_000_000, screenRecordingAllowed: true,
                                                     microphoneAllowed: true, officialRecorderBusy: true)
     private static let token1 = ForkMeetingToken(value: 1)
@@ -713,7 +715,8 @@ enum ForkMeetingDetectionTests {
 
         var denied = Machine()
         let facts = ForkMeetingStartFacts(freeBytes: 50_000_000_000, screenRecordingAllowed: true,
-                                          microphoneAllowed: false, officialRecorderBusy: false)
+                                          microphoneAllowed: false, officialRecorderBusy: false,
+                                          meetingsOnMicrophone: [meetA])
         denied.handle(.candidates([candidate(policy: .always)], request(facts)), now: t0)
         let started = denied.handle(.captureStarted(token1, folder: folder), now: at(1))
         suite.expect(started.contains(.notice(.failure(.microphoneDenied)))

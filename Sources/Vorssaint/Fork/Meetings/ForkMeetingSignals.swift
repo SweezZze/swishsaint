@@ -63,13 +63,17 @@ struct ForkMeetingReading: Equatable {
     var windows: [ForkMeetingWindowSignal]?
     var microphones: [ForkMeetingMicSignal]?
     var calendar: [ForkMeetingCalendarHint]?
+    /// Screen Recording went away: no title can be read any more, so a
+    /// meeting in a browser can no longer be told apart and ends now.
+    var titlesUnreadable: Bool
 
     init(at: Date, windows: [ForkMeetingWindowSignal]? = nil, microphones: [ForkMeetingMicSignal]? = nil,
-         calendar: [ForkMeetingCalendarHint]? = nil) {
+         calendar: [ForkMeetingCalendarHint]? = nil, titlesUnreadable: Bool = false) {
         self.at = at
         self.windows = windows
         self.microphones = microphones
         self.calendar = calendar
+        self.titlesUnreadable = titlesUnreadable
     }
 }
 

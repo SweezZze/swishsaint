@@ -146,9 +146,11 @@ enum ForkMeetingResolverTests {
                      "the countdown is the setting's, kept within 5 s and 2 min, none when auto stop is off")
     }
 
-    /// Two readings that agree, at least a second apart.
+    /// Two readings that agree, at least a second apart (a title without a
+    /// code, with its browser's microphone in use: see `ForkMeetingFixesH1Tests`).
     private static func entry(_ suite: TestSuite) {
         var r = resolver()
+        microphones(&r, -5, [chromeMicrophone])
         let named = chrome("Meet – Point hebdo")
         suite.expect(windows(&r, 0, [named]).candidates.isEmpty, "one reading offers nothing yet")
         suite.expect(windows(&r, 0.2, [named]).candidates.isEmpty, "nor two readings of the same moment")
@@ -157,6 +159,7 @@ enum ForkMeetingResolverTests {
                      "the second reading 3 s later makes the meeting, named by its browser's process and its title")
 
         var broken = resolver()
+        microphones(&broken, -5, [chromeMicrophone])
         windows(&broken, 0, [named])
         windows(&broken, 3, [chrome("Gmail")])
         suite.expect(windows(&broken, 6, [named]).candidates.isEmpty,
@@ -275,15 +278,15 @@ enum ForkMeetingResolverTests {
         suite.expect(tick(&r, 90).ended.isEmpty && windows(&r, 93, [chrome("Gmail")]).ended.isEmpty,
                      "an end is said once")
 
+        // Without a microphone signal only a code makes a meeting.
         var titles = resolver()
-        windows(&titles, 0, [chrome("Meet – Point hebdo")])
-        windows(&titles, 3, [chrome("Meet – Point hebdo")])
+        windows(&titles, 0, [chrome("Meet – xyz-qrst-uvw")])
+        windows(&titles, 3, [chrome("Meet – xyz-qrst-uvw")])
         windows(&titles, 6, [])
-        suite.expect(windows(&titles, 18, []).ended.isEmpty && windows(&titles, 21, [chrome("Meet – Point hebdo")]).ended.isEmpty,
+        suite.expect(windows(&titles, 18, []).ended.isEmpty && windows(&titles, 21, [chrome("Meet – xyz-qrst-uvw")]).ended.isEmpty,
                      "without a microphone signal, a window back within 20 s keeps the meeting")
         windows(&titles, 24, [])
-        suite.expect(windows(&titles, 42, []).ended.isEmpty
-                        && windows(&titles, 45, []).ended == [ForkMeetingIdentity("meet:100:Meet – Point hebdo")],
+        suite.expect(windows(&titles, 42, []).ended.isEmpty && windows(&titles, 45, []).ended == [meetB],
                      "and a window gone for 20 s ends it")
     }
 

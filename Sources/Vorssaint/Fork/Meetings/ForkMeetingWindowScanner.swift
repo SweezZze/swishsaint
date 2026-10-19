@@ -19,7 +19,9 @@ import CoreGraphics
 /// resolver brings it back to its browser).
 ///
 /// Utility serial queue; each reading is handed to the main thread, even an
-/// unchanged one: the resolver counts readings.
+/// unchanged one: the resolver counts readings. The permission gone, an
+/// empty reading says so once (`titlesUnreadable`): the meetings it showed
+/// end, and their offer goes.
 final class ForkMeetingWindowScanner {
     static let interval: TimeInterval = 3
     /// How long the Screen Recording answer is trusted.
@@ -40,7 +42,7 @@ final class ForkMeetingWindowScanner {
     private let queue = DispatchQueue(label: "fork.meetings.windows", qos: .utility)
     private let table: ForkMeetingProviderTable
     private let ownPID: pid_t
-    private let onReading: ([ForkMeetingWindowSignal]) -> Void
+    private let onReading: (_ windows: [ForkMeetingWindowSignal], _ titlesUnreadable: Bool) -> Void
 
     // Queue only.
     private var timer: DispatchSourceTimer?
@@ -57,7 +59,7 @@ final class ForkMeetingWindowScanner {
 
     /// `onReading` runs on the main thread.
     init(table: ForkMeetingProviderTable = .current, ownPID: pid_t = ProcessInfo.processInfo.processIdentifier,
-         onReading: @escaping ([ForkMeetingWindowSignal]) -> Void) {
+         onReading: @escaping (_ windows: [ForkMeetingWindowSignal], _ titlesUnreadable: Bool) -> Void) {
         self.table = table
         self.ownPID = ownPID
         self.onReading = onReading
@@ -113,7 +115,7 @@ final class ForkMeetingWindowScanner {
             if !saidBlind {
                 saidBlind = true
                 bundles = [:]
-                deliver([])
+                deliver([], titlesUnreadable: true)
             }
             return
         }
@@ -158,7 +160,7 @@ final class ForkMeetingWindowScanner {
         return bundle
     }
 
-    private func deliver(_ signals: [ForkMeetingWindowSignal]) {
-        DispatchQueue.main.async { [weak self] in self?.onReading(signals) }
+    private func deliver(_ signals: [ForkMeetingWindowSignal], titlesUnreadable: Bool = false) {
+        DispatchQueue.main.async { [weak self] in self?.onReading(signals, titlesUnreadable) }
     }
 }

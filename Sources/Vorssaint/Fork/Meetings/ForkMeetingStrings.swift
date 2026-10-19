@@ -285,6 +285,12 @@ struct ForkMeetingStrings {
     let failMasterMissing: String
     let failMasterMissingRemedy: String
 
+    // MARK: Fixes H1
+
+    /// Under the Detection section: a page that copies a Meet title exactly
+    /// and uses the microphone could be offered.
+    let detectionLookalike: String
+
     // MARK: Detection effects
 
     /// The page's Detection section.
@@ -566,6 +572,8 @@ extension ForkMeetingStrings {
         voiceSoundLost: "The meeting’s sound was lost: the rest is recorded without it. Your microphone is still recorded.",
         failMasterMissing: "No video to keep",
         failMasterMissingRemedy: "The file could not be finished, and no video of the recording was found in the meeting’s folder: nothing of it can be played.",
+        // MARK: Fixes H1
+        detectionLookalike: "A web page that copies a Google Meet title exactly and uses the microphone could be offered as a meeting.",
         // MARK: Detection effects
         detectionTitle: "Detection",
         detectionCaption: "Recognizes a Google Meet meeting open in your browser, even in the background or on another desktop, and offers to record it.",
@@ -798,6 +806,8 @@ extension ForkMeetingStrings {
         voiceSoundLost: "O som da reunião foi perdido: o restante é gravado sem ele. Seu microfone continua sendo gravado.",
         failMasterMissing: "Nenhum vídeo para guardar",
         failMasterMissingRemedy: "Não foi possível finalizar o arquivo, e nenhum vídeo da gravação foi encontrado na pasta da reunião: nada dela pode ser reproduzido.",
+        // MARK: Fixes H1
+        detectionLookalike: "Uma página da web que copie exatamente o título de uma reunião do Google Meet e use o microfone pode ser oferecida como reunião.",
         // MARK: Detection effects
         detectionTitle: "Detecção",
         detectionCaption: "Reconhece uma reunião do Google Meet aberta no seu navegador, mesmo em segundo plano ou em outra mesa, e oferece gravá-la.",
@@ -1030,6 +1040,8 @@ extension ForkMeetingStrings {
         voiceSoundLost: "Toplantının sesi kayboldu: kaydın geri kalanı onsuz alınıyor. Mikrofonunuz kaydedilmeye devam ediyor.",
         failMasterMissing: "Saklanacak video yok",
         failMasterMissingRemedy: "Dosya tamamlanamadı ve toplantı klasöründe kaydın hiçbir videosu bulunamadı: oynatılabilecek bir şey yok.",
+        // MARK: Fixes H1
+        detectionLookalike: "Bir Google Meet başlığını birebir taklit eden ve mikrofonu kullanan bir web sayfası da toplantı olarak önerilebilir.",
         // MARK: Detection effects
         detectionTitle: "Algılama",
         detectionCaption: "Tarayıcınızda açık bir Google Meet toplantısını, arka planda ya da başka bir masaüstünde olsa bile tanır ve kaydetmeyi önerir.",
@@ -1262,6 +1274,8 @@ extension ForkMeetingStrings {
         voiceSoundLost: "Звук встречи потерян: дальше запись идёт без него. Ваш микрофон по-прежнему записывается.",
         failMasterMissing: "Нет видео для сохранения",
         failMasterMissingRemedy: "Файл не удалось завершить, а видео записи в папке встречи не найдено: воспроизвести нечего.",
+        // MARK: Fixes H1
+        detectionLookalike: "Веб-страница, которая точно повторяет заголовок Google Meet и использует микрофон, может быть предложена как встреча.",
         // MARK: Detection effects
         detectionTitle: "Обнаружение",
         detectionCaption: "Распознаёт встречу Google Meet, открытую в браузере, даже в фоне или на другом рабочем столе, и предлагает её записать.",
@@ -1494,6 +1508,8 @@ extension ForkMeetingStrings {
         voiceSoundLost: "Se perdió el sonido de la reunión: el resto se graba sin él. Tu micrófono se sigue grabando.",
         failMasterMissing: "Ningún vídeo que guardar",
         failMasterMissingRemedy: "No se pudo terminar el archivo y no se encontró ningún vídeo de la grabación en la carpeta de la reunión: no hay nada que reproducir.",
+        // MARK: Fixes H1
+        detectionLookalike: "Una página web que imite exactamente el título de Google Meet y use el micrófono podría ofrecerse como reunión.",
         // MARK: Detection effects
         detectionTitle: "Detección",
         detectionCaption: "Reconoce una reunión de Google Meet abierta en tu navegador, incluso en segundo plano o en otro escritorio, y ofrece grabarla.",
@@ -1726,6 +1742,8 @@ extension ForkMeetingStrings {
         voiceSoundLost: "Zvuk stretnutia sa stratil: zvyšok sa nahráva bez neho. Váš mikrofón sa naďalej nahráva.",
         failMasterMissing: "Žiadne video na uloženie",
         failMasterMissingRemedy: "Súbor sa nepodarilo dokončiť a v priečinku stretnutia sa nenašlo žiadne video záznamu: nič sa nedá prehrať.",
+        // MARK: Fixes H1
+        detectionLookalike: "Webová stránka, ktorá presne napodobní názov Google Meet a používa mikrofón, môže byť ponúknutá ako stretnutie.",
         // MARK: Detection effects
         detectionTitle: "Rozpoznávanie",
         detectionCaption: "Rozpozná stretnutie Google Meet otvorené v prehliadači, aj na pozadí alebo na inej ploche, a ponúkne jeho nahratie.",
@@ -1958,6 +1976,8 @@ extension ForkMeetingStrings {
         voiceSoundLost: "Der Ton der Besprechung ist verloren: Der Rest wird ohne ihn aufgenommen. Dein Mikrofon wird weiter aufgenommen.",
         failMasterMissing: "Kein Video zu sichern",
         failMasterMissingRemedy: "Die Datei konnte nicht fertiggestellt werden, und im Ordner der Besprechung wurde kein Video der Aufnahme gefunden: Nichts davon lässt sich abspielen.",
+        // MARK: Fixes H1
+        detectionLookalike: "Eine Webseite, die einen Titel von Google Meet genau nachahmt und das Mikrofon nutzt, könnte als Besprechung angeboten werden.",
         // MARK: Detection effects
         detectionTitle: "Erkennung",
         detectionCaption: "Erkennt eine in deinem Browser geöffnete Google-Meet-Besprechung, auch im Hintergrund oder auf einem anderen Schreibtisch, und bietet an, sie aufzunehmen.",
@@ -2190,6 +2210,8 @@ extension ForkMeetingStrings {
         voiceSoundLost: "Le son de la réunion est perdu\u{00A0}: la suite est enregistrée sans lui. Votre micro reste enregistré.",
         failMasterMissing: "Aucune vidéo à garder",
         failMasterMissingRemedy: "Le fichier n’a pas pu être finalisé et aucune vidéo de l’enregistrement n’a été trouvée dans le dossier de la réunion\u{00A0}: rien n’en est lisible.",
+        // MARK: Fixes H1
+        detectionLookalike: "Une page web qui imite exactement un titre Google Meet et utilise le micro pourrait être proposée comme une réunion.",
         // MARK: Detection effects
         detectionTitle: "Détection",
         detectionCaption: "Reconnaît une réunion Google Meet ouverte dans votre navigateur, même en arrière-plan ou sur un autre bureau, et propose de l’enregistrer.",
@@ -2422,6 +2444,8 @@ extension ForkMeetingStrings {
         voiceSoundLost: "L’audio della riunione è andato perso: il resto viene registrato senza. Il tuo microfono continua a essere registrato.",
         failMasterMissing: "Nessun video da salvare",
         failMasterMissingRemedy: "Non è stato possibile completare il file e nella cartella della riunione non è stato trovato alcun video della registrazione: non c’è nulla da riprodurre.",
+        // MARK: Fixes H1
+        detectionLookalike: "Una pagina web che imita esattamente un titolo di Google Meet e usa il microfono potrebbe essere proposta come riunione.",
         // MARK: Detection effects
         detectionTitle: "Rilevamento",
         detectionCaption: "Riconosce una riunione Google Meet aperta nel browser, anche in secondo piano o su un’altra scrivania, e propone di registrarla.",
@@ -2654,6 +2678,8 @@ extension ForkMeetingStrings {
         voiceSoundLost: "ミーティングの音声が途切れました。この後は音声なしで録画されます。マイクは引き続き録音されます。",
         failMasterMissing: "保存できるビデオがありません",
         failMasterMissingRemedy: "ファイルを仕上げられず、ミーティングのフォルダに録画のビデオも見つかりませんでした。再生できるものはありません。",
+        // MARK: Fixes H1
+        detectionLookalike: "Google Meet のタイトルをそのまま真似てマイクを使う Web ページも、ミーティングとして提案されることがあります。",
         // MARK: Detection effects
         detectionTitle: "検出",
         detectionCaption: "ブラウザで開いている Google Meet のミーティングを、バックグラウンドや別のデスクトップにあっても認識し、録画を提案します。",
@@ -2886,6 +2912,8 @@ extension ForkMeetingStrings {
         voiceSoundLost: "회의 소리가 끊겼습니다. 이후는 회의 소리 없이 녹화됩니다. 마이크는 계속 녹음됩니다.",
         failMasterMissing: "보관할 비디오 없음",
         failMasterMissingRemedy: "파일을 마무리하지 못했고, 회의 폴더에서 녹화 비디오를 찾지 못했습니다. 재생할 수 있는 것이 없습니다.",
+        // MARK: Fixes H1
+        detectionLookalike: "Google Meet 제목을 그대로 흉내 내고 마이크를 사용하는 웹 페이지도 회의로 제안될 수 있습니다.",
         // MARK: Detection effects
         detectionTitle: "감지",
         detectionCaption: "브라우저에 열린 Google Meet 회의를 백그라운드나 다른 데스크탑에 있어도 알아보고 녹화를 제안합니다.",
@@ -3118,6 +3146,8 @@ extension ForkMeetingStrings {
         voiceSoundLost: "Звук зустрічі втрачено: далі запис іде без нього. Ваш мікрофон і далі записується.",
         failMasterMissing: "Немає відео для збереження",
         failMasterMissingRemedy: "Файл не вдалося завершити, а відео запису в папці зустрічі не знайдено: відтворити нічого.",
+        // MARK: Fixes H1
+        detectionLookalike: "Вебсторінка, яка точно повторює заголовок Google Meet і використовує мікрофон, може бути запропонована як зустріч.",
         // MARK: Detection effects
         detectionTitle: "Виявлення",
         detectionCaption: "Розпізнає зустріч Google Meet, відкриту в браузері, навіть у фоні чи на іншому робочому столі, і пропонує її записати.",
@@ -3350,6 +3380,8 @@ extension ForkMeetingStrings {
         voiceSoundLost: "会议声音已中断：之后的录制不含会议声音，你的麦克风仍在录制。",
         failMasterMissing: "没有可保留的视频",
         failMasterMissingRemedy: "无法完成文件，会议文件夹中也找不到录制的视频：没有可以播放的内容。",
+        // MARK: Fixes H1
+        detectionLookalike: "完全模仿 Google Meet 标题并使用麦克风的网页，也可能被提议为会议。",
         // MARK: Detection effects
         detectionTitle: "检测",
         detectionCaption: "识别在浏览器中打开的 Google Meet 会议，即使它在后台或在另一个桌面上，并提议录制。",
@@ -3582,6 +3614,8 @@ extension ForkMeetingStrings {
         voiceSoundLost: "會議聲音已中斷：之後的錄製不含會議聲音，你的麥克風仍在錄製。",
         failMasterMissing: "沒有可保留的影片",
         failMasterMissingRemedy: "無法完成檔案，會議資料夾中也找不到錄製的影片：沒有可以播放的內容。",
+        // MARK: Fixes H1
+        detectionLookalike: "完全模仿 Google Meet 標題並使用麥克風的網頁，也可能被提議為會議。",
         // MARK: Detection effects
         detectionTitle: "偵測",
         detectionCaption: "辨識瀏覽器中開啟的 Google Meet 會議，即使它在背景或另一個桌面上，並提議錄製。",
@@ -3814,6 +3848,8 @@ extension ForkMeetingStrings {
         voiceSoundLost: "會議聲音已中斷：之後的錄製不含會議聲音，你的咪高風仍在錄製。",
         failMasterMissing: "沒有可保留的影片",
         failMasterMissingRemedy: "無法完成檔案，會議資料夾中也找不到錄製的影片：沒有可以播放的內容。",
+        // MARK: Fixes H1
+        detectionLookalike: "完全模仿 Google Meet 標題並使用麥克風的網頁，也可能被提議為會議。",
         // MARK: Detection effects
         detectionTitle: "偵測",
         detectionCaption: "辨認瀏覽器中開啟的 Google Meet 會議，即使它在背景或另一個桌面上，並提議錄製。",
