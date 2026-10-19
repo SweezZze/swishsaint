@@ -9,13 +9,14 @@ import Foundation
 /// video; it goes into `meeting.json` at once, like a gap, so a crash keeps
 /// it with the meeting it recovers.
 extension ForkMeetingService {
-    /// Main thread. `false` when nothing records (nothing to mark), or when
-    /// the press is the same moment as the last one (`mergeWindow`): that
-    /// one is shown again, nothing new is written.
+    /// Main thread. `false` when nothing records or the recording is paused
+    /// (nothing to mark), or when the press is the same moment as the last
+    /// one (`mergeWindow`): that one is shown again, nothing new is written.
     @discardableResult
     func addMarker() -> Bool {
         dispatchPrecondition(condition: .onQueue(.main))
-        guard isWanted, let session = machine.activeSession else { return false }
+        guard isWanted, ForkMeetingMarkers.accepts(recording: isRecording, paused: isPaused),
+              let session = machine.activeSession else { return false }
         let recorded = activeRecorder?.recordedSeconds ?? session.recorded(at: Date())
         let time = ForkMeetingMarkers.time(recorded: recorded)
         let book = ForkMeetingMarkerBook.shared

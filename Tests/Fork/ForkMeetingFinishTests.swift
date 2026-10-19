@@ -16,6 +16,13 @@ enum ForkMeetingFinishTests {
     }
 
     private static func markers(_ suite: TestSuite) {
+        suite.expect(ForkMeetingMarkers.accepts(recording: true, paused: false)
+                        && !ForkMeetingMarkers.accepts(recording: true, paused: true)
+                        && !ForkMeetingMarkers.accepts(recording: false, paused: false),
+                     "a moment is marked only while recording, never paused: every entry follows this rule")
+        let clock = ForkMeetingClock(recordedBefore: 12, runningSince: nil)
+        suite.expect(ForkMeetingIslandPhase(state: .paused(clock, .user, diskMinutesLeft: nil), progress: nil)?.canMark == false,
+                     "the live card's Mark is off while paused")
         suite.expect(ForkMeetingIslandRules.markedHold >= ForkMeetingMarkers.mergeWindow,
                      "the card's \"Marked\" lasts as long as a second press would be the same moment")
         suite.expect(ForkMeetingMarkers.showsNotice(liveCardShown: false) && !ForkMeetingMarkers.showsNotice(liveCardShown: true),

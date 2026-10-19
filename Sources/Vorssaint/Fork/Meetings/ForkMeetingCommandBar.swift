@@ -54,6 +54,9 @@ enum ForkMeetingCommandBar {
                 shortcut: shortcut(.pause),
                 isActive: service.isPaused,
                 run: { _ in ForkMeetingService.shared.togglePause() }))
+        }
+        // Nothing to mark while paused: the row comes back at the resume.
+        if enabled, ForkMeetingMarkers.accepts(recording: service.isRecording, paused: service.isPaused) {
             entries.append(CommandBarEntry(
                 id: markerID,
                 title: text.barMarker,

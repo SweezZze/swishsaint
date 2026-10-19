@@ -25,6 +25,11 @@ enum ForkMeetingMarkers {
         return (max(0, recorded) * 10).rounded() / 10
     }
 
+    /// A moment can be marked only while the meeting records: not before,
+    /// not after, and not while paused, when nothing of it is in the file.
+    /// Every entry offers it under this rule alone.
+    static func accepts(recording: Bool, paused: Bool) -> Bool { recording && !paused }
+
     /// Whether a marker gets its notice in the island (or the bubble). Not
     /// while the live card is up there: its button says "Marked" itself,
     /// and a notice would push the card aside.

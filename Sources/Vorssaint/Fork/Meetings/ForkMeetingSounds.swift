@@ -17,6 +17,8 @@ import AppKit
 ///   and the taps are made; the microphone opens after all of them. The
 ///   stop's plays once the engine has stopped, its microphone closed.
 /// - **Pauses** make no sound: one would land in the track at the resume.
+///   The one exception is the short "no" of the marker shortcut pressed
+///   while paused, when nothing is written.
 ///
 /// Main thread only.
 final class ForkMeetingSounds {
@@ -25,11 +27,14 @@ final class ForkMeetingSounds {
     enum Sound: CaseIterable {
         case start
         case stop
+        /// A press that does nothing: the marker's shortcut while paused.
+        case refused
 
         var name: String {
             switch self {
             case .start: return "Tink"
             case .stop: return "Pop"
+            case .refused: return "Funk"
             }
         }
     }

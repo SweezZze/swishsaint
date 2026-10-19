@@ -601,7 +601,7 @@ struct ForkMeetingPillView: View {
             // VoiceOver has them at any time.
             .accessibilityValue(accessibilityValue)
             .accessibilityActions {
-                if model.look?.showsControls == true {
+                if model.look?.showsControls == true, model.look?.paused != true {
                     Button(model.text.pillMark) { actions.mark() }
                 }
                 if model.look?.showsControls == true, model.context.offersTargetSwitch {
@@ -748,8 +748,9 @@ struct ForkMeetingPillView: View {
             }
             pillButton(symbol: "stop.fill", color: Color(nsColor: .systemRed),
                        label: model.cancelsUntil == nil ? text.pillStop : text.pillStopCancels, action: actions.stop)
-            if model.hovering {
-                pillButton(symbol: "star", color: .white, label: text.pillMark, action: actions.mark)
+            // Nothing to mark while paused.
+            if model.hovering, model.look?.paused != true {
+                pillButton(symbol: "star", color: .primary, label: text.pillMark, action: actions.mark)
                     .transition(.opacity)
             }
             if model.hovering, model.context.offersTargetSwitch {

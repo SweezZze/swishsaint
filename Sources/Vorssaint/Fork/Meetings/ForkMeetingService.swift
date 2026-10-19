@@ -355,6 +355,12 @@ final class ForkMeetingService: ObservableObject {
 
     private func markerShortcutPressed() {
         guard !ShortcutCapture.isCapturing, !recordsShortcutInPage, isWanted, isRecording else { return }
+        guard ForkMeetingMarkers.accepts(recording: isRecording, paused: isPaused) else {
+            // Paused, nothing to mark: a quiet "no" for those who hear the
+            // recording's sounds, nothing for the others.
+            if UserDefaults.standard.bool(forKey: ForkDefaultsKey.meetingsSounds) { ForkMeetingSounds.shared.play(.refused) }
+            return
+        }
         addMarker()
     }
 
