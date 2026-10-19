@@ -520,13 +520,21 @@ enum ForkMeetingExportTests {
 
     private static func transcript(_ suite: TestSuite) {
         typealias Document = ForkMeetingExportDocument
-        suite.expect(Document.transcript(in: ["a.mp4", "a.txt", "notes.txt", "meeting.json"], folderName: "a") == "a.txt"
-                        && Document.transcript(in: ["a.mp4", "a.TXT"], folderName: "a") == "a.TXT"
-                        && Document.transcript(in: ["Old.mp4", "Old.txt"], folderName: "a", video: "Old.mp4") == "Old.txt"
-                        && Document.transcript(in: ["a.mp4", "Renamed.txt", ".a.txt"], folderName: "a") == nil
-                        && Document.transcript(in: ["x.txt"], folderName: "a") == nil
-                        && Document.transcript(in: ["a.mp4"], folderName: "a") == nil,
-                     "the transcript is the .txt named after the folder or its video, never another text left there")
+        suite.expect(Document.transcript(in: ["a.mp4", "a.txt", "a.srt", "notes.txt", "meeting.json"], files: ["a.txt", "a.srt"]) == "a.txt"
+                        && Document.transcript(in: ["a.mp4", "a.TXT"], files: ["a.txt"]) == "a.TXT"
+                        && Document.transcript(in: ["Old.mp4", "Old 2.txt", "Old.txt"], files: ["Old 2.txt", "Old 2.srt"]) == "Old 2.txt"
+                        && Document.transcript(in: ["a.mp4", "a.txt"], files: []) == nil
+                        && Document.transcript(in: ["a.mp4", "Budget.txt"], files: ["a.txt"]) == nil
+                        && Document.transcript(in: ["a.mp4", "a.srt"], files: ["a.mp4", "a.srt"]) == nil,
+                     "the transcript sent is the .txt this app wrote (meeting.json's files), never another text left there")
+        let record = ForkMeetingTranscriptRecord(state: .done, words: 12, language: "fr",
+                                                 at: Date(timeIntervalSince1970: 1_792_400_000),
+                                                 files: ["a.txt", "a.srt"], meetingSilent: true)
+        guard case let .object(sent)? = Document.transcript(record.json) else {
+            return suite.expect(false, "a transcript record leaves")
+        }
+        suite.expect(Set(sent.keys) == ["state", "words", "language", "engine", "at"],
+                     "the record leaves without its list of files: \(sent.keys.sorted())")
     }
 
     // MARK: - Texts

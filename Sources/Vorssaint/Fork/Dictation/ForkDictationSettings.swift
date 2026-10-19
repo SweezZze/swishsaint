@@ -883,13 +883,14 @@ private struct ForkDictationAfterSection: View {
 // MARK: - History
 
 /// The dictation history: whether dictations are kept with their audio,
-/// what they take on disk, and the way to the history panel. Turning it
-/// off offers to delete what is already kept.
+/// what they take on disk, and the way to the history, which opens in the
+/// island. Turning it off offers to delete what is already kept.
 private struct ForkDictationHistorySection: View {
     let text: ForkDictationStrings
 
     @AppStorage(ForkDefaultsKey.dictationKeepsHistory) private var keepsHistory = true
     @ObservedObject private var archive = ForkDictationArchive.shared
+    @ObservedObject private var l10n = L10n.shared
     @State private var confirmsDeleteAll = false
     @State private var offersDelete = false
 
@@ -908,17 +909,28 @@ private struct ForkDictationHistorySection: View {
 
             if !archive.records.isEmpty {
                 LabeledContent(String(format: text.historyCountFormat, archive.records.count)) {
-                    Text(String(format: text.historyAudioSizeFormat,
-                                ByteCountFormatter.string(fromByteCount: archive.audioBytes, countStyle: .file)))
-                        .foregroundStyle(.secondary)
+                    // Audio expired with the retention leaves nothing to weigh.
+                    if archive.audioBytes > 0 {
+                        Text(String(format: text.historyAudioSizeFormat,
+                                    archive.audioBytes.formatted(.byteCount(style: .file)
+                                        .locale(l10n.language.formattingLocale()))))
+                            .foregroundStyle(.secondary)
+                    }
                 }
             }
 
-            HStack {
-                Button(text.historyOpen) { ForkDictationHistoryPanel.shared.show() }
-                Spacer()
-                Button(text.historyDeleteAll, role: .destructive) { confirmsDeleteAll = true }
-                    .disabled(archive.records.isEmpty)
+            VStack(alignment: .leading, spacing: 4) {
+                HStack {
+                    Button(text.historyOpen) { ForkNotchDictations.show() }
+                    Button(text.historyIslandSettings) { ForkNotchDictations.openIslandSettings() }
+                    Spacer()
+                    Button(text.historyDeleteAll, role: .destructive) { confirmsDeleteAll = true }
+                        .disabled(archive.records.isEmpty)
+                }
+                Text(text.historyIslandCaption(NotchModule.clipboard.title(l10n.language)))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
         }
         .confirmationDialog(text.historyDeleteAllConfirmTitle, isPresented: $confirmsDeleteAll) {

@@ -262,16 +262,25 @@ enum ForkMeetingFolder {
         var hasMaster = false
         var hasVideoDraft = false
         var hasAudioDraft = false
+        /// The transcript (`.txt`) and its subtitles (`.srt`): only the ones
+        /// this app wrote (`meeting.json`'s `transcript.files`), never a text
+        /// file the person put beside the meeting, whatever its name.
+        var transcript: String?
+        var subtitles: String?
     }
 
     /// `alsoNamed`: the name the media were given, when it may differ from
     /// the folder's now (`meeting.json`'s start and title, after a rename cut
     /// short between the folder's move and its media's): tried after the
     /// folder's own, before any other file of the same kind.
-    static func contents(of names: [String], folderName: String, alsoNamed: String? = nil) -> Contents {
+    /// `transcriptFiles`: the names the transcription wrote.
+    static func contents(of names: [String], folderName: String, alsoNamed: String? = nil,
+                         transcriptFiles: [String] = []) -> Contents {
         var contents = Contents()
         var videos: [String] = []
         var audios: [String] = []
+        var texts: [String] = []
+        var subtitles: [String] = []
         for name in names {
             switch name {
             case sidecarName: contents.hasSidecar = true
@@ -283,10 +292,14 @@ enum ForkMeetingFolder {
                 let ext = (name as NSString).pathExtension.lowercased()
                 if ext == videoExtension { videos.append(name) }
                 if ext == audioExtension { audios.append(name) }
+                if ext == ForkMeetingTranscript.textExtension { texts.append(name) }
+                if ext == ForkMeetingTranscript.subtitlesExtension { subtitles.append(name) }
             }
         }
         contents.video = preferred(videos, stems: [folderName, alsoNamed].compactMap { $0 })
         contents.audio = preferred(audios, stems: [folderName, alsoNamed].compactMap { $0 })
+        contents.transcript = transcriptFiles.first { texts.contains($0) }
+        contents.subtitles = transcriptFiles.first { subtitles.contains($0) }
         return contents
     }
 
@@ -331,10 +344,11 @@ enum ForkMeetingFolder {
     /// files are the ones named after the **old** folder: a clip the person
     /// saved beside them under another name never takes the meeting's. Each
     /// keeps its own extension: renaming never changes what a file holds.
-    static func mediaRenames(from old: String, to new: String, names: [String], alsoNamed: String? = nil) -> MediaRenames {
-        let found = contents(of: names, folderName: old, alsoNamed: alsoNamed)
+    static func mediaRenames(from old: String, to new: String, names: [String], alsoNamed: String? = nil,
+                             transcriptFiles: [String] = []) -> MediaRenames {
+        let found = contents(of: names, folderName: old, alsoNamed: alsoNamed, transcriptFiles: transcriptFiles)
         var result = MediaRenames()
-        for media in [found.video, found.audio].compactMap({ $0 }) {
+        for media in [found.video, found.audio, found.transcript, found.subtitles].compactMap({ $0 }) {
             let target = "\(new).\((media as NSString).pathExtension)"
             guard media != target else { continue }
             // APFS ignores case: "F.mp4" and "f.MP4" are the same file. The

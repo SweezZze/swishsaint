@@ -73,7 +73,7 @@ enum ForkMeetingSystemAudio: String, Codable, CaseIterable {
 
 /// A JSON value kept as it was read, for what this version of the app does
 /// not understand: written back untouched, never dropped.
-enum ForkMeetingJSON: Codable, Equatable {
+enum ForkMeetingJSON: Codable, Equatable, Sendable {
     case null
     case bool(Bool)
     case number(Double)

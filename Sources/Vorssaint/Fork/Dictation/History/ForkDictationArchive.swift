@@ -114,6 +114,17 @@ final class ForkDictationArchive: ObservableObject {
         saveIndex()
     }
 
+    /// Several at once, with one write of the index: "Clear unpinned".
+    func delete(_ ids: Set<UUID>) {
+        precondition(Thread.isMainThread)
+        guard !ids.isEmpty else { return }
+        if let retranscribing, ids.contains(retranscribing) { endRetranscription() }
+        records.removeAll { ids.contains($0.id) }
+        let urls = ids.map(audioFile)
+        queue.async { urls.forEach { try? FileManager.default.removeItem(at: $0) } }
+        saveIndex()
+    }
+
     func deleteAll() {
         precondition(Thread.isMainThread)
         endRetranscription()

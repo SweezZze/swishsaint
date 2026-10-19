@@ -53,7 +53,7 @@ final class ForkDictationPresenter {
 
     private(set) var presentation: ForkDictationPresentation = .hidden
     /// The history record of the dictation shown: the bubble opens it in
-    /// the dictations window when clicked.
+    /// the island's Dictations tab when clicked.
     private(set) var recordID: UUID?
     private var surface: Surface?
     /// The pointer rests on the bubble: it stays until the pointer leaves.
@@ -93,6 +93,7 @@ final class ForkDictationPresenter {
         if case .listening = incoming, !isListening(presentation) { meter.reset() }
         presentation = incoming
         self.recordID = recordID
+        ForkNotchDictations.shared.setListening(isListening(incoming))
         if surface == nil { surface = choosesIsland ? .island : .bubble }
         render()
         announce(incoming)
@@ -129,8 +130,16 @@ final class ForkDictationPresenter {
         guard let recordID, presentation.opensHistory else { return nil }
         return { [weak self] in
             self?.hideNow()
-            ForkDictationHistoryPanel.shared.show(focus: recordID)
+            ForkNotchDictations.show(focus: recordID)
         }
+    }
+
+    /// A click on the island's notice of a dictation kept in the history
+    /// opens it there, as a click on the bubble does. False otherwise.
+    func openHistoryFromIsland() -> Bool {
+        guard surface == .island, let action = clickAction else { return false }
+        action()
+        return true
     }
 
     private func bubbleHovered(_ hovering: Bool) {
@@ -162,6 +171,7 @@ final class ForkDictationPresenter {
         surface = nil
         presentation = .hidden
         recordID = nil
+        ForkNotchDictations.shared.setListening(false)
         isHovered = false
         lastAnnouncement = nil
     }

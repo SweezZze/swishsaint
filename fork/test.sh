@@ -28,7 +28,9 @@ FORK_SOURCES=(
     Sources/Vorssaint/Fork/Dictation/ForkDictationWaveform.swift
     Sources/Vorssaint/Fork/Dictation/History/ForkDictationRecord.swift
     Sources/Vorssaint/Fork/Dictation/History/ForkDictationHistorySearch.swift
+    Sources/Vorssaint/Fork/Dictation/History/ForkNotchDictationsSupport.swift
     Sources/Vorssaint/Fork/Dictation/Parakeet/ForkParakeetDecoding.swift
+    Sources/Vorssaint/Fork/Dictation/Parakeet/ForkParakeetLong.swift
     Sources/Vorssaint/Fork/Dictation/Parakeet/ForkParakeetManifest.swift
     Sources/Vorssaint/Fork/Dictation/Parakeet/ForkParakeetVocabulary.swift
     Sources/Vorssaint/Fork/Gestures/ForkLayoutComplement.swift
@@ -71,6 +73,8 @@ FORK_SOURCES=(
     Sources/Vorssaint/Fork/Meetings/ForkMeetingStrings.swift
     Sources/Vorssaint/Fork/Meetings/ForkMeetingSystemSupport.swift
     Sources/Vorssaint/Fork/Meetings/ForkMeetingTitleRules.swift
+    Sources/Vorssaint/Fork/Meetings/ForkMeetingTranscriptFormat.swift
+    Sources/Vorssaint/Fork/Meetings/ForkMeetingTranscriptSupport.swift
     Sources/Vorssaint/Fork/Update/ForkUpdateStrings.swift
     Sources/Vorssaint/Fork/Update/ForkUpdateSupport.swift
 )

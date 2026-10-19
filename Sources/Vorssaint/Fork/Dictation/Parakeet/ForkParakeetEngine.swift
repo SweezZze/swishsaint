@@ -20,6 +20,8 @@ enum ForkParakeetError: Error, Equatable {
     case notLoaded
     case missingModel(String)
     case unexpectedOutput(String)
+    /// A long transcription stopped by its `progress`.
+    case cancelled
 }
 
 /// Parakeet TDT 0.6B v3 on CoreML: preprocessor (CPU), then encoder, decoder
@@ -35,12 +37,20 @@ final class ForkParakeetEngine: @unchecked Sendable {
     static let jointFile = "JointDecisionv3.mlmodelc"
     static let modelFiles = [preprocessorFile, encoderFile, decoderFile, jointFile]
 
-    private let queue = DispatchQueue(label: "vorssaint.fork.dictation.parakeet", qos: .userInitiated)
+    private let queue: DispatchQueue
     private let lock = NSLock()
     // Only touched on `queue`.
     private var models: Models?
     // Mirrors `models != nil` for other threads; guarded by `lock`.
     private var loadedDirectory: URL?
+
+    /// The dictation runs at `.userInitiated`. A meeting's transcript loads
+    /// an instance of its own at `.utility`: it never waits behind a
+    /// dictation, and no dictation ever waits behind it.
+    init(qos: DispatchQoS = .userInitiated) {
+        let label = qos == .userInitiated ? "vorssaint.fork.dictation.parakeet" : "vorssaint.fork.parakeet.long"
+        queue = DispatchQueue(label: label, qos: qos)
+    }
 
     var isLoaded: Bool {
         lock.lock()
@@ -183,6 +193,72 @@ final class ForkParakeetEngine: @unchecked Sendable {
                                       confidence: ForkParakeetText.confidence(of: tokens, text: raw),
                                       audioDuration: duration,
                                       processingTime: Date().timeIntervalSince(started))
+    }
+
+    // MARK: Long recordings
+
+    /// Transcribes a long recording (a meeting's track) read from `source`
+    /// window by window, so an hour never sits in memory as one array: the
+    /// reader holds one 15 s window and the source a few seconds more. Same
+    /// windows, same decoding and same stitching as `transcribe`, so the same
+    /// audio gives the same text, plus each word's time.
+    ///
+    /// `progress` gets the seconds read so far before each window, on the
+    /// engine's queue, and returns false to stop with
+    /// `ForkParakeetError.cancelled`. Blocks: never on the main thread.
+    func transcribeLong(_ source: ForkParakeetSampleSource, languageCode: String? = nil,
+                        progress: (TimeInterval) -> Bool = { _ in true }) throws -> ForkParakeetTimedTranscript {
+        try queue.sync { try transcribeLongOnQueue(source, languageCode: languageCode, progress: progress) }
+    }
+
+    private func transcribeLongOnQueue(_ source: ForkParakeetSampleSource, languageCode: String?,
+                                       progress: (TimeInterval) -> Bool) throws -> ForkParakeetTimedTranscript {
+        guard let models else { throw ForkParakeetError.notLoaded }
+        let started = Date()
+        let rate = Double(ForkParakeetShape.sampleRate)
+        var tdt = ForkParakeetTdt()
+        tdt.filter = ForkParakeetScriptFilter(languageCode: languageCode, vocabulary: models.vocabulary.pieces)
+        let steps = try ForkParakeetCoreMLSteps(decoder: models.decoder, joint: models.joint)
+        var reader = ForkParakeetWindowReader(source: source)
+
+        var windows: [[ForkParakeetToken]] = []
+        var whole: [ForkParakeetToken]?
+        while let step = try reader.next() {
+            guard progress(Double(reader.samplesRead) / rate) else { throw ForkParakeetError.cancelled }
+            switch step {
+            case let .whole(count):
+                // Short audio: exactly the one-window path of `transcribe`.
+                guard count >= ForkParakeetShape.minimumSamples else {
+                    whole = []
+                    continue
+                }
+                let aligned = ForkParakeetShape.frames(forSamples: count) * ForkParakeetShape.samplesPerFrame
+                let length = aligned <= ForkParakeetShape.windowSamples ? aligned : count
+                let encoded = try encode(reader.samples(0, count), audioLength: length, models: models)
+                steps.encoded = encoded
+                whole = try tdt.decode(steps, encoderLength: encoded.length, frameCount: encoded.readableFrames,
+                                       audioFrames: ForkParakeetShape.frames(forSamples: length),
+                                       contextFrames: 0, isLast: true, frameOffset: 0)
+            case let .window(window):
+                let encoded = try encode(reader.samples(window.start, window.end), audioLength: window.sampleCount,
+                                         models: models)
+                guard encoded.length > 0 else {
+                    windows.append([])
+                    continue
+                }
+                steps.encoded = encoded
+                windows.append(try tdt.decode(steps, encoderLength: encoded.length,
+                                              frameCount: encoded.readableFrames,
+                                              audioFrames: window.audioFrames,
+                                              contextFrames: window.contextFrames,
+                                              isLast: window.isLast, frameOffset: window.frameOffset))
+            }
+        }
+        let tokens = whole ?? models.stitcher.stitch(windows)
+        return ForkParakeetTimedTranscript(words: ForkParakeetText.words(of: tokens, vocabulary: models.vocabulary.pieces),
+                                           audioDuration: Double(reader.samplesRead) / rate,
+                                           processingTime: Date().timeIntervalSince(started),
+                                           windowCount: whole == nil ? windows.count : 1)
     }
 
     /// Preprocessor then encoder on one window (at most 15 s of samples).

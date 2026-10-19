@@ -581,6 +581,7 @@ struct NotchView: View {
             case .mixer: NotchMixerView(size: pageSize)
             case .music: NotchMusicView(size: pageSize, extrasHeight: service.geometry.musicExtrasHeight)
             case .clipboard: NotchClipboardView(service: service, size: pageSize)
+                .forkDictationsTab(service: service, size: pageSize) // FORK(notch-dictations)
             case .captures:
                 if let capture = service.captureContent {
                     // The capture's own toolbar takes a full row, below a camera.

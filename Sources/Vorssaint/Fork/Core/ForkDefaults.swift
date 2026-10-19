@@ -95,6 +95,10 @@ enum ForkDefaultsKey {
     /// Meetings older than this many days go to the Trash
     /// (`ForkMeetingRetention`); 0: never.
     static let meetingsRetentionDays = "fork.meetings.retentionDays"
+    /// Each meeting saved is transcribed on this Mac by Parakeet
+    /// (`ForkMeetingTranscriber`). Off until a real meeting has been read
+    /// back (plan §10).
+    static let meetingsTranscribe = "fork.meetings.transcribe"
     /// The meetings folder's path; empty: a folder in Movies, named in the
     /// person's language and saved here at the first recording. Machine
     /// state, like the official recorder's folder: kept out of the backup.
@@ -168,6 +172,7 @@ enum ForkDefaults {
         ForkDefaultsKey.meetingsAutoStopSeconds: ForkMeetingAutoStop.defaultSeconds,
         ForkDefaultsKey.meetingsCalendarNaming: false,
         ForkDefaultsKey.meetingsRetentionDays: ForkMeetingRetention.fallback,
+        ForkDefaultsKey.meetingsTranscribe: false,
     ]
 
     /// Where each setting lived in the test builds made before the fork

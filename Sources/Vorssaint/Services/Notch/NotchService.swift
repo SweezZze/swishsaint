@@ -1828,6 +1828,7 @@ final class NotchService: ObservableObject {
         case .module(let module): select(module)
         case .control(let item):
             switch item {
+            case .dictation: ForkNotchDictations.activateQuickAction() // FORK(notch-dictation4)
             case .keepAwake: KeepAwakeManager.shared.toggle()
             case .microphone: MicMuteService.shared.toggle()
             case .screenshot: perform { ScreenshotService.shared.capture() }
@@ -1847,6 +1848,7 @@ final class NotchService: ObservableObject {
 
     func select(_ module: NotchModule) {
         guard modules.contains(module) else { return }
+        ForkNotchDictations.pageChosen() // FORK(notch-dictation7)
         open(module)
     }
 
@@ -2261,6 +2263,7 @@ final class NotchService: ObservableObject {
 
     func activateNotice(_ selectedNotice: NotchNotice) {
         guard notice == selectedNotice else { return }
+        if ForkDictationIsland.activate(selectedNotice) { return } // FORK(notch-dictation4)
         if let id = selectedNotice.notificationID {
             guard NotchNotificationService.shared.openingID == nil else { return }
             // The pointer stays where the banner was; like a click on the
