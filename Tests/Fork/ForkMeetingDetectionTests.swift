@@ -603,7 +603,7 @@ enum ForkMeetingDetectionTests {
                      },
                      "VoiceOver has its own sentence for the offer, Always, the countdown and Cancel, in every language")
         suite.expect(ForkMeetingNotice.neverOffered("Meet").detail(french) == "Réglable dans Réunions"
-                        && ForkMeetingNotice.neverOffered("Meet").title(french) == "Plus proposé pour Meet",
+                        && ForkMeetingNotice.neverOffered("Meet").title(french) == "Meet n’est plus proposé",
                      "after Never, the notice says where to change it")
     }
 

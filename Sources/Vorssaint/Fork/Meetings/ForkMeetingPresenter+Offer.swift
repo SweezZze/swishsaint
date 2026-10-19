@@ -314,7 +314,7 @@ extension ForkMeetingPresenter {
             target: settings.target, windowApp: facts.windowApp, hasWindow: candidate.windowID != nil,
             sound: ForkMeetingOfferText.sound(setting: settings.systemAudio, providerDefault: candidate.defaultSound),
             soundApp: facts.soundApp, microphone: facts.microphone, strings: text))
-        if facts.consentReminder { card.info = text.offerConsent }
+        if facts.consentReminder { card.info = text.consentRemind }
         let notNow = ForkMeetingCard.Action(title: text.offerNotNow, perform: actions.notNow)
         var record = ForkMeetingCard.Action(title: text.offerRecord, prominent: true, recordDot: true,
                                             perform: actions.record)
