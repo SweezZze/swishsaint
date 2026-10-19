@@ -401,8 +401,22 @@ struct ForkMeetingStrings {
     let noticeAnnouncementCopiedDetail: String
 
     /// The "Cancel" card's line: nobody pressed Record. %@ is the provider's
-    /// short name ("Meet").
+    /// short name ("Meet"): 28 characters at most with "Discord", the
+    /// longest that starts on its own (and "FaceTime", which no longer does).
     let undoAutoStartedFormat: String
+
+    // MARK: Apps
+
+    /// The page's row for the calls in a browser other than Google Meet,
+    /// and what it recognizes.
+    let detectionOtherWebCalls: String
+    let detectionOtherWebCallsCaption: String
+    /// A provider's row this Mac cannot recognize (before macOS 14.4, an app
+    /// found by its microphone alone). Short.
+    let detectionUnavailable: String
+    /// FaceTime's row: its calls play in a system process, the whole Mac
+    /// is recorded.
+    let detectionFaceTimeWholeMac: String
 
     // MARK: Fixes J
 
@@ -416,6 +430,32 @@ struct ForkMeetingStrings {
     /// offered again. %@ is its short name ("Meet").
     let noticeAskAgainFormat: String
     let voiceAskAgainFormat: String
+
+    // MARK: Fixes K
+
+    /// FaceTime's row: an iPhone call relayed to the Mac runs in FaceTime's
+    /// system process too, and may be offered.
+    let detectionFaceTimeRelayed: String
+    /// The offer's menu for a call in a browser other than Google Meet: one
+    /// choice for all of them (`web`), so the menu names them together.
+    let offerNeverWebCalls: String
+    /// After it: the notice (28 characters at most) and what VoiceOver says.
+    let noticeNeverWebCalls: String
+    let voiceNeverWebCalls: String
+    /// A Mac that cannot say which app uses the microphone (before macOS
+    /// 14.4): "Always", which needs it, is not offered on the page.
+    let detectionAlwaysUnavailable: String
+
+    // MARK: Fixes L
+
+    /// Under the apps' rows while one of them is on "Always": what it waits
+    /// for before starting on its own.
+    let detectionAlwaysDelay: String
+    /// The offer's window for a call filmed in its app's main window, not a
+    /// meeting window of its own: %@ is the app ("Teams (main window)").
+    let offerMainWindowFormat: String
+
+    func offerMainWindow(_ app: String) -> String { String(format: offerMainWindowFormat, app) }
 
     func noticeAskAgain(_ provider: String) -> String { String(format: noticeAskAgainFormat, provider) }
     func voiceAskAgain(_ provider: String) -> String { String(format: voiceAskAgainFormat, provider) }
@@ -625,16 +665,16 @@ extension ForkMeetingStrings {
         detectionLookalike: "A web page that copies a Google Meet title exactly and uses the microphone could be taken for a meeting.",
         // MARK: Detection effects
         detectionTitle: "Detection",
-        detectionCaption: "Recognizes a Google Meet meeting open in your browser, even behind other windows or on another desktop, and offers to record it.",
+        detectionCaption: "Recognizes your calls in the Zoom, Teams, Slack, FaceTime, Webex and Discord apps, and in a browser in Google Meet, Zoom, Teams, Whereby and Jitsi Meet, even behind other windows or on another desktop, and offers to record them.",
         policyAsk: "Offer",
         policyAlways: "Always",
         policyNever: "Never",
         policyAskCaption: "Offered as soon as you join; unanswered, the offer folds after 20 seconds.",
         policyAlwaysCaption: "Recording starts on its own when you join. Choosing Cancel within a few seconds moves it to the Trash.",
-        policyNeverCaption: "Google Meet meetings are never offered. You can still record by hand.",
-        detectionTitlesOnly: "Before macOS 14.4, a meeting is recognized by its window’s title only.",
-        detectionMicrophoneUnreadable: "macOS does not say here which app uses the microphone: a meeting is recognized by its window’s title only.",
-        detectionNeedsScreenRecording: "Without Screen Recording, window titles cannot be read: no Google Meet meeting is recognized.",
+        policyNeverCaption: "A service set to Never is never offered. You can still record by hand.",
+        detectionTitlesOnly: "Before macOS 14.4, macOS does not say which app uses the microphone: only Google Meet and Zoom are recognized, by their window’s title.",
+        detectionMicrophoneUnreadable: "macOS does not say here which app uses the microphone: only Google Meet and Zoom are recognized, by their window’s title.",
+        detectionNeedsScreenRecording: "Without Screen Recording, window titles cannot be read: no call in a browser is recognized, and the apps only by their microphone.",
         detectedFormat: "Meeting detected: %@",
         calendarNaming: "Name with the calendar",
         calendarNamingCaption: "The calendar event that holds the meeting’s link gives the recording its name. Events stay on this Mac.",
@@ -658,7 +698,7 @@ extension ForkMeetingStrings {
         endingSoonFormat: "Stopping in %d s",
         endingSoonContinue: "Continue",
         undoFormat: "Cancel (%d s)",
-        noticeNeverFormat: "No more offers for %@",
+        noticeNeverFormat: "No more offers: %@",
         noticeNeverDetail: "Change it in Meetings",
         voiceOfferFormat: "Meeting detected: %@. Do you want to record it?",
         voiceAutoStartedFormat: "Meeting recording started on its own. To cancel it and move it to the Trash, choose Cancel within %d seconds.",
@@ -682,12 +722,26 @@ extension ForkMeetingStrings {
         voiceDiscardKept: "Recording cancelled, but its folder could be neither moved to the Trash nor deleted: it stays with your meetings.",
         noticeAnnouncementCopied: "Announcement copied",
         noticeAnnouncementCopiedDetail: "Paste it in the meeting chat",
-        undoAutoStartedFormat: "Auto-start · Always for %@",
+        undoAutoStartedFormat: "Auto · Always for %@",
+        // MARK: Apps
+        detectionOtherWebCalls: "Other web calls",
+        detectionOtherWebCallsCaption: "Zoom, Whereby, Jitsi Meet or Teams in a browser: offered only while the browser uses the microphone.",
+        detectionUnavailable: "Not recognized on this Mac",
+        detectionFaceTimeWholeMac: "For FaceTime, the whole Mac’s sound is recorded, notifications and music included.",
         // MARK: Fixes J
         microphoneExternal: "External microphone",
         voiceCancelled: "Recording cancelled.",
         noticeAskAgainFormat: "Back to Offer for %@",
-        voiceAskAgainFormat: "Meetings from %@ will be offered again."
+        voiceAskAgainFormat: "Meetings from %@ will be offered again.",
+        // MARK: Fixes K
+        detectionFaceTimeRelayed: "A phone call relayed from your iPhone may be offered too.",
+        offerNeverWebCalls: "Never for other web calls",
+        noticeNeverWebCalls: "Other web calls: Never",
+        voiceNeverWebCalls: "Calls in a browser other than Google Meet will no longer be offered.",
+        detectionAlwaysUnavailable: "Always is not available on this Mac: meetings are offered, never recorded on their own.",
+        // MARK: Fixes L
+        detectionAlwaysDelay: "Teams, Webex and Discord: recorded on their own 15 s into the call. Zoom and Slack: once their meeting window opens, otherwise offered.",
+        offerMainWindowFormat: "%@ (main window)"
     )
 }
 
@@ -876,16 +930,16 @@ extension ForkMeetingStrings {
         detectionLookalike: "Uma página da web que copie exatamente o título de uma reunião do Google Meet e use o microfone pode ser confundida com uma reunião.",
         // MARK: Detection effects
         detectionTitle: "Detecção",
-        detectionCaption: "Reconhece uma reunião do Google Meet aberta no seu navegador, mesmo atrás de outras janelas ou em outra mesa, e oferece gravá-la.",
+        detectionCaption: "Reconhece suas chamadas nos apps Zoom, Teams, Slack, FaceTime, Webex e Discord, e no navegador no Google Meet, Zoom, Teams, Whereby e Jitsi Meet, mesmo atrás de outras janelas ou em outra mesa, e oferece gravá-las.",
         policyAsk: "Oferecer",
         policyAlways: "Sempre",
         policyNever: "Nunca",
         policyAskCaption: "A oferta aparece assim que você entra; sem resposta, ela se recolhe após 20 segundos.",
         policyAlwaysCaption: "A gravação começa sozinha quando você entra. Escolher Cancelar nos segundos seguintes move a gravação para o Lixo.",
-        policyNeverCaption: "As reuniões do Google Meet nunca são oferecidas. Você ainda pode gravar manualmente.",
-        detectionTitlesOnly: "Antes do macOS 14.4, uma reunião é reconhecida só pelo título da janela.",
-        detectionMicrophoneUnreadable: "Aqui o macOS não informa qual app usa o microfone: uma reunião é reconhecida só pelo título da janela.",
-        detectionNeedsScreenRecording: "Sem a gravação de tela, os títulos das janelas não podem ser lidos: nenhuma reunião do Google Meet é reconhecida.",
+        policyNeverCaption: "Um serviço definido como “Nunca” não é oferecido. Você ainda pode gravar manualmente.",
+        detectionTitlesOnly: "Antes do macOS 14.4, o macOS não informa qual app usa o microfone: só o Google Meet e o Zoom são reconhecidos, pelo título da janela.",
+        detectionMicrophoneUnreadable: "Aqui o macOS não informa qual app usa o microfone: só o Google Meet e o Zoom são reconhecidos, pelo título da janela.",
+        detectionNeedsScreenRecording: "Sem a gravação de tela, os títulos das janelas não podem ser lidos: nenhuma chamada no navegador é reconhecida, e os apps só pelo microfone.",
         detectedFormat: "Reunião detectada: %@",
         calendarNaming: "Nomear pelo calendário",
         calendarNamingCaption: "O evento do calendário que contém o link da reunião dá o nome à gravação. Os eventos ficam neste Mac.",
@@ -934,11 +988,25 @@ extension ForkMeetingStrings {
         noticeAnnouncementCopied: "Aviso copiado",
         noticeAnnouncementCopiedDetail: "Cole no chat da reunião",
         undoAutoStartedFormat: "Auto · Sempre para %@",
+        // MARK: Apps
+        detectionOtherWebCalls: "Outras chamadas na web",
+        detectionOtherWebCallsCaption: "Zoom, Whereby, Jitsi Meet ou Teams no navegador: oferecidas só enquanto o navegador usa o microfone.",
+        detectionUnavailable: "Não reconhecido neste Mac",
+        detectionFaceTimeWholeMac: "No FaceTime, é gravado o som do Mac inteiro, incluindo notificações e música.",
         // MARK: Fixes J
         microphoneExternal: "Microfone externo",
         voiceCancelled: "Gravação cancelada.",
-        noticeAskAgainFormat: "De volta a Oferecer: %@",
-        voiceAskAgainFormat: "As reuniões do %@ voltarão a ser oferecidas."
+        noticeAskAgainFormat: "Oferecer de novo: %@",
+        voiceAskAgainFormat: "As reuniões do %@ voltarão a ser oferecidas.",
+        // MARK: Fixes K
+        detectionFaceTimeRelayed: "Uma ligação telefônica retransmitida pelo iPhone também pode ser oferecida.",
+        offerNeverWebCalls: "Nunca para outras chamadas na web",
+        noticeNeverWebCalls: "Outras chamadas web: Nunca",
+        voiceNeverWebCalls: "As chamadas no navegador que não sejam do Google Meet não serão mais oferecidas.",
+        detectionAlwaysUnavailable: "“Sempre” não está disponível neste Mac: as reuniões são oferecidas, nunca gravadas sozinhas.",
+        // MARK: Fixes L
+        detectionAlwaysDelay: "Teams, Webex e Discord: gravados sozinhos 15 s após o início da chamada. Zoom e Slack: assim que a janela da reunião abre; senão, oferecidos.",
+        offerMainWindowFormat: "%@ (janela principal)"
     )
 }
 
@@ -1127,16 +1195,16 @@ extension ForkMeetingStrings {
         detectionLookalike: "Bir Google Meet başlığını birebir taklit eden ve mikrofonu kullanan bir web sayfası da toplantı sanılabilir.",
         // MARK: Detection effects
         detectionTitle: "Algılama",
-        detectionCaption: "Tarayıcınızda açık bir Google Meet toplantısını, başka pencerelerin arkasında ya da başka bir masaüstünde olsa bile tanır ve kaydetmeyi önerir.",
+        detectionCaption: "Zoom, Teams, Slack, FaceTime, Webex ve Discord uygulamalarındaki ve tarayıcıda Google Meet, Zoom, Teams, Whereby ve Jitsi Meet’teki görüşmelerinizi, başka pencerelerin arkasında veya başka bir masaüstünde olsa bile tanır ve kaydetmeyi önerir.",
         policyAsk: "Öner",
         policyAlways: "Her zaman",
         policyNever: "Asla",
         policyAskCaption: "Öneri, katıldığınız anda gelir; yanıtlanmazsa 20 saniye sonra küçülür.",
         policyAlwaysCaption: "Kayıt, katıldığınızda kendiliğinden başlar. Birkaç saniye içinde Vazgeç’i seçerseniz kayıt Çöp Sepeti’ne taşınır.",
-        policyNeverCaption: "Google Meet toplantıları hiç önerilmez. Yine de elle kaydedebilirsiniz.",
-        detectionTitlesOnly: "macOS 14.4’ten önce bir toplantı yalnızca pencere başlığından tanınır.",
-        detectionMicrophoneUnreadable: "macOS burada mikrofonu hangi uygulamanın kullandığını söylemiyor: bir toplantı yalnızca pencere başlığından tanınır.",
-        detectionNeedsScreenRecording: "Ekran kaydı izni olmadan pencere başlıkları okunamaz: hiçbir Google Meet toplantısı tanınmaz.",
+        policyNeverCaption: "“Asla” olarak ayarlanan bir hizmet hiç önerilmez. Yine de elle kaydedebilirsiniz.",
+        detectionTitlesOnly: "macOS 14.4’ten önce macOS mikrofonu hangi uygulamanın kullandığını söylemez: yalnızca Google Meet ve Zoom, pencere başlığından tanınır.",
+        detectionMicrophoneUnreadable: "macOS burada mikrofonu hangi uygulamanın kullandığını söylemiyor: yalnızca Google Meet ve Zoom, pencere başlığından tanınır.",
+        detectionNeedsScreenRecording: "Ekran kaydı izni olmadan pencere başlıkları okunamaz: tarayıcıdaki hiçbir görüşme tanınmaz, uygulamalar ise yalnızca mikrofonlarından tanınır.",
         detectedFormat: "Toplantı algılandı: %@",
         calendarNaming: "Takvimle adlandır",
         calendarNamingCaption: "Toplantının bağlantısını içeren takvim etkinliği kayda adını verir. Etkinlikler bu Mac’te kalır.",
@@ -1184,12 +1252,26 @@ extension ForkMeetingStrings {
         voiceDiscardKept: "Kayıt iptal edildi, ancak klasörü Çöp Sepeti’ne taşınamadı ve silinemedi: toplantılarınızda duruyor.",
         noticeAnnouncementCopied: "Duyuru kopyalandı",
         noticeAnnouncementCopiedDetail: "Sohbete yapıştırın",
-        undoAutoStartedFormat: "Otomatik · %@: her zaman",
+        undoAutoStartedFormat: "Oto · %@: her zaman",
+        // MARK: Apps
+        detectionOtherWebCalls: "Diğer web görüşmeleri",
+        detectionOtherWebCallsCaption: "Tarayıcıda Zoom, Whereby, Jitsi Meet veya Teams: yalnızca tarayıcı mikrofonu kullanırken önerilir.",
+        detectionUnavailable: "Bu Mac’te tanınmıyor",
+        detectionFaceTimeWholeMac: "FaceTime için, bildirimler ve müzik dahil tüm Mac’in sesi kaydedilir.",
         // MARK: Fixes J
         microphoneExternal: "Harici mikrofon",
         voiceCancelled: "Kayıt iptal edildi.",
         noticeAskAgainFormat: "%@ için yine Öner",
-        voiceAskAgainFormat: "%@ toplantıları yeniden önerilecek."
+        voiceAskAgainFormat: "%@ toplantıları yeniden önerilecek.",
+        // MARK: Fixes K
+        detectionFaceTimeRelayed: "iPhone’unuzdan aktarılan bir telefon araması da önerilebilir.",
+        offerNeverWebCalls: "Diğer web görüşmeleri için asla",
+        noticeNeverWebCalls: "Diğer web görüşmeleri: Asla",
+        voiceNeverWebCalls: "Google Meet dışındaki tarayıcı görüşmeleri artık önerilmeyecek.",
+        detectionAlwaysUnavailable: "“Her zaman” bu Mac’te kullanılamaz: toplantılar önerilir, hiçbir zaman kendiliğinden kaydedilmez.",
+        // MARK: Fixes L
+        detectionAlwaysDelay: "Teams, Webex ve Discord: görüşme başladıktan 15 sn sonra kendiliğinden kaydedilir. Zoom ve Slack: toplantı pencereleri açılır açılmaz, aksi hâlde önerilir.",
+        offerMainWindowFormat: "%@ (ana pencere)"
     )
 }
 
@@ -1378,16 +1460,16 @@ extension ForkMeetingStrings {
         detectionLookalike: "Веб-страница, которая точно повторяет заголовок Google Meet и использует микрофон, может быть принята за встречу.",
         // MARK: Detection effects
         detectionTitle: "Обнаружение",
-        detectionCaption: "Распознаёт встречу Google Meet, открытую в браузере, даже за другими окнами или на другом рабочем столе, и предлагает её записать.",
+        detectionCaption: "Распознаёт ваши звонки в приложениях Zoom, Teams, Slack, FaceTime, Webex и Discord, а в браузере — в Google Meet, Zoom, Teams, Whereby и Jitsi Meet, даже за другими окнами или на другом рабочем столе, и предлагает их записать.",
         policyAsk: "Предлагать",
         policyAlways: "Всегда",
         policyNever: "Никогда",
         policyAskCaption: "Предложение появляется, как только вы подключаетесь; без ответа оно сворачивается через 20 секунд.",
         policyAlwaysCaption: "Запись начинается сама, когда вы подключаетесь. Если выбрать «Отменить» в первые секунды, она перемещается в Корзину.",
-        policyNeverCaption: "Встречи Google Meet никогда не предлагаются. Записать вручную по-прежнему можно.",
-        detectionTitlesOnly: "До macOS 14.4 встреча распознаётся только по заголовку окна.",
-        detectionMicrophoneUnreadable: "Здесь macOS не сообщает, какое приложение использует микрофон: встреча распознаётся только по заголовку окна.",
-        detectionNeedsScreenRecording: "Без разрешения на запись экрана заголовки окон не читаются: встречи Google Meet не распознаются.",
+        policyNeverCaption: "Сервис с выбором «Никогда» никогда не предлагается. Записать вручную по-прежнему можно.",
+        detectionTitlesOnly: "До macOS 14.4 macOS не сообщает, какое приложение использует микрофон: распознаются только Google Meet и Zoom, по заголовку окна.",
+        detectionMicrophoneUnreadable: "Здесь macOS не сообщает, какое приложение использует микрофон: распознаются только Google Meet и Zoom, по заголовку окна.",
+        detectionNeedsScreenRecording: "Без разрешения на запись экрана заголовки окон не читаются: звонки в браузере не распознаются, а приложения — только по микрофону.",
         detectedFormat: "Обнаружена встреча: %@",
         calendarNaming: "Называть по календарю",
         calendarNamingCaption: "Событие календаря со ссылкой на встречу даёт записи название. События остаются на этом Mac.",
@@ -1435,12 +1517,26 @@ extension ForkMeetingStrings {
         voiceDiscardKept: "Запись отменена, но её папку не удалось ни переместить в Корзину, ни удалить: она среди ваших встреч.",
         noticeAnnouncementCopied: "Объявление скопировано",
         noticeAnnouncementCopiedDetail: "Вставьте его в чат встречи",
-        undoAutoStartedFormat: "Автостарт · Всегда для %@",
+        undoAutoStartedFormat: "Авто · Всегда для %@",
+        // MARK: Apps
+        detectionOtherWebCalls: "Другие звонки в браузере",
+        detectionOtherWebCallsCaption: "Zoom, Whereby, Jitsi Meet или Teams в браузере: предлагаются, только пока браузер использует микрофон.",
+        detectionUnavailable: "Не распознаётся на этом Mac",
+        detectionFaceTimeWholeMac: "Для FaceTime записывается звук всего Mac, включая уведомления и музыку.",
         // MARK: Fixes J
         microphoneExternal: "Внешний микрофон",
         voiceCancelled: "Запись отменена.",
-        noticeAskAgainFormat: "Снова «Предлагать» для %@",
-        voiceAskAgainFormat: "Встречи %@ снова будут предлагаться."
+        noticeAskAgainFormat: "Снова «Предлагать»: %@",
+        voiceAskAgainFormat: "Встречи %@ снова будут предлагаться.",
+        // MARK: Fixes K
+        detectionFaceTimeRelayed: "Телефонный звонок, переданный с iPhone, тоже может быть предложен.",
+        offerNeverWebCalls: "Никогда для других звонков в браузере",
+        noticeNeverWebCalls: "Другие веб-звонки: Никогда",
+        voiceNeverWebCalls: "Звонки в браузере, кроме Google Meet, больше не будут предлагаться.",
+        detectionAlwaysUnavailable: "«Всегда» недоступно на этом Mac: встречи предлагаются, но никогда не записываются сами.",
+        // MARK: Fixes L
+        detectionAlwaysDelay: "Teams, Webex и Discord: запись сама начинается через 15 с после начала звонка. Zoom и Slack: как только откроется окно встречи, иначе предлагается.",
+        offerMainWindowFormat: "%@ (главное окно)"
     )
 }
 
@@ -1629,16 +1725,16 @@ extension ForkMeetingStrings {
         detectionLookalike: "Una página web que imite exactamente un título de Google Meet y use el micrófono podría tomarse por una reunión.",
         // MARK: Detection effects
         detectionTitle: "Detección",
-        detectionCaption: "Reconoce una reunión de Google Meet abierta en tu navegador, incluso detrás de otras ventanas o en otro escritorio, y ofrece grabarla.",
+        detectionCaption: "Reconoce tus llamadas en las apps Zoom, Teams, Slack, FaceTime, Webex y Discord, y en el navegador en Google Meet, Zoom, Teams, Whereby y Jitsi Meet, incluso detrás de otras ventanas o en otro escritorio, y ofrece grabarlas.",
         policyAsk: "Ofrecer",
         policyAlways: "Siempre",
         policyNever: "Nunca",
         policyAskCaption: "La oferta aparece en cuanto te unes; sin respuesta, se pliega a los 20 segundos.",
         policyAlwaysCaption: "La grabación empieza sola cuando te unes. Si eliges Cancelar en los segundos siguientes, se mueve a la Papelera.",
-        policyNeverCaption: "Las reuniones de Google Meet nunca se ofrecen. Puedes seguir grabando a mano.",
-        detectionTitlesOnly: "Antes de macOS 14.4, una reunión se reconoce solo por el título de su ventana.",
-        detectionMicrophoneUnreadable: "Aquí macOS no indica qué app usa el micrófono: una reunión se reconoce solo por el título de su ventana.",
-        detectionNeedsScreenRecording: "Sin la grabación de pantalla, los títulos de las ventanas no se pueden leer: no se reconoce ninguna reunión de Google Meet.",
+        policyNeverCaption: "Un servicio en Nunca no se ofrece nunca. Puedes seguir grabando a mano.",
+        detectionTitlesOnly: "Antes de macOS 14.4, macOS no indica qué app usa el micrófono: solo se reconocen Google Meet y Zoom, por el título de su ventana.",
+        detectionMicrophoneUnreadable: "Aquí macOS no indica qué app usa el micrófono: solo se reconocen Google Meet y Zoom, por el título de su ventana.",
+        detectionNeedsScreenRecording: "Sin la grabación de pantalla, los títulos de las ventanas no se pueden leer: no se reconoce ninguna llamada en el navegador, y las apps solo por su micrófono.",
         detectedFormat: "Reunión detectada: %@",
         calendarNaming: "Nombrar con el calendario",
         calendarNamingCaption: "El evento del calendario que contiene el enlace de la reunión da nombre a la grabación. Los eventos se quedan en este Mac.",
@@ -1687,11 +1783,25 @@ extension ForkMeetingStrings {
         noticeAnnouncementCopied: "Aviso copiado",
         noticeAnnouncementCopiedDetail: "Pégalo en el chat",
         undoAutoStartedFormat: "Auto · Siempre para %@",
+        // MARK: Apps
+        detectionOtherWebCalls: "Otras llamadas web",
+        detectionOtherWebCallsCaption: "Zoom, Whereby, Jitsi Meet o Teams en un navegador: solo se ofrecen mientras el navegador usa el micrófono.",
+        detectionUnavailable: "No se reconoce en este Mac",
+        detectionFaceTimeWholeMac: "Con FaceTime se graba el sonido de todo el Mac, notificaciones y música incluidas.",
         // MARK: Fixes J
         microphoneExternal: "Micrófono externo",
         voiceCancelled: "Grabación cancelada.",
-        noticeAskAgainFormat: "De nuevo Ofrecer para %@",
-        voiceAskAgainFormat: "Las reuniones de %@ se volverán a ofrecer."
+        noticeAskAgainFormat: "Ofrecer otra vez: %@",
+        voiceAskAgainFormat: "Las reuniones de %@ se volverán a ofrecer.",
+        // MARK: Fixes K
+        detectionFaceTimeRelayed: "Una llamada telefónica retransmitida desde tu iPhone también puede ofrecerse.",
+        offerNeverWebCalls: "Nunca para otras llamadas web",
+        noticeNeverWebCalls: "Otras llamadas web: Nunca",
+        voiceNeverWebCalls: "Las llamadas en el navegador que no sean de Google Meet ya no se ofrecerán.",
+        detectionAlwaysUnavailable: "«Siempre» no está disponible en este Mac: las reuniones se ofrecen, nunca se graban solas.",
+        // MARK: Fixes L
+        detectionAlwaysDelay: "Teams, Webex y Discord: se graban solos 15 s después de empezar la llamada. Zoom y Slack: en cuanto se abre su ventana de reunión; si no, se ofrecen.",
+        offerMainWindowFormat: "%@ (ventana principal)"
     )
 }
 
@@ -1880,16 +1990,16 @@ extension ForkMeetingStrings {
         detectionLookalike: "Webová stránka, ktorá presne napodobní názov Google Meet a používa mikrofón, môže byť považovaná za stretnutie.",
         // MARK: Detection effects
         detectionTitle: "Rozpoznávanie",
-        detectionCaption: "Rozpozná stretnutie Google Meet otvorené v prehliadači, aj za inými oknami alebo na inej ploche, a ponúkne jeho nahratie.",
+        detectionCaption: "Rozpozná vaše hovory v aplikáciách Zoom, Teams, Slack, FaceTime, Webex a Discord a v prehliadači v Google Meet, Zoom, Teams, Whereby a Jitsi Meet, aj za inými oknami alebo na inej ploche, a ponúkne ich nahratie.",
         policyAsk: "Ponúknuť",
         policyAlways: "Vždy",
         policyNever: "Nikdy",
         policyAskCaption: "Ponuka sa zobrazí hneď, ako sa pripojíte; bez odpovede sa po 20 sekundách zbalí.",
         policyAlwaysCaption: "Nahrávanie sa spustí samo, keď sa pripojíte. Ak do niekoľkých sekúnd vyberiete Zrušiť, presunie sa do Koša.",
-        policyNeverCaption: "Stretnutia Google Meet sa nikdy neponúkajú. Stále môžete nahrávať ručne.",
-        detectionTitlesOnly: "Pred macOS 14.4 sa stretnutie rozpozná iba podľa názvu okna.",
-        detectionMicrophoneUnreadable: "macOS tu neuvádza, ktorá aplikácia používa mikrofón: stretnutie sa rozpozná iba podľa názvu okna.",
-        detectionNeedsScreenRecording: "Bez nahrávania obrazovky sa názvy okien nedajú prečítať: žiadne stretnutie Google Meet sa nerozpozná.",
+        policyNeverCaption: "Služba nastavená na Nikdy sa nikdy neponúka. Stále môžete nahrávať ručne.",
+        detectionTitlesOnly: "Pred macOS 14.4 macOS neuvádza, ktorá aplikácia používa mikrofón: rozpoznajú sa iba Google Meet a Zoom, podľa názvu okna.",
+        detectionMicrophoneUnreadable: "macOS tu neuvádza, ktorá aplikácia používa mikrofón: rozpoznajú sa iba Google Meet a Zoom, podľa názvu okna.",
+        detectionNeedsScreenRecording: "Bez nahrávania obrazovky sa názvy okien nedajú prečítať: žiadny hovor v prehliadači sa nerozpozná a aplikácie iba podľa mikrofónu.",
         detectedFormat: "Rozpoznané stretnutie: %@",
         calendarNaming: "Pomenovať podľa kalendára",
         calendarNamingCaption: "Udalosť kalendára s odkazom na stretnutie dá nahrávke názov. Udalosti zostávajú na tomto Macu.",
@@ -1937,12 +2047,26 @@ extension ForkMeetingStrings {
         voiceDiscardKept: "Nahrávanie zrušené, no jeho priečinok sa nepodarilo presunúť do Koša ani vymazať: ostáva medzi stretnutiami.",
         noticeAnnouncementCopied: "Oznámenie skopírované",
         noticeAnnouncementCopiedDetail: "Vložte ho do četu stretnutia",
-        undoAutoStartedFormat: "Automaticky · Vždy pre %@",
+        undoAutoStartedFormat: "Auto · Vždy pre %@",
+        // MARK: Apps
+        detectionOtherWebCalls: "Iné hovory na webe",
+        detectionOtherWebCallsCaption: "Zoom, Whereby, Jitsi Meet alebo Teams v prehliadači: ponúknu sa, iba kým prehliadač používa mikrofón.",
+        detectionUnavailable: "Na tomto Macu sa nerozpozná",
+        detectionFaceTimeWholeMac: "Pri FaceTime sa nahráva zvuk celého Macu vrátane upozornení a hudby.",
         // MARK: Fixes J
         microphoneExternal: "Externý mikrofón",
         voiceCancelled: "Nahrávanie zrušené.",
         noticeAskAgainFormat: "Znova Ponúknuť pre %@",
-        voiceAskAgainFormat: "Stretnutia %@ sa budú znova ponúkať."
+        voiceAskAgainFormat: "Stretnutia %@ sa budú znova ponúkať.",
+        // MARK: Fixes K
+        detectionFaceTimeRelayed: "Ponúknuť sa môže aj telefonický hovor presmerovaný z iPhonu.",
+        offerNeverWebCalls: "Nikdy pre iné hovory na webe",
+        noticeNeverWebCalls: "Iné hovory na webe: Nikdy",
+        voiceNeverWebCalls: "Hovory v prehliadači okrem Google Meet sa už nebudú ponúkať.",
+        detectionAlwaysUnavailable: "Možnosť „Vždy“ nie je na tomto Macu k dispozícii: stretnutia sa ponúknu, nikdy sa nenahrajú samy.",
+        // MARK: Fixes L
+        detectionAlwaysDelay: "Teams, Webex a Discord: nahrávajú sa samy 15 s po začiatku hovoru. Zoom a Slack: hneď ako sa otvorí ich okno schôdze, inak sa ponúknu.",
+        offerMainWindowFormat: "%@ (hlavné okno)"
     )
 }
 
@@ -2131,16 +2255,16 @@ extension ForkMeetingStrings {
         detectionLookalike: "Eine Webseite, die einen Titel von Google Meet genau nachahmt und das Mikrofon nutzt, könnte für eine Besprechung gehalten werden.",
         // MARK: Detection effects
         detectionTitle: "Erkennung",
-        detectionCaption: "Erkennt eine in deinem Browser geöffnete Google-Meet-Besprechung, auch hinter anderen Fenstern oder auf einem anderen Schreibtisch, und bietet an, sie aufzunehmen.",
+        detectionCaption: "Erkennt deine Anrufe in den Apps Zoom, Teams, Slack, FaceTime, Webex und Discord und im Browser in Google Meet, Zoom, Teams, Whereby und Jitsi Meet, auch hinter anderen Fenstern oder auf einem anderen Schreibtisch, und bietet an, sie aufzunehmen.",
         policyAsk: "Anbieten",
         policyAlways: "Immer",
         policyNever: "Nie",
         policyAskCaption: "Angeboten, sobald du beitrittst; ohne Antwort klappt das Angebot nach 20 Sekunden ein.",
         policyAlwaysCaption: "Die Aufnahme startet von selbst, wenn du beitrittst. Wählst du innerhalb weniger Sekunden Abbrechen, kommt sie in den Papierkorb.",
-        policyNeverCaption: "Google-Meet-Besprechungen werden nie angeboten. Von Hand aufnehmen kannst du weiterhin.",
-        detectionTitlesOnly: "Vor macOS 14.4 wird eine Besprechung nur am Titel ihres Fensters erkannt.",
-        detectionMicrophoneUnreadable: "macOS verrät hier nicht, welche App das Mikrofon nutzt: Eine Besprechung wird nur am Titel ihres Fensters erkannt.",
-        detectionNeedsScreenRecording: "Ohne Bildschirmaufnahme sind Fenstertitel nicht lesbar: Keine Google-Meet-Besprechung wird erkannt.",
+        policyNeverCaption: "Ein Dienst auf „Nie“ wird nie angeboten. Von Hand aufnehmen kannst du weiterhin.",
+        detectionTitlesOnly: "Vor macOS 14.4 verrät macOS nicht, welche App das Mikrofon nutzt: Nur Google Meet und Zoom werden erkannt, am Titel ihres Fensters.",
+        detectionMicrophoneUnreadable: "macOS verrät hier nicht, welche App das Mikrofon nutzt: Nur Google Meet und Zoom werden erkannt, am Titel ihres Fensters.",
+        detectionNeedsScreenRecording: "Ohne Bildschirmaufnahme sind Fenstertitel nicht lesbar: Kein Anruf im Browser wird erkannt, die Apps nur an ihrem Mikrofon.",
         detectedFormat: "Besprechung erkannt: %@",
         calendarNaming: "Mit dem Kalender benennen",
         calendarNamingCaption: "Der Kalendertermin mit dem Link der Besprechung gibt der Aufnahme ihren Namen. Termine bleiben auf diesem Mac.",
@@ -2188,12 +2312,26 @@ extension ForkMeetingStrings {
         voiceDiscardKept: "Aufnahme abgebrochen, aber ihr Ordner ließ sich weder in den Papierkorb legen noch löschen: Er bleibt bei deinen Besprechungen.",
         noticeAnnouncementCopied: "Ankündigung kopiert",
         noticeAnnouncementCopiedDetail: "In den Chat einfügen",
-        undoAutoStartedFormat: "Autostart · Immer für %@",
+        undoAutoStartedFormat: "Auto · Immer für %@",
+        // MARK: Apps
+        detectionOtherWebCalls: "Andere Anrufe im Web",
+        detectionOtherWebCallsCaption: "Zoom, Whereby, Jitsi Meet oder Teams im Browser: nur angeboten, solange der Browser das Mikrofon nutzt.",
+        detectionUnavailable: "Auf diesem Mac nicht erkannt",
+        detectionFaceTimeWholeMac: "Bei FaceTime wird der Ton des ganzen Macs aufgenommen, Mitteilungen und Musik inklusive.",
         // MARK: Fixes J
         microphoneExternal: "Externes Mikrofon",
         voiceCancelled: "Aufnahme abgebrochen.",
         noticeAskAgainFormat: "Wieder Anbieten für %@",
-        voiceAskAgainFormat: "Besprechungen von %@ werden wieder angeboten."
+        voiceAskAgainFormat: "Besprechungen von %@ werden wieder angeboten.",
+        // MARK: Fixes K
+        detectionFaceTimeRelayed: "Auch ein vom iPhone weitergeleiteter Telefonanruf kann angeboten werden.",
+        offerNeverWebCalls: "Nie für andere Anrufe im Web",
+        noticeNeverWebCalls: "Andere Web-Anrufe: Nie",
+        voiceNeverWebCalls: "Anrufe im Browser außer Google Meet werden nicht mehr angeboten.",
+        detectionAlwaysUnavailable: "„Immer“ ist auf diesem Mac nicht verfügbar: Besprechungen werden angeboten, nie von selbst aufgenommen.",
+        // MARK: Fixes L
+        detectionAlwaysDelay: "Teams, Webex und Discord: 15 s nach Beginn des Anrufs von selbst aufgenommen. Zoom und Slack: sobald ihr Meeting-Fenster aufgeht, sonst angeboten.",
+        offerMainWindowFormat: "%@ (Hauptfenster)"
     )
 }
 
@@ -2382,16 +2520,16 @@ extension ForkMeetingStrings {
         detectionLookalike: "Une page web qui imite exactement un titre Google Meet et utilise le micro pourrait être prise pour une réunion.",
         // MARK: Detection effects
         detectionTitle: "Détection",
-        detectionCaption: "Reconnaît une réunion Google Meet ouverte dans votre navigateur, même derrière d’autres fenêtres ou sur un autre bureau, et propose de l’enregistrer.",
+        detectionCaption: "Reconnaît vos appels dans les apps Zoom, Teams, Slack, FaceTime, Webex et Discord, et dans un navigateur sur Google Meet, Zoom, Teams, Whereby et Jitsi Meet, même derrière d’autres fenêtres ou sur un autre bureau, et propose de les enregistrer.",
         policyAsk: "Proposer",
         policyAlways: "Toujours",
         policyNever: "Jamais",
         policyAskCaption: "Proposée dès que vous rejoignez la réunion\u{00A0}; sans réponse, la proposition se replie au bout de 20 secondes.",
         policyAlwaysCaption: "L’enregistrement démarre seul quand vous rejoignez la réunion. Choisir Annuler dans les quelques secondes qui suivent le met à la Corbeille.",
-        policyNeverCaption: "Les réunions Google Meet ne sont jamais proposées. Vous pouvez toujours enregistrer à la main.",
-        detectionTitlesOnly: "Avant macOS 14.4, une réunion est reconnue au titre de sa fenêtre seulement.",
-        detectionMicrophoneUnreadable: "Ici, macOS ne dit pas quelle app utilise le micro\u{00A0}: une réunion est reconnue au titre de sa fenêtre seulement.",
-        detectionNeedsScreenRecording: "Sans l’enregistrement de l’écran, les titres des fenêtres restent illisibles\u{00A0}: aucune réunion Google Meet n’est reconnue.",
+        policyNeverCaption: "Un service réglé sur Jamais n’est jamais proposé. Vous pouvez quand même enregistrer à la main.",
+        detectionTitlesOnly: "Avant macOS 14.4, macOS ne dit pas quelle app utilise le micro\u{00A0}: seuls Google Meet et Zoom sont reconnus, au titre de leur fenêtre.",
+        detectionMicrophoneUnreadable: "Ici, macOS ne dit pas quelle app utilise le micro\u{00A0}: seuls Google Meet et Zoom sont reconnus, au titre de leur fenêtre.",
+        detectionNeedsScreenRecording: "Sans l’enregistrement de l’écran, les titres des fenêtres restent illisibles\u{00A0}: aucun appel dans un navigateur n’est reconnu, et les apps seulement par leur micro.",
         detectedFormat: "Réunion détectée\u{00A0}: %@",
         calendarNaming: "Nommer avec le calendrier",
         calendarNamingCaption: "Le rendez-vous qui contient le lien de la réunion donne son nom à l’enregistrement. Les événements restent sur ce Mac.",
@@ -2415,7 +2553,7 @@ extension ForkMeetingStrings {
         endingSoonFormat: "Arrêt dans %d s",
         endingSoonContinue: "Continuer",
         undoFormat: "Annuler (%d s)",
-        noticeNeverFormat: "%@ n’est plus proposé",
+        noticeNeverFormat: "Plus proposé\u{00A0}: %@",
         noticeNeverDetail: "Réglable dans Réunions",
         voiceOfferFormat: "Réunion détectée\u{00A0}: %@. Voulez-vous l’enregistrer\u{00A0}?",
         voiceAutoStartedFormat: "Enregistrement de la réunion démarré automatiquement. Pour l’annuler et le mettre à la Corbeille, choisissez Annuler dans les %d secondes.",
@@ -2439,12 +2577,26 @@ extension ForkMeetingStrings {
         voiceDiscardKept: "Enregistrement annulé, mais son dossier n’a pu être ni mis à la Corbeille ni supprimé\u{00A0}: il reste avec vos réunions.",
         noticeAnnouncementCopied: "Annonce copiée",
         noticeAnnouncementCopiedDetail: "À coller dans la discussion",
-        undoAutoStartedFormat: "Auto · Toujours pour %@",
+        undoAutoStartedFormat: "Auto · %@\u{00A0}: Toujours",
+        // MARK: Apps
+        detectionOtherWebCalls: "Autres visios web",
+        detectionOtherWebCallsCaption: "Zoom, Whereby, Jitsi Meet ou Teams dans un navigateur\u{00A0}: proposés seulement pendant que le navigateur utilise le micro.",
+        detectionUnavailable: "Non reconnu sur ce Mac",
+        detectionFaceTimeWholeMac: "Pour FaceTime, c’est le son de tout le Mac qui est enregistré, notifications et musique comprises.",
         // MARK: Fixes J
         microphoneExternal: "Micro externe",
         voiceCancelled: "Enregistrement annulé.",
-        noticeAskAgainFormat: "Retour à Proposer pour %@",
-        voiceAskAgainFormat: "Les réunions %@ seront de nouveau proposées."
+        noticeAskAgainFormat: "Retour à Proposer\u{00A0}: %@",
+        voiceAskAgainFormat: "Les réunions %@ seront de nouveau proposées.",
+        // MARK: Fixes K
+        detectionFaceTimeRelayed: "Un appel téléphonique relayé par l’iPhone peut aussi être proposé.",
+        offerNeverWebCalls: "Jamais pour les autres visios web",
+        noticeNeverWebCalls: "Autres visios web\u{00A0}: Jamais",
+        voiceNeverWebCalls: "Les visios dans un navigateur, sauf Google Meet, ne seront plus proposées.",
+        detectionAlwaysUnavailable: "«\u{00A0}Toujours\u{00A0}» n’est pas disponible sur ce Mac\u{00A0}: les réunions sont proposées, jamais enregistrées d’elles-mêmes.",
+        // MARK: Fixes L
+        detectionAlwaysDelay: "Teams, Webex et Discord\u{00A0}: enregistrés seuls 15\u{00A0}s après le début de l’appel. Zoom et Slack\u{00A0}: dès que leur fenêtre de réunion s’ouvre, sinon proposés.",
+        offerMainWindowFormat: "%@ (fenêtre principale)"
     )
 }
 
@@ -2633,16 +2785,16 @@ extension ForkMeetingStrings {
         detectionLookalike: "Una pagina web che imita esattamente un titolo di Google Meet e usa il microfono potrebbe essere scambiata per una riunione.",
         // MARK: Detection effects
         detectionTitle: "Rilevamento",
-        detectionCaption: "Riconosce una riunione Google Meet aperta nel browser, anche dietro altre finestre o su un’altra scrivania, e propone di registrarla.",
+        detectionCaption: "Riconosce le tue chiamate nelle app Zoom, Teams, Slack, FaceTime, Webex e Discord, e nel browser su Google Meet, Zoom, Teams, Whereby e Jitsi Meet, anche dietro altre finestre o su un’altra scrivania, e propone di registrarle.",
         policyAsk: "Proponi",
         policyAlways: "Sempre",
         policyNever: "Mai",
         policyAskCaption: "Proposta appena entri; senza risposta, la proposta si chiude dopo 20 secondi.",
         policyAlwaysCaption: "La registrazione parte da sola quando entri. Scegliere Annulla entro pochi secondi la sposta nel Cestino.",
-        policyNeverCaption: "Le riunioni Google Meet non vengono mai proposte. Puoi comunque registrare a mano.",
-        detectionTitlesOnly: "Prima di macOS 14.4, una riunione è riconosciuta solo dal titolo della sua finestra.",
-        detectionMicrophoneUnreadable: "Qui macOS non dice quale app usa il microfono: una riunione è riconosciuta solo dal titolo della sua finestra.",
-        detectionNeedsScreenRecording: "Senza la registrazione dello schermo i titoli delle finestre non sono leggibili: nessuna riunione Google Meet viene riconosciuta.",
+        policyNeverCaption: "Un servizio impostato su Mai non viene mai proposto. Puoi comunque registrare a mano.",
+        detectionTitlesOnly: "Prima di macOS 14.4, macOS non dice quale app usa il microfono: si riconoscono solo Google Meet e Zoom, dal titolo della loro finestra.",
+        detectionMicrophoneUnreadable: "Qui macOS non dice quale app usa il microfono: si riconoscono solo Google Meet e Zoom, dal titolo della loro finestra.",
+        detectionNeedsScreenRecording: "Senza la registrazione dello schermo i titoli delle finestre non sono leggibili: nessuna chiamata nel browser viene riconosciuta, e le app solo dal microfono.",
         detectedFormat: "Riunione rilevata: %@",
         calendarNaming: "Nomina con il calendario",
         calendarNamingCaption: "L’evento del calendario che contiene il link della riunione dà il nome alla registrazione. Gli eventi restano su questo Mac.",
@@ -2690,12 +2842,26 @@ extension ForkMeetingStrings {
         voiceDiscardKept: "Registrazione annullata, ma la cartella non è stata spostata nel Cestino né eliminata: resta tra le tue riunioni.",
         noticeAnnouncementCopied: "Annuncio copiato",
         noticeAnnouncementCopiedDetail: "Incollalo nella chat",
-        undoAutoStartedFormat: "Automatica · Sempre per %@",
+        undoAutoStartedFormat: "Auto · Sempre per %@",
+        // MARK: Apps
+        detectionOtherWebCalls: "Altre chiamate sul web",
+        detectionOtherWebCallsCaption: "Zoom, Whereby, Jitsi Meet o Teams nel browser: proposte solo mentre il browser usa il microfono.",
+        detectionUnavailable: "Non rilevato su questo Mac",
+        detectionFaceTimeWholeMac: "Per FaceTime si registra l’audio di tutto il Mac, notifiche e musica comprese.",
         // MARK: Fixes J
         microphoneExternal: "Microfono esterno",
         voiceCancelled: "Registrazione annullata.",
-        noticeAskAgainFormat: "Di nuovo Proponi per %@",
-        voiceAskAgainFormat: "Le riunioni di %@ saranno di nuovo proposte."
+        noticeAskAgainFormat: "Di nuovo Proponi: %@",
+        voiceAskAgainFormat: "Le riunioni di %@ saranno di nuovo proposte.",
+        // MARK: Fixes K
+        detectionFaceTimeRelayed: "Anche una telefonata inoltrata dall’iPhone può essere proposta.",
+        offerNeverWebCalls: "Mai per le altre chiamate sul web",
+        noticeNeverWebCalls: "Altre chiamate web: Mai",
+        voiceNeverWebCalls: "Le chiamate nel browser diverse da Google Meet non saranno più proposte.",
+        detectionAlwaysUnavailable: "«Sempre» non è disponibile su questo Mac: le riunioni vengono proposte, mai registrate da sole.",
+        // MARK: Fixes L
+        detectionAlwaysDelay: "Teams, Webex e Discord: registrati da soli 15 s dopo l’inizio della chiamata. Zoom e Slack: appena si apre la loro finestra della riunione, altrimenti proposti.",
+        offerMainWindowFormat: "%@ (finestra principale)"
     )
 }
 
@@ -2884,16 +3050,16 @@ extension ForkMeetingStrings {
         detectionLookalike: "Google Meet のタイトルをそのまま真似てマイクを使う Web ページも、ミーティングと見なされることがあります。",
         // MARK: Detection effects
         detectionTitle: "検出",
-        detectionCaption: "ブラウザで開いている Google Meet のミーティングを、ほかのウインドウの後ろや別のデスクトップにあっても認識し、録画を提案します。",
+        detectionCaption: "Zoom、Teams、Slack、FaceTime、Webex、Discord の App と、ブラウザの Google Meet、Zoom、Teams、Whereby、Jitsi Meet での通話を、ほかのウインドウの後ろや別のデスクトップにあっても認識し、録画を提案します。",
         policyAsk: "提案する",
         policyAlways: "常に録画",
         policyNever: "提案しない",
         policyAskCaption: "参加するとすぐに提案します。応答がなければ 20 秒後に小さくたたまれます。",
         policyAlwaysCaption: "参加すると録画が自動で始まります。数秒以内に「キャンセル」を選ぶとゴミ箱に移動します。",
-        policyNeverCaption: "Google Meet のミーティングは提案しません。手動での録画はいつでもできます。",
-        detectionTitlesOnly: "macOS 14.4 より前は、ミーティングをウインドウのタイトルだけで認識します。",
-        detectionMicrophoneUnreadable: "この Mac では、どのアプリがマイクを使っているか macOS から取得できません。ミーティングはウインドウのタイトルだけで認識します。",
-        detectionNeedsScreenRecording: "画面収録の許可がないとウインドウのタイトルを読めないため、Google Meet のミーティングを認識できません。",
+        policyNeverCaption: "「提案しない」にしたサービスは提案しません。手動での録画はいつでもできます。",
+        detectionTitlesOnly: "macOS 14.4 より前は、どのアプリがマイクを使っているか macOS から取得できません。Google Meet と Zoom だけを、ウインドウのタイトルで認識します。",
+        detectionMicrophoneUnreadable: "この Mac では、どのアプリがマイクを使っているか macOS から取得できません。Google Meet と Zoom だけを、ウインドウのタイトルで認識します。",
+        detectionNeedsScreenRecording: "画面収録の許可がないとウインドウのタイトルを読めないため、ブラウザの通話は認識できず、アプリはマイクだけで認識します。",
         detectedFormat: "検出されたミーティング: %@",
         calendarNaming: "カレンダーで名前を付ける",
         calendarNamingCaption: "ミーティングのリンクを含むカレンダーの予定の名前を録画に付けます。予定はこの Mac から送信されません。",
@@ -2942,11 +3108,25 @@ extension ForkMeetingStrings {
         noticeAnnouncementCopied: "告知をコピーしました",
         noticeAnnouncementCopiedDetail: "チャットに貼り付けてください",
         undoAutoStartedFormat: "自動で開始 · %@ では常に録画",
+        // MARK: Apps
+        detectionOtherWebCalls: "その他の Web 通話",
+        detectionOtherWebCallsCaption: "ブラウザの Zoom、Whereby、Jitsi Meet、Teams。ブラウザがマイクを使っている間だけ提案します。",
+        detectionUnavailable: "この Mac では認識できません",
+        detectionFaceTimeWholeMac: "FaceTime では、通知や音楽も含めて Mac 全体の音を録音します。",
         // MARK: Fixes J
         microphoneExternal: "外部マイク",
         voiceCancelled: "録画を取り消しました。",
         noticeAskAgainFormat: "%@ は再び「提案する」",
-        voiceAskAgainFormat: "%@ のミーティングは再び提案されます。"
+        voiceAskAgainFormat: "%@ のミーティングは再び提案されます。",
+        // MARK: Fixes K
+        detectionFaceTimeRelayed: "iPhone から中継された電話も提案されることがあります。",
+        offerNeverWebCalls: "その他の Web 通話では録画しない",
+        noticeNeverWebCalls: "その他の Web 通話：提案しない",
+        voiceNeverWebCalls: "Google Meet 以外のブラウザの通話は今後提案されません。",
+        detectionAlwaysUnavailable: "この Mac では「常に録画」は使えません。会議は提案されるだけで、自動では録画されません。",
+        // MARK: Fixes L
+        detectionAlwaysDelay: "Teams、Webex、Discord：通話開始から 15 秒で自動的に録画します。Zoom と Slack：ミーティングウインドウが開いたらすぐに録画し、開かなければ提案します。",
+        offerMainWindowFormat: "%@（メインウインドウ）"
     )
 }
 
@@ -3135,16 +3315,16 @@ extension ForkMeetingStrings {
         detectionLookalike: "Google Meet 제목을 그대로 흉내 내고 마이크를 사용하는 웹 페이지도 회의로 인식될 수 있습니다.",
         // MARK: Detection effects
         detectionTitle: "감지",
-        detectionCaption: "브라우저에 열린 Google Meet 회의를 다른 윈도우 뒤나 다른 데스크탑에 있어도 알아보고 녹화를 제안합니다.",
+        detectionCaption: "Zoom, Teams, Slack, FaceTime, Webex, Discord 앱과 브라우저의 Google Meet, Zoom, Teams, Whereby, Jitsi Meet 통화를 다른 윈도우 뒤나 다른 데스크탑에 있어도 알아보고 녹화를 제안합니다.",
         policyAsk: "제안",
         policyAlways: "항상",
         policyNever: "안 함",
         policyAskCaption: "참여하자마자 제안합니다. 응답이 없으면 20초 뒤 접힙니다.",
         policyAlwaysCaption: "참여하면 녹화가 자동으로 시작됩니다. 몇 초 안에 취소를 선택하면 휴지통으로 이동합니다.",
-        policyNeverCaption: "Google Meet 회의는 제안하지 않습니다. 직접 녹화는 언제든 할 수 있습니다.",
-        detectionTitlesOnly: "macOS 14.4 이전에는 회의를 윈도우 제목으로만 알아봅니다.",
-        detectionMicrophoneUnreadable: "이 Mac에서는 macOS가 어떤 앱이 마이크를 쓰는지 알려 주지 않아 회의를 윈도우 제목으로만 알아봅니다.",
-        detectionNeedsScreenRecording: "화면 녹화 권한이 없으면 윈도우 제목을 읽을 수 없어 Google Meet 회의를 알아보지 못합니다.",
+        policyNeverCaption: "안 함으로 설정한 서비스는 제안하지 않습니다. 직접 녹화는 언제든 할 수 있습니다.",
+        detectionTitlesOnly: "macOS 14.4 이전에는 macOS가 어떤 앱이 마이크를 쓰는지 알려 주지 않아 Google Meet와 Zoom만 윈도우 제목으로 알아봅니다.",
+        detectionMicrophoneUnreadable: "이 Mac에서는 macOS가 어떤 앱이 마이크를 쓰는지 알려 주지 않아 Google Meet와 Zoom만 윈도우 제목으로 알아봅니다.",
+        detectionNeedsScreenRecording: "화면 녹화 권한이 없으면 윈도우 제목을 읽을 수 없어 브라우저 통화는 알아보지 못하고, 앱은 마이크로만 알아봅니다.",
         detectedFormat: "감지된 회의: %@",
         calendarNaming: "캘린더로 이름 붙이기",
         calendarNamingCaption: "회의 링크가 들어 있는 캘린더 일정의 이름을 녹화에 붙입니다. 일정은 이 Mac에만 보관됩니다.",
@@ -3193,11 +3373,25 @@ extension ForkMeetingStrings {
         noticeAnnouncementCopied: "안내를 복사했습니다",
         noticeAnnouncementCopiedDetail: "회의 채팅에 붙여 넣으세요",
         undoAutoStartedFormat: "자동으로 시작됨 · %@에서 항상 녹화",
+        // MARK: Apps
+        detectionOtherWebCalls: "기타 웹 통화",
+        detectionOtherWebCallsCaption: "브라우저의 Zoom, Whereby, Jitsi Meet, Teams: 브라우저가 마이크를 쓰는 동안에만 제안합니다.",
+        detectionUnavailable: "이 Mac에서는 인식 불가",
+        detectionFaceTimeWholeMac: "FaceTime에서는 알림과 음악을 포함한 Mac 전체의 소리가 녹음됩니다.",
         // MARK: Fixes J
         microphoneExternal: "외장 마이크",
         voiceCancelled: "녹화가 취소되었습니다.",
         noticeAskAgainFormat: "%@: 다시 제안",
-        voiceAskAgainFormat: "%@ 회의가 다시 제안됩니다."
+        voiceAskAgainFormat: "%@ 회의가 다시 제안됩니다.",
+        // MARK: Fixes K
+        detectionFaceTimeRelayed: "iPhone에서 중계된 전화 통화도 제안될 수 있습니다.",
+        offerNeverWebCalls: "기타 웹 통화에서 녹화 안 함",
+        noticeNeverWebCalls: "기타 웹 통화: 안 함",
+        voiceNeverWebCalls: "Google Meet 외의 브라우저 통화는 더 이상 제안되지 않습니다.",
+        detectionAlwaysUnavailable: "이 Mac에서는 ‘항상’을 사용할 수 없습니다. 회의는 제안만 되고 자동으로 녹화되지 않습니다.",
+        // MARK: Fixes L
+        detectionAlwaysDelay: "Teams, Webex, Discord: 통화 시작 15초 후 자동으로 녹화합니다. Zoom과 Slack: 회의 윈도우가 열리면 바로 녹화하고, 아니면 제안합니다.",
+        offerMainWindowFormat: "%@ (메인 윈도우)"
     )
 }
 
@@ -3386,16 +3580,16 @@ extension ForkMeetingStrings {
         detectionLookalike: "Вебсторінка, яка точно повторює заголовок Google Meet і використовує мікрофон, може бути сприйнята як зустріч.",
         // MARK: Detection effects
         detectionTitle: "Виявлення",
-        detectionCaption: "Розпізнає зустріч Google Meet, відкриту в браузері, навіть за іншими вікнами чи на іншому робочому столі, і пропонує її записати.",
+        detectionCaption: "Розпізнає ваші дзвінки в застосунках Zoom, Teams, Slack, FaceTime, Webex і Discord, а в браузері — у Google Meet, Zoom, Teams, Whereby і Jitsi Meet, навіть за іншими вікнами чи на іншому робочому столі, і пропонує їх записати.",
         policyAsk: "Пропонувати",
         policyAlways: "Завжди",
         policyNever: "Ніколи",
         policyAskCaption: "Пропозиція з’являється, щойно ви приєднуєтеся; без відповіді вона згортається через 20 секунд.",
         policyAlwaysCaption: "Запис починається сам, коли ви приєднуєтеся. Якщо вибрати «Скасувати» протягом кількох секунд, його буде переміщено в Смітник.",
-        policyNeverCaption: "Зустрічі Google Meet ніколи не пропонуються. Записати вручну, як і раніше, можна.",
-        detectionTitlesOnly: "До macOS 14.4 зустріч розпізнається лише за заголовком вікна.",
-        detectionMicrophoneUnreadable: "Тут macOS не повідомляє, яка програма використовує мікрофон: зустріч розпізнається лише за заголовком вікна.",
-        detectionNeedsScreenRecording: "Без дозволу на запис екрана заголовки вікон не читаються: зустрічі Google Meet не розпізнаються.",
+        policyNeverCaption: "Сервіс із вибором «Ніколи» ніколи не пропонується. Записати вручну, як і раніше, можна.",
+        detectionTitlesOnly: "До macOS 14.4 macOS не повідомляє, яка програма використовує мікрофон: розпізнаються лише Google Meet і Zoom, за заголовком вікна.",
+        detectionMicrophoneUnreadable: "Тут macOS не повідомляє, яка програма використовує мікрофон: розпізнаються лише Google Meet і Zoom, за заголовком вікна.",
+        detectionNeedsScreenRecording: "Без дозволу на запис екрана заголовки вікон не читаються: дзвінки в браузері не розпізнаються, а програми — лише за мікрофоном.",
         detectedFormat: "Виявлено зустріч: %@",
         calendarNaming: "Називати за календарем",
         calendarNamingCaption: "Подія календаря з посиланням на зустріч дає запису назву. Події залишаються на цьому Mac.",
@@ -3419,7 +3613,7 @@ extension ForkMeetingStrings {
         endingSoonFormat: "Зупинка через %d с",
         endingSoonContinue: "Продовжити",
         undoFormat: "Скасувати (%d с)",
-        noticeNeverFormat: "Не пропонувати для %@",
+        noticeNeverFormat: "Не пропонувати: %@",
         noticeNeverDetail: "Можна змінити в «Зустрічах»",
         voiceOfferFormat: "Виявлено зустріч: %@. Записати її?",
         voiceAutoStartedFormat: "Запис зустрічі почався автоматично. Щоб скасувати його й перемістити в Смітник, виберіть «Скасувати» протягом %d секунд.",
@@ -3443,12 +3637,26 @@ extension ForkMeetingStrings {
         voiceDiscardKept: "Запис скасовано, але його теку не вдалося ні перемістити в Смітник, ні видалити: вона лишається серед зустрічей.",
         noticeAnnouncementCopied: "Оголошення скопійовано",
         noticeAnnouncementCopiedDetail: "Вставте його в чат зустрічі",
-        undoAutoStartedFormat: "Автостарт · Завжди для %@",
+        undoAutoStartedFormat: "Авто · Завжди для %@",
+        // MARK: Apps
+        detectionOtherWebCalls: "Інші дзвінки в браузері",
+        detectionOtherWebCallsCaption: "Zoom, Whereby, Jitsi Meet або Teams у браузері: пропонуються, лише поки браузер використовує мікрофон.",
+        detectionUnavailable: "Тут не розпізнається",
+        detectionFaceTimeWholeMac: "Для FaceTime записується звук усього Mac, разом зі сповіщеннями й музикою.",
         // MARK: Fixes J
         microphoneExternal: "Зовнішній мікрофон",
         voiceCancelled: "Запис скасовано.",
-        noticeAskAgainFormat: "Знову «Пропонувати» для %@",
-        voiceAskAgainFormat: "Зустрічі %@ знову пропонуватимуться."
+        noticeAskAgainFormat: "Знову пропонувати: %@",
+        voiceAskAgainFormat: "Зустрічі %@ знову пропонуватимуться.",
+        // MARK: Fixes K
+        detectionFaceTimeRelayed: "Телефонний дзвінок, переданий з iPhone, теж може бути запропонований.",
+        offerNeverWebCalls: "Ніколи для інших дзвінків у браузері",
+        noticeNeverWebCalls: "Інші веб-дзвінки: Ніколи",
+        voiceNeverWebCalls: "Дзвінки в браузері, крім Google Meet, більше не пропонуватимуться.",
+        detectionAlwaysUnavailable: "«Завжди» недоступне на цьому Mac: зустрічі пропонуються, але ніколи не записуються самі.",
+        // MARK: Fixes L
+        detectionAlwaysDelay: "Teams, Webex і Discord: запис сам починається через 15 с після початку дзвінка. Zoom і Slack: щойно відкриється вікно зустрічі, інакше пропонується.",
+        offerMainWindowFormat: "%@ (головне вікно)"
     )
 }
 
@@ -3637,16 +3845,16 @@ extension ForkMeetingStrings {
         detectionLookalike: "完全模仿 Google Meet 标题并使用麦克风的网页，也可能被当作会议。",
         // MARK: Detection effects
         detectionTitle: "检测",
-        detectionCaption: "识别在浏览器中打开的 Google Meet 会议，即使它在其他窗口后面或在另一个桌面上，并提议录制。",
+        detectionCaption: "识别你在 Zoom、Teams、Slack、FaceTime、Webex 和 Discord App 中，以及在浏览器中 Google Meet、Zoom、Teams、Whereby 和 Jitsi Meet 上的通话，即使在其他窗口后面或在另一个桌面上，并提议录制。",
         policyAsk: "提议",
         policyAlways: "总是",
         policyNever: "从不",
         policyAskCaption: "一加入会议就会提议；无人回应时，提议会在 20 秒后收起。",
         policyAlwaysCaption: "加入会议时自动开始录制。几秒内选择“取消”会将这段录制移到废纸篓。",
-        policyNeverCaption: "从不提议 Google Meet 会议。你仍可手动录制。",
-        detectionTitlesOnly: "在 macOS 14.4 之前，只能通过窗口标题识别会议。",
-        detectionMicrophoneUnreadable: "在这台 Mac 上，macOS 不提供哪个 App 正在使用麦克风：只能通过窗口标题识别会议。",
-        detectionNeedsScreenRecording: "没有屏幕录制权限就无法读取窗口标题：无法识别任何 Google Meet 会议。",
+        policyNeverCaption: "设为“从不”的服务从不提议。你仍可手动录制。",
+        detectionTitlesOnly: "在 macOS 14.4 之前，macOS 不提供哪个 App 正在使用麦克风：只能通过窗口标题识别 Google Meet 和 Zoom。",
+        detectionMicrophoneUnreadable: "在这台 Mac 上，macOS 不提供哪个 App 正在使用麦克风：只能通过窗口标题识别 Google Meet 和 Zoom。",
+        detectionNeedsScreenRecording: "没有屏幕录制权限就无法读取窗口标题：无法识别浏览器中的通话，App 只能通过麦克风识别。",
         detectedFormat: "检测到会议：%@",
         calendarNaming: "用日历命名",
         calendarNamingCaption: "包含会议链接的日历日程会为录制命名。日程仅保留在这台 Mac 上。",
@@ -3695,11 +3903,25 @@ extension ForkMeetingStrings {
         noticeAnnouncementCopied: "通知已复制",
         noticeAnnouncementCopiedDetail: "粘贴到会议聊天中",
         undoAutoStartedFormat: "已自动开始 · %@ 总是录制",
+        // MARK: Apps
+        detectionOtherWebCalls: "其他网页通话",
+        detectionOtherWebCallsCaption: "浏览器中的 Zoom、Whereby、Jitsi Meet 或 Teams：仅在浏览器使用麦克风时提议。",
+        detectionUnavailable: "此 Mac 无法识别",
+        detectionFaceTimeWholeMac: "对于 FaceTime，将录制整台 Mac 的声音，包括通知和音乐。",
         // MARK: Fixes J
         microphoneExternal: "外接麦克风",
         voiceCancelled: "录制已取消。",
         noticeAskAgainFormat: "%@ 改回“提议”",
-        voiceAskAgainFormat: "将重新提议录制 %@ 会议。"
+        voiceAskAgainFormat: "将重新提议录制 %@ 会议。",
+        // MARK: Fixes K
+        detectionFaceTimeRelayed: "通过 iPhone 转接的电话也可能会被提议录制。",
+        offerNeverWebCalls: "其他网页通话永不录制",
+        noticeNeverWebCalls: "其他网页通话：从不",
+        voiceNeverWebCalls: "将不再提议录制浏览器中除 Google Meet 以外的通话。",
+        detectionAlwaysUnavailable: "此 Mac 上无法使用“总是”：会议只会被提议，不会自动录制。",
+        // MARK: Fixes L
+        detectionAlwaysDelay: "Teams、Webex 和 Discord：通话开始 15 秒后自动录制。Zoom 和 Slack：会议窗口一打开就录制，否则提议录制。",
+        offerMainWindowFormat: "%@（主窗口）"
     )
 }
 
@@ -3888,16 +4110,16 @@ extension ForkMeetingStrings {
         detectionLookalike: "完全模仿 Google Meet 標題並使用麥克風的網頁，也可能被當成會議。",
         // MARK: Detection effects
         detectionTitle: "偵測",
-        detectionCaption: "辨識瀏覽器中開啟的 Google Meet 會議，即使它在其他視窗後面或另一個桌面上，並提議錄製。",
+        detectionCaption: "辨識你在 Zoom、Teams、Slack、FaceTime、Webex 和 Discord App 中，以及在瀏覽器中 Google Meet、Zoom、Teams、Whereby 和 Jitsi Meet 上的通話，即使在其他視窗後面或另一個桌面上，並提議錄製。",
         policyAsk: "提議",
         policyAlways: "一律",
         policyNever: "永不",
         policyAskCaption: "一加入會議就會提議；無人回應時，提議會在 20 秒後收合。",
         policyAlwaysCaption: "加入會議時自動開始錄製。幾秒內選擇「取消」會將這段錄製丟到垃圾桶。",
-        policyNeverCaption: "永不提議 Google Meet 會議。你仍可手動錄製。",
-        detectionTitlesOnly: "在 macOS 14.4 之前，只能透過視窗標題辨識會議。",
-        detectionMicrophoneUnreadable: "在這台 Mac 上，macOS 不提供哪個 App 正在使用麥克風：只能透過視窗標題辨識會議。",
-        detectionNeedsScreenRecording: "沒有螢幕錄製權限就無法讀取視窗標題：無法辨識任何 Google Meet 會議。",
+        policyNeverCaption: "設為「永不」的服務永不提議。你仍可手動錄製。",
+        detectionTitlesOnly: "在 macOS 14.4 之前，macOS 不提供哪個 App 正在使用麥克風：只能透過視窗標題辨識 Google Meet 和 Zoom。",
+        detectionMicrophoneUnreadable: "在這台 Mac 上，macOS 不提供哪個 App 正在使用麥克風：只能透過視窗標題辨識 Google Meet 和 Zoom。",
+        detectionNeedsScreenRecording: "沒有螢幕錄製權限就無法讀取視窗標題：無法辨識瀏覽器中的通話，App 只能透過麥克風辨識。",
         detectedFormat: "偵測到會議：%@",
         calendarNaming: "用行事曆命名",
         calendarNamingCaption: "包含會議連結的行事曆行程會為錄製命名。行程只會保留在這台 Mac 上。",
@@ -3946,11 +4168,25 @@ extension ForkMeetingStrings {
         noticeAnnouncementCopied: "通知已拷貝",
         noticeAnnouncementCopiedDetail: "貼到會議聊天中",
         undoAutoStartedFormat: "已自動開始 · %@ 一律錄製",
+        // MARK: Apps
+        detectionOtherWebCalls: "其他網頁通話",
+        detectionOtherWebCallsCaption: "瀏覽器中的 Zoom、Whereby、Jitsi Meet 或 Teams：僅在瀏覽器使用麥克風時提議。",
+        detectionUnavailable: "此 Mac 無法辨識",
+        detectionFaceTimeWholeMac: "對於 FaceTime，將錄製整台 Mac 的聲音，包括通知和音樂。",
         // MARK: Fixes J
         microphoneExternal: "外接麥克風",
         voiceCancelled: "錄製已取消。",
         noticeAskAgainFormat: "%@ 改回「提議」",
-        voiceAskAgainFormat: "將重新提議錄製 %@ 會議。"
+        voiceAskAgainFormat: "將重新提議錄製 %@ 會議。",
+        // MARK: Fixes K
+        detectionFaceTimeRelayed: "透過 iPhone 轉接的電話也可能會被提議錄製。",
+        offerNeverWebCalls: "其他網頁通話永不錄製",
+        noticeNeverWebCalls: "其他網頁通話：永不",
+        voiceNeverWebCalls: "將不再提議錄製瀏覽器中 Google Meet 以外的通話。",
+        detectionAlwaysUnavailable: "此 Mac 無法使用「一律」：會議只會被提議，不會自動錄製。",
+        // MARK: Fixes L
+        detectionAlwaysDelay: "Teams、Webex 和 Discord：通話開始 15 秒後自動錄製。Zoom 和 Slack：會議視窗一打開就錄製，否則提議錄製。",
+        offerMainWindowFormat: "%@（主視窗）"
     )
 }
 
@@ -4139,16 +4375,16 @@ extension ForkMeetingStrings {
         detectionLookalike: "完全模仿 Google Meet 標題並使用麥克風的網頁，也可能被當成會議。",
         // MARK: Detection effects
         detectionTitle: "偵測",
-        detectionCaption: "辨認瀏覽器中開啟的 Google Meet 會議，即使它在其他視窗後面或另一個桌面上，並提議錄製。",
+        detectionCaption: "辨認你在 Zoom、Teams、Slack、FaceTime、Webex 和 Discord App 中，以及在瀏覽器中 Google Meet、Zoom、Teams、Whereby 和 Jitsi Meet 上的通話，即使在其他視窗後面或另一個桌面上，並提議錄製。",
         policyAsk: "提議",
         policyAlways: "一律",
         policyNever: "永不",
         policyAskCaption: "一加入會議便會提議；沒有回應時，提議會在 20 秒後收起。",
         policyAlwaysCaption: "加入會議時自動開始錄製。幾秒內選擇「取消」會將這段錄製移至垃圾桶。",
-        policyNeverCaption: "永不提議 Google Meet 會議。你仍可手動錄製。",
-        detectionTitlesOnly: "在 macOS 14.4 之前，只能透過視窗標題辨認會議。",
-        detectionMicrophoneUnreadable: "在這部 Mac 上，macOS 不提供哪個 App 正在使用咪高風：只能透過視窗標題辨認會議。",
-        detectionNeedsScreenRecording: "沒有螢幕錄製權限便無法讀取視窗標題：無法辨認任何 Google Meet 會議。",
+        policyNeverCaption: "設為「永不」的服務永不提議。你仍可手動錄製。",
+        detectionTitlesOnly: "在 macOS 14.4 之前，macOS 不提供哪個 App 正在使用咪高風：只能透過視窗標題辨認 Google Meet 和 Zoom。",
+        detectionMicrophoneUnreadable: "在這部 Mac 上，macOS 不提供哪個 App 正在使用咪高風：只能透過視窗標題辨認 Google Meet 和 Zoom。",
+        detectionNeedsScreenRecording: "沒有螢幕錄製權限便無法讀取視窗標題：無法辨認瀏覽器中的通話，App 只能透過咪高風辨認。",
         detectedFormat: "偵測到會議：%@",
         calendarNaming: "用日曆命名",
         calendarNamingCaption: "包含會議連結的日曆行程會為錄製命名。行程只會保留在這部 Mac 上。",
@@ -4197,10 +4433,24 @@ extension ForkMeetingStrings {
         noticeAnnouncementCopied: "通知已複製",
         noticeAnnouncementCopiedDetail: "貼到會議聊天中",
         undoAutoStartedFormat: "已自動開始 · %@ 一律錄製",
+        // MARK: Apps
+        detectionOtherWebCalls: "其他網頁通話",
+        detectionOtherWebCallsCaption: "瀏覽器中的 Zoom、Whereby、Jitsi Meet 或 Teams：僅在瀏覽器使用咪高風時提議。",
+        detectionUnavailable: "此 Mac 無法辨認",
+        detectionFaceTimeWholeMac: "對於 FaceTime，將錄製整部 Mac 的聲音，包括通知和音樂。",
         // MARK: Fixes J
         microphoneExternal: "外置咪高風",
         voiceCancelled: "錄製已取消。",
         noticeAskAgainFormat: "%@ 改回「提議」",
-        voiceAskAgainFormat: "將重新提議錄製 %@ 會議。"
+        voiceAskAgainFormat: "將重新提議錄製 %@ 會議。",
+        // MARK: Fixes K
+        detectionFaceTimeRelayed: "透過 iPhone 轉駁的電話也可能會被提議錄製。",
+        offerNeverWebCalls: "其他網頁通話永不錄製",
+        noticeNeverWebCalls: "其他網頁通話：永不",
+        voiceNeverWebCalls: "將不再提議錄製瀏覽器中 Google Meet 以外的通話。",
+        detectionAlwaysUnavailable: "此 Mac 無法使用「一律」：會議只會被提議，不會自動錄製。",
+        // MARK: Fixes L
+        detectionAlwaysDelay: "Teams、Webex 和 Discord：通話開始 15 秒後自動錄製。Zoom 和 Slack：會議視窗一打開便錄製，否則提議錄製。",
+        offerMainWindowFormat: "%@（主視窗）"
     )
 }

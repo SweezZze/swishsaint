@@ -14,6 +14,11 @@ struct ForkMeetingWindowCandidate: Equatable {
     /// In points, top-left origin, as the window list gives it.
     var bounds: CGRect
     var ownerIsRegularApp: Bool
+    /// On screen now; else minimized, hidden, on another Space, or never
+    /// shown (an app's spare windows).
+    var onScreen = true
+    /// It has a title (Screen Recording allowed): one never shown has none.
+    var titled = true
 }
 
 /// A display and its frame, in the same space as `ForkMeetingWindowCandidate.bounds`.
@@ -332,17 +337,23 @@ struct ForkMeetingSoundArbiter: Equatable {
     /// while it carries that app alone (a window filmed), never the whole
     /// Mac of a display.
     private(set) var streamHearsAppOnly: Bool
+    /// The meeting's sound is no app's (FaceTime's calls play in a system
+    /// process): only a display's stream, the whole Mac, may stand for it,
+    /// never a window's, which carries that window's app alone.
+    private(set) var streamHearsMacOnly: Bool
 
     /// `hasTap`: the tap exists. `hasWitness`: something judges it (a
     /// witness, or the tap itself). `tapFirst`: the tap writes the track
     /// before it is proved (the app's tap), or only after (the Mac's).
     /// `appOnly`: the app's sound was asked for and the stream stands for it.
-    init(hasTap: Bool, hasWitness: Bool, tapFirst: Bool = true, appOnly: Bool = false) {
+    /// `macOnly`: a call whose sound no app carries (`streamHearsMacOnly`).
+    init(hasTap: Bool, hasWitness: Bool, tapFirst: Bool = true, appOnly: Bool = false, macOnly: Bool = false) {
         self.hasTap = hasTap
         self.tapFirst = tapFirst
         self.hasWitness = hasTap && hasWitness
         writesTap = hasTap && tapFirst
-        streamHearsAppOnly = appOnly
+        streamHearsAppOnly = appOnly && !macOnly
+        streamHearsMacOnly = macOnly
     }
 
     /// The tap lost its reader. Nothing is judged any more; the stream
@@ -356,7 +367,7 @@ struct ForkMeetingSoundArbiter: Equatable {
         unheard = 0
         guard writesTap else { return false }
         writesTap = false
-        if tapFirst { streamHearsAppOnly = true }
+        if tapFirst, !streamHearsMacOnly { streamHearsAppOnly = true }
         return true
     }
 
@@ -365,7 +376,8 @@ struct ForkMeetingSoundArbiter: Equatable {
     /// Whether the stream's sound goes in the track now, the picture
     /// following a window (`filmsWindow`) or a display.
     func streamWrites(filmsWindow: Bool) -> Bool {
-        !writesTap && (filmsWindow || !streamHearsAppOnly)
+        guard !writesTap else { return false }
+        return filmsWindow ? !streamHearsMacOnly : !streamHearsAppOnly
     }
 
     /// Whether the witness still has something to settle; once false it
@@ -455,10 +467,45 @@ enum ForkMeetingTrackSound: Equatable {
 
     static func of(setting: ForkMeetingSystemAudio, sound: ForkMeetingSoundSource,
                    arbiter: ForkMeetingSoundArbiter, filmsWindow: Bool) -> ForkMeetingTrackSound {
+        if arbiter.streamHearsMacOnly, sound != .none {
+            // A call's sound (FaceTime): nothing hears it any more.
+            return arbiter.writesTap || arbiter.streamWrites(filmsWindow: filmsWindow) ? .heard : .lost
+        }
         guard setting == .app else { return .heard }
         if sound == .none { return .noApp }
         if arbiter.writesTap || arbiter.streamWrites(filmsWindow: filmsWindow) { return .heard }
         return arbiter.readerLost ? .lost : .noApp
+    }
+}
+
+// MARK: Apps
+
+/// What a tap that lost its reader gets before the track gives up on it
+/// (S3: a device change it could not follow, AirPods coming or going,
+/// leaves that tap deaf for good): a new tap of the same sound, a second
+/// later, twice at most. One that hears sound again earns its tries back,
+/// for the next change, up to `total` new taps for the whole recording: a
+/// device that keeps failing is not rebuilt for hours.
+struct ForkMeetingTapRepair: Equatable {
+    static let attempts = 2
+    static let delay: TimeInterval = 1
+    /// New taps one recording may try, however often they heard again.
+    static let total = 10
+
+    private(set) var used = 0
+    private(set) var tried = 0
+
+    /// Whether another new tap may be tried now; counts it.
+    mutating func tryAgain() -> Bool {
+        guard used < Self.attempts, tried < Self.total else { return false }
+        used += 1
+        tried += 1
+        return true
+    }
+
+    /// The tap in place heard sound: it works.
+    mutating func heard() {
+        used = 0
     }
 }
 

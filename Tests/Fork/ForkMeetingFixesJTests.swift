@@ -425,12 +425,14 @@ enum ForkMeetingFixesJTests {
         suite.expect(ForkMeetingOfferText.undoLine(provider: "Meet", choseAlways: true, strings: french)
                         == "Toujours pour Meet · Réglable dans Réunions"
                         && ForkMeetingOfferText.undoLine(provider: "Meet", choseAlways: false, strings: french)
-                        == "Auto · Toujours pour Meet"
+                        == "Auto · Meet\u{00A0}: Toujours"
                         && ForkMeetingOfferText.undoLine(provider: nil, choseAlways: true, strings: french) == nil,
                      "the card: « Toujours pour Meet · Réglable dans Réunions », not « started on its own »")
         let long = AppLanguage.allCases.filter { language in
-            let line = ForkMeetingOfferText.undoLine(provider: "Meet", choseAlways: false, strings: .strings(language)) ?? ""
-            return line.count > 28 || !line.contains("Meet")
+            ["Meet", "FaceTime", "Discord"].contains { name in
+                let line = ForkMeetingOfferText.undoLine(provider: name, choseAlways: false, strings: .strings(language)) ?? ""
+                return line.count > 28 || !line.contains(name)
+            }
         }
         suite.expect(long.isEmpty, "a real start on its own keeps its line, 28 characters at most in every language: \(long)")
 
@@ -444,11 +446,11 @@ enum ForkMeetingFixesJTests {
         suite.expect(live.take().contains(.discard(folder, askedAgain: "Meet")),
                      "and the folder's outcome comes with it, to be said")
         let english = ForkMeetingStrings.strings(.enUS)
-        suite.expect(ForkMeetingDiscardOutcome.trashed.detail(askedAgain: "Meet", strings: french) == "Retour à Proposer pour Meet"
+        suite.expect(ForkMeetingDiscardOutcome.trashed.detail(askedAgain: "Meet", strings: french) == "Retour à Proposer\u{00A0}: Meet"
                         && ForkMeetingDiscardOutcome.trashed.spokenAfterCancel(askedAgain: "Meet", strings: english)
                         == "It is in the Trash. Meetings from Meet will be offered again."
                         && ForkMeetingDiscardOutcome.kept.detail(askedAgain: "Meet", strings: french) == french.noticeDiscardKeptDetail,
-                     "never silently: « Annulé · mis à la Corbeille · Retour à Proposer pour Meet », and to VoiceOver")
+                     "never silently: « Annulé · mis à la Corbeille · Retour à Proposer : Meet », and to VoiceOver")
 
         var early = chosen()
         _ = early.take()
@@ -525,7 +527,7 @@ enum ForkMeetingFixesJTests {
         suite.expect(s(.ptBR).voiceDiscarded.contains("Lixo") && s(.ptBR).pillStopCancels.contains("Lixo"),
                      "Brazil keeps macOS's « Lixo »")
         let all = AppLanguage.allCases.map(ForkMeetingStrings.strings)
-        suite.expect(all.allSatisfy { $0.noticeAskAgain("Meet").count <= 28 && $0.noticeAskAgain("Meet").contains("Meet")
+        suite.expect(all.allSatisfy { $0.noticeAskAgain("FaceTime").count <= 28 && $0.noticeAskAgain("Meet").contains("Meet")
                                         && $0.voiceAskAgain("Meet").contains("Meet") && !$0.voiceCancelled.isEmpty },
                      "the choice taken back fits the island and names the provider in every language")
         suite.expect(s(.fr).consentIntroFrontWindow.contains("Pour proposer d’enregistrer un Google Meet, elle lit les titres des fenêtres et repère les apps qui utilisent le micro.")

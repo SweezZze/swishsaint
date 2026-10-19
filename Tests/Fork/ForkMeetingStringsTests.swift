@@ -45,11 +45,17 @@ enum ForkMeetingStringsTests {
     /// The island, the pill and the bubble show 28 characters at most,
     /// written for that room, never cut.
     private static func shortTexts(_ suite: TestSuite) {
+        // Every provider's short name: "Never" for any of them, "Always"
+        // only where it can start on its own (Discord is the longest).
+        let providers = ForkMeetingProviderTable.current.providers
+        let names = Set(providers.map(\.shortName)).sorted()
+        let alwaysNames = Set(providers.filter { $0.alwaysProof != .none }.map(\.shortName)).sorted()
         let notices: [ForkMeetingNotice] = [.started, .resumed, .saved, .recovered, .microphone("AirPods"),
                                             .microphoneSilent, .diskLow(minutesLeft: 25), .displayChanged, .sourceGone,
-                                            .alwaysChosen("Meet"), .discarded(.trashed), .discarded(.deleted),
-                                            .discarded(.kept), .announcementCopied, .neverOffered("Meet"),
-                                            .askedAgain("Meet")]
+                                            .discarded(.trashed), .discarded(.deleted),
+                                            .discarded(.kept), .announcementCopied]
+            + names.map { .neverOffered($0) } + [.neverOfferedWebCalls]
+            + alwaysNames.flatMap { [.alwaysChosen($0), .askedAgain($0)] }
             + ForkMeetingFailure.all.map { .failure($0) }
         var tooLong: [String] = []
         for (language, strings) in zip(languages, allStrings) {
@@ -64,7 +70,8 @@ enum ForkMeetingStringsTests {
                 tooLong.append("\(language.rawValue): \(failure.summary(strings))")
             }
             // The "Cancel" card's line after a start on its own.
-            for name in [strings.folderName, strings.untitledMeeting, strings.undoAutoStarted("Meet")] where name.count > 28 {
+            for name in [strings.folderName, strings.untitledMeeting] + alwaysNames.map(strings.undoAutoStarted)
+            where name.count > 28 {
                 tooLong.append("\(language.rawValue): \(name)")
             }
         }

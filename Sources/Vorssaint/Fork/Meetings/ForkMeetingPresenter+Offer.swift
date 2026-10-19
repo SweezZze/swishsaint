@@ -262,14 +262,19 @@ extension ForkMeetingPresenter {
         let service = ForkMeetingService.shared
         let settings = service.captureSettings()
         let seenInShares = inIsland && ForkMeetingIsland.showsInCaptures
-        let facts = OfferFacts(
+        let filmed = ForkMeetingAppsSupport.window(for: candidate, in: ForkMeetingRecorder.meetingWindows(),
+                                                   ownPID: ProcessInfo.processInfo.processIdentifier)
+        var facts = OfferFacts(
             icon: Self.icon(for: candidate), settings: settings,
-            windowApp: Self.appName(pid: candidate.pid, bundle: candidate.windowBundle),
-            soundApp: Self.appName(pid: nil, bundle: candidate.appBundle),
+            windowApp: ForkMeetingAppsSupport.appName(for: candidate)
+                ?? Self.appName(pid: candidate.pid, bundle: candidate.windowBundle),
+            soundApp: ForkMeetingAppsSupport.appName(for: candidate) ?? Self.appName(pid: nil, bundle: candidate.appBundle),
             microphone: Self.microphone(settings.microphone, meetingInput: service.meetingMicrophone(for: candidate),
                                         seenInShares: seenInShares, text: text),
             consentReminder: UserDefaults.standard.bool(forKey: ForkDefaultsKey.meetingsConsentReminder),
-            seenInShares: seenInShares)
+            seenInShares: seenInShares, hasWindow: filmed != nil)
+        facts.mainWindow = ForkMeetingAppsSupport.filmsMainWindow(candidate, found: filmed)
+        facts.microphoneSignal = ForkMeetingMicWatcher.isSupported
         let actions = OfferActions(record: { service.acceptOffer() }, notNow: { service.dismissOffer(.thisTime) },
                                    always: { service.alwaysForOffer() }, never: { service.dismissOffer(.never) },
                                    copyAnnouncement: { service.copyAnnouncement() }, fix: failureAction)
@@ -286,6 +291,13 @@ extension ForkMeetingPresenter {
         var consentReminder: Bool
         /// Someone else's screen share would show the card.
         var seenInShares = false
+        /// A window will be filmed (an app found by its microphone: its own most in front); `nil`: the
+        /// meeting's own.
+        var hasWindow: Bool?
+        /// That window is its app's main one, not the meeting's own.
+        var mainWindow = false
+        /// This Mac can say which app uses the microphone: "Always" can start.
+        var microphoneSignal = true
     }
 
     /// What the offer's buttons and menu do. `fix` runs a refusal's way out
@@ -320,7 +332,8 @@ extension ForkMeetingPresenter {
         card.icon = facts.icon
         card.lines = [heading.subtitle].compactMap { $0 }
         card.lines.append(ForkMeetingOfferText.capture(
-            target: settings.target, windowApp: facts.windowApp, hasWindow: candidate.windowID != nil,
+            target: settings.target, windowApp: facts.windowApp, hasWindow: facts.hasWindow ?? (candidate.windowID != nil),
+            mainWindow: facts.mainWindow,
             sound: ForkMeetingOfferText.sound(setting: settings.systemAudio, providerDefault: candidate.defaultSound),
             soundApp: facts.soundApp, microphone: facts.microphone, strings: text))
         if facts.consentReminder { card.info = text.consentRemind }
@@ -341,10 +354,12 @@ extension ForkMeetingPresenter {
         }
         card.actions = [notNow, record]
         let provider = ForkMeetingOfferText.reminderTitle(candidate)
-        card.menu = [
-            NotchMenuItem(title: text.offerAlways(provider), enabled: ForkMeetingOfferText.allowsAlways(offer),
-                          action: actions.always),
-            NotchMenuItem(title: text.offerNever(provider), action: actions.never),
+        card.menu = ForkMeetingOfferText.showsAlways(offer, microphoneSignal: facts.microphoneSignal)
+            ? [NotchMenuItem(title: text.offerAlways(provider), enabled: ForkMeetingOfferText.allowsAlways(offer),
+                             action: actions.always)]
+            : []
+        card.menu += [
+            NotchMenuItem(title: ForkMeetingOfferText.neverTitle(candidate, strings: text), action: actions.never),
             .separator,
             NotchMenuItem(title: text.copyAnnouncement, action: actions.copyAnnouncement),
         ]

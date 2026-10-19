@@ -41,7 +41,7 @@ enum ForkMeetingDetectionEffectsTests {
                              providerName: "Google Meet", providerShortName: "Meet", titleName: "Point hebdo",
                              meetCode: "abc-defg-hij", calendarTitle: nil,
                              appBundle: "com.google.Chrome", pid: 100, windowID: 7, windowBundle: "com.google.Chrome",
-                             defaultSound: .app, policy: policy, silenced: false, bornAt: at(0))
+                             defaultSound: .app, policy: policy, silenced: false, bornAt: at(0), alwaysProof: .meetCode)
     }
 
     private static func running(_ suite: TestSuite) {
@@ -217,7 +217,9 @@ enum ForkMeetingDetectionEffectsTests {
         _ = other
         let later = resolver.resolve(ForkMeetingReading(at: at(15), windows: [tab("Meet – Point hebdo – abc-defg-hij"),
                                                                               tab("Meet – Revue", window: 2)]))
-        suite.expect(Set(later.candidates.map(\.identity.value)) == ["meet:abc-defg-hij", "meet:100:Meet – Revue"],
-                     "another window without a code stays another meeting")
+        // L.B1: a title without a code is never born while a call of that
+        // browser holds its microphone; it is never taken for that call either.
+        suite.expect(later.candidates.map(\.identity.value) == ["meet:abc-defg-hij"],
+                     "another window without a code is not that meeting, nor born while that call holds the microphone")
     }
 }

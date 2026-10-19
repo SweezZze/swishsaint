@@ -403,7 +403,7 @@ enum ForkMeetingFixesH1Tests {
                                              providerShortName: "Meet", titleName: nil, meetCode: codeA,
                                              calendarTitle: nil, appBundle: "com.google.Chrome", pid: chromePID,
                                              windowID: 7, windowBundle: "com.google.Chrome", defaultSound: .app,
-                                             policy: .ask, silenced: false, bornAt: at(0))
+                                             policy: .ask, silenced: false, bornAt: at(0), alwaysProof: .meetCode)
         machine.handle(.candidates([candidate], request()), now: at(0))
         machine.handle(.accept(request()), now: at(1))
         machine.handle(.endProbable(meetA, countdown: 15), now: at(1.5))
@@ -561,7 +561,7 @@ enum ForkMeetingFixesH1Tests {
                                            providerShortName: "Meet", titleName: nil, meetCode: codeA,
                                            calendarTitle: "Point\u{202E} hebdo\n", appBundle: "com.google.Chrome",
                                            pid: chromePID, windowID: 7, windowBundle: "com.google.Chrome",
-                                           defaultSound: .app, policy: .ask, silenced: false, bornAt: at(0))
+                                           defaultSound: .app, policy: .ask, silenced: false, bornAt: at(0), alwaysProof: .meetCode)
         suite.expect(meeting.name == "Point hebdo", "the calendar's title is cleaned once, in the meeting's name")
         meeting.calendarTitle = "\u{202E}\n"
         suite.expect(meeting.name == "Google Meet · abc-defg-hij", "a title with nothing left names nothing")

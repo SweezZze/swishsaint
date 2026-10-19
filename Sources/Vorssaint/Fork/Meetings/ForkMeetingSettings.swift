@@ -325,11 +325,12 @@ struct ForkMeetingSystemAudioRow: View {
 
 // MARK: - Detection
 
-/// What a detected meeting does: offered, recorded on its own, or never;
-/// named after the calendar event that links to it; and its end, which
-/// stops the recording it started after a countdown. What this Mac cannot
-/// read is said plainly: the microphones before macOS 14.4, the windows'
-/// titles without Screen Recording.
+/// What a detected meeting does, provider by provider: offered, recorded on
+/// its own, or never; named after the calendar event that links to it; and
+/// its end, which stops the recording it started after a countdown. What
+/// this Mac cannot read is said plainly: the microphones before macOS 14.4
+/// (Google Meet and Zoom only, by their titles), the windows' titles
+/// without Screen Recording. FaceTime records the whole Mac: said on its row.
 private struct ForkMeetingDetectionSection: View {
     let text: ForkMeetingStrings
 
@@ -345,31 +346,27 @@ private struct ForkMeetingDetectionSection: View {
     /// The countdown's choices; a stored value outside them is shown too.
     private static let choices = [5, 10, 15, 30, 60]
 
-    private var meetPolicy: Binding<ForkMeetingPolicy> {
-        Binding(get: { ForkMeetingPolicies(json: apps).policy(for: .googleMeet) },
-                set: { policy in
-                    var policies = ForkMeetingPolicies(json: apps)
-                    policies.set(policy, for: ForkMeetingProvider.googleMeet.id)
-                    apps = policies.json
-                })
-    }
+    private static let rows = ForkMeetingProviderTable.current.policyRows
 
     var body: some View {
         Section(text.detectionTitle) {
             caption(text.detectionCaption)
-            Picker(ForkMeetingProvider.googleMeet.name, selection: meetPolicy) {
-                Text(text.policyAsk).tag(ForkMeetingPolicy.ask)
-                Text(text.policyAlways).tag(ForkMeetingPolicy.always)
-                Text(text.policyNever).tag(ForkMeetingPolicy.never)
+            ForEach(Self.rows, id: \.id) { row in
+                ForkMeetingProviderRow(row: row, text: text, apps: $apps,
+                                       microphoneSignal: ForkMeetingMicWatcher.isSupported)
             }
-            caption(policyCaption)
+            if ForkMeetingDetectionSupport.saysAlwaysDelay(ForkMeetingPolicies(json: apps),
+                                                           microphoneSignal: ForkMeetingMicWatcher.isSupported) {
+                caption(text.detectionAlwaysDelay)
+            }
+            ForEach(policyCaptions, id: \.self) { line in caption(line) }
             // A page that copies a Meet title and uses the microphone could
             // be offered: said once, plainly, while Meet is not "Never".
-            if ForkMeetingDetectionSupport.warnsOfLookalikes(meetPolicy.wrappedValue) {
+            if ForkMeetingDetectionSupport.warnsOfLookalikes(ForkMeetingPolicies(json: apps).policy(for: .googleMeet)) {
                 caption(text.detectionLookalike)
             }
             if let limit {
-                Label(limit, systemImage: "info.circle")
+                Label(limit + " " + text.detectionAlwaysUnavailable, systemImage: "info.circle")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
@@ -418,12 +415,19 @@ private struct ForkMeetingDetectionSection: View {
         }
     }
 
-    private var policyCaption: String {
-        switch ForkMeetingPolicies(json: apps).policy(for: .googleMeet) {
-        case .ask: return text.policyAskCaption
-        case .always: return text.policyAlwaysCaption
-        case .never: return text.policyNeverCaption
-        }
+    /// What each choice in use does: "Offer" always, the others once a
+    /// provider has them (Discord is "Never" from the start).
+    private var policyCaptions: [String] {
+        let policies = ForkMeetingPolicies(json: apps)
+        let signal = ForkMeetingMicWatcher.isSupported
+        let used = Set(Self.rows.compactMap { row in
+            row.providers.first.map { row.shown(policies.policy(for: $0), microphoneSignal: signal) }
+        })
+        let lines: [(ForkMeetingPolicy, String, String)] = [
+            (.ask, text.policyAsk, text.policyAskCaption), (.always, text.policyAlways, text.policyAlwaysCaption),
+            (.never, text.policyNever, text.policyNeverCaption),
+        ]
+        return lines.filter { $0.0 == .ask || used.contains($0.0) }.map { $0.1 + " · " + $0.2 }
     }
 
     /// The microphones cannot be read on this Mac: the titles alone.
@@ -456,6 +460,94 @@ private struct ForkMeetingDetectionSection: View {
             .font(.caption)
             .foregroundStyle(.secondary)
             .fixedSize(horizontal: false, vertical: true)
+    }
+}
+
+// MARK: Apps
+
+/// One provider's choice, with its app's icon when it is installed. A row
+/// this Mac cannot recognize (before macOS 14.4, an app found by its
+/// microphone alone) is greyed out and says so.
+private struct ForkMeetingProviderRow: View {
+    let row: ForkMeetingPolicyRow
+    let text: ForkMeetingStrings
+    @Binding var apps: String
+    let microphoneSignal: Bool
+
+    @AppStorage(ForkDefaultsKey.meetingsSystemAudio) private var sound = ForkMeetingSystemAudio.fallback.rawValue
+    @State private var icon: NSImage?
+
+    private var policy: Binding<ForkMeetingPolicy> {
+        Binding(get: {
+                    row.shown(row.providers.first.map(ForkMeetingPolicies(json: apps).policy(for:)) ?? .ask,
+                              microphoneSignal: microphoneSignal)
+                },
+                set: { policy in
+                    var policies = ForkMeetingPolicies(json: apps)
+                    policies.set(policy, for: row.id)
+                    apps = policies.json
+                })
+    }
+
+    var body: some View {
+        let recognized = row.recognized(microphoneSignal: microphoneSignal)
+        Picker(selection: policy) {
+            Text(text.policyAsk).tag(ForkMeetingPolicy.ask)
+            if row.showsAlways(microphoneSignal: microphoneSignal) {
+                Text(text.policyAlways).tag(ForkMeetingPolicy.always)
+            }
+            Text(text.policyNever).tag(ForkMeetingPolicy.never)
+        } label: {
+            HStack(spacing: 8) {
+                Group {
+                    if let icon {
+                        Image(nsImage: icon).resizable()
+                    } else {
+                        Image(systemName: row.appBundles.isEmpty ? "globe" : "video")
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                .frame(width: 18, height: 18)
+                .accessibilityHidden(true)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(row.name ?? text.detectionOtherWebCalls)
+                    if !recognized {
+                        note(text.detectionUnavailable)
+                    } else if row.name == nil {
+                        note(text.detectionOtherWebCallsCaption)
+                    }
+                    if recognized, row.warnsWholeMac(policy.wrappedValue,
+                                                     sound: ForkMeetingSystemAudio(rawValue: sound) ?? .fallback) {
+                        Label(text.detectionFaceTimeWholeMac, systemImage: "exclamationmark.triangle.fill")
+                            .font(.caption)
+                            .foregroundStyle(.orange)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    if recognized, row.notesRelayedCalls(policy.wrappedValue) {
+                        note(text.detectionFaceTimeRelayed)
+                    }
+                }
+            }
+        }
+        .disabled(!recognized)
+        .onAppear { if icon == nil { icon = Self.icon(row.appBundles) } }
+    }
+
+    private func note(_ string: String) -> some View {
+        Text(string)
+            .font(.caption)
+            .foregroundStyle(.secondary)
+            .fixedSize(horizontal: false, vertical: true)
+    }
+
+    /// The first of the row's apps installed on this Mac.
+    private static func icon(_ bundles: [String]) -> NSImage? {
+        for bundle in bundles {
+            if let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundle) {
+                return NSWorkspace.shared.icon(forFile: url.path)
+            }
+        }
+        return nil
     }
 }
 

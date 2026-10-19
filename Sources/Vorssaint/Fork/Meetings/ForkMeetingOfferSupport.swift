@@ -264,10 +264,11 @@ enum ForkMeetingOfferText {
     /// "Window: Chrome · sound: Chrome · mic: AirPods", label then value, so
     /// no language has to put an article or a case before a name it does
     /// not know ("Fenêtre de Arc"). A meeting without a window to film, or
-    /// with the display chosen, films the whole screen.
+    /// with the display chosen, films the whole screen; a call filmed in its
+    /// app's main window says so ("Window: Teams (main window)").
     static func capture(target: ForkMeetingCaptureTarget, windowApp: String?, hasWindow: Bool,
-                        sound: ForkMeetingSystemAudio, soundApp: String?, microphone: ForkMeetingOfferMicrophone,
-                        strings s: ForkMeetingStrings) -> String {
+                        mainWindow: Bool = false, sound: ForkMeetingSystemAudio, soundApp: String?,
+                        microphone: ForkMeetingOfferMicrophone, strings s: ForkMeetingStrings) -> String {
         let soundValue: String
         switch sound {
         case .app: soundValue = named(soundApp) ?? named(windowApp) ?? s.offerNone
@@ -281,7 +282,8 @@ enum ForkMeetingOfferText {
         case .denied: micValue = s.offerMicrophoneDenied
         }
         let line: String
-        if target == .window, hasWindow, let window = named(windowApp) {
+        if target == .window, hasWindow, let app = named(windowApp) {
+            let window = mainWindow ? s.offerMainWindow(app) : app
             line = s.offerCapture(window: unbroken(window), sound: unbroken(soundValue), microphone: unbroken(micValue))
         } else {
             line = s.offerCaptureDisplay(sound: unbroken(soundValue), microphone: unbroken(micValue))
@@ -333,6 +335,16 @@ enum ForkMeetingOfferText {
         return (candidate.providerName, s.offerNameHidden)
     }
 
+    /// "Always for Zoom" is in the menu only for a meeting it could start on
+    /// its own one day: never for the other web calls (Whereby, Jitsi…),
+    /// which nothing tells from a page that copies their title, nor for
+    /// FaceTime, which an iPhone call relayed looks like, nor on a Mac that
+    /// cannot say which app uses the microphone (before macOS 14.4), where
+    /// "Always" never starts anything.
+    static func showsAlways(_ offer: ForkMeetingOffer, microphoneSignal: Bool) -> Bool {
+        offer.candidate.alwaysProof != .none && microphoneSignal
+    }
+
     /// "Always for Meet" records now: a greyed offer, which cannot, offers
     /// it greyed too. "Never" stays.
     static func allowsAlways(_ offer: ForkMeetingOffer) -> Bool {
@@ -347,6 +359,20 @@ enum ForkMeetingOfferText {
     /// The folded offer's words: the provider's short name ("Meet").
     static func reminderTitle(_ candidate: ForkMeetingCandidate) -> String {
         candidate.providerShortName.isEmpty ? candidate.providerName : candidate.providerShortName
+    }
+
+    // MARK: Fixes K
+
+    /// A call in a browser other than Google Meet (Zoom's web client,
+    /// Whereby, Jitsi Meet, Teams on the web): one choice for all of them.
+    static func isOtherWebCall(_ candidate: ForkMeetingCandidate) -> Bool {
+        candidate.provider == ForkMeetingProvider.otherWebCalls.first?.id
+    }
+
+    /// The menu's "Never": for the provider ("Never for Zoom"), or for the
+    /// other web calls together, which that choice covers.
+    static func neverTitle(_ candidate: ForkMeetingCandidate, strings s: ForkMeetingStrings) -> String {
+        isOtherWebCall(candidate) ? s.offerNeverWebCalls : s.offerNever(reminderTitle(candidate))
     }
 
     /// "Meeting over? Stopping in 12 s", as the pill shows it.

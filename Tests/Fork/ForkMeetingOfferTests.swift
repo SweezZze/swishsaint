@@ -26,7 +26,7 @@ enum ForkMeetingOfferTests {
                              providerName: "Google Meet", providerShortName: "Meet", titleName: name, meetCode: code,
                              calendarTitle: calendar, appBundle: "com.google.Chrome",
                              pid: 100, windowID: window, windowBundle: "com.google.Chrome", defaultSound: .app,
-                             policy: .ask, silenced: true, bornAt: zero)
+                             policy: .ask, silenced: true, bornAt: zero, alwaysProof: .meetCode)
     }
 
     // MARK: - Where

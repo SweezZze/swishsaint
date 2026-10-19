@@ -132,14 +132,21 @@ extension ForkMeetingService {
 
     /// One reading through the resolver, then the machine: each end first,
     /// then the meetings on, then the time.
-    private func take(_ reading: ForkMeetingReading, generation: Int) {
+    private func take(_ read: ForkMeetingReading, generation: Int) {
         guard detection.running, generation == detection.generation, !terminating else { return }
-        if let microphones = reading.microphones { detection.lastMicrophones = microphones }
-        // The page may have changed a provider's choice since.
+        var reading = read
+        if let microphones = reading.microphones {
+            let owned = attributed(microphones)
+            reading.microphones = owned
+            detection.lastMicrophones = owned
+        }
+        // The page may have changed a provider's choice since, or the
+        // countdown, during which an app's meeting back is the same one.
+        let countdown = ForkMeetingAutoStop.load(defaults).countdown
         detection.resolver.policies = ForkMeetingPolicies.load(defaults)
+        detection.resolver.endCountdown = countdown
         let resolution = detection.resolver.resolve(reading)
         detection.onMicrophone = resolution.onMicrophone
-        let countdown = ForkMeetingAutoStop.load(defaults).countdown
         for identity in resolution.ended {
             log.notice("meeting probably over: \(identity.value, privacy: .private)")
             send(.endProbable(identity, countdown: countdown))
@@ -149,6 +156,23 @@ extension ForkMeetingService {
         send(.candidates(resolution.candidates, detectionRequest()))
         send(.tick)
         refreshFreeSpace()
+    }
+
+    /// FaceTime's calls run in system processes no app owns: theirs are
+    /// FaceTime's while it is open, nobody's otherwise. The running apps are
+    /// asked only when such a process records.
+    private func attributed(_ microphones: [ForkMeetingMicSignal]) -> [ForkMeetingMicSignal] {
+        let table = ForkMeetingProviderTable.current
+        let system = table.systemProcessBundles
+        guard microphones.contains(where: { $0.appBundle == nil && $0.processBundle.map(system.contains) == true })
+        else { return microphones }
+        let hosts = table.systemProcessHosts
+        var running: [String: Int32] = [:]
+        for app in NSWorkspace.shared.runningApplications {
+            guard let bundle = app.bundleIdentifier, hosts.contains(bundle), running[bundle] == nil else { continue }
+            running[bundle] = app.processIdentifier
+        }
+        return table.attributing(microphones, running: running)
     }
 
     /// What a start would be asked with now, for an offer and for "Always":
