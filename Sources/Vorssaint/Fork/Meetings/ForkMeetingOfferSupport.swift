@@ -164,6 +164,30 @@ enum ForkMeetingDiscardOutcome: Equatable {
         case .kept: return s.voiceDiscardKept
         }
     }
+
+    // MARK: Fixes J
+
+    /// Said once the folder is gone, "Recording cancelled." having been said
+    /// at the click: the outcome without that first sentence when it starts
+    /// with it, then, when "Cancel" took back the "Always" chosen for
+    /// `askedAgain` (its short name), that its meetings are offered again.
+    func spokenAfterCancel(askedAgain: String?, strings s: ForkMeetingStrings) -> String {
+        let full = spoken(s)
+        var outcome = full
+        if full.hasPrefix(s.voiceCancelled) {
+            let rest = full.dropFirst(s.voiceCancelled.count).trimmingCharacters(in: .whitespaces)
+            if !rest.isEmpty { outcome = rest }
+        }
+        guard let askedAgain else { return outcome }
+        return ForkMeetingLiveText.sentences(outcome, s.voiceAskAgain(askedAgain))
+    }
+
+    /// The notice's second line: the folder still there comes first, else
+    /// the provider offered again, else none.
+    func detail(askedAgain: String?, strings s: ForkMeetingStrings) -> String? {
+        if self == .kept { return s.noticeDiscardKeptDetail }
+        return askedAgain.map(s.noticeAskAgain)
+    }
 }
 
 /// VoiceOver's last sentence: the same one twice in a row is said once.
@@ -333,6 +357,17 @@ enum ForkMeetingOfferText {
     /// "Cancel (4 s)".
     static func undo(until: Date, now: Date, strings s: ForkMeetingStrings) -> String {
         s.undo(seconds: ForkMeetingOfferTiming.secondsLeft(until: until, now: now))
+    }
+
+    // MARK: Fixes J
+
+    /// The "Cancel" card's line, why it records: started on its own
+    /// ("Auto-start · Always for Meet"), or "Always for Meet" just chosen by
+    /// hand, with where to change it ("Always for Meet · Change it in
+    /// Meetings"). `nil` without a provider.
+    static func undoLine(provider: String?, choseAlways: Bool, strings s: ForkMeetingStrings) -> String? {
+        guard let provider else { return nil }
+        return choseAlways ? s.offerAlways(provider) + " · " + s.noticeNeverDetail : s.undoAutoStarted(provider)
     }
 
     private static func named(_ value: String?) -> String? {

@@ -48,7 +48,8 @@ enum ForkMeetingStringsTests {
         let notices: [ForkMeetingNotice] = [.started, .resumed, .saved, .recovered, .microphone("AirPods"),
                                             .microphoneSilent, .diskLow(minutesLeft: 25), .displayChanged, .sourceGone,
                                             .alwaysChosen("Meet"), .discarded(.trashed), .discarded(.deleted),
-                                            .discarded(.kept), .announcementCopied, .neverOffered("Meet")]
+                                            .discarded(.kept), .announcementCopied, .neverOffered("Meet"),
+                                            .askedAgain("Meet")]
             + ForkMeetingFailure.all.map { .failure($0) }
         var tooLong: [String] = []
         for (language, strings) in zip(languages, allStrings) {

@@ -13,6 +13,7 @@ import Foundation
 /// | the final file whole (≥ 99 % of the master) | complete; the master goes |
 /// | a readable master of a second or more | final pass again, drafts dropped |
 /// | neither | marked interrupted, everything kept |
+/// | a recording cancelled ("Cancel" after "Always") | its folder to the Trash |
 ///
 /// **A final pass that failed is tried once more, not at every launch**: the
 /// next launch makes its last try, marked `interrupted` beforehand, and one
@@ -24,6 +25,11 @@ import Foundation
 /// master only once a final file at least as long is verified, a draft only
 /// when the master or a whole final file can replace it. A sidecar that does
 /// not decode, or comes from a later version, is left alone.
+///
+/// **A cancelled recording is never recovered**: "Cancel" writes it in
+/// `meeting.json` at once (`stopReason: cancelled`); an app that ended
+/// before its folder went leaves that folder to the next launch, which
+/// sends it to the Trash, as the person asked.
 enum ForkMeetingRecoveryPlan {
     /// A master shorter than this holds nothing worth a final pass.
     static let minimumMasterSeconds: TimeInterval = 1
@@ -63,6 +69,9 @@ enum ForkMeetingRecoveryPlan {
         case complete(removeMaster: Bool, discardDrafts: Bool)
         /// Nothing readable to recover: flagged in the library, kept.
         case markInterrupted(stopReason: ForkMeetingStopReason)
+        /// Cancelled by the person: to the Trash (deleted on a volume
+        /// without one), nothing finalized.
+        case discard
     }
 
     /// Whether the folder is worth probing at all: probing a video costs, and
@@ -70,6 +79,7 @@ enum ForkMeetingRecoveryPlan {
     static func needsInspection(_ sidecar: Result<ForkMeetingSidecar, ForkMeetingSidecarFault>,
                                 contents: ForkMeetingFolder.Contents) -> Bool {
         guard case let .success(meeting) = sidecar, meeting.isRewritable else { return false }
+        if meeting.stopReason == .cancelled { return true }
         let leftovers = contents.hasMaster || contents.hasVideoDraft || contents.hasAudioDraft
         switch meeting.state {
         case .recording?, .finalizing?: return true
@@ -81,6 +91,7 @@ enum ForkMeetingRecoveryPlan {
     static func plan(_ facts: Facts) -> Action {
         guard case let .success(meeting) = facts.sidecar, meeting.isRewritable,
               let state = meeting.state else { return .leave }
+        if meeting.stopReason == .cancelled { return .discard }
 
         let masterSeconds = facts.master?.duration
         let final = facts.finalIsMaster ? nil : facts.final
@@ -116,7 +127,7 @@ enum ForkMeetingRecoveryPlan {
     /// the meeting's length is the master's.
     static func patch(for action: Action, facts: Facts) -> ForkMeetingSidecarPatch? {
         switch action {
-        case .leave:
+        case .leave, .discard:
             return nil
         case let .finalize(stopReason, recovered, _):
             // After a failed final pass, the last try: should it fail too,

@@ -168,6 +168,9 @@ enum ForkMeetingRecoveryTests {
                             if discardDrafts, (master?.duration ?? 0) < Plan.minimumMasterSeconds { safe = false }
                         case .markInterrupted, .leave:
                             break
+                        case .discard:
+                            // Only a meeting the person cancelled goes.
+                            safe = false
                         }
                     }
                 }

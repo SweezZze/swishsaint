@@ -383,8 +383,8 @@ final class ForkMeetingStore: @unchecked Sendable {
     // MARK: - Launch
 
     /// Finds what the last run left unfinished and does what
-    /// `ForkMeetingRecoveryPlan` says: final pass again, complete, or mark
-    /// interrupted. Never touches a folder this process made, nor one
+    /// `ForkMeetingRecoveryPlan` says: final pass again, complete, mark
+    /// interrupted, or a cancelled one to the Trash. Never touches a folder this process made, nor one
     /// another copy of the app holds.
     ///
     /// Any thread; the scan runs off the main thread, final passes one at
@@ -456,6 +456,13 @@ final class ForkMeetingStore: @unchecked Sendable {
 
         switch action {
         case .leave:
+            return nil
+        case .discard:
+            // The lock first: it is in the folder.
+            release(folder)
+            let outcome = ForkMeetingDiscardOutcome.discard(trash: { try manager.trashItem(at: folder, resultingItemURL: nil) },
+                                                            remove: { try manager.removeItem(at: folder) })
+            if outcome == .kept { Self.log.error("a cancelled meeting stays in its folder") }
             return nil
         case .markInterrupted:
             if let patch { write(patch, in: folder) }

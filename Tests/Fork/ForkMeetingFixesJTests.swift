@@ -21,6 +21,9 @@ enum ForkMeetingFixesJTests {
         anotherTitleIsNotTheMeeting(suite)
         endPagesWithTheMicrophoneOpen(suite)
         meetTitlesOnly(suite)
+        cancelledNeverRecovered(suite)
+        cancelSaidOnce(suite)
+        alwaysChosenByHand(suite)
         words(suite)
     }
 
@@ -324,10 +327,156 @@ enum ForkMeetingFixesJTests {
                      "P5: « Meet-up Paris – Eventbrite », the microphone open: never offered as « up Paris – Eventbrite »")
     }
 
+    // MARK: - J.M2
+
+    /// "Cancel" is in `meeting.json` at the click: a quit before the folder
+    /// went never has it recovered; the next launch throws it away.
+    private static func cancelledNeverRecovered(_ suite: TestSuite) {
+        var live = Live(apps: always)
+        live.read(-5, microphones: [chromeMicrophone])
+        live.read(0, windows: [chrome("Meet – " + codeA)])
+        live.send(.captureStarted(token1, folder: folder), 1)
+        _ = live.take()
+        live.send(.cancelAutoStart, 2)
+        let cancelled = live.take()
+        let mark = Patch(state: .interrupted, stopReason: .cancelled)
+        suite.expect(cancelled.first(where: {
+                        if case .writeSidecar = $0 { return true }
+                        return false
+                     }) == .writeSidecar(folder, mark)
+                        && cancelled.firstIndex(of: .writeSidecar(folder, mark)) ?? 99 < cancelled.firstIndex(of: .stopCapture(token1)) ?? 0,
+                     "at the click, before the stop: interrupted and cancelled in meeting.json")
+        live.send(.appWillTerminate, 2.1)
+        suite.expect(live.take() == [.discard(folder)], "⌘Q right after: its folder is given to the Trash once, within the quit's bound")
+
+        var written = ForkMeetingSidecar()
+        written.schema = 1
+        written.state = .recording
+        let sidecar = mark.applied(to: written)
+        suite.expect(sidecar.state == .interrupted && sidecar.stopReason == .cancelled, "the mark reads back")
+        let nothingLeft = ForkMeetingFolder.contents(of: [ForkMeetingFolder.sidecarName], folderName: "x")
+        suite.expect(Plan.needsInspection(.success(sidecar), contents: nothingLeft),
+                     "the next launch looks at a cancelled folder, even with nothing else in it")
+        let facts = Plan.Facts(sidecar: .success(sidecar), master: Plan.Media(duration: 120), final: nil, hasDrafts: true)
+        suite.expect(Plan.plan(facts) == .discard && Plan.patch(for: .discard, facts: facts) == nil,
+                     "and sends it to the Trash, its master unread: never recovered, never finalized")
+        suite.expect(ForkMeetingStopReason(rawValue: "cancelled") == .cancelled
+                        && ForkMeetingStopReason(rawValue: "quit") == .quit,
+                     "the reason is added, the others keep their names")
+    }
+
+    // MARK: - J.M3
+
+    /// The click says "Recording cancelled" only; where the folder went is
+    /// said once after, without that sentence again.
+    private static func cancelSaidOnce(_ suite: TestSuite) {
+        let french = ForkMeetingStrings.strings(.fr)
+        suite.expect(ForkMeetingAnnouncement.discarded.text(french) == "Enregistrement annulé.",
+                     "at the click: « Enregistrement annulé. »")
+        suite.expect(ForkMeetingDiscardOutcome.trashed.spokenAfterCancel(askedAgain: nil, strings: french)
+                        == "Il a été mis à la Corbeille.",
+                     "then, the folder gone: « Il a été mis à la Corbeille. », once")
+        let languages = AppLanguage.allCases.map(ForkMeetingStrings.strings)
+        let outcomes: [ForkMeetingDiscardOutcome] = [.trashed, .deleted, .kept]
+        suite.expect(languages.allSatisfy { s in
+                        outcomes.allSatisfy { outcome in
+                            let after = outcome.spokenAfterCancel(askedAgain: nil, strings: s)
+                            return !after.isEmpty && after != s.voiceCancelled
+                                && (after == outcome.spoken(s) || !after.hasPrefix(s.voiceCancelled))
+                        }
+                     },
+                     "in every language, the outcome said after says something new")
+        suite.expect(languages.filter { s in s.voiceDiscarded.hasPrefix(s.voiceCancelled) }.count >= 12,
+                     "most languages drop the sentence said at the click")
+
+        var live = Live(apps: always)
+        live.read(-5, microphones: [chromeMicrophone])
+        live.read(0, windows: [chrome("Meet – " + codeA)])
+        live.send(.captureStarted(token1, folder: folder), 1)
+        _ = live.take()
+        live.send(.cancelAutoStart, 2)
+        live.send(.writerFinished(token1, .finished(recordedSeconds: 1)), 2.5)
+        let effects = live.take()
+        suite.expect(announcements(effects) == [.discarded] && effects.contains(.discard(folder)),
+                     "the machine says the cancel once; the service says the outcome once the folder is gone")
+    }
+
+    // MARK: - J.I5
+
+    private static func alwaysChosenByHand(_ suite: TestSuite) {
+        func chosen() -> Live {
+            var live = Live()
+            live.read(-5, microphones: [chromeMicrophone])
+            live.read(0, windows: [chrome("Meet – " + codeA)])
+            _ = live.take()
+            live.send(.always(request()), 2)
+            return live
+        }
+        var live = chosen()
+        let choice = live.take()
+        suite.expect(!choice.contains(.notice(.alwaysChosen("Meet"))) && starts(choice).map(\.origin) == [.always],
+                     "Always chosen in the menu: no notice of its own, the Cancel card says it")
+        live.send(.captureStarted(token1, folder: folder), 3)
+        let started = live.take()
+        suite.expect(announcements(started) == [.started] && started.contains(.showUndo(until: at(8))),
+                     "VoiceOver hears a plain start (the person pressed it), Cancel stays 5 s")
+        let french = ForkMeetingStrings.strings(.fr)
+        suite.expect(ForkMeetingOfferText.undoLine(provider: "Meet", choseAlways: true, strings: french)
+                        == "Toujours pour Meet · Réglable dans Réunions"
+                        && ForkMeetingOfferText.undoLine(provider: "Meet", choseAlways: false, strings: french)
+                        == "Auto · Toujours pour Meet"
+                        && ForkMeetingOfferText.undoLine(provider: nil, choseAlways: true, strings: french) == nil,
+                     "the card: « Toujours pour Meet · Réglable dans Réunions », not « started on its own »")
+        let long = AppLanguage.allCases.filter { language in
+            let line = ForkMeetingOfferText.undoLine(provider: "Meet", choseAlways: false, strings: .strings(language)) ?? ""
+            return line.count > 28 || !line.contains("Meet")
+        }
+        suite.expect(long.isEmpty, "a real start on its own keeps its line, 28 characters at most in every language: \(long)")
+
+        // The pill's stop during Cancel, after the choice by hand: the
+        // recording to the Trash, "Ask" back, and said.
+        live.send(.cancelAutoStart, 4)
+        let cancelled = live.take()
+        suite.expect(cancelled.contains(.setPolicy(.ask, provider: "meet")) && live.apps.policy(for: .googleMeet) == .ask,
+                     "Cancel, or the pill's stop, takes the choice back")
+        live.send(.writerFinished(token1, .finished(recordedSeconds: 1)), 4.5)
+        suite.expect(live.take().contains(.discard(folder, askedAgain: "Meet")),
+                     "and the folder's outcome comes with it, to be said")
+        let english = ForkMeetingStrings.strings(.enUS)
+        suite.expect(ForkMeetingDiscardOutcome.trashed.detail(askedAgain: "Meet", strings: french) == "Retour à Proposer pour Meet"
+                        && ForkMeetingDiscardOutcome.trashed.spokenAfterCancel(askedAgain: "Meet", strings: english)
+                        == "It is in the Trash. Meetings from Meet will be offered again."
+                        && ForkMeetingDiscardOutcome.kept.detail(askedAgain: "Meet", strings: french) == french.noticeDiscardKeptDetail,
+                     "never silently: « Annulé · mis à la Corbeille · Retour à Proposer pour Meet », and to VoiceOver")
+
+        var early = chosen()
+        _ = early.take()
+        early.send(.cancelAutoStart, 2.5)
+        let before = early.take()
+        suite.expect(before.contains(.setPolicy(.ask, provider: "meet")) && before.contains(.notice(.askedAgain("Meet")))
+                        && announcements(before) == [.askedAgain("Meet")],
+                     "cancelled before anything recorded: the choice taken back is said at once")
+
+        var automatic = Live(apps: always)
+        automatic.read(-5, microphones: [chromeMicrophone])
+        automatic.read(0, windows: [chrome("Meet – " + codeA)])
+        automatic.send(.captureStarted(token1, folder: folder), 1)
+        automatic.send(.cancelAutoStart, 2)
+        automatic.send(.writerFinished(token1, .finished(recordedSeconds: 1)), 2.5)
+        let auto = automatic.take()
+        suite.expect(auto.contains(.discard(folder)) && !auto.contains(.discard(folder, askedAgain: "Meet"))
+                        && automatic.apps.policy(for: .googleMeet) == .always,
+                     "a start Always made on its own, cancelled: the choice stays, nothing said of it")
+    }
+
     // MARK: - The texts
 
     private static func words(_ suite: TestSuite) {
         let s = { ForkMeetingStrings.strings($0) }
+        suite.expect(s(.fr).voiceDiscarded == "Enregistrement annulé. Il a été mis à la Corbeille."
+                        && s(.enUS).voiceDiscarded == "Recording cancelled. It is in the Trash."
+                        && s(.zhTW).voiceDiscarded.hasSuffix("已丟到垃圾桶。") && s(.zhHK).voiceDiscarded.hasSuffix("已移至垃圾桶。"),
+                     "the Trash said once the folder is there, in the past")
         suite.expect(s(.de).noticeDiscardKeptDetail == "Bei deinen Besprechungen"
                         && s(.de).voiceDiscardKept.hasSuffix("Er bleibt bei deinen Besprechungen.")
                         && s(.de).voiceDiscardedDeleted.contains("Ihr Ordner ließ sich nicht in den Papierkorb legen: "),
@@ -344,6 +493,9 @@ enum ForkMeetingFixesJTests {
         suite.expect(s(.ptBR).voiceDiscarded.contains("Lixo") && s(.ptBR).pillStopCancels.contains("Lixo"),
                      "Brazil keeps macOS's « Lixo »")
         let all = AppLanguage.allCases.map(ForkMeetingStrings.strings)
+        suite.expect(all.allSatisfy { $0.noticeAskAgain("Meet").count <= 28 && $0.noticeAskAgain("Meet").contains("Meet")
+                                        && $0.voiceAskAgain("Meet").contains("Meet") && !$0.voiceCancelled.isEmpty },
+                     "the choice taken back fits the island and names the provider in every language")
         suite.expect(s(.fr).consentIntroFrontWindow.contains("Pour proposer d’enregistrer un Google Meet, elle lit les titres des fenêtres et repère les apps qui utilisent le micro.")
                         && s(.ja).consentIntroFrontWindow.contains("Google Meet の録画を提案するために")
                         && s(.de).consentIntroFrontWindow.contains("Um die Aufnahme eines Google Meet anzubieten,"),

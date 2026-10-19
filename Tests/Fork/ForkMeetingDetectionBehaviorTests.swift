@@ -496,8 +496,9 @@ enum ForkMeetingDetectionBehaviorTests {
         var early = live
         early.readEvery3s(from: 3, to: 3, windows: [chrome("Meet – " + codeA)])
         early.send(.cancelAutoStart, 5.9)
-        suite.expect(early.take() == [.hideUndo, .stopCapture(token1), .showPill(.stopping), .announce(.discarded)],
-                     "Cancel at 4.9 s stops it, said as thrown away")
+        suite.expect(early.take() == [.hideUndo, .writeSidecar(folder, Patch(state: .interrupted, stopReason: .cancelled)),
+                                      .stopCapture(token1), .showPill(.stopping), .announce(.discarded)],
+                     "Cancel at 4.9 s stops it, marked cancelled in meeting.json at once, said as cancelled")
         early.send(.writerFinished(token1, .finished(recordedSeconds: 4.9)), 6.2)
         suite.expect(early.take() == [.discard(folder), .showPill(.hidden)],
                      "once the file is closed its folder goes: nothing finalized, nothing written")
@@ -531,9 +532,8 @@ enum ForkMeetingDetectionBehaviorTests {
         let shown = offers(live.take()).first
         live.send(.always(request()), 34)
         suite.expect(live.take() == [.setPolicy(.always, provider: "meet"), .hideOffer,
-                                     .startCapture(config(.always, shown?.candidate), token1),
-                                     .notice(.alwaysChosen("Meet"))],
-                     "Always writes the choice, closes the offer, records now and says « Toujours pour Meet · Réglable dans Réunions »")
+                                     .startCapture(config(.always, shown?.candidate), token1)],
+                     "Always writes the choice, closes the offer and records now; the Cancel card says « Toujours pour Meet · Réglable dans Réunions » (J.I5)")
         suite.expect(live.apps.policy(for: .googleMeet) == .always
                         && ForkMeetingPolicies(json: live.apps.json).policy(for: .googleMeet) == .always,
                      "the choice is written in fork.meetings.apps")

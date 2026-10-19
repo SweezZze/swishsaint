@@ -467,7 +467,8 @@ enum ForkMeetingFixesH1Tests {
         var chosen = offered()
         chosen.send(.always(request()), 2)
         let started = chosen.take()
-        suite.expect(started.last == .notice(.alwaysChosen("Meet")), "choosing Always says it")
+        suite.expect(!started.contains(.notice(.alwaysChosen("Meet"))) && starts(started).map(\.origin) == [.always],
+                     "choosing Always records now, with no notice of its own: the Cancel card says it (J.I5)")
         let french = ForkMeetingStrings.strings(.fr)
         suite.expect(ForkMeetingNotice.alwaysChosen("Meet").title(french) == "Toujours pour Meet"
                         && ForkMeetingNotice.alwaysChosen("Meet").detail(french) == "Réglable dans Réunions",

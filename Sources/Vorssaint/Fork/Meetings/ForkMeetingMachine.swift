@@ -122,6 +122,9 @@ enum ForkMeetingNotice: Equatable {
     case discarded(ForkMeetingDiscardOutcome)
     /// "Copy Announcement": it is in the pasteboard.
     case announcementCopied
+    /// "Cancel" took back the "Always" just chosen by hand, before anything
+    /// was recorded; the provider's short name.
+    case askedAgain(String)
 
     /// 28 characters at most.
     func title(_ s: ForkMeetingStrings) -> String {
@@ -143,6 +146,7 @@ enum ForkMeetingNotice: Equatable {
         case .discarded(.deleted): return s.noticeDiscardedDeleted
         case .discarded(.kept): return s.noticeDiscardKept
         case .announcementCopied: return s.noticeAnnouncementCopied
+        case let .askedAgain(provider): return s.noticeAskAgain(provider)
         }
     }
 
@@ -152,7 +156,7 @@ enum ForkMeetingNotice: Equatable {
         switch self {
         case let .microphone(name): return name
         case let .diskLow(minutes): return s.diskMinutes(minutes)
-        case .neverOffered, .alwaysChosen: return s.noticeNeverDetail
+        case .neverOffered, .alwaysChosen, .askedAgain: return s.noticeNeverDetail
         case .discarded(.kept): return s.noticeDiscardKeptDetail
         case .announcementCopied: return s.noticeAnnouncementCopiedDetail
         case .started, .resumed, .saved, .recovered, .microphoneSilent, .displayChanged, .sourceGone, .failure,
@@ -185,11 +189,16 @@ enum ForkMeetingAnnouncement: Equatable {
     case autoStarted(seconds: Int, withoutMicrophone: Bool = false)
     case endingSoon(seconds: Int)
     case continued
+    /// "Cancel": the recording is cancelled. Where its folder went is said
+    /// once it is gone (`ForkMeetingDiscardOutcome.spokenAfterCancel`).
     case discarded
     case neverOffered(String)
     /// The meeting came back during the countdown: it goes on, so does
     /// the recording.
     case meetingBack
+    /// "Cancel" took back the "Always" chosen by hand; the provider's
+    /// short name.
+    case askedAgain(String)
 
     func text(_ s: ForkMeetingStrings) -> String {
         switch self {
@@ -214,9 +223,10 @@ enum ForkMeetingAnnouncement: Equatable {
                                                                                         denied.remedy(s)))
         case let .endingSoon(seconds): return s.voiceEndingSoon(seconds: seconds)
         case .continued: return s.voiceContinued
-        case .discarded: return s.voiceDiscarded
+        case .discarded: return s.voiceCancelled
         case let .neverOffered(provider): return s.voiceNever(provider)
         case .meetingBack: return s.voiceMeetingBack
+        case let .askedAgain(provider): return s.voiceAskAgain(provider)
         }
     }
 }
@@ -283,8 +293,10 @@ enum ForkMeetingDismissal: Equatable {
 /// - an offer is greyed out, never started, while the official recorder
 ///   runs (or anything else would refuse the start);
 /// - a recording "Always" started can be cancelled for 5 s: its folder goes
-///   to the Trash, never finalized; cancelled right after "Always" was
-///   chosen in the offer, the provider is offered again ("ask");
+///   to the Trash, never finalized, and `meeting.json` says so at once, so
+///   a quit meanwhile never has it recovered; cancelled right after
+///   "Always" was chosen in the offer, the provider is offered again
+///   ("ask"), and that is said;
 /// - "Always" starts on its own only a meeting with its Meet code in the
 ///   title whose app has used the microphone for a second, on a screen not
 ///   locked: otherwise, and once an offer was shown, it waits for a click.
@@ -345,6 +357,9 @@ struct ForkMeetingMachine {
         /// "Always" was chosen in the offer it came from: "Cancel" offers
         /// the provider again.
         var choseAlways = false
+        /// "Cancel" offered the provider again: its short name, said with
+        /// where the folder went.
+        var askedAgain: String?
         /// The detection said its meeting ended, and the countdown it gave:
         /// a pause or a sleep interrupts the countdown, the resume starts it
         /// again, so a meeting over during a sleep still stops.
@@ -517,8 +532,9 @@ struct ForkMeetingMachine {
         case showEndingSoon(until: Date)
         case hideEndingSoon
         /// Sends a cancelled recording's folder to the Trash, once its file is
-        /// closed.
-        case discard(URL)
+        /// closed. `askedAgain`: "Cancel" also took back the "Always" chosen
+        /// by hand for this provider (its short name), said with the outcome.
+        case discard(URL, askedAgain: String? = nil)
     }
 
     private(set) var phase: Phase = .idle
@@ -592,13 +608,16 @@ struct ForkMeetingMachine {
             let denied = pending.config.microphoneDenied
             var effects: [Effect] = [.showPill(pill(session, paused: nil))]
             if pending.origin == .always {
-                // Started on its own: "Recording started · Cancel (5 s)"
-                // stands in for the start notice.
+                // "Recording started · Cancel (5 s)" stands in for the start
+                // notice. Started on its own, VoiceOver says so; "Always"
+                // chosen by hand, the person pressed it: a plain start.
                 let window = Self.undoWindow(voiceOver: voiceOver)
                 session.undoUntil = now.addingTimeInterval(window)
                 if denied { effects.append(.notice(.failure(.microphoneDenied))) }
-                effects += [.showUndo(until: now.addingTimeInterval(window)),
-                            .announce(.autoStarted(seconds: Int(window), withoutMicrophone: denied))]
+                let said: ForkMeetingAnnouncement = pending.choseAlways
+                    ? (denied ? .startedWithoutMicrophone : .started)
+                    : .autoStarted(seconds: Int(window), withoutMicrophone: denied)
+                effects += [.showUndo(until: now.addingTimeInterval(window)), .announce(said)]
             } else {
                 effects += [.notice(denied ? .failure(.microphoneDenied) : .started),
                             .announce(denied ? .startedWithoutMicrophone : .started)]
@@ -837,7 +856,7 @@ struct ForkMeetingMachine {
                     guard !session.discardSaid else { return [] }
                     session.discardSaid = true
                     phase = .stopping(session, reason)
-                    return [.discard(session.folder)]
+                    return [.discard(session.folder, askedAgain: session.askedAgain)]
                 }
                 return [.writeSidecar(session.folder, ForkMeetingSidecarPatch(state: .interrupted))]
             case .offering, .endingSoon:
@@ -881,7 +900,12 @@ struct ForkMeetingMachine {
 
         case .cancelAutoStart:
             if case let .starting(pending) = phase, pending.origin == .always {
-                return cancel(pending) + Self.askAgain(pending.choseAlways, pending.config.meeting)
+                // Nothing recorded, no folder to say where it went: the
+                // choice taken back is said now.
+                let askedAgain = Self.askAgain(pending.choseAlways, pending.config.meeting)
+                guard !askedAgain.isEmpty, let meeting = pending.config.meeting else { return cancel(pending) }
+                let provider = ForkMeetingOfferText.reminderTitle(meeting)
+                return cancel(pending) + askedAgain + [.notice(.askedAgain(provider)), .announce(.askedAgain(provider))]
             }
             guard let session = activeSession, let until = session.undoUntil, now < until else { return [] }
             return discard(session, now: now)
@@ -975,10 +999,11 @@ struct ForkMeetingMachine {
             let effects: [Effect] = [.setPolicy(.always, provider: candidate.provider)]
                 + startOffered(.always, request: request, offer: offer)
             guard case var .starting(pending) = phase else { return effects }
-            // Said where to change it; "Cancel" within 5 s takes it back.
+            // The "Cancel" card says where to change it ("Always for Meet ·
+            // Change it in Meetings"); "Cancel" within 5 s takes it back.
             pending.choseAlways = true
             phase = .starting(pending)
-            return effects + [.notice(.alwaysChosen(candidate.providerShortName))]
+            return effects
 
         case let .manualStart(request):
             // The Record button or the shortcut while an offer shows: a
@@ -1075,7 +1100,9 @@ struct ForkMeetingMachine {
     }
 
     /// "Cancel" after a start "Always" made: the file closes, then its
-    /// folder goes. Nothing is finalized, nothing kept.
+    /// folder goes. Nothing is finalized, nothing kept. `meeting.json` says
+    /// it first: should the app end before the folder goes, the next launch
+    /// throws it away rather than recover it.
     private mutating func discard(_ session: Session, now: Date) -> [Effect] {
         var session = session
         session.discarded = true
@@ -1083,9 +1110,12 @@ struct ForkMeetingMachine {
         session.recordedBefore = session.recorded(at: now)
         session.runningSince = nil
         session.stoppedAt = now
+        let askedAgain = Self.askAgain(session.choseAlways, session.config.meeting)
+        if !askedAgain.isEmpty { session.askedAgain = session.config.meeting.map(ForkMeetingOfferText.reminderTitle) }
         phase = .stopping(session, .user)
-        return [.hideUndo, .stopCapture(session.token), .showPill(.stopping), .announce(.discarded)]
-            + Self.askAgain(session.choseAlways, session.config.meeting)
+        let cancelled = ForkMeetingSidecarPatch(state: .interrupted, stopReason: .cancelled)
+        return [.hideUndo, .writeSidecar(session.folder, cancelled), .stopCapture(session.token), .showPill(.stopping),
+                .announce(.discarded)] + askedAgain
     }
 
     /// "Cancel" right after "Always" was chosen in the offer: the choice
@@ -1183,7 +1213,8 @@ struct ForkMeetingMachine {
         phase = .idle
         // Cancelled: closed or not, the folder goes, once.
         guard !session.discarded else {
-            return session.discardSaid ? [.showPill(.hidden)] : [.discard(session.folder), .showPill(.hidden)]
+            guard !session.discardSaid else { return [.showPill(.hidden)] }
+            return [.discard(session.folder, askedAgain: session.askedAgain), .showPill(.hidden)]
         }
         switch result {
         case let .finished(recordedSeconds):

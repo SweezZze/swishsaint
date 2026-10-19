@@ -359,21 +359,23 @@ extension ForkMeetingPresenter {
         let filmed = ForkMeetingServiceSupport.filmed(target: context.target, appName: context.appName,
                                                       noWindowToFilm: context.noWindowToFilm, strings: text)
         let announcement = context.announcement
-        let provider = ForkMeetingService.shared.machine.activeSession?.config.meeting
-            .map(ForkMeetingOfferText.reminderTitle)
-        return Self.undoCard(until: until, provider: provider, filmed: filmed, consent: announcement != nil, text: text,
+        let session = ForkMeetingService.shared.machine.activeSession
+        let line = ForkMeetingOfferText.undoLine(provider: session?.config.meeting.map(ForkMeetingOfferText.reminderTitle),
+                                                 choseAlways: session?.choseAlways == true, strings: text)
+        return Self.undoCard(until: until, line: line, filmed: filmed, consent: announcement != nil, text: text,
                              cancel: { ForkMeetingService.shared.cancelAutoStart() },
                              copy: { [weak self] in if let announcement { self?.copy(announcement) } })
     }
 
-    /// "Recording started · Started on its own · Always for Meet · Chrome
-    /// window · [Cancel (4 s)]": nobody pressed Record, the card says why it
-    /// records. With the consent reminder and its copy button while that
-    /// setting is on.
-    static func undoCard(until: Date, provider: String?, filmed: String, consent: Bool, text: ForkMeetingStrings,
+    /// "Recording started · Auto-start · Always for Meet · Chrome window ·
+    /// [Cancel (4 s)]": the card says why it records, nobody having pressed
+    /// Record, or "Always for Meet" just chosen and where to change it
+    /// (`ForkMeetingOfferText.undoLine`). With the consent reminder and its
+    /// copy button while that setting is on.
+    static func undoCard(until: Date, line: String?, filmed: String, consent: Bool, text: ForkMeetingStrings,
                          cancel: @escaping () -> Void, copy: @escaping () -> Void) -> ForkMeetingCard {
         var card = ForkMeetingCard(symbol: "record.circle", tint: Color(nsColor: .systemRed), title: text.noticeStarted,
-                                   lines: [provider.map(text.undoAutoStarted), filmed].compactMap { $0 })
+                                   lines: [line, filmed].compactMap { $0 })
         let seconds = ForkMeetingOfferTiming.secondsLeft(until: until, now: Date())
         card.actions = [ForkMeetingCard.Action(title: text.undo(seconds: seconds),
                                                countdown: ForkMeetingCard.Countdown(until: until) { now in
