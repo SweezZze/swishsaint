@@ -100,4 +100,17 @@ enum ForkMeetingDetectionSupport {
     static func warnsOfLookalikes(_ policy: ForkMeetingPolicy) -> Bool {
         policy != .never
     }
+
+    // MARK: Fixes L
+
+    /// The page says what "Always" waits for in an app (15 s of call, or
+    /// its meeting window) while one of the apps' rows shows "Always";
+    /// Google Meet, which its code proves at once, does not count.
+    static func saysAlwaysDelay(_ policies: ForkMeetingPolicies, microphoneSignal: Bool,
+                                rows: [ForkMeetingPolicyRow] = ForkMeetingProviderTable.current.policyRows) -> Bool {
+        rows.contains { row in
+            guard let provider = row.providers.first, provider.kind == .app else { return false }
+            return row.shown(policies.policy(for: provider), microphoneSignal: microphoneSignal) == .always
+        }
+    }
 }

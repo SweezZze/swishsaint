@@ -262,7 +262,9 @@ extension ForkMeetingPresenter {
         let service = ForkMeetingService.shared
         let settings = service.captureSettings()
         let seenInShares = inIsland && ForkMeetingIsland.showsInCaptures
-        let facts = OfferFacts(
+        let filmed = ForkMeetingAppsSupport.window(for: candidate, in: ForkMeetingRecorder.meetingWindows(),
+                                                   ownPID: ProcessInfo.processInfo.processIdentifier)
+        var facts = OfferFacts(
             icon: Self.icon(for: candidate), settings: settings,
             windowApp: ForkMeetingAppsSupport.appName(for: candidate)
                 ?? Self.appName(pid: candidate.pid, bundle: candidate.windowBundle),
@@ -270,9 +272,9 @@ extension ForkMeetingPresenter {
             microphone: Self.microphone(settings.microphone, meetingInput: service.meetingMicrophone(for: candidate),
                                         seenInShares: seenInShares, text: text),
             consentReminder: UserDefaults.standard.bool(forKey: ForkDefaultsKey.meetingsConsentReminder),
-            seenInShares: seenInShares,
-            hasWindow: ForkMeetingAppsSupport.window(for: candidate, in: ForkMeetingRecorder.meetingWindows(),
-                                                     ownPID: ProcessInfo.processInfo.processIdentifier) != nil)
+            seenInShares: seenInShares, hasWindow: filmed != nil)
+        facts.mainWindow = ForkMeetingAppsSupport.filmsMainWindow(candidate, found: filmed)
+        facts.microphoneSignal = ForkMeetingMicWatcher.isSupported
         let actions = OfferActions(record: { service.acceptOffer() }, notNow: { service.dismissOffer(.thisTime) },
                                    always: { service.alwaysForOffer() }, never: { service.dismissOffer(.never) },
                                    copyAnnouncement: { service.copyAnnouncement() }, fix: failureAction)
@@ -292,6 +294,10 @@ extension ForkMeetingPresenter {
         /// A window will be filmed (an app found by its microphone: its own most in front); `nil`: the
         /// meeting's own.
         var hasWindow: Bool?
+        /// That window is its app's main one, not the meeting's own.
+        var mainWindow = false
+        /// This Mac can say which app uses the microphone: "Always" can start.
+        var microphoneSignal = true
     }
 
     /// What the offer's buttons and menu do. `fix` runs a refusal's way out
@@ -327,6 +333,7 @@ extension ForkMeetingPresenter {
         card.lines = [heading.subtitle].compactMap { $0 }
         card.lines.append(ForkMeetingOfferText.capture(
             target: settings.target, windowApp: facts.windowApp, hasWindow: facts.hasWindow ?? (candidate.windowID != nil),
+            mainWindow: facts.mainWindow,
             sound: ForkMeetingOfferText.sound(setting: settings.systemAudio, providerDefault: candidate.defaultSound),
             soundApp: facts.soundApp, microphone: facts.microphone, strings: text))
         if facts.consentReminder { card.info = text.consentRemind }
@@ -347,7 +354,7 @@ extension ForkMeetingPresenter {
         }
         card.actions = [notNow, record]
         let provider = ForkMeetingOfferText.reminderTitle(candidate)
-        card.menu = ForkMeetingOfferText.showsAlways(offer)
+        card.menu = ForkMeetingOfferText.showsAlways(offer, microphoneSignal: facts.microphoneSignal)
             ? [NotchMenuItem(title: text.offerAlways(provider), enabled: ForkMeetingOfferText.allowsAlways(offer),
                              action: actions.always)]
             : []

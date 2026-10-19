@@ -221,7 +221,8 @@ final class ForkMeetingPresenter {
                             lines: [detail],
                             actions: [ForkMeetingCard.Action(title: text.actionShowMeeting, prominent: true) {
                                 // The meeting in the library, where it can be
-                                // played, named and noted.
+                                // played, named and noted; in the Finder with
+                                // the feature turned off since.
                                 ForkMeetingLibraryWindow.shared.show(folder: folder)
                                 dismiss()
                             }])

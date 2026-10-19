@@ -13,8 +13,8 @@ import Foundation
 ///
 /// The events from 10 minutes ago to 10 minutes from now are read when it
 /// starts and once a minute, on a utility serial queue that keeps the
-/// EventKit store; only their titles, codes, kinds of link and times leave
-/// it, and nothing is kept on disk.
+/// EventKit store; only their titles, codes, kinds of link (with a print of
+/// each, never the link) and times leave it, and nothing is kept on disk.
 final class ForkMeetingCalendar {
     static let interval: TimeInterval = 60
     /// Around now, either way.
@@ -76,11 +76,15 @@ final class ForkMeetingCalendar {
             guard event.status != .canceled, !event.isAllDay,
                   let start = event.startDate, let end = event.endDate,
                   let title = event.title, !ForkMeetingTitleRules.displayName(title).isEmpty else { return nil }
+            // An Outlook safe link is read as the link it wraps.
             let texts = [event.url?.absoluteString, event.location, event.notes].compactMap { $0 }
+                .map(ForkMeetingCalendarLink.unwrapped)
             let code = texts.lazy.compactMap(ForkMeetingTitleRules.meetCode(inLink:)).first
-            let links = ForkMeetingCalendarLink.found(in: texts.joined(separator: "\n"))
+            let joined = texts.joined(separator: "\n")
+            let links = ForkMeetingCalendarLink.found(in: joined)
             guard code != nil || !links.isEmpty else { return nil }
-            return ForkMeetingCalendarHint(title: title, meetCode: code, startsAt: start, endsAt: end, links: links)
+            return ForkMeetingCalendarHint(title: title, meetCode: code, startsAt: start, endsAt: end, links: links,
+                                           linkPrints: ForkMeetingCalendarLink.prints(in: joined))
         }
         // The event nearest to now first: the resolver takes the first one
         // with the meeting's code.

@@ -438,7 +438,7 @@ enum ForkMeetingLibraryTests {
                         && ForkMeetingSidecarEdit.rewriting(.success(sidecar(schema: ForkMeetingSidecar.currentSchema + 1)),
                                                             with: ForkMeetingSidecarEdit(notes: "a")) == nil,
                      "a corrupt, missing or later sidecar is never rewritten for an edit")
-        let json = Data(#"{"schema":1,"state":"complete","title":"A","partner":{"job":"7"},"capture":{"fps":30}}"#.utf8)
+        let json = Data(#"{"schema":1,"id":"6F9619FF-8B86-D011-B42D-00C04FC964FF","state":"complete","title":"A","partner":{"job":"7"},"capture":{"fps":30}}"#.utf8)
         if case let .success(read) = ForkMeetingSidecar.decode(json),
            let written = ForkMeetingSidecarEdit.rewriting(.success(read), with: ForkMeetingSidecarEdit(notes: "n")),
            let data = try? written.encoded(), case let .success(back) = ForkMeetingSidecar.decode(data) {
@@ -610,7 +610,7 @@ enum ForkMeetingLibraryTests {
 
     private static func texts(_ suite: TestSuite) {
         let short: [KeyPath<ForkMeetingStrings, String>] = [
-            \.groupToday, \.groupYesterday, \.groupUndated, \.columnTitle, \.columnDate, \.columnDuration, \.columnSize,
+            \.groupToday, \.groupYesterday, \.groupUndated, \.columnTitle, \.columnDuration, \.columnSize,
             \.columnApp, \.columnMeetCode, \.actionRename, \.actionExportAudio, \.actionCopyPath, \.actionTrash,
             \.actionTrim, \.noticePathCopied, \.statusRecovered, \.statusUnreadable, \.searchPlaceholder, \.emptyTitle,
             \.notesPlaceholder, \.retentionTitle, \.retentionNever, \.openLibrary, \.actionShowMeeting, \.actionMore,
@@ -649,8 +649,8 @@ enum ForkMeetingLibraryTests {
                      "every action of the menu has its own words in every language")
         suite.expect(ForkMeetingStrings.strings(.fr).actionTrim == "Couper dans l’éditeur"
                         && ForkMeetingStrings.strings(.fr).retentionTitle == "Corbeille automatique"
-                        && ForkMeetingStrings.strings(.fr).actionTrash == "Mettre à la Corbeille",
-                     "in French: Couper dans l’éditeur, Corbeille automatique, Mettre à la Corbeille")
+                        && ForkMeetingStrings.strings(.fr).actionTrash == "Placer dans la corbeille",
+                     "in French: Couper dans l’éditeur, Corbeille automatique, Placer dans la corbeille")
     }
 
     // MARK: - Folders the recorder leaves today

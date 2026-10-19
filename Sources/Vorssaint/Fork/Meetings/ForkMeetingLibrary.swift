@@ -57,14 +57,14 @@ struct ForkMeetingLibraryEntry: Equatable {
         case folderCreated
     }
 
-    /// The folder's name: unique in the meetings folder, so it is the row's
-    /// identity.
-    let folderName: String
+    /// The folder's name: unique in the meetings folder, so it is what the
+    /// list selects. A rename changes it; `identity` stays.
+    private(set) var folderName: String
     let id: UUID?
     let status: Status
     /// The title written in `meeting.json`; for a sidecar that cannot be
     /// read, what follows the stamp in the folder's name.
-    let title: String?
+    private(set) var title: String?
     let date: Date?
     let dateSource: DateSource?
     /// The sidecar's own times: only these decide a meeting's age for the
@@ -81,11 +81,21 @@ struct ForkMeetingLibraryEntry: Equatable {
     let notes: String
     /// The file the player opens: the final video, or, for an interrupted
     /// meeting, its master, readable up to its last fragment.
-    let playable: String?
-    let video: String?
-    let audio: String?
-    /// From a later version of the app, or unreadable: shown, never written.
+    private(set) var playable: String?
+    private(set) var video: String?
+    private(set) var audio: String?
+    /// From a later version of the app, unreadable, or not written by it:
+    /// shown, never written.
     let isReadOnly: Bool
+    /// `meeting.json` was not written by this app (`isWrittenByMeetings`).
+    let isForeign: Bool
+    /// The playable file's date on the disk, as the store read it: it can
+    /// only make the meeting younger for the automatic bin.
+    let videoModified: Date?
+    /// The folder's file number on its volume, as the store read it: a
+    /// rename keeps it, a copy (the Finder's Duplicate, same `meeting.json`
+    /// and same id) has its own.
+    let folderFile: UInt64?
 
     /// `nil` for a folder without `meeting.json`: what tells a meeting
     /// folder from any other folder in the same place is its sidecar.
@@ -94,6 +104,8 @@ struct ForkMeetingLibraryEntry: Equatable {
     ///   store's claim). A sidecar left in `recording` by a crash is not
     ///   live: it is interrupted until the recovery runs.
     /// - `videoSeconds`: the final video's length, when the store probed it.
+    /// - `videoModified`: the date of the file the row plays.
+    /// - `folderFile`: the folder's file number.
     init?(folderName: String,
           sidecar: Result<ForkMeetingSidecar, ForkMeetingSidecarFault>,
           contents: ForkMeetingFolder.Contents,
@@ -101,11 +113,15 @@ struct ForkMeetingLibraryEntry: Equatable {
           bytes: Int64? = nil,
           videoSeconds: Double? = nil,
           folderCreated: Date? = nil,
+          videoModified: Date? = nil,
+          folderFile: UInt64? = nil,
           calendar: Calendar = .current) {
         guard contents.hasSidecar else { return nil }
         if case .failure(.absent) = sidecar { return nil }
         self.folderName = folderName
         self.bytes = bytes
+        self.videoModified = videoModified
+        self.folderFile = folderFile
         video = contents.video
         audio = contents.audio
         let stamped = ForkMeetingLibrary.stampDate(folderName, calendar: calendar)
@@ -121,6 +137,7 @@ struct ForkMeetingLibraryEntry: Equatable {
             meetCode = nil
             notes = ""
             isReadOnly = true
+            isForeign = false
         case let .success(meeting):
             id = meeting.id
             status = Self.status(of: meeting, contents: contents, live: live)
@@ -133,7 +150,8 @@ struct ForkMeetingLibraryEntry: Equatable {
             provider = meeting.provider
             meetCode = meeting.meetCode
             notes = meeting.notes ?? ""
-            isReadOnly = !meeting.isRewritable
+            isForeign = !meeting.isWrittenByMeetings
+            isReadOnly = !meeting.isRewritable || isForeign
         }
         if let startedAt {
             date = startedAt
@@ -191,6 +209,31 @@ struct ForkMeetingLibraryEntry: Equatable {
         case .user, .meetingEnded: return .unknown
         default: return .stopped(reason)
         }
+    }
+
+    /// What the detail is kept by through a rename: the folder's file
+    /// number, which a rename keeps and a copy does not (two folders may
+    /// carry the same id); its name when the store could not read it.
+    var identity: String { folderFile.map { "file:\($0)" } ?? "folder:\(folderName)" }
+
+    /// The same row once the store renamed its folder, its media and its
+    /// title (`ForkMeetingStore.RenameResult`), before the next scan says
+    /// so: the list and the detail follow at once.
+    func renamed(to folder: String, media: [ForkMeetingFolder.Move], title edited: String?) -> ForkMeetingLibraryEntry {
+        var row = self
+        row.folderName = folder
+        func follow(_ name: String?) -> String? {
+            guard let name else { return nil }
+            return media.first { $0.from == name }?.to ?? name
+        }
+        row.video = follow(video)
+        row.audio = follow(audio)
+        row.playable = follow(playable)
+        if let edited {
+            let trimmed = edited.trimmingCharacters(in: .whitespacesAndNewlines)
+            row.title = trimmed.isEmpty ? nil : trimmed
+        }
+        return row
     }
 
     /// The title a row shows: its own, or the default name of a meeting

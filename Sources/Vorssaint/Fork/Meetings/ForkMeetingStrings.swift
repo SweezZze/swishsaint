@@ -446,6 +446,17 @@ struct ForkMeetingStrings {
     /// 14.4): "Always", which needs it, is not offered on the page.
     let detectionAlwaysUnavailable: String
 
+    // MARK: Fixes L
+
+    /// Under the apps' rows while one of them is on "Always": what it waits
+    /// for before starting on its own.
+    let detectionAlwaysDelay: String
+    /// The offer's window for a call filmed in its app's main window, not a
+    /// meeting window of its own: %@ is the app ("Teams (main window)").
+    let offerMainWindowFormat: String
+
+    func offerMainWindow(_ app: String) -> String { String(format: offerMainWindowFormat, app) }
+
     func noticeAskAgain(_ provider: String) -> String { String(format: noticeAskAgainFormat, provider) }
     func voiceAskAgain(_ provider: String) -> String { String(format: voiceAskAgainFormat, provider) }
 
@@ -562,7 +573,6 @@ struct ForkMeetingStrings {
 
     /// The detail's facts and the list's columns.
     let columnTitle: String
-    let columnDate: String
     let columnDuration: String
     let columnSize: String
     let columnApp: String
@@ -665,6 +675,23 @@ struct ForkMeetingStrings {
     let voiceTrashed: String
 
     func emptyWhere(_ path: String) -> String { String(format: emptyWhereFormat, path) }
+
+    // MARK: Fixes M
+
+    /// An automatic sweep that would take more than ten meetings, or more
+    /// than a quarter of the library, waits on the Meetings page for this:
+    /// %1$d meetings older than %2$d days; the same with one meeting.
+    let retentionHeldFormat: String
+    let retentionHeldOneFormat: String
+    let retentionHeldCaption: String
+    /// The folder moved but `meeting.json` refused the title.
+    let renameTitleNotSaved: String
+    /// The detail of a folder whose `meeting.json` another app wrote.
+    let statusForeign: String
+
+    func retentionHeld(count: Int, days: Int) -> String {
+        count == 1 ? String(format: retentionHeldOneFormat, days) : String(format: retentionHeldFormat, count, days)
+    }
 }
 
 extension ForkMeetingStrings {
@@ -754,8 +781,10 @@ extension ForkMeetingStrings {
         consentPledge: "I will inform the participants",
         consentPledgeNeeded: "Tick “I will inform the participants” to continue.",
         consentConfirm: "Turn On Meetings",
+        // MARK: Library folder and names
         folderName: "Meetings",
         untitledMeeting: "Meeting",
+        // MARK: Island, pill and bubble notices: short
         noticeStarted: "Recording started",
         noticeResumed: "Recording resumed",
         noticeSaved: "Meeting saved",
@@ -765,6 +794,7 @@ extension ForkMeetingStrings {
         noticeDiskLow: "Disk almost full",
         noticeDisplayChanged: "Display changed",
         diskMinutesFormat: "~%d min of disk left",
+        // MARK: VoiceOver
         voiceStarted: "Meeting recording started.",
         voicePaused: "Meeting recording paused.",
         voiceResumed: "Meeting recording resumed.",
@@ -772,6 +802,7 @@ extension ForkMeetingStrings {
         voiceMicrophoneFormat: "The recording now uses the microphone %@.",
         voiceMicrophoneSilent: "The microphone sends no sound. Check the microphone chosen for meetings.",
         voiceDiskLowFormat: "The disk is almost full. Minutes of recording left: %d.",
+        // MARK: Failures: a short summary, then what to do
         failScreenDenied: "Screen Recording not allowed",
         failScreenDeniedRemedy: "Without it, nothing can be filmed. Allow Vorssaint in System Settings › Privacy & Security › Screen & System Audio Recording.",
         failScreenRevoked: "Screen access withdrawn",
@@ -852,7 +883,7 @@ extension ForkMeetingStrings {
         detectionLookalike: "A web page that copies a Google Meet title exactly and uses the microphone could be taken for a meeting.",
         // MARK: Detection effects
         detectionTitle: "Detection",
-        detectionCaption: "Recognizes your calls in Google Meet, Zoom, Teams, Slack, FaceTime, Webex and Discord, even behind other windows or on another desktop, and offers to record them. Google Meet, Zoom, Teams, Whereby and Jitsi Meet are recognized in a browser too.",
+        detectionCaption: "Recognizes your calls in the Zoom, Teams, Slack, FaceTime, Webex and Discord apps, and in a browser in Google Meet, Zoom, Teams, Whereby and Jitsi Meet, even behind other windows or on another desktop, and offers to record them.",
         policyAsk: "Offer",
         policyAlways: "Always",
         policyNever: "Never",
@@ -926,6 +957,9 @@ extension ForkMeetingStrings {
         noticeNeverWebCalls: "Other web calls: Never",
         voiceNeverWebCalls: "Calls in a browser other than Google Meet will no longer be offered.",
         detectionAlwaysUnavailable: "Always is not available on this Mac: meetings are offered, never recorded on their own.",
+        // MARK: Fixes L
+        detectionAlwaysDelay: "Teams, Webex and Discord: recorded on their own 15 s into the call. Zoom and Slack: once their meeting window opens, otherwise offered.",
+        offerMainWindowFormat: "%@ (main window)",
         // MARK: Exports
         exportsTitle: "Exports",
         exportsCaption: "Nothing is exported until you add an exporter. A drop folder copies each meeting into a folder of this Mac; a webhook sends its audio and its meeting.json to the HTTPS address you choose, so they leave this Mac for that address.",
@@ -987,7 +1021,6 @@ extension ForkMeetingStrings {
         groupYesterday: "Yesterday",
         groupUndated: "No date",
         columnTitle: "Title",
-        columnDate: "Date and time",
         columnDuration: "Length",
         columnSize: "Size",
         columnApp: "App",
@@ -1046,7 +1079,13 @@ extension ForkMeetingStrings {
         exportFailed: "The audio could not be exported.",
         trimFailed: "The copy for the editor could not be made. The meeting itself is untouched.",
         causeCancelled: "cancelled",
-        voiceTrashed: "Meeting moved to the Trash."
+        voiceTrashed: "Meeting moved to the Trash.",
+        // MARK: Fixes M
+        retentionHeldFormat: "%1$d meetings older than %2$d days: move them to the Trash?",
+        retentionHeldOneFormat: "1 meeting older than %d days: move it to the Trash?",
+        retentionHeldCaption: "More than the automatic Trash takes on its own: nothing goes until you confirm.",
+        renameTitleNotSaved: "The folder was renamed, but its new title could not be saved.",
+        statusForeign: "Its meeting.json was not written by Vorssaint: shown, never changed."
     )
 }
 
@@ -1137,8 +1176,10 @@ extension ForkMeetingStrings {
         consentPledge: "Vou avisar os participantes",
         consentPledgeNeeded: "Marque “Vou avisar os participantes” para continuar.",
         consentConfirm: "Ativar Reuniões",
+        // MARK: Library folder and names
         folderName: "Reuniões",
         untitledMeeting: "Reunião",
+        // MARK: Island, pill and bubble notices: short
         noticeStarted: "Gravação iniciada",
         noticeResumed: "Gravação retomada",
         noticeSaved: "Reunião salva",
@@ -1148,6 +1189,7 @@ extension ForkMeetingStrings {
         noticeDiskLow: "Disco quase cheio",
         noticeDisplayChanged: "Tela alterada",
         diskMinutesFormat: "~%d min de disco",
+        // MARK: VoiceOver
         voiceStarted: "Gravação da reunião iniciada.",
         voicePaused: "Gravação da reunião pausada.",
         voiceResumed: "Gravação da reunião retomada.",
@@ -1155,6 +1197,7 @@ extension ForkMeetingStrings {
         voiceMicrophoneFormat: "A gravação agora usa o microfone %@.",
         voiceMicrophoneSilent: "O microfone não envia som. Verifique o microfone escolhido para as reuniões.",
         voiceDiskLowFormat: "O disco está quase cheio. Minutos de gravação restantes: %d.",
+        // MARK: Failures: a short summary, then what to do
         failScreenDenied: "Acesso à tela negado",
         failScreenDeniedRemedy: "Sem ele, nada pode ser filmado. Permita o Vorssaint em Ajustes do Sistema › Privacidade e Segurança › Gravação de Tela e Áudio do Sistema.",
         failScreenRevoked: "Acesso à tela retirado",
@@ -1235,7 +1278,7 @@ extension ForkMeetingStrings {
         detectionLookalike: "Uma página da web que copie exatamente o título de uma reunião do Google Meet e use o microfone pode ser confundida com uma reunião.",
         // MARK: Detection effects
         detectionTitle: "Detecção",
-        detectionCaption: "Reconhece suas chamadas no Google Meet, Zoom, Teams, Slack, FaceTime, Webex e Discord, mesmo atrás de outras janelas ou em outra mesa, e oferece gravá-las. Google Meet, Zoom, Teams, Whereby e Jitsi Meet também são reconhecidos no navegador.",
+        detectionCaption: "Reconhece suas chamadas nos apps Zoom, Teams, Slack, FaceTime, Webex e Discord, e no navegador no Google Meet, Zoom, Teams, Whereby e Jitsi Meet, mesmo atrás de outras janelas ou em outra mesa, e oferece gravá-las.",
         policyAsk: "Oferecer",
         policyAlways: "Sempre",
         policyNever: "Nunca",
@@ -1309,6 +1352,9 @@ extension ForkMeetingStrings {
         noticeNeverWebCalls: "Outras chamadas web: Nunca",
         voiceNeverWebCalls: "As chamadas no navegador que não sejam do Google Meet não serão mais oferecidas.",
         detectionAlwaysUnavailable: "“Sempre” não está disponível neste Mac: as reuniões são oferecidas, nunca gravadas sozinhas.",
+        // MARK: Fixes L
+        detectionAlwaysDelay: "Teams, Webex e Discord: gravados sozinhos 15 s após o início da chamada. Zoom e Slack: assim que a janela da reunião abre; senão, oferecidos.",
+        offerMainWindowFormat: "%@ (janela principal)",
         // MARK: Exports
         exportsTitle: "Exportações",
         exportsCaption: "Nada é exportado até você adicionar um exportador. Uma pasta de entrega copia cada reunião para uma pasta deste Mac; um webhook envia o áudio e o meeting.json para o endereço HTTPS escolhido: eles saem deste Mac rumo a esse endereço.",
@@ -1370,7 +1416,6 @@ extension ForkMeetingStrings {
         groupYesterday: "Ontem",
         groupUndated: "Sem data",
         columnTitle: "Título",
-        columnDate: "Data e hora",
         columnDuration: "Duração",
         columnSize: "Tamanho",
         columnApp: "Aplicativo",
@@ -1429,7 +1474,13 @@ extension ForkMeetingStrings {
         exportFailed: "Não foi possível exportar o áudio.",
         trimFailed: "Não foi possível fazer a cópia para o editor. A reunião em si não foi alterada.",
         causeCancelled: "cancelada",
-        voiceTrashed: "Reunião movida para o Lixo."
+        voiceTrashed: "Reunião movida para o Lixo.",
+        // MARK: Fixes M
+        retentionHeldFormat: "%1$d reuniões com mais de %2$d dias: movê-las para o Lixo?",
+        retentionHeldOneFormat: "1 reunião com mais de %d dias: movê-la para o Lixo?",
+        retentionHeldCaption: "Mais do que o Lixo automático leva sozinho: nada sai antes de você confirmar.",
+        renameTitleNotSaved: "A pasta foi renomeada, mas não foi possível salvar o novo título.",
+        statusForeign: "O meeting.json não foi escrito pelo Vorssaint: exibida, nunca alterada."
     )
 }
 
@@ -1520,8 +1571,10 @@ extension ForkMeetingStrings {
         consentPledge: "Katılımcıları bilgilendireceğim",
         consentPledgeNeeded: "Devam etmek için “Katılımcıları bilgilendireceğim” kutusunu işaretleyin.",
         consentConfirm: "Toplantılar’ı aç",
+        // MARK: Library folder and names
         folderName: "Toplantılar",
         untitledMeeting: "Toplantı",
+        // MARK: Island, pill and bubble notices: short
         noticeStarted: "Kayıt başladı",
         noticeResumed: "Kayıt sürdürüldü",
         noticeSaved: "Toplantı kaydedildi",
@@ -1531,6 +1584,7 @@ extension ForkMeetingStrings {
         noticeDiskLow: "Disk neredeyse dolu",
         noticeDisplayChanged: "Ekran değişti",
         diskMinutesFormat: "~%d dk disk kaldı",
+        // MARK: VoiceOver
         voiceStarted: "Toplantı kaydı başladı.",
         voicePaused: "Toplantı kaydı duraklatıldı.",
         voiceResumed: "Toplantı kaydı sürdürüldü.",
@@ -1538,6 +1592,7 @@ extension ForkMeetingStrings {
         voiceMicrophoneFormat: "Kayıt artık %@ mikrofonunu kullanıyor.",
         voiceMicrophoneSilent: "Mikrofon ses göndermiyor. Toplantılar için seçilen mikrofonu kontrol edin.",
         voiceDiskLowFormat: "Disk neredeyse dolu. Kalan kayıt dakikası: %d.",
+        // MARK: Failures: a short summary, then what to do
         failScreenDenied: "Ekran erişimi reddedildi",
         failScreenDeniedRemedy: "Bu izin olmadan hiçbir şey kaydedilemez. Sistem Ayarları › Gizlilik ve Güvenlik › Ekran ve Sistem Sesi Kaydı’ndan Vorssaint’e izin verin.",
         failScreenRevoked: "Ekran erişimi kaldırıldı",
@@ -1618,7 +1673,7 @@ extension ForkMeetingStrings {
         detectionLookalike: "Bir Google Meet başlığını birebir taklit eden ve mikrofonu kullanan bir web sayfası da toplantı sanılabilir.",
         // MARK: Detection effects
         detectionTitle: "Algılama",
-        detectionCaption: "Google Meet, Zoom, Teams, Slack, FaceTime, Webex ve Discord görüşmelerinizi, başka pencerelerin arkasında veya başka bir masaüstünde olsa bile tanır ve kaydetmeyi önerir. Google Meet, Zoom, Teams, Whereby ve Jitsi Meet tarayıcıda da tanınır.",
+        detectionCaption: "Zoom, Teams, Slack, FaceTime, Webex ve Discord uygulamalarındaki ve tarayıcıda Google Meet, Zoom, Teams, Whereby ve Jitsi Meet’teki görüşmelerinizi, başka pencerelerin arkasında veya başka bir masaüstünde olsa bile tanır ve kaydetmeyi önerir.",
         policyAsk: "Öner",
         policyAlways: "Her zaman",
         policyNever: "Asla",
@@ -1679,7 +1734,7 @@ extension ForkMeetingStrings {
         // MARK: Apps
         detectionOtherWebCalls: "Diğer web görüşmeleri",
         detectionOtherWebCallsCaption: "Tarayıcıda Zoom, Whereby, Jitsi Meet veya Teams: yalnızca tarayıcı mikrofonu kullanırken önerilir.",
-        detectionUnavailable: "Bu Mac’te tanınmaz",
+        detectionUnavailable: "Bu Mac’te tanınmıyor",
         detectionFaceTimeWholeMac: "FaceTime için, bildirimler ve müzik dahil tüm Mac’in sesi kaydedilir.",
         // MARK: Fixes J
         microphoneExternal: "Harici mikrofon",
@@ -1692,6 +1747,9 @@ extension ForkMeetingStrings {
         noticeNeverWebCalls: "Diğer web görüşmeleri: Asla",
         voiceNeverWebCalls: "Google Meet dışındaki tarayıcı görüşmeleri artık önerilmeyecek.",
         detectionAlwaysUnavailable: "“Her zaman” bu Mac’te kullanılamaz: toplantılar önerilir, hiçbir zaman kendiliğinden kaydedilmez.",
+        // MARK: Fixes L
+        detectionAlwaysDelay: "Teams, Webex ve Discord: görüşme başladıktan 15 sn sonra kendiliğinden kaydedilir. Zoom ve Slack: toplantı pencereleri açılır açılmaz, aksi hâlde önerilir.",
+        offerMainWindowFormat: "%@ (ana pencere)",
         // MARK: Exports
         exportsTitle: "Dışa aktarımlar",
         exportsCaption: "Bir dışa aktarıcı eklenene kadar hiçbir şey dışa aktarılmaz. Bırakma klasörü her toplantıyı bu Mac’teki bir klasöre kopyalar; webhook ise sesini ve meeting.json dosyasını seçtiğiniz HTTPS adresine gönderir: bunlar bu Mac’ten o adrese gider.",
@@ -1753,19 +1811,18 @@ extension ForkMeetingStrings {
         groupYesterday: "Dün",
         groupUndated: "Tarihsiz",
         columnTitle: "Başlık",
-        columnDate: "Tarih ve saat",
         columnDuration: "Süre",
         columnSize: "Boyut",
         columnApp: "Uygulama",
         columnMeetCode: "Toplantı kodu",
-        actionRename: "Yeniden Adlandır",
+        actionRename: "Adını Değiştir",
         actionExportAudio: "Sesi Dışa Aktar (M4A)…",
         actionCopyPath: "Yolu Kopyala",
-        actionTrash: "Çöp Kutusu’na Taşı",
+        actionTrash: "Çöp Sepeti’ne Taşı",
         actionTrim: "Düzenleyicide Kırp",
         noticePathCopied: "Yol kopyalandı",
-        confirmTrashFormat: "“%@” Çöp Kutusu’na taşınsın mı?",
-        confirmTrashMessage: "Toplantının klasörü videosu, sesi ve notlarıyla Çöp Kutusu’na gider. Çöp Kutusu boşaltılana kadar geri alabilirsiniz.",
+        confirmTrashFormat: "“%@” Çöp Sepeti’ne taşınsın mı?",
+        confirmTrashMessage: "Toplantının klasörü videosu, sesi ve notlarıyla Çöp Sepeti’ne gider. Çöp Sepeti boşaltılana kadar geri alabilirsiniz.",
         statusRecovered: "Kurtarıldı",
         statusInterruptedFormat: "Yarıda kaldı: %@",
         statusUnreadable: "Kayıt okunamıyor",
@@ -1790,12 +1847,12 @@ extension ForkMeetingStrings {
         emptyTitle: "Henüz toplantı yok",
         emptyCaption: "Kaydettiğiniz her toplantı kendi klasöründe burada görünür.",
         notesPlaceholder: "Not ekle",
-        retentionTitle: "Otomatik Çöp Kutusu",
+        retentionTitle: "Otomatik Çöp Sepeti",
         retentionNever: "Hiçbir zaman",
         retentionDaysFormat: "%d gün sonra",
-        retentionCaption: "Daha eski toplantılar açılışta, sonra günde bir kez Çöp Kutusu’na gider. Kaydedilen ya da ⚠ ile işaretli bir toplantı asla gitmez.",
-        retentionConfirmTitle: "Eski toplantılar Çöp Kutusu’na taşınsın mı?",
-        retentionConfirmFormat: "%2$d günden eski toplantılar: %1$d. Çöp Kutusu boşaltılana kadar orada kalırlar.",
+        retentionCaption: "Daha eski toplantılar açılışta, sonra günde bir kez Çöp Sepeti’ne gider. Kaydedilen ya da ⚠ ile işaretli bir toplantı asla gitmez.",
+        retentionConfirmTitle: "Eski toplantılar Çöp Sepeti’ne taşınsın mı?",
+        retentionConfirmFormat: "%2$d günden eski toplantılar: %1$d. Çöp Sepeti boşaltılana kadar orada kalırlar.",
         trimCaption: "Düzenleyici bir kopya açar: toplantının kendisine dokunulmaz.",
         trimNeedsEditor: "Düzenleyici Ekran Kaydı’na aittir: bir toplantıyı kırpmak için Vorssaint’te onu açın.",
         trimNoVideo: "Bu toplantının kırpılacak videosu yok.",
@@ -1807,12 +1864,18 @@ extension ForkMeetingStrings {
         playerNoVideo: "Oynatılacak video yok",
         statusRecoveredHelp: "Uygulama beklenmedik şekilde durduktan sonra kurtarıldı: son birkaç saniye eksik olabilir.",
         statusInterruptedHelp: "Bu toplantı normal şekilde bitmedi. Kaydedilen her şey klasöründe saklanıyor.",
-        trashFailed: "Toplantı Çöp Kutusu’na taşınamadı.",
+        trashFailed: "Toplantı Çöp Sepeti’ne taşınamadı.",
         renameFailed: "Klasörün adı değiştirilemedi: başlık değişti, klasör adını korudu.",
         exportFailed: "Ses dışa aktarılamadı.",
         trimFailed: "Düzenleyici için kopya oluşturulamadı. Toplantının kendisine dokunulmadı.",
         causeCancelled: "iptal edildi",
-        voiceTrashed: "Toplantı Çöp Kutusu’na taşındı."
+        voiceTrashed: "Toplantı Çöp Sepeti’ne taşındı.",
+        // MARK: Fixes M
+        retentionHeldFormat: "%2$d günden eski %1$d toplantı: Çöp Sepeti’ne taşınsın mı?",
+        retentionHeldOneFormat: "%d günden eski 1 toplantı: Çöp Sepeti’ne taşınsın mı?",
+        retentionHeldCaption: "Otomatik Çöp Sepeti’nin kendi başına aldığından fazla: siz onaylayana kadar hiçbiri taşınmaz.",
+        renameTitleNotSaved: "Klasörün adı değişti, ancak yeni başlık kaydedilemedi.",
+        statusForeign: "meeting.json dosyası Vorssaint tarafından yazılmadı: gösterilir, hiç değiştirilmez."
     )
 }
 
@@ -1903,8 +1966,10 @@ extension ForkMeetingStrings {
         consentPledge: "Я предупрежу участников",
         consentPledgeNeeded: "Отметьте «Я предупрежу участников», чтобы продолжить.",
         consentConfirm: "Включить Встречи",
+        // MARK: Library folder and names
         folderName: "Встречи",
         untitledMeeting: "Встреча",
+        // MARK: Island, pill and bubble notices: short
         noticeStarted: "Запись начата",
         noticeResumed: "Запись продолжена",
         noticeSaved: "Встреча сохранена",
@@ -1914,6 +1979,7 @@ extension ForkMeetingStrings {
         noticeDiskLow: "Диск почти заполнен",
         noticeDisplayChanged: "Экран сменился",
         diskMinutesFormat: "Диск: ~%d мин",
+        // MARK: VoiceOver
         voiceStarted: "Запись встречи начата.",
         voicePaused: "Запись встречи приостановлена.",
         voiceResumed: "Запись встречи продолжена.",
@@ -1921,6 +1987,7 @@ extension ForkMeetingStrings {
         voiceMicrophoneFormat: "Теперь запись идёт с микрофона %@.",
         voiceMicrophoneSilent: "Микрофон не передаёт звук. Проверьте микрофон, выбранный для встреч.",
         voiceDiskLowFormat: "Диск почти заполнен. Осталось минут записи: %d.",
+        // MARK: Failures: a short summary, then what to do
         failScreenDenied: "Нет доступа к экрану",
         failScreenDeniedRemedy: "Без него ничего не записать. Разрешите Vorssaint в Системных настройках › Конфиденциальность и безопасность › Запись экрана и системного аудио.",
         failScreenRevoked: "Доступ к экрану отозван",
@@ -2001,7 +2068,7 @@ extension ForkMeetingStrings {
         detectionLookalike: "Веб-страница, которая точно повторяет заголовок Google Meet и использует микрофон, может быть принята за встречу.",
         // MARK: Detection effects
         detectionTitle: "Обнаружение",
-        detectionCaption: "Распознаёт ваши звонки в Google Meet, Zoom, Teams, Slack, FaceTime, Webex и Discord, даже за другими окнами или на другом рабочем столе, и предлагает их записать. Google Meet, Zoom, Teams, Whereby и Jitsi Meet распознаются и в браузере.",
+        detectionCaption: "Распознаёт ваши звонки в приложениях Zoom, Teams, Slack, FaceTime, Webex и Discord, а в браузере — в Google Meet, Zoom, Teams, Whereby и Jitsi Meet, даже за другими окнами или на другом рабочем столе, и предлагает их записать.",
         policyAsk: "Предлагать",
         policyAlways: "Всегда",
         policyNever: "Никогда",
@@ -2075,6 +2142,9 @@ extension ForkMeetingStrings {
         noticeNeverWebCalls: "Другие веб-звонки: Никогда",
         voiceNeverWebCalls: "Звонки в браузере, кроме Google Meet, больше не будут предлагаться.",
         detectionAlwaysUnavailable: "«Всегда» недоступно на этом Mac: встречи предлагаются, но никогда не записываются сами.",
+        // MARK: Fixes L
+        detectionAlwaysDelay: "Teams, Webex и Discord: запись сама начинается через 15 с после начала звонка. Zoom и Slack: как только откроется окно встречи, иначе предлагается.",
+        offerMainWindowFormat: "%@ (главное окно)",
         // MARK: Exports
         exportsTitle: "Экспорт",
         exportsCaption: "Пока вы не добавите экспорт, ничего не экспортируется. Папка выгрузки копирует каждую встречу в папку на этом Mac; веб-хук отправляет её звук и meeting.json на выбранный вами адрес HTTPS — они покидают этот Mac и уходят на этот адрес.",
@@ -2136,7 +2206,6 @@ extension ForkMeetingStrings {
         groupYesterday: "Вчера",
         groupUndated: "Без даты",
         columnTitle: "Название",
-        columnDate: "Дата и время",
         columnDuration: "Длительность",
         columnSize: "Размер",
         columnApp: "Приложение",
@@ -2155,7 +2224,7 @@ extension ForkMeetingStrings {
         statusUnreadableHelp: "Не удалось прочитать её meeting.json. Он никогда не перезаписывается: видео остаётся в папке, а карточку ещё можно исправить вручную.",
         statusLaterVersion: "Создана более новой версией Vorssaint: показывается, но не изменяется.",
         causeCrash: "сбой",
-        causeQuit: "выход из app",
+        causeQuit: "приложение закрыто",
         causeDisk: "диск заполнен",
         causePermission: "доступ отозван",
         causeSleep: "режим сна",
@@ -2173,7 +2242,7 @@ extension ForkMeetingStrings {
         emptyTitle: "Встреч пока нет",
         emptyCaption: "Каждая записанная встреча появляется здесь, в своей папке.",
         notesPlaceholder: "Добавить заметки",
-        retentionTitle: "Автоочистка в Корзину",
+        retentionTitle: "Автоматически в Корзину",
         retentionNever: "Никогда",
         retentionDaysFormat: "Через %d дн.",
         retentionCaption: "Старые встречи отправляются в Корзину при запуске, затем раз в день. Никогда — записываемая встреча или отмеченная ⚠.",
@@ -2195,7 +2264,13 @@ extension ForkMeetingStrings {
         exportFailed: "Не удалось экспортировать звук.",
         trimFailed: "Не удалось сделать копию для редактора. Сама встреча не затронута.",
         causeCancelled: "отменена",
-        voiceTrashed: "Встреча перемещена в Корзину."
+        voiceTrashed: "Встреча перемещена в Корзину.",
+        // MARK: Fixes M
+        retentionHeldFormat: "Встречи старше %2$d дн.: %1$d. Переместить их в Корзину?",
+        retentionHeldOneFormat: "Одна встреча старше %d дн.: переместить её в Корзину?",
+        retentionHeldCaption: "Это больше, чем автоочистка перемещает сама: ничего не будет перемещено без вашего подтверждения.",
+        renameTitleNotSaved: "Папка переименована, но новое название не удалось сохранить.",
+        statusForeign: "Файл meeting.json записан не Vorssaint: показывается, но не изменяется."
     )
 }
 
@@ -2286,8 +2361,10 @@ extension ForkMeetingStrings {
         consentPledge: "Avisaré a los participantes",
         consentPledgeNeeded: "Marca «Avisaré a los participantes» para continuar.",
         consentConfirm: "Activar Reuniones",
+        // MARK: Library folder and names
         folderName: "Reuniones",
         untitledMeeting: "Reunión",
+        // MARK: Island, pill and bubble notices: short
         noticeStarted: "Grabación iniciada",
         noticeResumed: "Grabación reanudada",
         noticeSaved: "Reunión guardada",
@@ -2297,6 +2374,7 @@ extension ForkMeetingStrings {
         noticeDiskLow: "Disco casi lleno",
         noticeDisplayChanged: "Pantalla cambiada",
         diskMinutesFormat: "~%d min de disco libres",
+        // MARK: VoiceOver
         voiceStarted: "Grabación de la reunión iniciada.",
         voicePaused: "Grabación de la reunión en pausa.",
         voiceResumed: "Grabación de la reunión reanudada.",
@@ -2304,6 +2382,7 @@ extension ForkMeetingStrings {
         voiceMicrophoneFormat: "La grabación usa ahora el micrófono %@.",
         voiceMicrophoneSilent: "El micrófono no envía sonido. Revisa el micrófono elegido para las reuniones.",
         voiceDiskLowFormat: "El disco está casi lleno. Minutos de grabación restantes: %d.",
+        // MARK: Failures: a short summary, then what to do
         failScreenDenied: "Acceso a pantalla denegado",
         failScreenDeniedRemedy: "Sin él no se puede grabar nada. Permite a Vorssaint en Ajustes del Sistema › Privacidad y seguridad › Grabación de pantalla y audio del sistema.",
         failScreenRevoked: "Acceso a pantalla retirado",
@@ -2384,7 +2463,7 @@ extension ForkMeetingStrings {
         detectionLookalike: "Una página web que imite exactamente un título de Google Meet y use el micrófono podría tomarse por una reunión.",
         // MARK: Detection effects
         detectionTitle: "Detección",
-        detectionCaption: "Reconoce tus llamadas de Google Meet, Zoom, Teams, Slack, FaceTime, Webex y Discord, incluso detrás de otras ventanas o en otro escritorio, y ofrece grabarlas. Google Meet, Zoom, Teams, Whereby y Jitsi Meet también se reconocen en el navegador.",
+        detectionCaption: "Reconoce tus llamadas en las apps Zoom, Teams, Slack, FaceTime, Webex y Discord, y en el navegador en Google Meet, Zoom, Teams, Whereby y Jitsi Meet, incluso detrás de otras ventanas o en otro escritorio, y ofrece grabarlas.",
         policyAsk: "Ofrecer",
         policyAlways: "Siempre",
         policyNever: "Nunca",
@@ -2458,6 +2537,9 @@ extension ForkMeetingStrings {
         noticeNeverWebCalls: "Otras llamadas web: Nunca",
         voiceNeverWebCalls: "Las llamadas en el navegador que no sean de Google Meet ya no se ofrecerán.",
         detectionAlwaysUnavailable: "«Siempre» no está disponible en este Mac: las reuniones se ofrecen, nunca se graban solas.",
+        // MARK: Fixes L
+        detectionAlwaysDelay: "Teams, Webex y Discord: se graban solos 15 s después de empezar la llamada. Zoom y Slack: en cuanto se abre su ventana de reunión; si no, se ofrecen.",
+        offerMainWindowFormat: "%@ (ventana principal)",
         // MARK: Exports
         exportsTitle: "Exportaciones",
         exportsCaption: "No se exporta nada hasta que añadas un exportador. Una carpeta de entrega copia cada reunión en una carpeta de este Mac; un webhook envía su audio y su meeting.json a la dirección HTTPS que elijas: salen de este Mac hacia esa dirección.",
@@ -2519,7 +2601,6 @@ extension ForkMeetingStrings {
         groupYesterday: "Ayer",
         groupUndated: "Sin fecha",
         columnTitle: "Título",
-        columnDate: "Fecha y hora",
         columnDuration: "Duración",
         columnSize: "Tamaño",
         columnApp: "Aplicación",
@@ -2578,7 +2659,13 @@ extension ForkMeetingStrings {
         exportFailed: "No se ha podido exportar el audio.",
         trimFailed: "No se ha podido hacer la copia para el editor. La reunión no se ha tocado.",
         causeCancelled: "cancelada",
-        voiceTrashed: "Reunión trasladada a la papelera."
+        voiceTrashed: "Reunión trasladada a la papelera.",
+        // MARK: Fixes M
+        retentionHeldFormat: "%1$d reuniones de más de %2$d días: ¿trasladarlas a la papelera?",
+        retentionHeldOneFormat: "1 reunión de más de %d días: ¿trasladarla a la papelera?",
+        retentionHeldCaption: "Es más de lo que la papelera automática se lleva por sí sola: nada se traslada hasta que lo confirmes.",
+        renameTitleNotSaved: "La carpeta se ha renombrado, pero no se ha podido guardar el nuevo título.",
+        statusForeign: "Su meeting.json no lo ha escrito Vorssaint: se muestra, nunca se modifica."
     )
 }
 
@@ -2669,8 +2756,10 @@ extension ForkMeetingStrings {
         consentPledge: "Upozorním účastníkov",
         consentPledgeNeeded: "Pokračujte zaškrtnutím „Upozorním účastníkov“.",
         consentConfirm: "Zapnúť Stretnutia",
+        // MARK: Library folder and names
         folderName: "Stretnutia",
         untitledMeeting: "Stretnutie",
+        // MARK: Island, pill and bubble notices: short
         noticeStarted: "Nahrávanie spustené",
         noticeResumed: "Nahrávanie pokračuje",
         noticeSaved: "Stretnutie uložené",
@@ -2680,6 +2769,7 @@ extension ForkMeetingStrings {
         noticeDiskLow: "Disk je takmer plný",
         noticeDisplayChanged: "Obrazovka sa zmenila",
         diskMinutesFormat: "Disk: ~%d min",
+        // MARK: VoiceOver
         voiceStarted: "Nahrávanie stretnutia sa spustilo.",
         voicePaused: "Nahrávanie stretnutia je pozastavené.",
         voiceResumed: "Nahrávanie stretnutia pokračuje.",
@@ -2687,6 +2777,7 @@ extension ForkMeetingStrings {
         voiceMicrophoneFormat: "Nahrávanie teraz používa mikrofón %@.",
         voiceMicrophoneSilent: "Mikrofón neposiela žiadny zvuk. Skontrolujte mikrofón zvolený pre stretnutia.",
         voiceDiskLowFormat: "Disk je takmer plný. Zostávajúce minúty nahrávania: %d.",
+        // MARK: Failures: a short summary, then what to do
         failScreenDenied: "Obrazovka nie je povolená",
         failScreenDeniedRemedy: "Bez toho sa nedá nič nahrať. Povoľte Vorssaint v Systémových nastaveniach › Súkromie a bezpečnosť › Nahrávanie obrazovky a systémového audia.",
         failScreenRevoked: "Prístup k obrazovke odobratý",
@@ -2767,7 +2858,7 @@ extension ForkMeetingStrings {
         detectionLookalike: "Webová stránka, ktorá presne napodobní názov Google Meet a používa mikrofón, môže byť považovaná za stretnutie.",
         // MARK: Detection effects
         detectionTitle: "Rozpoznávanie",
-        detectionCaption: "Rozpozná vaše hovory v Google Meet, Zoom, Teams, Slack, FaceTime, Webex a Discord, aj za inými oknami alebo na inej ploche, a ponúkne ich nahratie. Google Meet, Zoom, Teams, Whereby a Jitsi Meet rozpozná aj v prehliadači.",
+        detectionCaption: "Rozpozná vaše hovory v aplikáciách Zoom, Teams, Slack, FaceTime, Webex a Discord a v prehliadači v Google Meet, Zoom, Teams, Whereby a Jitsi Meet, aj za inými oknami alebo na inej ploche, a ponúkne ich nahratie.",
         policyAsk: "Ponúknuť",
         policyAlways: "Vždy",
         policyNever: "Nikdy",
@@ -2841,6 +2932,9 @@ extension ForkMeetingStrings {
         noticeNeverWebCalls: "Iné hovory na webe: Nikdy",
         voiceNeverWebCalls: "Hovory v prehliadači okrem Google Meet sa už nebudú ponúkať.",
         detectionAlwaysUnavailable: "Možnosť „Vždy“ nie je na tomto Macu k dispozícii: stretnutia sa ponúknu, nikdy sa nenahrajú samy.",
+        // MARK: Fixes L
+        detectionAlwaysDelay: "Teams, Webex a Discord: nahrávajú sa samy 15 s po začiatku hovoru. Zoom a Slack: hneď ako sa otvorí ich okno schôdze, inak sa ponúknu.",
+        offerMainWindowFormat: "%@ (hlavné okno)",
         // MARK: Exports
         exportsTitle: "Exporty",
         exportsCaption: "Kým nepridáte export, nič sa neexportuje. Priečinok na odovzdanie skopíruje každú schôdzu do priečinka v tomto Macu; webhook pošle jej zvuk a meeting.json na zvolenú adresu HTTPS: opustia tento Mac a idú na túto adresu.",
@@ -2902,7 +2996,6 @@ extension ForkMeetingStrings {
         groupYesterday: "Včera",
         groupUndated: "Bez dátumu",
         columnTitle: "Názov",
-        columnDate: "Dátum a čas",
         columnDuration: "Dĺžka",
         columnSize: "Veľkosť",
         columnApp: "Aplikácia",
@@ -2961,7 +3054,13 @@ extension ForkMeetingStrings {
         exportFailed: "Zvuk sa nepodarilo exportovať.",
         trimFailed: "Kópiu pre editor sa nepodarilo vytvoriť. Samotné stretnutie zostalo nedotknuté.",
         causeCancelled: "zrušené",
-        voiceTrashed: "Stretnutie bolo presunuté do koša."
+        voiceTrashed: "Stretnutie bolo presunuté do koša.",
+        // MARK: Fixes M
+        retentionHeldFormat: "Stretnutia staršie ako %2$d dní: %1$d. Presunúť ich do koša?",
+        retentionHeldOneFormat: "Jedno stretnutie staršie ako %d dní: presunúť ho do koša?",
+        retentionHeldCaption: "Je to viac, než automatický kôš vezme sám: nič sa nepresunie, kým to nepotvrdíte.",
+        renameTitleNotSaved: "Priečinok sa premenoval, ale nový názov sa nepodarilo uložiť.",
+        statusForeign: "Súbor meeting.json nezapísal Vorssaint: zobrazuje sa, nikdy sa nemení."
     )
 }
 
@@ -3052,8 +3151,10 @@ extension ForkMeetingStrings {
         consentPledge: "Ich werde die Teilnehmenden informieren",
         consentPledgeNeeded: "Kreuze „Ich werde die Teilnehmenden informieren“ an, um fortzufahren.",
         consentConfirm: "Besprechungen aktivieren",
+        // MARK: Library folder and names
         folderName: "Besprechungen",
         untitledMeeting: "Besprechung",
+        // MARK: Island, pill and bubble notices: short
         noticeStarted: "Aufnahme gestartet",
         noticeResumed: "Aufnahme fortgesetzt",
         noticeSaved: "Besprechung gespeichert",
@@ -3063,6 +3164,7 @@ extension ForkMeetingStrings {
         noticeDiskLow: "Speicher fast voll",
         noticeDisplayChanged: "Bildschirm gewechselt",
         diskMinutesFormat: "~%d Min. Speicher übrig",
+        // MARK: VoiceOver
         voiceStarted: "Aufnahme der Besprechung gestartet.",
         voicePaused: "Aufnahme der Besprechung pausiert.",
         voiceResumed: "Aufnahme der Besprechung fortgesetzt.",
@@ -3070,6 +3172,7 @@ extension ForkMeetingStrings {
         voiceMicrophoneFormat: "Die Aufnahme verwendet jetzt das Mikrofon %@.",
         voiceMicrophoneSilent: "Das Mikrofon liefert keinen Ton. Prüfe das für Besprechungen gewählte Mikrofon.",
         voiceDiskLowFormat: "Der Speicher ist fast voll. Verbleibende Aufnahmeminuten: %d.",
+        // MARK: Failures: a short summary, then what to do
         failScreenDenied: "Bildschirmzugriff verweigert",
         failScreenDeniedRemedy: "Ohne ihn kann nichts gefilmt werden. Erlaube Vorssaint unter Systemeinstellungen › Datenschutz & Sicherheit › Aufnahme von Bildschirm und Systemaudio.",
         failScreenRevoked: "Bildschirmzugriff entzogen",
@@ -3150,7 +3253,7 @@ extension ForkMeetingStrings {
         detectionLookalike: "Eine Webseite, die einen Titel von Google Meet genau nachahmt und das Mikrofon nutzt, könnte für eine Besprechung gehalten werden.",
         // MARK: Detection effects
         detectionTitle: "Erkennung",
-        detectionCaption: "Erkennt deine Anrufe in Google Meet, Zoom, Teams, Slack, FaceTime, Webex und Discord, auch hinter anderen Fenstern oder auf einem anderen Schreibtisch, und bietet an, sie aufzunehmen. Google Meet, Zoom, Teams, Whereby und Jitsi Meet werden auch im Browser erkannt.",
+        detectionCaption: "Erkennt deine Anrufe in den Apps Zoom, Teams, Slack, FaceTime, Webex und Discord und im Browser in Google Meet, Zoom, Teams, Whereby und Jitsi Meet, auch hinter anderen Fenstern oder auf einem anderen Schreibtisch, und bietet an, sie aufzunehmen.",
         policyAsk: "Anbieten",
         policyAlways: "Immer",
         policyNever: "Nie",
@@ -3224,6 +3327,9 @@ extension ForkMeetingStrings {
         noticeNeverWebCalls: "Andere Web-Anrufe: Nie",
         voiceNeverWebCalls: "Anrufe im Browser außer Google Meet werden nicht mehr angeboten.",
         detectionAlwaysUnavailable: "„Immer“ ist auf diesem Mac nicht verfügbar: Besprechungen werden angeboten, nie von selbst aufgenommen.",
+        // MARK: Fixes L
+        detectionAlwaysDelay: "Teams, Webex und Discord: 15 s nach Beginn des Anrufs von selbst aufgenommen. Zoom und Slack: sobald ihr Meeting-Fenster aufgeht, sonst angeboten.",
+        offerMainWindowFormat: "%@ (Hauptfenster)",
         // MARK: Exports
         exportsTitle: "Exporte",
         exportsCaption: "Es wird nichts exportiert, bevor du einen Export hinzufügst. Ein Ablageordner kopiert jedes Meeting in einen Ordner dieses Macs; ein Webhook sendet Ton und meeting.json an die gewählte HTTPS-Adresse: Sie verlassen diesen Mac in Richtung dieser Adresse.",
@@ -3285,7 +3391,6 @@ extension ForkMeetingStrings {
         groupYesterday: "Gestern",
         groupUndated: "Ohne Datum",
         columnTitle: "Titel",
-        columnDate: "Datum und Uhrzeit",
         columnDuration: "Dauer",
         columnSize: "Größe",
         columnApp: "Anwendung",
@@ -3299,7 +3404,7 @@ extension ForkMeetingStrings {
         confirmTrashFormat: "„%@“ in den Papierkorb legen?",
         confirmTrashMessage: "Der Ordner der Besprechung kommt mit Video, Audio und Notizen in den Papierkorb. Du kannst ihn zurückholen, solange der Papierkorb nicht geleert ist.",
         statusRecovered: "Wiederhergestellt",
-        statusInterruptedFormat: "Abgebrochen: %@",
+        statusInterruptedFormat: "Unterbrochen: %@",
         statusUnreadable: "Datei unlesbar",
         statusUnreadableHelp: "Ihre meeting.json konnte nicht gelesen werden. Sie wird nie überschrieben: Das Video bleibt im Ordner, und die Datei lässt sich noch von Hand reparieren.",
         statusLaterVersion: "Von einer neueren Version von Vorssaint erstellt: angezeigt, nie geändert.",
@@ -3344,7 +3449,13 @@ extension ForkMeetingStrings {
         exportFailed: "Das Audio konnte nicht exportiert werden.",
         trimFailed: "Die Kopie für den Editor konnte nicht erstellt werden. Die Besprechung selbst bleibt unverändert.",
         causeCancelled: "abgebrochen",
-        voiceTrashed: "Besprechung in den Papierkorb gelegt."
+        voiceTrashed: "Besprechung in den Papierkorb gelegt.",
+        // MARK: Fixes M
+        retentionHeldFormat: "%1$d Besprechungen älter als %2$d Tage: in den Papierkorb legen?",
+        retentionHeldOneFormat: "1 Besprechung älter als %d Tage: in den Papierkorb legen?",
+        retentionHeldCaption: "Mehr, als der automatische Papierkorb von sich aus nimmt: Nichts wird verschoben, bevor du bestätigst.",
+        renameTitleNotSaved: "Der Ordner wurde umbenannt, aber der neue Titel konnte nicht gesichert werden.",
+        statusForeign: "Die meeting.json stammt nicht von Vorssaint: angezeigt, nie geändert."
     )
 }
 
@@ -3435,8 +3546,10 @@ extension ForkMeetingStrings {
         consentPledge: "J’informerai les participants",
         consentPledgeNeeded: "Cochez «\u{00A0}J’informerai les participants\u{00A0}» pour continuer.",
         consentConfirm: "Activer Réunions",
+        // MARK: Library folder and names
         folderName: "Réunions",
         untitledMeeting: "Réunion",
+        // MARK: Island, pill and bubble notices: short
         noticeStarted: "Enregistrement démarré",
         noticeResumed: "Enregistrement repris",
         noticeSaved: "Réunion enregistrée",
@@ -3446,6 +3559,7 @@ extension ForkMeetingStrings {
         noticeDiskLow: "Disque presque plein",
         noticeDisplayChanged: "Écran changé",
         diskMinutesFormat: "~%d min de disque",
+        // MARK: VoiceOver
         voiceStarted: "Enregistrement de la réunion démarré.",
         voicePaused: "Enregistrement de la réunion en pause.",
         voiceResumed: "Enregistrement de la réunion repris.",
@@ -3453,6 +3567,7 @@ extension ForkMeetingStrings {
         voiceMicrophoneFormat: "L’enregistrement utilise maintenant le micro %@.",
         voiceMicrophoneSilent: "Le micro n’envoie aucun son. Vérifiez le micro choisi pour les réunions.",
         voiceDiskLowFormat: "Le disque est presque plein. Minutes d’enregistrement restantes\u{00A0}: %d.",
+        // MARK: Failures: a short summary, then what to do
         failScreenDenied: "Accès à l’écran refusé",
         failScreenDeniedRemedy: "Sans lui, rien ne peut être filmé. Autorisez Vorssaint dans Réglages Système › Confidentialité et sécurité › Enregistrement de l’écran et de l’audio du système.",
         failScreenRevoked: "Accès à l’écran retiré",
@@ -3533,13 +3648,13 @@ extension ForkMeetingStrings {
         detectionLookalike: "Une page web qui imite exactement un titre Google Meet et utilise le micro pourrait être prise pour une réunion.",
         // MARK: Detection effects
         detectionTitle: "Détection",
-        detectionCaption: "Reconnaît vos visios Google Meet, Zoom, Teams, Slack, FaceTime, Webex et Discord, même derrière d’autres fenêtres ou sur un autre bureau, et propose de les enregistrer. Google Meet, Zoom, Teams, Whereby et Jitsi Meet sont aussi reconnus dans un navigateur.",
+        detectionCaption: "Reconnaît vos appels dans les apps Zoom, Teams, Slack, FaceTime, Webex et Discord, et dans un navigateur sur Google Meet, Zoom, Teams, Whereby et Jitsi Meet, même derrière d’autres fenêtres ou sur un autre bureau, et propose de les enregistrer.",
         policyAsk: "Proposer",
         policyAlways: "Toujours",
         policyNever: "Jamais",
         policyAskCaption: "Proposée dès que vous rejoignez la réunion\u{00A0}; sans réponse, la proposition se replie au bout de 20 secondes.",
         policyAlwaysCaption: "L’enregistrement démarre seul quand vous rejoignez la réunion. Choisir Annuler dans les quelques secondes qui suivent le met à la Corbeille.",
-        policyNeverCaption: "Un service réglé sur Jamais n’est jamais proposé. Vous pouvez toujours enregistrer à la main.",
+        policyNeverCaption: "Un service réglé sur Jamais n’est jamais proposé. Vous pouvez quand même enregistrer à la main.",
         detectionTitlesOnly: "Avant macOS 14.4, macOS ne dit pas quelle app utilise le micro\u{00A0}: seuls Google Meet et Zoom sont reconnus, au titre de leur fenêtre.",
         detectionMicrophoneUnreadable: "Ici, macOS ne dit pas quelle app utilise le micro\u{00A0}: seuls Google Meet et Zoom sont reconnus, au titre de leur fenêtre.",
         detectionNeedsScreenRecording: "Sans l’enregistrement de l’écran, les titres des fenêtres restent illisibles\u{00A0}: aucun appel dans un navigateur n’est reconnu, et les apps seulement par leur micro.",
@@ -3605,8 +3720,11 @@ extension ForkMeetingStrings {
         detectionFaceTimeRelayed: "Un appel téléphonique relayé par l’iPhone peut aussi être proposé.",
         offerNeverWebCalls: "Jamais pour les autres visios web",
         noticeNeverWebCalls: "Autres visios web\u{00A0}: Jamais",
-        voiceNeverWebCalls: "Les visios dans un navigateur autres que Google Meet ne seront plus proposées.",
+        voiceNeverWebCalls: "Les visios dans un navigateur, sauf Google Meet, ne seront plus proposées.",
         detectionAlwaysUnavailable: "«\u{00A0}Toujours\u{00A0}» n’est pas disponible sur ce Mac\u{00A0}: les réunions sont proposées, jamais enregistrées d’elles-mêmes.",
+        // MARK: Fixes L
+        detectionAlwaysDelay: "Teams, Webex et Discord\u{00A0}: enregistrés seuls 15\u{00A0}s après le début de l’appel. Zoom et Slack\u{00A0}: dès que leur fenêtre de réunion s’ouvre, sinon proposés.",
+        offerMainWindowFormat: "%@ (fenêtre principale)",
         // MARK: Exports
         exportsTitle: "Exportations",
         exportsCaption: "Rien n’est exporté tant que vous n’ajoutez pas d’export. Un dossier de dépôt copie chaque réunion dans un dossier de ce Mac\u{00A0}; un webhook envoie son audio et sa fiche meeting.json à l’adresse HTTPS choisie\u{00A0}: l’audio et la fiche quittent alors ce Mac pour cette adresse.",
@@ -3668,7 +3786,6 @@ extension ForkMeetingStrings {
         groupYesterday: "Hier",
         groupUndated: "Sans date",
         columnTitle: "Titre",
-        columnDate: "Date et heure",
         columnDuration: "Durée",
         columnSize: "Taille",
         columnApp: "Application",
@@ -3676,7 +3793,7 @@ extension ForkMeetingStrings {
         actionRename: "Renommer",
         actionExportAudio: "Exporter l’audio (M4A)…",
         actionCopyPath: "Copier le chemin",
-        actionTrash: "Mettre à la Corbeille",
+        actionTrash: "Placer dans la corbeille",
         actionTrim: "Couper dans l’éditeur",
         noticePathCopied: "Chemin copié",
         confirmTrashFormat: "Mettre «\u{00A0}%@\u{00A0}» à la Corbeille\u{00A0}?",
@@ -3703,7 +3820,7 @@ extension ForkMeetingStrings {
         searchPlaceholder: "Rechercher",
         searchNoResultsFormat: "Aucune réunion ne correspond à «\u{00A0}%@\u{00A0}»",
         emptyTitle: "Aucune réunion enregistrée",
-        emptyCaption: "Chaque réunion enregistrée arrive ici, dans son propre dossier.",
+        emptyCaption: "Chaque réunion que vous enregistrez arrive ici, dans son propre dossier.",
         notesPlaceholder: "Ajouter des notes",
         retentionTitle: "Corbeille automatique",
         retentionNever: "Jamais",
@@ -3727,7 +3844,13 @@ extension ForkMeetingStrings {
         exportFailed: "L’audio n’a pas pu être exporté.",
         trimFailed: "La copie pour l’éditeur n’a pas pu être faite. La réunion elle-même reste intacte.",
         causeCancelled: "annulée",
-        voiceTrashed: "Réunion mise à la Corbeille."
+        voiceTrashed: "Réunion mise à la Corbeille.",
+        // MARK: Fixes M
+        retentionHeldFormat: "%1$d\u{00A0}réunions de plus de %2$d\u{00A0}jours\u{00A0}: les mettre à la Corbeille\u{00A0}?",
+        retentionHeldOneFormat: "1\u{00A0}réunion de plus de %d\u{00A0}jours\u{00A0}: la mettre à la Corbeille\u{00A0}?",
+        retentionHeldCaption: "C’est plus que ce que la Corbeille automatique prend d’elle-même\u{00A0}: rien ne part avant votre accord.",
+        renameTitleNotSaved: "Le dossier a été renommé, mais son nouveau titre n’a pas pu être enregistré.",
+        statusForeign: "Son meeting.json n’a pas été écrit par Vorssaint\u{00A0}: affichée, jamais modifiée."
     )
 }
 
@@ -3818,8 +3941,10 @@ extension ForkMeetingStrings {
         consentPledge: "Avviserò i partecipanti",
         consentPledgeNeeded: "Spunta «Avviserò i partecipanti» per continuare.",
         consentConfirm: "Attiva Riunioni",
+        // MARK: Library folder and names
         folderName: "Riunioni",
         untitledMeeting: "Riunione",
+        // MARK: Island, pill and bubble notices: short
         noticeStarted: "Registrazione avviata",
         noticeResumed: "Registrazione ripresa",
         noticeSaved: "Riunione salvata",
@@ -3829,6 +3954,7 @@ extension ForkMeetingStrings {
         noticeDiskLow: "Disco quasi pieno",
         noticeDisplayChanged: "Schermo cambiato",
         diskMinutesFormat: "~%d min di disco",
+        // MARK: VoiceOver
         voiceStarted: "Registrazione della riunione avviata.",
         voicePaused: "Registrazione della riunione in pausa.",
         voiceResumed: "Registrazione della riunione ripresa.",
@@ -3836,6 +3962,7 @@ extension ForkMeetingStrings {
         voiceMicrophoneFormat: "La registrazione ora usa il microfono %@.",
         voiceMicrophoneSilent: "Il microfono non invia alcun suono. Controlla il microfono scelto per le riunioni.",
         voiceDiskLowFormat: "Il disco è quasi pieno. Minuti di registrazione rimasti: %d.",
+        // MARK: Failures: a short summary, then what to do
         failScreenDenied: "Accesso allo schermo negato",
         failScreenDeniedRemedy: "Senza di esso non si può riprendere nulla. Autorizza Vorssaint in Impostazioni di Sistema › Privacy e sicurezza › Registrazione schermo e audio di sistema.",
         failScreenRevoked: "Accesso allo schermo tolto",
@@ -3916,7 +4043,7 @@ extension ForkMeetingStrings {
         detectionLookalike: "Una pagina web che imita esattamente un titolo di Google Meet e usa il microfono potrebbe essere scambiata per una riunione.",
         // MARK: Detection effects
         detectionTitle: "Rilevamento",
-        detectionCaption: "Riconosce le tue chiamate su Google Meet, Zoom, Teams, Slack, FaceTime, Webex e Discord, anche dietro altre finestre o su un’altra scrivania, e propone di registrarle. Google Meet, Zoom, Teams, Whereby e Jitsi Meet vengono riconosciuti anche nel browser.",
+        detectionCaption: "Riconosce le tue chiamate nelle app Zoom, Teams, Slack, FaceTime, Webex e Discord, e nel browser su Google Meet, Zoom, Teams, Whereby e Jitsi Meet, anche dietro altre finestre o su un’altra scrivania, e propone di registrarle.",
         policyAsk: "Proponi",
         policyAlways: "Sempre",
         policyNever: "Mai",
@@ -3990,6 +4117,9 @@ extension ForkMeetingStrings {
         noticeNeverWebCalls: "Altre chiamate web: Mai",
         voiceNeverWebCalls: "Le chiamate nel browser diverse da Google Meet non saranno più proposte.",
         detectionAlwaysUnavailable: "«Sempre» non è disponibile su questo Mac: le riunioni vengono proposte, mai registrate da sole.",
+        // MARK: Fixes L
+        detectionAlwaysDelay: "Teams, Webex e Discord: registrati da soli 15 s dopo l’inizio della chiamata. Zoom e Slack: appena si apre la loro finestra della riunione, altrimenti proposti.",
+        offerMainWindowFormat: "%@ (finestra principale)",
         // MARK: Exports
         exportsTitle: "Esportazioni",
         exportsCaption: "Non viene esportato nulla finché non aggiungi un’esportazione. Una cartella di consegna copia ogni riunione in una cartella di questo Mac; un webhook invia l’audio e il meeting.json all’indirizzo HTTPS scelto: lasciano questo Mac verso quell’indirizzo.",
@@ -4051,7 +4181,6 @@ extension ForkMeetingStrings {
         groupYesterday: "Ieri",
         groupUndated: "Senza data",
         columnTitle: "Titolo",
-        columnDate: "Data e ora",
         columnDuration: "Durata",
         columnSize: "Dimensione",
         columnApp: "Applicazione",
@@ -4073,7 +4202,7 @@ extension ForkMeetingStrings {
         causeQuit: "app chiusa",
         causeDisk: "disco pieno",
         causePermission: "accesso revocato",
-        causeSleep: "standby",
+        causeSleep: "Mac in stop",
         causeFeatureOff: "disattivazione",
         causeCaptureStopped: "cattura fermata",
         causeFinalPass: "finalizzazione",
@@ -4110,7 +4239,13 @@ extension ForkMeetingStrings {
         exportFailed: "Impossibile esportare l’audio.",
         trimFailed: "Impossibile creare la copia per l’editor. La riunione non è stata toccata.",
         causeCancelled: "annullata",
-        voiceTrashed: "Riunione spostata nel Cestino."
+        voiceTrashed: "Riunione spostata nel Cestino.",
+        // MARK: Fixes M
+        retentionHeldFormat: "%1$d riunioni con più di %2$d giorni: spostarle nel Cestino?",
+        retentionHeldOneFormat: "1 riunione con più di %d giorni: spostarla nel Cestino?",
+        retentionHeldCaption: "È più di quanto il Cestino automatico sposti da solo: nulla viene spostato finché non confermi.",
+        renameTitleNotSaved: "La cartella è stata rinominata, ma non è stato possibile salvare il nuovo titolo.",
+        statusForeign: "Il suo meeting.json non è stato scritto da Vorssaint: mostrata, mai modificata."
     )
 }
 
@@ -4201,8 +4336,10 @@ extension ForkMeetingStrings {
         consentPledge: "参加者に知らせます",
         consentPledgeNeeded: "続けるには「参加者に知らせます」をチェックしてください。",
         consentConfirm: "ミーティングをオンにする",
+        // MARK: Library folder and names
         folderName: "ミーティング",
         untitledMeeting: "ミーティング",
+        // MARK: Island, pill and bubble notices: short
         noticeStarted: "録画を開始しました",
         noticeResumed: "録画を再開しました",
         noticeSaved: "ミーティングを保存しました",
@@ -4212,6 +4349,7 @@ extension ForkMeetingStrings {
         noticeDiskLow: "ディスクの空きがわずかです",
         noticeDisplayChanged: "ディスプレイが変わりました",
         diskMinutesFormat: "ディスク残り約%d分",
+        // MARK: VoiceOver
         voiceStarted: "ミーティングの録画を開始しました。",
         voicePaused: "ミーティングの録画を一時停止しました。",
         voiceResumed: "ミーティングの録画を再開しました。",
@@ -4219,6 +4357,7 @@ extension ForkMeetingStrings {
         voiceMicrophoneFormat: "録画に使うマイクが「%@」に変わりました。",
         voiceMicrophoneSilent: "マイクから音が届いていません。ミーティング用に選んだマイクを確認してください。",
         voiceDiskLowFormat: "ディスクの空きがわずかです。あと約%d分録画できます。",
+        // MARK: Failures: a short summary, then what to do
         failScreenDenied: "画面収録が許可されていません",
         failScreenDeniedRemedy: "許可がないと何も録画できません。システム設定 › プライバシーとセキュリティ › 画面とシステムオーディオ収録で Vorssaint を許可してください。",
         failScreenRevoked: "画面収録の許可が取り消されました",
@@ -4299,7 +4438,7 @@ extension ForkMeetingStrings {
         detectionLookalike: "Google Meet のタイトルをそのまま真似てマイクを使う Web ページも、ミーティングと見なされることがあります。",
         // MARK: Detection effects
         detectionTitle: "検出",
-        detectionCaption: "Google Meet、Zoom、Teams、Slack、FaceTime、Webex、Discord の通話を、ほかのウインドウの後ろや別のデスクトップにあっても認識し、録画を提案します。Google Meet、Zoom、Teams、Whereby、Jitsi Meet はブラウザでも認識します。",
+        detectionCaption: "Zoom、Teams、Slack、FaceTime、Webex、Discord の App と、ブラウザの Google Meet、Zoom、Teams、Whereby、Jitsi Meet での通話を、ほかのウインドウの後ろや別のデスクトップにあっても認識し、録画を提案します。",
         policyAsk: "提案する",
         policyAlways: "常に録画",
         policyNever: "提案しない",
@@ -4373,6 +4512,9 @@ extension ForkMeetingStrings {
         noticeNeverWebCalls: "その他の Web 通話：提案しない",
         voiceNeverWebCalls: "Google Meet 以外のブラウザの通話は今後提案されません。",
         detectionAlwaysUnavailable: "この Mac では「常に録画」は使えません。会議は提案されるだけで、自動では録画されません。",
+        // MARK: Fixes L
+        detectionAlwaysDelay: "Teams、Webex、Discord：通話開始から 15 秒で自動的に録画します。Zoom と Slack：ミーティングウインドウが開いたらすぐに録画し、開かなければ提案します。",
+        offerMainWindowFormat: "%@（メインウインドウ）",
         // MARK: Exports
         exportsTitle: "書き出し",
         exportsCaption: "書き出し先を追加するまで何も書き出されません。ドロップフォルダは各ミーティングをこのMacのフォルダにコピーします。Webhookは音声とmeeting.jsonを選んだHTTPSアドレスへ送信し、それらはこのMacからそのアドレスへ送られます。",
@@ -4434,7 +4576,6 @@ extension ForkMeetingStrings {
         groupYesterday: "昨日",
         groupUndated: "日付なし",
         columnTitle: "タイトル",
-        columnDate: "日時",
         columnDuration: "長さ",
         columnSize: "サイズ",
         columnApp: "アプリ",
@@ -4493,7 +4634,13 @@ extension ForkMeetingStrings {
         exportFailed: "オーディオを書き出せませんでした。",
         trimFailed: "エディタ用のコピーを作成できませんでした。ミーティング自体は変更されていません。",
         causeCancelled: "キャンセル済み",
-        voiceTrashed: "ミーティングをゴミ箱に入れました。"
+        voiceTrashed: "ミーティングをゴミ箱に入れました。",
+        // MARK: Fixes M
+        retentionHeldFormat: "%2$d日より古いミーティングが%1$d件あります。ゴミ箱に入れますか？",
+        retentionHeldOneFormat: "%d日より古いミーティングが1件あります。ゴミ箱に入れますか？",
+        retentionHeldCaption: "自動でゴミ箱へ移す量を超えています。確認するまで何も移動しません。",
+        renameTitleNotSaved: "フォルダの名前は変更されましたが、新しいタイトルを保存できませんでした。",
+        statusForeign: "このmeeting.jsonはVorssaintが書いたものではありません：表示のみで、変更されません。"
     )
 }
 
@@ -4584,8 +4731,10 @@ extension ForkMeetingStrings {
         consentPledge: "참가자에게 알리겠습니다",
         consentPledgeNeeded: "계속하려면 ‘참가자에게 알리겠습니다’를 선택하세요.",
         consentConfirm: "회의 켜기",
+        // MARK: Library folder and names
         folderName: "회의",
         untitledMeeting: "회의",
+        // MARK: Island, pill and bubble notices: short
         noticeStarted: "녹화 시작됨",
         noticeResumed: "녹화 재개됨",
         noticeSaved: "회의 저장됨",
@@ -4595,6 +4744,7 @@ extension ForkMeetingStrings {
         noticeDiskLow: "디스크 공간 부족",
         noticeDisplayChanged: "디스플레이 변경됨",
         diskMinutesFormat: "디스크 약 %d분 남음",
+        // MARK: VoiceOver
         voiceStarted: "회의 녹화를 시작했습니다.",
         voicePaused: "회의 녹화를 일시 정지했습니다.",
         voiceResumed: "회의 녹화를 재개했습니다.",
@@ -4602,6 +4752,7 @@ extension ForkMeetingStrings {
         voiceMicrophoneFormat: "이제 %@ 마이크로 녹음합니다.",
         voiceMicrophoneSilent: "마이크에서 소리가 들어오지 않습니다. 회의용으로 선택한 마이크를 확인하세요.",
         voiceDiskLowFormat: "디스크 공간이 거의 없습니다. 남은 녹화 시간(분): %d.",
+        // MARK: Failures: a short summary, then what to do
         failScreenDenied: "화면 녹화가 허용되지 않음",
         failScreenDeniedRemedy: "허용하지 않으면 아무것도 녹화할 수 없습니다. 시스템 설정 › 개인정보 보호 및 보안 › 화면 및 시스템 오디오 녹음에서 Vorssaint를 허용하세요.",
         failScreenRevoked: "화면 녹화 권한이 철회됨",
@@ -4682,7 +4833,7 @@ extension ForkMeetingStrings {
         detectionLookalike: "Google Meet 제목을 그대로 흉내 내고 마이크를 사용하는 웹 페이지도 회의로 인식될 수 있습니다.",
         // MARK: Detection effects
         detectionTitle: "감지",
-        detectionCaption: "Google Meet, Zoom, Teams, Slack, FaceTime, Webex, Discord 통화를 다른 윈도우 뒤나 다른 데스크탑에 있어도 알아보고 녹화를 제안합니다. Google Meet, Zoom, Teams, Whereby, Jitsi Meet은 브라우저에서도 알아봅니다.",
+        detectionCaption: "Zoom, Teams, Slack, FaceTime, Webex, Discord 앱과 브라우저의 Google Meet, Zoom, Teams, Whereby, Jitsi Meet 통화를 다른 윈도우 뒤나 다른 데스크탑에 있어도 알아보고 녹화를 제안합니다.",
         policyAsk: "제안",
         policyAlways: "항상",
         policyNever: "안 함",
@@ -4756,6 +4907,9 @@ extension ForkMeetingStrings {
         noticeNeverWebCalls: "기타 웹 통화: 안 함",
         voiceNeverWebCalls: "Google Meet 외의 브라우저 통화는 더 이상 제안되지 않습니다.",
         detectionAlwaysUnavailable: "이 Mac에서는 ‘항상’을 사용할 수 없습니다. 회의는 제안만 되고 자동으로 녹화되지 않습니다.",
+        // MARK: Fixes L
+        detectionAlwaysDelay: "Teams, Webex, Discord: 통화 시작 15초 후 자동으로 녹화합니다. Zoom과 Slack: 회의 윈도우가 열리면 바로 녹화하고, 아니면 제안합니다.",
+        offerMainWindowFormat: "%@ (메인 윈도우)",
         // MARK: Exports
         exportsTitle: "내보내기",
         exportsCaption: "내보내기를 추가하기 전에는 아무것도 내보내지 않습니다. 드롭 폴더는 각 회의를 이 Mac의 폴더에 복사하고, 웹훅은 오디오와 meeting.json을 선택한 HTTPS 주소로 보냅니다. 이때 이 파일들은 이 Mac을 떠나 그 주소로 갑니다.",
@@ -4817,7 +4971,6 @@ extension ForkMeetingStrings {
         groupYesterday: "어제",
         groupUndated: "날짜 없음",
         columnTitle: "제목",
-        columnDate: "날짜 및 시간",
         columnDuration: "길이",
         columnSize: "크기",
         columnApp: "앱",
@@ -4876,7 +5029,13 @@ extension ForkMeetingStrings {
         exportFailed: "오디오를 내보낼 수 없습니다.",
         trimFailed: "편집기용 사본을 만들 수 없습니다. 회의 자체는 변경되지 않았습니다.",
         causeCancelled: "취소됨",
-        voiceTrashed: "회의를 휴지통으로 이동했습니다."
+        voiceTrashed: "회의를 휴지통으로 이동했습니다.",
+        // MARK: Fixes M
+        retentionHeldFormat: "%2$d일이 지난 회의 %1$d개: 휴지통으로 이동할까요?",
+        retentionHeldOneFormat: "%d일이 지난 회의 1개: 휴지통으로 이동할까요?",
+        retentionHeldCaption: "자동 휴지통이 스스로 옮기는 양보다 많습니다. 확인하기 전까지는 아무것도 이동하지 않습니다.",
+        renameTitleNotSaved: "폴더 이름은 변경되었지만 새 제목을 저장할 수 없습니다.",
+        statusForeign: "이 meeting.json은 Vorssaint가 작성한 것이 아닙니다. 표시만 하고 변경하지 않습니다."
     )
 }
 
@@ -4967,8 +5126,10 @@ extension ForkMeetingStrings {
         consentPledge: "Я попереджу учасників",
         consentPledgeNeeded: "Позначте «Я попереджу учасників», щоб продовжити.",
         consentConfirm: "Увімкнути Зустрічі",
+        // MARK: Library folder and names
         folderName: "Зустрічі",
         untitledMeeting: "Зустріч",
+        // MARK: Island, pill and bubble notices: short
         noticeStarted: "Запис розпочато",
         noticeResumed: "Запис продовжено",
         noticeSaved: "Зустріч збережено",
@@ -4978,6 +5139,7 @@ extension ForkMeetingStrings {
         noticeDiskLow: "Диск майже заповнений",
         noticeDisplayChanged: "Екран змінено",
         diskMinutesFormat: "Диск: ~%d хв",
+        // MARK: VoiceOver
         voiceStarted: "Запис зустрічі розпочато.",
         voicePaused: "Запис зустрічі призупинено.",
         voiceResumed: "Запис зустрічі продовжено.",
@@ -4985,6 +5147,7 @@ extension ForkMeetingStrings {
         voiceMicrophoneFormat: "Тепер запис іде з мікрофона %@.",
         voiceMicrophoneSilent: "Мікрофон не передає звуку. Перевірте мікрофон, вибраний для зустрічей.",
         voiceDiskLowFormat: "Диск майже заповнений. Залишилося хвилин запису: %d.",
+        // MARK: Failures: a short summary, then what to do
         failScreenDenied: "Немає доступу до екрана",
         failScreenDeniedRemedy: "Без нього нічого не записати. Дозвольте Vorssaint у Системних параметрах › Приватність і безпека › Записування системного звуку й екрана.",
         failScreenRevoked: "Доступ до екрана відкликано",
@@ -5065,7 +5228,7 @@ extension ForkMeetingStrings {
         detectionLookalike: "Вебсторінка, яка точно повторює заголовок Google Meet і використовує мікрофон, може бути сприйнята як зустріч.",
         // MARK: Detection effects
         detectionTitle: "Виявлення",
-        detectionCaption: "Розпізнає ваші дзвінки в Google Meet, Zoom, Teams, Slack, FaceTime, Webex і Discord, навіть за іншими вікнами чи на іншому робочому столі, і пропонує їх записати. Google Meet, Zoom, Teams, Whereby і Jitsi Meet розпізнаються й у браузері.",
+        detectionCaption: "Розпізнає ваші дзвінки в застосунках Zoom, Teams, Slack, FaceTime, Webex і Discord, а в браузері — у Google Meet, Zoom, Teams, Whereby і Jitsi Meet, навіть за іншими вікнами чи на іншому робочому столі, і пропонує їх записати.",
         policyAsk: "Пропонувати",
         policyAlways: "Завжди",
         policyNever: "Ніколи",
@@ -5114,7 +5277,7 @@ extension ForkMeetingStrings {
         offerNameHidden: "Назву сховано при показі",
         pillStopCancels: "Скасувати запис і перемістити в Смітник",
         voiceMeetingBack: "Зустріч триває: запис не зупиниться.",
-        noticeDiscardedTrash: "Скасовано · у Смітнику",
+        noticeDiscardedTrash: "Скасовано · в Смітнику",
         noticeDiscardedDeleted: "Скасовано · видалено",
         noticeDiscardKept: "Скасовано · тека лишилася",
         noticeDiscardKeptDetail: "Лишається серед зустрічей",
@@ -5139,6 +5302,9 @@ extension ForkMeetingStrings {
         noticeNeverWebCalls: "Інші веб-дзвінки: Ніколи",
         voiceNeverWebCalls: "Дзвінки в браузері, крім Google Meet, більше не пропонуватимуться.",
         detectionAlwaysUnavailable: "«Завжди» недоступне на цьому Mac: зустрічі пропонуються, але ніколи не записуються самі.",
+        // MARK: Fixes L
+        detectionAlwaysDelay: "Teams, Webex і Discord: запис сам починається через 15 с після початку дзвінка. Zoom і Slack: щойно відкриється вікно зустрічі, інакше пропонується.",
+        offerMainWindowFormat: "%@ (головне вікно)",
         // MARK: Exports
         exportsTitle: "Експорт",
         exportsCaption: "Поки ви не додасте експорт, нічого не експортується. Тека вивантаження копіює кожну зустріч у теку на цьому Mac; вебхук надсилає її звук і meeting.json на вибрану адресу HTTPS — вони залишають цей Mac і йдуть на цю адресу.",
@@ -5200,7 +5366,6 @@ extension ForkMeetingStrings {
         groupYesterday: "Учора",
         groupUndated: "Без дати",
         columnTitle: "Назва",
-        columnDate: "Дата й час",
         columnDuration: "Тривалість",
         columnSize: "Розмір",
         columnApp: "Застосунок",
@@ -5211,7 +5376,7 @@ extension ForkMeetingStrings {
         actionTrash: "Перемістити в Смітник",
         actionTrim: "Обрізати в редакторі",
         noticePathCopied: "Шлях скопійовано",
-        confirmTrashFormat: "Перемістити «%@» у Смітник?",
+        confirmTrashFormat: "Перемістити «%@» в Смітник?",
         confirmTrashMessage: "Папка зустрічі піде в Смітник разом із відео, звуком і нотатками. Її можна повернути, доки Смітник не очищено.",
         statusRecovered: "Відновлено",
         statusInterruptedFormat: "Перервано: %@",
@@ -5219,7 +5384,7 @@ extension ForkMeetingStrings {
         statusUnreadableHelp: "Не вдалося прочитати її meeting.json. Він ніколи не перезаписується: відео лишається в папці, а картку ще можна виправити вручну.",
         statusLaterVersion: "Створено новішою версією Vorssaint: показується, але не змінюється.",
         causeCrash: "збій",
-        causeQuit: "вихід з app",
+        causeQuit: "вихід із програми",
         causeDisk: "диск заповнено",
         causePermission: "доступ відкликано",
         causeSleep: "режим сну",
@@ -5237,12 +5402,12 @@ extension ForkMeetingStrings {
         emptyTitle: "Зустрічей ще немає",
         emptyCaption: "Кожна записана зустріч з’являється тут, у власній папці.",
         notesPlaceholder: "Додати нотатки",
-        retentionTitle: "Автоочищення у Смітник",
+        retentionTitle: "Автоматично в Смітник",
         retentionNever: "Ніколи",
         retentionDaysFormat: "Через %d дн.",
-        retentionCaption: "Старіші зустрічі йдуть у Смітник під час запуску, потім раз на день. Ніколи — та, що записується, чи позначена ⚠.",
-        retentionConfirmTitle: "Перемістити старі зустрічі у Смітник?",
-        retentionConfirmFormat: "Зустрічі, старші за %2$d дн.: %1$d. Вони лишаються у Смітнику, доки його не очистять.",
+        retentionCaption: "Старіші зустрічі йдуть в Смітник під час запуску, потім раз на день. Ніколи — та, що записується, чи позначена ⚠.",
+        retentionConfirmTitle: "Перемістити старі зустрічі в Смітник?",
+        retentionConfirmFormat: "Зустрічі, старші за %2$d дн.: %1$d. Вони лишаються в Смітнику, доки його не очистять.",
         trimCaption: "Редактор відкриває копію: сама зустріч лишається незмінною.",
         trimNeedsEditor: "Редактор належить до функції «Запис екрана»: увімкніть її у Vorssaint, щоб обрізати зустріч.",
         trimNoVideo: "Ця зустріч не має відео для обрізання.",
@@ -5254,12 +5419,18 @@ extension ForkMeetingStrings {
         playerNoVideo: "Немає відео для відтворення",
         statusRecoveredHelp: "Відновлено після неочікуваної зупинки програми: останніх секунд може бракувати.",
         statusInterruptedHelp: "Ця зустріч завершилася не як зазвичай. Усе записане збережено в її папці.",
-        trashFailed: "Не вдалося перемістити зустріч у Смітник.",
+        trashFailed: "Не вдалося перемістити зустріч в Смітник.",
         renameFailed: "Не вдалося перейменувати папку: назва змінилася, а папка зберегла попереднє ім’я.",
         exportFailed: "Не вдалося експортувати звук.",
         trimFailed: "Не вдалося створити копію для редактора. Саму зустріч не змінено.",
         causeCancelled: "скасовано",
-        voiceTrashed: "Зустріч переміщено в Смітник."
+        voiceTrashed: "Зустріч переміщено в Смітник.",
+        // MARK: Fixes M
+        retentionHeldFormat: "Зустрічі, старші за %2$d дн.: %1$d. Перемістити їх в Смітник?",
+        retentionHeldOneFormat: "Одна зустріч, старша за %d дн.: перемістити її в Смітник?",
+        retentionHeldCaption: "Це більше, ніж автоочищення переміщує саме: нічого не буде переміщено без вашого підтвердження.",
+        renameTitleNotSaved: "Папку перейменовано, але нову назву не вдалося зберегти.",
+        statusForeign: "Файл meeting.json записано не Vorssaint: показується, але не змінюється."
     )
 }
 
@@ -5350,8 +5521,10 @@ extension ForkMeetingStrings {
         consentPledge: "我会告知参与者",
         consentPledgeNeeded: "勾选“我会告知参与者”以继续。",
         consentConfirm: "打开会议",
+        // MARK: Library folder and names
         folderName: "会议",
         untitledMeeting: "会议",
+        // MARK: Island, pill and bubble notices: short
         noticeStarted: "已开始录制",
         noticeResumed: "已恢复录制",
         noticeSaved: "会议已保存",
@@ -5361,6 +5534,7 @@ extension ForkMeetingStrings {
         noticeDiskLow: "磁盘几乎已满",
         noticeDisplayChanged: "显示器已更换",
         diskMinutesFormat: "磁盘约剩 %d 分钟",
+        // MARK: VoiceOver
         voiceStarted: "已开始录制会议。",
         voicePaused: "会议录制已暂停。",
         voiceResumed: "会议录制已恢复。",
@@ -5368,6 +5542,7 @@ extension ForkMeetingStrings {
         voiceMicrophoneFormat: "现在使用麦克风“%@”录制。",
         voiceMicrophoneSilent: "麦克风没有传来声音。请检查为会议选择的麦克风。",
         voiceDiskLowFormat: "磁盘几乎已满。剩余可录制分钟数：%d。",
+        // MARK: Failures: a short summary, then what to do
         failScreenDenied: "未允许屏幕录制",
         failScreenDeniedRemedy: "没有该权限就无法录制任何内容。请在“系统设置”›“隐私与安全性”›“屏幕与系统音频录制”中允许 Vorssaint。",
         failScreenRevoked: "屏幕录制权限已撤销",
@@ -5448,7 +5623,7 @@ extension ForkMeetingStrings {
         detectionLookalike: "完全模仿 Google Meet 标题并使用麦克风的网页，也可能被当作会议。",
         // MARK: Detection effects
         detectionTitle: "检测",
-        detectionCaption: "识别你在 Google Meet、Zoom、Teams、Slack、FaceTime、Webex 和 Discord 中的通话，即使在其他窗口后面或在另一个桌面上，并提议录制。Google Meet、Zoom、Teams、Whereby 和 Jitsi Meet 在浏览器中也能识别。",
+        detectionCaption: "识别你在 Zoom、Teams、Slack、FaceTime、Webex 和 Discord App 中，以及在浏览器中 Google Meet、Zoom、Teams、Whereby 和 Jitsi Meet 上的通话，即使在其他窗口后面或在另一个桌面上，并提议录制。",
         policyAsk: "提议",
         policyAlways: "总是",
         policyNever: "从不",
@@ -5522,6 +5697,9 @@ extension ForkMeetingStrings {
         noticeNeverWebCalls: "其他网页通话：从不",
         voiceNeverWebCalls: "将不再提议录制浏览器中除 Google Meet 以外的通话。",
         detectionAlwaysUnavailable: "此 Mac 上无法使用“总是”：会议只会被提议，不会自动录制。",
+        // MARK: Fixes L
+        detectionAlwaysDelay: "Teams、Webex 和 Discord：通话开始 15 秒后自动录制。Zoom 和 Slack：会议窗口一打开就录制，否则提议录制。",
+        offerMainWindowFormat: "%@（主窗口）",
         // MARK: Exports
         exportsTitle: "导出",
         exportsCaption: "添加导出方式之前不会导出任何内容。投放文件夹会把每场会议拷贝到这台 Mac 上的文件夹；Webhook 会把音频和 meeting.json 发送到你选择的 HTTPS 地址：它们会离开这台 Mac，发往该地址。",
@@ -5583,7 +5761,6 @@ extension ForkMeetingStrings {
         groupYesterday: "昨天",
         groupUndated: "无日期",
         columnTitle: "标题",
-        columnDate: "日期和时间",
         columnDuration: "时长",
         columnSize: "大小",
         columnApp: "应用",
@@ -5638,11 +5815,17 @@ extension ForkMeetingStrings {
         statusRecoveredHelp: "在 App 意外停止后恢复：最后几秒可能缺失。",
         statusInterruptedHelp: "此会议未正常结束。录制的所有内容都保留在其文件夹中。",
         trashFailed: "无法将会议移到废纸篓。",
-        renameFailed: "无法重命名文件夹：标题已更改，文件夹保留原名。",
+        renameFailed: "无法重新命名文件夹：标题已更改，文件夹保留原名。",
         exportFailed: "无法导出音频。",
         trimFailed: "无法创建供编辑器使用的副本。会议本身未被改动。",
         causeCancelled: "已取消",
-        voiceTrashed: "会议已移到废纸篓。"
+        voiceTrashed: "会议已移到废纸篓。",
+        // MARK: Fixes M
+        retentionHeldFormat: "%1$d 个会议超过 %2$d 天：要移到废纸篓吗？",
+        retentionHeldOneFormat: "1 个会议超过 %d 天：要移到废纸篓吗？",
+        retentionHeldCaption: "超过了自动移到废纸篓一次会处理的数量：在你确认之前不会移动任何会议。",
+        renameTitleNotSaved: "文件夹已重新命名，但无法存储新标题。",
+        statusForeign: "此 meeting.json 并非由 Vorssaint 写入：仅显示，不会更改。"
     )
 }
 
@@ -5733,8 +5916,10 @@ extension ForkMeetingStrings {
         consentPledge: "我會告知與會者",
         consentPledgeNeeded: "勾選「我會告知與會者」以繼續。",
         consentConfirm: "開啟會議",
+        // MARK: Library folder and names
         folderName: "會議",
         untitledMeeting: "會議",
+        // MARK: Island, pill and bubble notices: short
         noticeStarted: "已開始錄製",
         noticeResumed: "已繼續錄製",
         noticeSaved: "會議已儲存",
@@ -5744,6 +5929,7 @@ extension ForkMeetingStrings {
         noticeDiskLow: "磁碟空間快用完了",
         noticeDisplayChanged: "顯示器已變更",
         diskMinutesFormat: "磁碟約剩 %d 分鐘",
+        // MARK: VoiceOver
         voiceStarted: "已開始錄製會議。",
         voicePaused: "會議錄製已暫停。",
         voiceResumed: "會議錄製已繼續。",
@@ -5751,6 +5937,7 @@ extension ForkMeetingStrings {
         voiceMicrophoneFormat: "現在使用麥克風「%@」錄製。",
         voiceMicrophoneSilent: "麥克風沒有傳來聲音。請檢查為會議選擇的麥克風。",
         voiceDiskLowFormat: "磁碟空間快用完了。剩餘可錄製分鐘數：%d。",
+        // MARK: Failures: a short summary, then what to do
         failScreenDenied: "未允許螢幕錄製",
         failScreenDeniedRemedy: "沒有此權限就無法錄製任何內容。請在「系統設定」›「隱私權與安全性」›「螢幕與系統音訊錄製」中允許 Vorssaint。",
         failScreenRevoked: "螢幕錄製權限已撤銷",
@@ -5831,7 +6018,7 @@ extension ForkMeetingStrings {
         detectionLookalike: "完全模仿 Google Meet 標題並使用麥克風的網頁，也可能被當成會議。",
         // MARK: Detection effects
         detectionTitle: "偵測",
-        detectionCaption: "辨識你在 Google Meet、Zoom、Teams、Slack、FaceTime、Webex 和 Discord 中的通話，即使在其他視窗後面或另一個桌面上，並提議錄製。Google Meet、Zoom、Teams、Whereby 和 Jitsi Meet 在瀏覽器中也能辨識。",
+        detectionCaption: "辨識你在 Zoom、Teams、Slack、FaceTime、Webex 和 Discord App 中，以及在瀏覽器中 Google Meet、Zoom、Teams、Whereby 和 Jitsi Meet 上的通話，即使在其他視窗後面或另一個桌面上，並提議錄製。",
         policyAsk: "提議",
         policyAlways: "一律",
         policyNever: "永不",
@@ -5905,6 +6092,9 @@ extension ForkMeetingStrings {
         noticeNeverWebCalls: "其他網頁通話：永不",
         voiceNeverWebCalls: "將不再提議錄製瀏覽器中 Google Meet 以外的通話。",
         detectionAlwaysUnavailable: "此 Mac 無法使用「一律」：會議只會被提議，不會自動錄製。",
+        // MARK: Fixes L
+        detectionAlwaysDelay: "Teams、Webex 和 Discord：通話開始 15 秒後自動錄製。Zoom 和 Slack：會議視窗一打開就錄製，否則提議錄製。",
+        offerMainWindowFormat: "%@（主視窗）",
         // MARK: Exports
         exportsTitle: "輸出",
         exportsCaption: "加入輸出方式之前不會輸出任何內容。投放檔案夾會把每場會議拷貝到這部 Mac 上的檔案夾；Webhook 會把音訊和 meeting.json 傳送到你選擇的 HTTPS 位址：它們會離開這部 Mac，傳往該位址。",
@@ -5966,7 +6156,6 @@ extension ForkMeetingStrings {
         groupYesterday: "昨天",
         groupUndated: "無日期",
         columnTitle: "標題",
-        columnDate: "日期與時間",
         columnDuration: "長度",
         columnSize: "大小",
         columnApp: "應用程式",
@@ -6025,7 +6214,13 @@ extension ForkMeetingStrings {
         exportFailed: "無法輸出音訊。",
         trimFailed: "無法建立供編輯器使用的拷貝。會議本身未被更動。",
         causeCancelled: "已取消",
-        voiceTrashed: "會議已丟到垃圾桶。"
+        voiceTrashed: "會議已丟到垃圾桶。",
+        // MARK: Fixes M
+        retentionHeldFormat: "%1$d 個會議超過 %2$d 天：要丟到垃圾桶嗎？",
+        retentionHeldOneFormat: "1 個會議超過 %d 天：要丟到垃圾桶嗎？",
+        retentionHeldCaption: "超過自動丟到垃圾桶一次會處理的數量：在你確認之前不會移動任何會議。",
+        renameTitleNotSaved: "資料夾已重新命名，但無法儲存新標題。",
+        statusForeign: "此 meeting.json 並非由 Vorssaint 寫入：僅顯示，不會變更。"
     )
 }
 
@@ -6116,8 +6311,10 @@ extension ForkMeetingStrings {
         consentPledge: "我會通知與會者",
         consentPledgeNeeded: "剔選「我會通知與會者」以繼續。",
         consentConfirm: "開啟會議",
+        // MARK: Library folder and names
         folderName: "會議",
         untitledMeeting: "會議",
+        // MARK: Island, pill and bubble notices: short
         noticeStarted: "已開始錄製",
         noticeResumed: "已恢復錄製",
         noticeSaved: "會議已儲存",
@@ -6127,6 +6324,7 @@ extension ForkMeetingStrings {
         noticeDiskLow: "磁碟空間差不多用完",
         noticeDisplayChanged: "顯示器已變更",
         diskMinutesFormat: "磁碟約剩 %d 分鐘",
+        // MARK: VoiceOver
         voiceStarted: "已開始錄製會議。",
         voicePaused: "會議錄製已暫停。",
         voiceResumed: "會議錄製已恢復。",
@@ -6134,6 +6332,7 @@ extension ForkMeetingStrings {
         voiceMicrophoneFormat: "現在使用咪高風「%@」錄製。",
         voiceMicrophoneSilent: "咪高風沒有傳來聲音。請檢查為會議選擇的咪高風。",
         voiceDiskLowFormat: "磁碟空間差不多用完。剩餘可錄製分鐘數：%d。",
+        // MARK: Failures: a short summary, then what to do
         failScreenDenied: "未允許螢幕錄製",
         failScreenDeniedRemedy: "沒有此權限就無法錄製任何內容。請在「系統設定」›「私隱與保安」›「螢幕與系統音訊錄製」中允許 Vorssaint。",
         failScreenRevoked: "螢幕錄製權限已撤銷",
@@ -6214,7 +6413,7 @@ extension ForkMeetingStrings {
         detectionLookalike: "完全模仿 Google Meet 標題並使用麥克風的網頁，也可能被當成會議。",
         // MARK: Detection effects
         detectionTitle: "偵測",
-        detectionCaption: "辨認你在 Google Meet、Zoom、Teams、Slack、FaceTime、Webex 和 Discord 中的通話，即使在其他視窗後面或另一個桌面上，並提議錄製。Google Meet、Zoom、Teams、Whereby 和 Jitsi Meet 在瀏覽器中也能辨認。",
+        detectionCaption: "辨認你在 Zoom、Teams、Slack、FaceTime、Webex 和 Discord App 中，以及在瀏覽器中 Google Meet、Zoom、Teams、Whereby 和 Jitsi Meet 上的通話，即使在其他視窗後面或另一個桌面上，並提議錄製。",
         policyAsk: "提議",
         policyAlways: "一律",
         policyNever: "永不",
@@ -6288,6 +6487,9 @@ extension ForkMeetingStrings {
         noticeNeverWebCalls: "其他網頁通話：永不",
         voiceNeverWebCalls: "將不再提議錄製瀏覽器中 Google Meet 以外的通話。",
         detectionAlwaysUnavailable: "此 Mac 無法使用「一律」：會議只會被提議，不會自動錄製。",
+        // MARK: Fixes L
+        detectionAlwaysDelay: "Teams、Webex 和 Discord：通話開始 15 秒後自動錄製。Zoom 和 Slack：會議視窗一打開便錄製，否則提議錄製。",
+        offerMainWindowFormat: "%@（主視窗）",
         // MARK: Exports
         exportsTitle: "匯出",
         exportsCaption: "加入匯出方式之前不會匯出任何內容。投放資料夾會把每場會議複製到這部 Mac 上的資料夾；Webhook 會把音訊和 meeting.json 傳送到你選擇的 HTTPS 位址：它們會離開這部 Mac，傳往該位址。",
@@ -6349,19 +6551,18 @@ extension ForkMeetingStrings {
         groupYesterday: "昨天",
         groupUndated: "無日期",
         columnTitle: "標題",
-        columnDate: "日期與時間",
         columnDuration: "長度",
         columnSize: "大小",
         columnApp: "應用程式",
         columnMeetCode: "會議代碼",
         actionRename: "重新命名",
         actionExportAudio: "輸出音訊（M4A）⋯",
-        actionCopyPath: "拷貝路徑",
-        actionTrash: "丟到垃圾桶",
+        actionCopyPath: "複製路徑",
+        actionTrash: "移至垃圾桶",
         actionTrim: "在編輯器中剪輯",
-        noticePathCopied: "已拷貝路徑",
-        confirmTrashFormat: "要將「%@」丟到垃圾桶嗎？",
-        confirmTrashMessage: "會議資料夾會連同影片、音訊和備註一起丟到垃圾桶。清空垃圾桶之前都可以放回。",
+        noticePathCopied: "已複製路徑",
+        confirmTrashFormat: "要將「%@」移至垃圾桶嗎？",
+        confirmTrashMessage: "會議資料夾會連同影片、音訊和備註一起移至垃圾桶。清空垃圾桶之前都可以放回。",
         statusRecovered: "已復原",
         statusInterruptedFormat: "已中斷：%@",
         statusUnreadable: "記錄無法讀取",
@@ -6386,13 +6587,13 @@ extension ForkMeetingStrings {
         emptyTitle: "還沒有會議",
         emptyCaption: "你錄製的每個會議都會顯示在這裡，各有自己的資料夾。",
         notesPlaceholder: "加入備註",
-        retentionTitle: "自動丟到垃圾桶",
+        retentionTitle: "自動移至垃圾桶",
         retentionNever: "永不",
         retentionDaysFormat: "%d 天後",
-        retentionCaption: "較舊的會議會在啟動時丟到垃圾桶，之後每天一次。正在錄製的會議或標示 ⚠ 的會議永遠不會丟掉。",
-        retentionConfirmTitle: "要將較舊的會議丟到垃圾桶嗎？",
+        retentionCaption: "較舊的會議會在啟動時移至垃圾桶，之後每天一次。正在錄製的會議或標示 ⚠ 的會議永遠不會移走。",
+        retentionConfirmTitle: "要將較舊的會議移至垃圾桶嗎？",
         retentionConfirmFormat: "超過 %2$d 天的會議：%1$d 個。清空垃圾桶之前它們會一直留在垃圾桶中。",
-        trimCaption: "編輯器會打開一份拷貝：會議本身保持不變。",
+        trimCaption: "編輯器會開啟一份副本：會議本身保持不變。",
         trimNeedsEditor: "編輯器屬於「螢幕錄製」功能：請在 Vorssaint 中開啟它才能剪輯會議。",
         trimNoVideo: "此會議沒有可剪輯的影片。",
         // MARK: Library effects
@@ -6403,11 +6604,17 @@ extension ForkMeetingStrings {
         playerNoVideo: "沒有可播放的影片",
         statusRecoveredHelp: "在 App 意外停止後復原：最後幾秒可能缺少。",
         statusInterruptedHelp: "此會議未正常結束。錄製的所有內容都保留在其資料夾中。",
-        trashFailed: "無法將會議丟到垃圾桶。",
+        trashFailed: "無法將會議移至垃圾桶。",
         renameFailed: "無法重新命名資料夾：標題已變更，資料夾保留原名稱。",
         exportFailed: "無法輸出音訊。",
-        trimFailed: "無法建立供編輯器使用的拷貝。會議本身未被更動。",
+        trimFailed: "無法建立供編輯器使用的副本。會議本身未被更動。",
         causeCancelled: "已取消",
-        voiceTrashed: "會議已丟到垃圾桶。"
+        voiceTrashed: "會議已移至垃圾桶。",
+        // MARK: Fixes M
+        retentionHeldFormat: "%1$d 個會議超過 %2$d 天：要移至垃圾桶嗎？",
+        retentionHeldOneFormat: "1 個會議超過 %d 天：要移至垃圾桶嗎？",
+        retentionHeldCaption: "超過自動移至垃圾桶一次會處理的數量：在你確認之前不會移動任何會議。",
+        renameTitleNotSaved: "資料夾已重新命名，但無法儲存新標題。",
+        statusForeign: "此 meeting.json 並非由 Vorssaint 寫入：僅顯示，不會變更。"
     )
 }

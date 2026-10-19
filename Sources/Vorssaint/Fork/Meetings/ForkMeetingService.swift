@@ -235,6 +235,7 @@ final class ForkMeetingService: ObservableObject {
         syncSystemEvents()
         syncDetection()
         ForkMeetingRetentionSweep.shared.sync(enabled: wanted)
+        if !wanted { ForkMeetingLibraryWindow.shared.close() }
         // Off and idle: nothing shows, nothing is held. A meeting still
         // finishing keeps its pill until its saved notice.
         if !wanted, !isBusy, presenterReady {

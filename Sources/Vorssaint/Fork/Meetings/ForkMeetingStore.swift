@@ -71,6 +71,12 @@ final class ForkMeetingStore: @unchecked Sendable {
     /// Where a finished meeting is listed; the official Recent captures in
     /// the app.
     private let recentCaptures: (URL) -> Void
+    /// A listed meeting's video renamed from the library: its entry in the
+    /// official Recent captures follows it (old, new).
+    let recentCaptureMoved: (URL, URL) -> Void
+    /// Store queue only: the folders the library renamed, until the window
+    /// stops writing to their old names (`ForkMeetingRenameTable`).
+    var renameTable = ForkMeetingRenameTable()
     /// Every write of a `meeting.json`, and the making of a folder; the
     /// library's renames and moves to the Trash too (`+Library`).
     let queue = DispatchQueue(label: "fork.meetings.store", qos: .utility)
@@ -91,11 +97,13 @@ final class ForkMeetingStore: @unchecked Sendable {
     init(defaults: UserDefaults = .standard,
          strings: @escaping () -> ForkMeetingStrings = { ForkMeetingStrings.current },
          callbackQueue: DispatchQueue = .main,
-         recentCaptures: @escaping (URL) -> Void = ForkMeetingStore.officialRecentCaptures) {
+         recentCaptures: @escaping (URL) -> Void = ForkMeetingStore.officialRecentCaptures,
+         recentCaptureMoved: @escaping (URL, URL) -> Void = ForkMeetingStore.officialRecentCaptureMoved) {
         self.defaults = defaults
         self.strings = strings
         self.callbackQueue = callbackQueue
         self.recentCaptures = recentCaptures
+        self.recentCaptureMoved = recentCaptureMoved
     }
 
     // MARK: - Root
@@ -583,6 +591,20 @@ final class ForkMeetingStore: @unchecked Sendable {
     static func officialRecentCaptures(_ video: URL) {
         DispatchQueue.main.async {
             RecentCaptureService.shared.recordRecording(at: video)
+        }
+    }
+
+    /// The entry of a meeting the library renamed: the old one removed, a
+    /// new one at the new path, only when the meeting was listed (the person
+    /// may have taken it out of the list).
+    static func officialRecentCaptureMoved(_ old: URL, _ new: URL) {
+        DispatchQueue.main.async {
+            let service = RecentCaptureService.shared
+            let path = old.standardizedFileURL.path
+            let listed = service.entries.filter { $0.recordingPath == path }
+            guard !listed.isEmpty else { return }
+            listed.forEach(service.remove)
+            service.recordRecording(at: new)
         }
     }
 

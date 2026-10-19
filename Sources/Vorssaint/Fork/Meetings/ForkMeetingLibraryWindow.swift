@@ -2,6 +2,7 @@
 // Copyright (C) 2026 Martial
 
 import AppKit
+import AVKit
 import Carbon.HIToolbox
 import SwiftUI
 
@@ -19,6 +20,10 @@ final class ForkMeetingLibraryWindow: NSObject, NSWindowDelegate {
     private var keyMonitor: Any?
     private var keepsAppRegular = false
 
+    /// What a quit waits for the notes still on their way to the disk:
+    /// behind a sweep's move to the Trash or a final pass's write, never
+    /// more.
+    static let quitWait: TimeInterval = 2
     static let defaultSize = NSSize(width: 940, height: 660)
     static let minimumSize = NSSize(width: 720, height: 440)
 
@@ -27,20 +32,28 @@ final class ForkMeetingLibraryWindow: NSObject, NSWindowDelegate {
     private override init() {
         super.init()
         // A quit with a note still waiting for its half second: written
-        // before the app goes.
+        // before the app goes, for as long as a quit can wait.
         NotificationCenter.default.addObserver(forName: NSApplication.willTerminateNotification, object: nil,
                                                queue: .main) { [weak self] _ in
             guard let model = self?.model else { return }
             model.stop()
-            model.store.queue.sync {}
+            _ = model.store.drain(within: Self.quitWait)
         }
     }
 
     /// Opens the window, or brings it forward; `folder` selects that
-    /// meeting (the "Show" of the saved and recovered notices).
+    /// meeting (the "Show" of the saved and recovered notices). With the
+    /// feature off, the window does not open: the meeting's folder shows in
+    /// the Finder instead, and nothing watches or scans.
     func show(folder: URL? = nil) {
         guard Thread.isMainThread else {
             DispatchQueue.main.async { self.show(folder: folder) }
+            return
+        }
+        guard ForkMeetingService.isWanted else {
+            if let folder, FileManager.default.fileExists(atPath: folder.path) {
+                NSWorkspace.shared.activateFileViewerSelecting([folder])
+            }
             return
         }
         let model = self.model ?? ForkMeetingLibraryModel()
@@ -55,6 +68,12 @@ final class ForkMeetingLibraryWindow: NSObject, NSWindowDelegate {
         }
         NSApp.activate(ignoringOtherApps: true)
         window.makeKeyAndOrderFront(nil)
+    }
+
+    /// The feature turned off: the window goes, and with it its watch.
+    func close() {
+        guard let window, window.isVisible || window.isMiniaturized || model?.isOpen == true else { return }
+        window.close()
     }
 
     private func ensureWindow(model: ForkMeetingLibraryModel) -> NSWindow {
@@ -80,12 +99,21 @@ final class ForkMeetingLibraryWindow: NSObject, NSWindowDelegate {
     func windowWillClose(_ notification: Notification) {
         // The title being typed is kept, as when the field is left.
         window?.makeFirstResponder(nil)
+        // The window is kept for next time, its views with it: a meeting
+        // playing would go on being heard with nothing on screen.
+        if let content = window?.contentView { Self.pausePlayers(in: content) }
         model?.stop()
         removeKeyMonitor()
         if keepsAppRegular {
             keepsAppRegular = false
             WindowActivationPolicy.release()
         }
+    }
+
+    /// Every player under `view`, paused.
+    static func pausePlayers(in view: NSView) {
+        if let player = view as? AVPlayerView { player.player?.pause() }
+        view.subviews.forEach(pausePlayers)
     }
 
     // MARK: - Keys
@@ -143,8 +171,10 @@ struct ForkMeetingLibraryView: View {
                         if let entry = model.selectedEntry {
                             ForkMeetingLibraryDetail(model: model, entry: entry, text: text, language: language)
                                 // A new meeting gets fresh fields: a draft
-                                // never follows the selection.
-                                .id(entry.folderName)
+                                // never follows the selection. Kept by the
+                                // meeting, not its folder's name, which a
+                                // rename changes.
+                                .id(entry.identity)
                         } else {
                             Color.clear
                         }

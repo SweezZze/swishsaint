@@ -207,7 +207,7 @@ enum ForkMeetingLibraryEffectsTests {
         suite.expect(all.allSatisfy { $0.actionShowMeeting != $0.actionShow && $0.openLibrary != $0.actionOpenMeetings },
                      "Show opens the library, not the Finder; Open Meetings is not the page's settings")
         let trash: [AppLanguage: String] = [
-            .enUS: "Trash", .ptBR: "Lixo", .tr: "Çöp Kutusu", .ru: "Корзин", .es: "papelera", .sk: "koš",
+            .enUS: "Trash", .ptBR: "Lixo", .tr: "Çöp Sepeti", .ru: "Корзин", .es: "papelera", .sk: "koš",
             .de: "Papierkorb", .fr: "Corbeille", .it: "Cestino", .ja: "ゴミ箱", .ko: "휴지통", .uk: "Смітник",
             .zhHans: "废纸篓", .zhTW: "垃圾桶", .zhHK: "垃圾桶",
         ]
@@ -215,15 +215,15 @@ enum ForkMeetingLibraryEffectsTests {
         for language in languages {
             let strings = ForkMeetingStrings.strings(language)
             for line in [strings.trashFailed, strings.voiceTrashed, strings.actionTrash, strings.confirmTrashMessage]
-            where !line.contains(trash[language] ?? "?") {
+            where line.range(of: trash[language] ?? "?", options: .caseInsensitive) == nil {
                 missing.append("\(language.rawValue): \(line)")
             }
         }
         suite.expect(trash.count == languages.count && missing.isEmpty,
                      "the library speaks of the Trash with macOS's word, in every language: \(missing)")
-        suite.expect(french.actionTrash == "Mettre à la Corbeille" && french.openLibrary == "Ouvrir les réunions"
+        suite.expect(french.actionTrash == "Placer dans la corbeille" && french.openLibrary == "Ouvrir les réunions"
                         && french.actionShowMeeting == "Afficher",
-                     "in French: Mettre à la Corbeille, Ouvrir les réunions, Afficher")
+                     "in French: Placer dans la corbeille (the Finder's words), Ouvrir les réunions, Afficher")
         suite.expect(all.allSatisfy { strings in
                         ForkMeetingLibrary.statusText(.interrupted(.stopped(.cancelled)), strings: strings).map { $0.count <= 28 } ?? false
                      },

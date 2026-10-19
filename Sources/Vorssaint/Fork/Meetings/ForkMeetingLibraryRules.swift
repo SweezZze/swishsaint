@@ -31,16 +31,31 @@ struct ForkMeetingSidecarEdit: Equatable {
 
     /// The sidecar to write, or `nil` when it must stay as it is on the
     /// disk: missing, unreadable, corrupt, or from a later version, exactly
-    /// as for the session's patch.
+    /// as for the session's patch; and, the library's own rule, one this app
+    /// did not write.
     static func rewriting(_ read: Result<ForkMeetingSidecar, ForkMeetingSidecarFault>,
                           with edit: ForkMeetingSidecarEdit) -> ForkMeetingSidecar? {
-        guard case let .success(sidecar) = read, sidecar.isRewritable else { return nil }
+        guard case let .success(sidecar) = read, sidecar.isRewritable, sidecar.isWrittenByMeetings else { return nil }
         return edit.applied(to: sidecar)
     }
 
     /// The later edit wins field by field.
     func merged(with later: ForkMeetingSidecarEdit) -> ForkMeetingSidecarEdit {
         ForkMeetingSidecarEdit(title: later.title ?? title, notes: later.notes ?? notes)
+    }
+}
+
+extension ForkMeetingSidecar {
+    /// Written by this app: `started` always writes a schema and an id. A
+    /// `meeting.json` without them was written by someone else (another
+    /// app, a script, by hand): listed, never rewritten from the library,
+    /// never judged by the automatic bin.
+    var isWrittenByMeetings: Bool { schema != nil && id != nil }
+
+    /// The name this record gives its folder and media (its start and its
+    /// title), whatever the folder is called now.
+    func recordedName(calendar: Calendar = .current) -> String? {
+        startedAt.map { ForkMeetingFolder.name(startedAt: $0, title: title, calendar: calendar) }
     }
 }
 
@@ -67,6 +82,8 @@ enum ForkMeetingRename {
         case sidecarUnreadable
         /// Written by a later version: read, never rewritten.
         case sidecarFromLaterVersion
+        /// Not written by this app (`isWrittenByMeetings`).
+        case notWrittenHere
     }
 
     /// Why the folder keeps its name while the title changes.
@@ -91,6 +108,24 @@ enum ForkMeetingRename {
         var media = ForkMeetingFolder.MediaRenames()
     }
 
+    /// The folder still carries the stamp but not the title `meeting.json`
+    /// gives (`ForkMeetingFolder.renamedFolder`): a rename is owed even
+    /// though nothing was typed since.
+    static func folderLags(folderName: String, startedAt: Date?, title: String?, calendar: Calendar = .current) -> Bool {
+        guard let startedAt, let title else { return false }
+        return ForkMeetingFolder.renamedFolder(current: folderName, startedAt: startedAt, title: cleaned(title),
+                                               calendar: calendar) != nil
+    }
+
+    /// What sits at a name beside the folder, as a rename sees it: the
+    /// folder itself under another case of its name (APFS ignores case, so
+    /// the disk answers that the name is taken) is free to take, or a change
+    /// of case alone would go to "(2)".
+    static func occupant(sameFolder: @escaping (String) -> Bool,
+                         disk: @escaping (String) -> ForkMeetingFolder.Occupant) -> (String) -> ForkMeetingFolder.Occupant {
+        { name in sameFolder(name) ? .free : disk(name) }
+    }
+
     /// The title as it is kept: one line, no blank around it, and none of
     /// the bidi controls that would let the row show words in another order
     /// than the folder's name (`ForkMeetingFolder.bidiControls`).
@@ -110,6 +145,7 @@ enum ForkMeetingRename {
                      occupant: (String) -> ForkMeetingFolder.Occupant) -> Result<Plan, Refusal> {
         guard case let .success(meeting) = sidecar else { return .failure(.sidecarUnreadable) }
         guard meeting.isRewritable else { return .failure(.sidecarFromLaterVersion) }
+        guard meeting.isWrittenByMeetings else { return .failure(.notWrittenHere) }
         if live || meeting.state == .recording || meeting.state == .finalizing {
             return .failure(.meetingInProgress)
         }
@@ -142,11 +178,77 @@ enum ForkMeetingRename {
         switch ForkMeetingFolder.reserve(base: desired, forRename: true, occupant: occupant) {
         case let .create(name):
             plan.folder = ForkMeetingFolder.Move(from: folderName, to: name)
-            plan.media = ForkMeetingFolder.mediaRenames(folderName: name, names: names)
+            plan.media = ForkMeetingFolder.mediaRenames(from: folderName, to: name, names: names,
+                                                        alsoNamed: meeting.recordedName(calendar: calendar))
         case .adopt, .exhausted:
             plan.folderKept = .namesExhausted
         }
         return .success(plan)
+    }
+}
+
+/// Where the library's writes go while folders are renamed: a note saved
+/// half a second after it was typed may reach the store's queue after the
+/// rename it was typed during, addressed to the folder's old name. The
+/// store keeps, on its queue, each move it made (old path to new, and the
+/// folder's file number) until the window has learnt the new name, or for
+/// `lifetime` at most; a write for a moved folder lands in the folder where
+/// it now is, never in another folder that took its old name since (its
+/// file number differs), and the store checks the meeting's id there too.
+struct ForkMeetingRenameTable: Equatable {
+    /// Long past any write the window could still send to an old name.
+    static let lifetime: TimeInterval = 30
+
+    struct Move: Equatable {
+        let to: String
+        /// The folder's file number, when the disk gave it.
+        let file: UInt64?
+    }
+
+    private(set) var moves: [String: Move] = [:]
+
+    mutating func record(from old: String, to new: String, file: UInt64? = nil) {
+        guard old != new else { return }
+        moves[old] = Move(to: new, file: file)
+        // The same folder renamed back to a name it had: no loop.
+        if let back = moves[new], back.to == old, back.file == file { moves[new] = nil }
+    }
+
+    /// Where a write addressed to `path` goes: its folder's name now,
+    /// through every rename since. `fileAt` reads the file number at a
+    /// path: a folder still at the path asked, the very one that was moved
+    /// (renamed back), is written where it is.
+    func resolve(_ path: String, fileAt: (String) -> UInt64? = { _ in nil }) -> String {
+        var current = path
+        var seen: Set<String> = [path]
+        while let move = moves[current], seen.insert(move.to).inserted {
+            if let file = move.file, fileAt(current) == file { break }
+            current = move.to
+        }
+        return current
+    }
+
+    /// `to`: only the move to there, not one recorded since.
+    mutating func forget(_ old: String, to: String? = nil) {
+        guard to == nil || moves[old]?.to == to else { return }
+        moves[old] = nil
+    }
+}
+
+/// Another copy of the app may hold a folder's lock while it records,
+/// finishes or recovers the meeting there. Asking takes a brief shared lock,
+/// which would make that copy's recovery pass by: only asked when the
+/// folder shows signs of it, the record unfinished, unreadable, or files of
+/// a recording still in it.
+enum ForkMeetingLibraryLock {
+    static func mayBeHeldElsewhere(_ sidecar: Result<ForkMeetingSidecar, ForkMeetingSidecarFault>,
+                                   contents: ForkMeetingFolder.Contents) -> Bool {
+        if contents.hasMaster || contents.hasVideoDraft || contents.hasAudioDraft { return true }
+        guard case let .success(meeting) = sidecar else { return true }
+        switch meeting.state {
+        case .recording?, .finalizing?, .interrupted?: return true
+        case .complete?, nil: return false
+        }
     }
 }
 
@@ -228,6 +330,8 @@ struct ForkMeetingEditCoalescer {
 ///   the one the person may not have looked at yet, and nothing records
 ///   whether they did, so it waits for their hand. They are few;
 /// - a sidecar from a later version, which this one does not judge;
+/// - a `meeting.json` this app did not write (`isWrittenByMeetings`): the
+///   folder is someone else's;
 /// - a meeting whose sidecar gives no date: an age is never guessed from a
 ///   folder's name or its dates on the disk, which a copy or a restore
 ///   resets;
@@ -236,7 +340,15 @@ struct ForkMeetingEditCoalescer {
 /// The age is counted in whole days from the day the meeting ended, in the
 /// Gregorian calendar, and must be **more** than the setting: a meeting of
 /// October 18 kept 30 days is still there all of November 17 and goes on
-/// November 18, whatever the hour it was held.
+/// November 18, whatever the hour it was held. The video's date on the disk
+/// can only make a meeting younger, never older: a meeting whose video was
+/// written later than its sidecar says (a clock set back while it
+/// recorded, a file put back by hand) counts from that date.
+///
+/// **Never in bulk on its own**: a sweep that would take more than ten
+/// meetings, or more than a quarter of the library, takes none and waits
+/// for the person on the Meetings page (`plan`). A clock jumping years
+/// ahead, or a setting restored from a backup, then empties nothing.
 enum ForkMeetingRetention {
     static let choices = [0, 30, 90, 365]
     static let fallback = 0
@@ -262,6 +374,7 @@ enum ForkMeetingRetention {
         case flagged
         case laterVersion
         case undated
+        case notWrittenHere
     }
 
     enum Verdict: Equatable {
@@ -275,8 +388,10 @@ enum ForkMeetingRetention {
         guard days > 0 else { return .keep(.off) }
         if entry.status.isInProgress { return .keep(.inProgress) }
         if entry.status.isFlagged { return .keep(.flagged) }
+        if entry.isForeign { return .keep(.notWrittenHere) }
         if entry.isReadOnly { return .keep(.laterVersion) }
-        guard let reference = entry.endedAt ?? entry.startedAt else { return .keep(.undated) }
+        guard let written = entry.endedAt ?? entry.startedAt else { return .keep(.undated) }
+        let reference = max(written, entry.videoModified ?? written)
         let gregorian = ForkMeetingLibrary.gregorian(calendar)
         let distance = gregorian.dateComponents([.day], from: gregorian.startOfDay(for: reference),
                                                 to: gregorian.startOfDay(for: now)).day ?? 0
@@ -290,6 +405,30 @@ enum ForkMeetingRetention {
         entries.filter { !live.contains($0.folderName) && verdict($0, days: days, now: now, calendar: calendar) == .trash }
             .map(\.folderName)
             .sorted()
+    }
+
+    /// More than this many meetings at once, or more than a quarter of the
+    /// library, and an automatic sweep waits for the person.
+    static let bulkLimit = 10
+
+    static func isBulk(due: Int, library: Int) -> Bool {
+        due > bulkLimit || due * 4 > library
+    }
+
+    enum Sweep: Equatable {
+        case nothing
+        case trash([String])
+        /// Too many at once: nothing goes, the page asks with this number.
+        case held(Int)
+    }
+
+    /// What a sweep does with what is due. `confirmed`: the number the
+    /// person agreed to on the page; a sweep that finds more than that by
+    /// then asks again rather than take the rest unasked.
+    static func sweep(due: [String], library: Int, confirmed: Int? = nil) -> Sweep {
+        guard !due.isEmpty else { return .nothing }
+        if let confirmed { return due.count <= confirmed ? .trash(due) : .held(due.count) }
+        return isBulk(due: due.count, library: library) ? .held(due.count) : .trash(due)
     }
 
     /// Turning the bin on or lowering its delay asks first, when it would

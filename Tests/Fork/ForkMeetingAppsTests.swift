@@ -172,7 +172,7 @@ enum ForkMeetingAppsTests {
     private static func webTitles(_ suite: TestSuite) {
         suite.expect(verdict("Zoom", .zoomWeb) == meeting && verdict("Zoom Meeting", .zoomWeb) == meeting
                         && verdict("Whereby", .whereby) == meeting && verdict("Jitsi Meet", .jitsiMeet) == meeting
-                        && verdict("https://teams.microsoft.com/v2/", .teamsWeb) == meeting,
+                        && verdict("https://teams.microsoft.com/l/meetup-join/19%3ameeting_x/0", .teamsWeb) == meeting,
                      "Zoom's web client, Whereby, Jitsi Meet and Teams on the web are read")
         suite.expect(verdict("Point hebdo | Jitsi Meet", .jitsiMeet) == .meeting(code: nil, name: "Point hebdo"),
                      "a Jitsi room is the meeting's name")
@@ -495,7 +495,7 @@ enum ForkMeetingAppsTests {
         faceTime.read(-3, microphones: call)
         faceTime.read(20, microphones: call)
         suite.expect(faceTime.starts.isEmpty && faceTime.offers.map(\.candidate.identity.value) == ["facetime:600#1"]
-                        && faceTime.offers.first.map(ForkMeetingOfferText.showsAlways) == false,
+                        && faceTime.offers.first.map { ForkMeetingOfferText.showsAlways($0, microphoneSignal: true) } == false,
                      "an Always stored for FaceTime reads as Offer: its call (or an iPhone's relayed) is offered")
         faceTime.send(.accept(ForkMeetingStartRequest(settings: settings, facts: ready)), 21)
         suite.expect(faceTime.starts.first.map { ForkMeetingDetectionSupport.settings($0.settings, for: $0.meeting) }?
@@ -536,7 +536,7 @@ enum ForkMeetingAppsTests {
             let offer = page.offers.first
             suite.expect(page.starts.isEmpty && page.offers.count == 1
                             && offer?.candidate.identity.value.hasPrefix("web:") == true
-                            && offer.map(ForkMeetingOfferText.showsAlways) == false,
+                            && offer.map { ForkMeetingOfferText.showsAlways($0, microphoneSignal: true) } == false,
                          "« \(title) » in Chrome, its microphone open, Always: offered without « Always for », never started")
             guard offer != nil else { continue }
             page.effects = []

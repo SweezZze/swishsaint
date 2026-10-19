@@ -7,20 +7,20 @@ import Foundation
 /// heard with, kept apart so each choice is tested.
 enum ForkMeetingAppsSupport {
     /// The window a detected meeting is filmed in: the one its title points
-    /// at; else its app's ordinary window most in front (a meeting app found
-    /// by its microphone alone), in the window scanner's list (`windows`,
-    /// `.optionAll`: on screen front to back, then minimized or on another
-    /// Space, which only counts with a title: an app's spare windows never
-    /// shown have none); `nil` films its display, and the offer says "Whole
-    /// screen". Never another app's window in front: that one is no part of
-    /// the meeting.
+    /// at; else its app's ordinary window most in front on screen (a meeting
+    /// app found by its microphone alone: its main window, as the offer
+    /// says), in the window scanner's list (`windows`, `.optionAll`: the
+    /// windows on screen front to back, with others among them, minimized,
+    /// on another Space or closed but still titled, never taken); `nil`
+    /// films its display, and the offer says "Whole screen". Never another
+    /// app's window in front: that one is no part of the meeting.
     static func window(for meeting: ForkMeetingCandidate, in windows: [ForkMeetingWindowCandidate], ownPID: Int32,
                        excluded: Set<UInt32> = []) -> UInt32? {
         if let windowID = meeting.windowID { return windowID }
         let side = ForkMeetingCaptureSupport.minimumWindowSide
         return windows.first { window in
             window.pid == meeting.pid && window.pid != ownPID && window.layer == 0 && window.alpha > 0.05
-                && (window.onScreen || window.titled) && !excluded.contains(window.id)
+                && window.onScreen && !excluded.contains(window.id)
                 && window.bounds.width >= side && window.bounds.height >= side
         }?.id
     }
@@ -39,6 +39,16 @@ enum ForkMeetingAppsSupport {
     /// them, and a window's sound never stands in for them.
     static func soundOutsideApp(_ meeting: ForkMeetingCandidate) -> Bool {
         meeting.defaultSound == .all
+    }
+
+    // MARK: Fixes L
+
+    /// Whether the window filmed is its app's main one rather than the
+    /// meeting's own (a call found by its microphone: Slack without its
+    /// huddle window, Teams, Discord): the offer says so, for ⧉ or the
+    /// display to be chosen instead.
+    static func filmsMainWindow(_ meeting: ForkMeetingCandidate, found: UInt32?) -> Bool {
+        meeting.windowID == nil && found != nil
     }
 
     // MARK: Fixes K

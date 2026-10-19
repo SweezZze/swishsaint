@@ -10,7 +10,9 @@ import os
 ///
 /// - **Every change of a folder runs on the store's queue**, after every
 ///   `meeting.json` write asked before it: a note typed just before a rename
-///   lands in the folder before it moves, never in a folder that is gone.
+///   lands in the folder before it moves, and one sent to the old name while
+///   it moved lands where it went (`renameTable`), never in a folder that is
+///   gone.
 /// - **Nothing this process records or finishes is touched** (`claim`), nor,
 ///   at the click, a folder another copy of the app holds.
 /// - A meeting only ever goes to the **Trash**: a volume without one keeps
@@ -25,6 +27,9 @@ extension ForkMeetingStore {
         let entries: [ForkMeetingLibraryEntry]
         /// What was measured of each row's playable file, by folder name.
         let probes: [String: ForkMeetingProbeCache.Probe]
+        /// The folders this scan read, when it read only some
+        /// (`ForkMeetingLibrary.Rescan`); `nil`: all of them.
+        var only: Set<String>? = nil
     }
 
     enum LibraryFailure: Error, Equatable {
@@ -48,6 +53,11 @@ extension ForkMeetingStore {
         let folderMoveFailed: Bool
         /// Media whose move the disk refused.
         let mediaKept: [String]
+        /// The media that did move, old name to new, inside the folder.
+        let mediaMoved: [ForkMeetingFolder.Move]
+        /// `meeting.json` took the title (or had nothing to take). `false`:
+        /// the folder may have moved, the title is not saved.
+        let titleSaved: Bool
     }
 
     private static let libraryLog = Logger(subsystem: "fork.meetings", category: "library")
@@ -61,16 +71,20 @@ extension ForkMeetingStore {
     ///   or finishing, from its service, besides the ones it holds locked.
     /// - `probing`: the videos are measured (length, tracks); the automatic
     ///   bin needs none of it.
-    func scanLibrary(writing: Set<String> = [], probing: Bool = true,
+    /// - `only`: these folders alone, the others left as the caller has
+    ///   them.
+    func scanLibrary(writing: Set<String> = [], probing: Bool = true, only: Set<String>? = nil,
                      completion: @escaping (LibraryScan) -> Void) {
         let root = self.root()
         Task.detached(priority: .utility) { [self] in
-            let scan = await libraryScan(root: root, writing: writing, probing: probing)
+            var scan = await libraryScan(root: root, writing: writing, probing: probing, only: only)
+            scan.only = only
             callbackQueue.async { completion(scan) }
         }
     }
 
-    private func libraryScan(root: URL, writing: Set<String>, probing: Bool) async -> LibraryScan {
+    private func libraryScan(root: URL, writing: Set<String>, probing: Bool,
+                             only: Set<String>? = nil) async -> LibraryScan {
         let manager = FileManager.default
         var isDirectory: ObjCBool = false
         guard manager.fileExists(atPath: root.path, isDirectory: &isDirectory), isDirectory.boolValue,
@@ -80,35 +94,68 @@ extension ForkMeetingStore {
         var entries: [ForkMeetingLibraryEntry] = []
         var probes: [String: ForkMeetingProbeCache.Probe] = [:]
         var measured = Set<String>()
-        for name in names.sorted() where !name.hasPrefix(".") {
+        for name in names.sorted() where !name.hasPrefix(".") && only?.contains(name) != false {
             let folder = root.appendingPathComponent(name, isDirectory: true)
-            guard manager.fileExists(atPath: folder.path, isDirectory: &isDirectory), isDirectory.boolValue,
-                  let inside = try? manager.contentsOfDirectory(atPath: folder.path) else { continue }
-            let contents = ForkMeetingFolder.contents(of: inside, folderName: name)
-            guard contents.hasSidecar else { continue }
-            // Read straight from the disk: every write replaces the file
-            // whole, so a read never meets half of one.
-            let sidecar = ForkMeetingSidecar.read(at: folder.appendingPathComponent(ForkMeetingFolder.sidecarName))
-            let live = isClaimedHere(folder) || writing.contains(folder.standardizedFileURL.path)
-            let bytes = Self.folderBytes(folder, names: inside)
-            let created = (try? manager.attributesOfItem(atPath: folder.path))?[.creationDate] as? Date
-            // A first look, unmeasured, tells which file the row plays.
-            guard let first = ForkMeetingLibraryEntry(folderName: name, sidecar: sidecar, contents: contents, live: live,
-                                                      bytes: bytes, folderCreated: created) else { continue }
+            guard let first = libraryEntry(folder, writing: writing) else { continue }
             var probe: ForkMeetingProbeCache.Probe?
-            if probing, let playable = first.playable {
+            if probing, let playable = first.entry.playable {
                 let url = folder.appendingPathComponent(playable)
                 probe = await ForkMeetingLibraryProbes.shared.probe(url)
                 measured.insert(url.path)
             }
             if let probe { probes[name] = probe }
-            let entry = probe?.seconds == nil ? first
-                : ForkMeetingLibraryEntry(folderName: name, sidecar: sidecar, contents: contents, live: live,
-                                          bytes: bytes, videoSeconds: probe?.seconds, folderCreated: created) ?? first
-            entries.append(entry)
+            entries.append(probe?.seconds == nil ? first.entry : first.measured(probe?.seconds) ?? first.entry)
         }
-        if probing { ForkMeetingLibraryProbes.shared.keep(only: measured) }
+        // A partial scan saw only some files: the others' measures stay.
+        if probing, only == nil { ForkMeetingLibraryProbes.shared.keep(only: measured) }
         return LibraryScan(root: root, rootExists: true, entries: entries, probes: probes)
+    }
+
+    /// One folder as the library reads it, unmeasured: `nil` for anything
+    /// but a meeting's folder. Read straight from the disk: every write
+    /// replaces `meeting.json` whole, so a read never meets half of one.
+    private struct FolderLook {
+        let entry: ForkMeetingLibraryEntry
+        let sidecar: Result<ForkMeetingSidecar, ForkMeetingSidecarFault>
+        let contents: ForkMeetingFolder.Contents
+        let live: Bool
+        let bytes: Int64
+        let created: Date?
+
+        /// The same row with the video's length the store measured.
+        func measured(_ seconds: Double?) -> ForkMeetingLibraryEntry? {
+            ForkMeetingLibraryEntry(folderName: entry.folderName, sidecar: sidecar, contents: contents, live: live,
+                                    bytes: bytes, videoSeconds: seconds, folderCreated: created,
+                                    videoModified: entry.videoModified, folderFile: entry.folderFile)
+        }
+    }
+
+    private func libraryEntry(_ folder: URL, writing: Set<String>) -> FolderLook? {
+        let manager = FileManager.default
+        let name = folder.lastPathComponent
+        var isDirectory: ObjCBool = false
+        guard manager.fileExists(atPath: folder.path, isDirectory: &isDirectory), isDirectory.boolValue,
+              let inside = try? manager.contentsOfDirectory(atPath: folder.path) else { return nil }
+        guard inside.contains(ForkMeetingFolder.sidecarName) else { return nil }
+        let sidecar = ForkMeetingSidecar.read(at: folder.appendingPathComponent(ForkMeetingFolder.sidecarName))
+        let contents = ForkMeetingFolder.contents(of: inside, folderName: name,
+                                                  alsoNamed: (try? sidecar.get())?.recordedName())
+        let live = isClaimedHere(folder) || writing.contains(folder.standardizedFileURL.path)
+        let bytes = Self.folderBytes(folder, names: inside)
+        let attributes = try? manager.attributesOfItem(atPath: folder.path)
+        let created = attributes?[.creationDate] as? Date
+        let file = (attributes?[.systemFileNumber] as? NSNumber)?.uint64Value
+        // A first look tells which file the row plays; its date then joins
+        // the row, for the automatic bin.
+        guard let first = ForkMeetingLibraryEntry(folderName: name, sidecar: sidecar, contents: contents, live: live,
+                                                  bytes: bytes, folderCreated: created, folderFile: file) else { return nil }
+        let modified = first.playable.flatMap {
+            (try? manager.attributesOfItem(atPath: folder.appendingPathComponent($0).path))?[.modificationDate] as? Date
+        }
+        let entry = modified == nil ? first
+            : ForkMeetingLibraryEntry(folderName: name, sidecar: sidecar, contents: contents, live: live, bytes: bytes,
+                                      folderCreated: created, videoModified: modified, folderFile: file) ?? first
+        return FolderLook(entry: entry, sidecar: sidecar, contents: contents, live: live, bytes: bytes, created: created)
     }
 
     /// What a meeting weighs: its files, the hidden master included.
@@ -121,8 +168,9 @@ extension ForkMeetingStore {
 
     /// Another copy of the app holds the folder's lock: its meeting records
     /// or finishes there. Asked only at the moment of an action on a folder
-    /// whose sidecar says it is unfinished, never while scanning: the brief
-    /// shared lock it takes would make that copy's recovery pass by.
+    /// that shows signs of it (`ForkMeetingLibraryLock`), never while
+    /// scanning: the brief shared lock it takes would make that copy's
+    /// recovery pass by.
     static func isLockedElsewhere(_ folder: URL) -> Bool {
         let descriptor = open(folder.path + "/" + lockName, O_RDONLY | O_CLOEXEC)
         guard descriptor >= 0 else { return false }
@@ -132,34 +180,92 @@ extension ForkMeetingStore {
         return false
     }
 
-    /// Store queue. A meeting that is being written here, or elsewhere.
+    /// Store queue. A meeting that is being written here, or elsewhere:
+    /// the lock is asked whenever the folder shows signs of another copy at
+    /// work (`ForkMeetingLibraryLock`).
     private func isBusy(_ folder: URL, live: Bool) -> Bool {
         if live || isClaimedHere(folder) { return true }
-        guard case let .success(sidecar) = ForkMeetingSidecar.read(at: folder.appendingPathComponent(ForkMeetingFolder.sidecarName)),
-              sidecar.state == .recording || sidecar.state == .finalizing else { return false }
+        let sidecar = ForkMeetingSidecar.read(at: folder.appendingPathComponent(ForkMeetingFolder.sidecarName))
+        let names = (try? FileManager.default.contentsOfDirectory(atPath: folder.path)) ?? []
+        let contents = ForkMeetingFolder.contents(of: names, folderName: folder.lastPathComponent)
+        guard ForkMeetingLibraryLock.mayBeHeldElsewhere(sidecar, contents: contents) else { return false }
         return Self.isLockedElsewhere(folder)
+    }
+
+    /// Store queue. Where a write addressed to `folder` goes now.
+    private func resolved(_ folder: URL) -> URL {
+        let path = Self.tablePath(folder)
+        let now = renameTable.resolve(path, fileAt: Self.fileNumber)
+        return now == path ? folder : URL(fileURLWithPath: now, isDirectory: true)
+    }
+
+    /// A folder's path as the rename table keys it: its parent resolved by
+    /// `realpath`, then its name. `standardizedFileURL` drops `/private` only
+    /// for a path that exists, so a name before and after a move would not
+    /// match.
+    static func tablePath(_ folder: URL) -> String {
+        ForkMeetingFolderWatch.realPath(folder.deletingLastPathComponent().path) + "/" + folder.lastPathComponent
+    }
+
+    static func fileNumber(_ path: String) -> UInt64? {
+        ((try? FileManager.default.attributesOfItem(atPath: path))?[.systemFileNumber] as? NSNumber)?.uint64Value
+    }
+
+    /// The window writes to `folder`'s new name from now on: the move it
+    /// made is forgotten once every write sent before is done. The store
+    /// forgets it by itself after `ForkMeetingRenameTable.lifetime`, window
+    /// or not.
+    func forgetRename(of folder: URL) {
+        let path = Self.tablePath(folder)
+        queue.async { [self] in renameTable.forget(path) }
+    }
+
+    /// Waits, at most `seconds`, for everything asked of the store's queue
+    /// so far. `false`: it was still busy. Off the store's queue.
+    @discardableResult
+    func drain(within seconds: TimeInterval) -> Bool {
+        dispatchPrecondition(condition: .notOnQueue(queue))
+        let done = DispatchSemaphore(value: 0)
+        queue.async { done.signal() }
+        return done.wait(timeout: .now() + seconds) == .success
     }
 
     // MARK: - Title and notes
 
     /// Applies a library edit to the folder's `meeting.json`, after every
-    /// write asked before. A sidecar that does not decode, or comes from a
-    /// later version, is left as it is. `completion` on the callback queue.
-    func applyEdit(_ edit: ForkMeetingSidecarEdit, in folder: URL, completion: ((Bool) -> Void)? = nil) {
+    /// write asked before, in the folder where it is now if a rename moved
+    /// it meanwhile. A sidecar that does not decode, comes from a later
+    /// version or from another app, is left as it is; so is a meeting
+    /// another copy of the app holds (`meetingInProgress`). `expecting`: the
+    /// meeting's id as the window shows it; a folder holding another
+    /// meeting by then is left as it is (`gone`). `completion` on the
+    /// callback queue.
+    func applyEdit(_ edit: ForkMeetingSidecarEdit, in folder: URL, expecting id: UUID? = nil,
+                   completion: ((Result<Void, LibraryFailure>) -> Void)? = nil) {
         queue.async { [self] in
-            let written = writeEdit(edit, in: folder)
+            let written = writeEdit(edit, in: resolved(folder), expecting: id)
             if let completion { callbackQueue.async { completion(written) } }
         }
     }
 
     /// Store queue.
-    private func writeEdit(_ edit: ForkMeetingSidecarEdit, in folder: URL) -> Bool {
+    private func writeEdit(_ edit: ForkMeetingSidecarEdit, in folder: URL,
+                           expecting id: UUID? = nil) -> Result<Void, LibraryFailure> {
+        guard !isBusy(folder, live: false) else {
+            Self.libraryLog.error("edit refused, the meeting is being written: \(folder.lastPathComponent, privacy: .private)")
+            return .failure(.meetingInProgress)
+        }
         let read = ForkMeetingSidecar.read(at: folder.appendingPathComponent(ForkMeetingFolder.sidecarName))
+        if let id, (try? read.get())?.id != id {
+            Self.libraryLog.error("edit refused, another meeting is there now: \(folder.lastPathComponent, privacy: .private)")
+            return .failure(.gone)
+        }
         guard let next = ForkMeetingSidecarEdit.rewriting(read, with: edit) else {
             Self.libraryLog.error("edit left out in \(folder.lastPathComponent, privacy: .private)")
-            return false
+            return .failure(.failed("meeting.json not rewritable"))
         }
-        return writeSidecar(next, in: folder) == nil
+        if let failure = writeSidecar(next, in: folder) { return .failure(.failed(failure)) }
+        return .success(())
     }
 
     // MARK: - Renaming
@@ -188,17 +294,26 @@ extension ForkMeetingStore {
         let plan: ForkMeetingRename.Plan
         switch ForkMeetingRename.plan(title: title, folderName: folderName, sidecar: read, names: names,
                                       live: isBusy(folder, live: live),
-                                      occupant: { Self.occupant(of: root.appendingPathComponent($0, isDirectory: true), id: id) }) {
+                                      occupant: ForkMeetingRename.occupant(
+                                          sameFolder: { Self.isSameFile(root.appendingPathComponent($0, isDirectory: true), folder) },
+                                          disk: { Self.occupant(of: root.appendingPathComponent($0, isDirectory: true), id: id) })) {
         case let .failure(refusal): return .failure(.renameRefused(refusal))
         case let .success(made): plan = made
         }
         var current = folderName
         var folderMoveFailed = false
         if let move = plan.folder {
+            let to = root.appendingPathComponent(move.to, isDirectory: true)
             do {
-                try manager.moveItem(at: root.appendingPathComponent(move.from, isDirectory: true),
-                                     to: root.appendingPathComponent(move.to, isDirectory: true))
+                try manager.moveItem(at: root.appendingPathComponent(move.from, isDirectory: true), to: to)
                 current = move.to
+                // Writes still addressed to the old name land here, for a
+                // while.
+                let old = Self.tablePath(folder), new = Self.tablePath(to)
+                renameTable.record(from: old, to: new, file: Self.fileNumber(to.path))
+                queue.asyncAfter(deadline: .now() + ForkMeetingRenameTable.lifetime) { [self] in
+                    renameTable.forget(old, to: new)
+                }
             } catch {
                 folderMoveFailed = true
                 Self.libraryLog.error("folder kept its name: \(error.localizedDescription, privacy: .private)")
@@ -206,20 +321,32 @@ extension ForkMeetingStore {
         }
         let now = root.appendingPathComponent(current, isDirectory: true)
         var mediaKept = plan.media.blocked
+        var mediaMoved: [ForkMeetingFolder.Move] = []
         if !folderMoveFailed {
             for move in plan.media.moves {
                 do {
                     try manager.moveItem(at: now.appendingPathComponent(move.from), to: now.appendingPathComponent(move.to))
+                    mediaMoved.append(move)
                 } catch {
                     mediaKept.append(move.from)
                 }
             }
         }
-        if let edit = plan.edit, !writeEdit(edit, in: now) {
-            return .failure(.failed("meeting.json not written"))
+        // The video's entry in Recent captures, when the meeting is listed
+        // there, follows it.
+        let video = ForkMeetingFolder.contents(of: names, folderName: folderName,
+                                               alsoNamed: (try? read.get())?.recordedName()).video
+        if let video, current != folderName {
+            let moved = mediaMoved.first { $0.from == video }?.to ?? video
+            recentCaptureMoved(folder.appendingPathComponent(video), now.appendingPathComponent(moved))
+        }
+        var titleSaved = true
+        if let edit = plan.edit, case .failure = writeEdit(edit, in: now) {
+            // The folder may have moved all the same: the window follows it.
+            titleSaved = false
         }
         return .success(RenameResult(folderName: current, plan: plan, folderMoveFailed: folderMoveFailed,
-                                     mediaKept: mediaKept))
+                                     mediaKept: mediaKept, mediaMoved: mediaMoved, titleSaved: titleSaved))
     }
 
     // MARK: - Trash
@@ -254,30 +381,57 @@ extension ForkMeetingStore {
     // MARK: - Automatic bin
 
     /// The meetings `days` would send to the Trash now
-    /// (`ForkMeetingRetention.due`). `completion` on the callback queue.
+    /// (`ForkMeetingRetention.due`), and how many the library lists.
+    /// `completion` on the callback queue.
     func retentionDue(days: Int, now: Date = Date(), writing: Set<String> = [], calendar: Calendar = .current,
-                      completion: @escaping ([String]) -> Void) {
+                      completion: @escaping (_ due: [String], _ library: Int) -> Void) {
         scanLibrary(writing: writing, probing: false) { scan in
-            completion(ForkMeetingRetention.due(scan.entries, days: days, now: now, calendar: calendar))
+            completion(ForkMeetingRetention.due(scan.entries, days: days, now: now, calendar: calendar), scan.entries.count)
         }
     }
 
-    /// Sends what `days` makes due to the Trash, one folder after the other
-    /// on the store's queue, each checked again at its turn. `completion`
-    /// on the callback queue, with the folders that went.
+    /// Sends what `days` makes due to the Trash, unless there is too much
+    /// of it at once (`ForkMeetingRetention.sweep`): then nothing goes and
+    /// the outcome says how many wait. Each folder is its own turn on the
+    /// store's queue, its `meeting.json` read again right before it goes:
+    /// a note typed meanwhile, or a quit, never waits behind the whole
+    /// sweep, and a meeting that changed since the scan is judged as it is
+    /// now. `confirmed`: the number the person agreed to. `stop`: once
+    /// cancelled (the feature turned off), no further folder goes.
+    /// `completion` on the callback queue.
     func sweepRetention(days: Int, now: Date = Date(), writing: Set<String> = [], calendar: Calendar = .current,
-                        completion: (([String]) -> Void)? = nil) {
-        retentionDue(days: days, now: now, writing: writing, calendar: calendar) { [self] due in
-            let root = self.root()
-            queue.async { [self] in
-                var gone: [String] = []
-                for name in due {
-                    let folder = root.appendingPathComponent(name, isDirectory: true)
-                    if writing.contains(folder.standardizedFileURL.path) { continue }
-                    if case .success = trash(name, in: root, live: false) { gone.append(name) }
+                        confirmed: Int? = nil, stop: ForkMeetingSweepStop? = nil,
+                        completion: ((ForkMeetingRetention.Sweep) -> Void)? = nil) {
+        retentionDue(days: days, now: now, writing: writing, calendar: calendar) { [self] due, library in
+            if stop?.isCancelled == true {
+                callbackQueue.async { completion?(.trash([])) }
+                return
+            }
+            let decided = ForkMeetingRetention.sweep(due: due, library: library, confirmed: confirmed)
+            guard case let .trash(names) = decided else {
+                if case let .held(count) = decided {
+                    Self.libraryLog.notice("automatic bin held: \(count, privacy: .public) of \(library, privacy: .public) meetings")
                 }
-                if !gone.isEmpty { Self.libraryLog.notice("automatic bin: \(gone.count, privacy: .public) meetings") }
-                callbackQueue.async { completion?(gone) }
+                callbackQueue.async { completion?(decided) }
+                return
+            }
+            let root = self.root()
+            let gone = ForkMeetingSweepTally()
+            for name in names {
+                queue.async { [self] in
+                    let folder = root.appendingPathComponent(name, isDirectory: true)
+                    // Judged again as the folder is now.
+                    guard stop?.isCancelled != true, !writing.contains(folder.standardizedFileURL.path),
+                          let look = libraryEntry(folder, writing: writing),
+                          ForkMeetingRetention.verdict(look.entry, days: days, now: now, calendar: calendar) == .trash,
+                          case .success = trash(name, in: root, live: false) else { return }
+                    gone.add(name)
+                }
+            }
+            queue.async { [self] in
+                let names = gone.names
+                if !names.isEmpty { Self.libraryLog.notice("automatic bin: \(names.count, privacy: .public) meetings") }
+                callbackQueue.async { completion?(.trash(names)) }
             }
         }
     }
@@ -357,6 +511,28 @@ extension ForkMeetingStore {
             callbackQueue.async { completion(result) }
         }
     }
+}
+
+/// Cancels a sweep between two folders: the feature turned off, or the
+/// setting changed. Any thread.
+final class ForkMeetingSweepStop: @unchecked Sendable {
+    private let lock = NSLock()
+    private var cancelled = false
+
+    var isCancelled: Bool { lock.withLock { cancelled } }
+
+    func cancel() { lock.withLock { cancelled = true } }
+}
+
+/// The folders a sweep sent to the Trash, gathered across its turns on
+/// the store's queue.
+private final class ForkMeetingSweepTally: @unchecked Sendable {
+    private let lock = NSLock()
+    private var gone: [String] = []
+
+    var names: [String] { lock.withLock { gone } }
+
+    func add(_ name: String) { lock.withLock { gone.append(name) } }
 }
 
 /// The videos' measures, kept between scans and shared by every scan:
