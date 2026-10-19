@@ -46,7 +46,7 @@ enum ForkMeetingStringsTests {
     /// written for that room, never cut.
     private static func shortTexts(_ suite: TestSuite) {
         // Every provider's short name: "Never" for any of them, "Always"
-        // only where it can start on its own (FaceTime is the longest).
+        // only where it can start on its own (Discord is the longest).
         let providers = ForkMeetingProviderTable.current.providers
         let names = Set(providers.map(\.shortName)).sorted()
         let alwaysNames = Set(providers.filter { $0.alwaysProof != .none }.map(\.shortName)).sorted()

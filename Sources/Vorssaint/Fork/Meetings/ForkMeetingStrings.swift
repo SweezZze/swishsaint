@@ -401,8 +401,8 @@ struct ForkMeetingStrings {
     let noticeAnnouncementCopiedDetail: String
 
     /// The "Cancel" card's line: nobody pressed Record. %@ is the provider's
-    /// short name ("Meet"): 28 characters at most with "FaceTime", the
-    /// longest that starts on its own.
+    /// short name ("Meet"): 28 characters at most with "Discord", the
+    /// longest that starts on its own (and "FaceTime", which no longer does).
     let undoAutoStartedFormat: String
 
     // MARK: Apps
