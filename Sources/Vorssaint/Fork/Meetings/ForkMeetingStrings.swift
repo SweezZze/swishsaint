@@ -448,6 +448,9 @@ struct ForkMeetingStrings {
 
     // MARK: Fixes L
 
+    /// Under the apps' rows while one of them is on "Always": what it waits
+    /// for before starting on its own.
+    let detectionAlwaysDelay: String
     /// The offer's window for a call filmed in its app's main window, not a
     /// meeting window of its own: %@ is the app ("Teams (main window)").
     let offerMainWindowFormat: String
@@ -737,6 +740,7 @@ extension ForkMeetingStrings {
         voiceNeverWebCalls: "Calls in a browser other than Google Meet will no longer be offered.",
         detectionAlwaysUnavailable: "Always is not available on this Mac: meetings are offered, never recorded on their own.",
         // MARK: Fixes L
+        detectionAlwaysDelay: "Teams, Webex and Discord: recorded on their own 15 s into the call. Zoom and Slack: once their meeting window opens, otherwise offered.",
         offerMainWindowFormat: "%@ (main window)"
     )
 }
@@ -1001,6 +1005,7 @@ extension ForkMeetingStrings {
         voiceNeverWebCalls: "As chamadas no navegador que não sejam do Google Meet não serão mais oferecidas.",
         detectionAlwaysUnavailable: "“Sempre” não está disponível neste Mac: as reuniões são oferecidas, nunca gravadas sozinhas.",
         // MARK: Fixes L
+        detectionAlwaysDelay: "Teams, Webex e Discord: gravados sozinhos 15 s após o início da chamada. Zoom e Slack: assim que a janela da reunião abre; senão, oferecidos.",
         offerMainWindowFormat: "%@ (janela principal)"
     )
 }
@@ -1265,6 +1270,7 @@ extension ForkMeetingStrings {
         voiceNeverWebCalls: "Google Meet dışındaki tarayıcı görüşmeleri artık önerilmeyecek.",
         detectionAlwaysUnavailable: "“Her zaman” bu Mac’te kullanılamaz: toplantılar önerilir, hiçbir zaman kendiliğinden kaydedilmez.",
         // MARK: Fixes L
+        detectionAlwaysDelay: "Teams, Webex ve Discord: görüşme başladıktan 15 sn sonra kendiliğinden kaydedilir. Zoom ve Slack: toplantı pencereleri açılır açılmaz, aksi hâlde önerilir.",
         offerMainWindowFormat: "%@ (ana pencere)"
     )
 }
@@ -1529,6 +1535,7 @@ extension ForkMeetingStrings {
         voiceNeverWebCalls: "Звонки в браузере, кроме Google Meet, больше не будут предлагаться.",
         detectionAlwaysUnavailable: "«Всегда» недоступно на этом Mac: встречи предлагаются, но никогда не записываются сами.",
         // MARK: Fixes L
+        detectionAlwaysDelay: "Teams, Webex и Discord: запись сама начинается через 15 с после начала звонка. Zoom и Slack: как только откроется окно встречи, иначе предлагается.",
         offerMainWindowFormat: "%@ (главное окно)"
     )
 }
@@ -1793,6 +1800,7 @@ extension ForkMeetingStrings {
         voiceNeverWebCalls: "Las llamadas en el navegador que no sean de Google Meet ya no se ofrecerán.",
         detectionAlwaysUnavailable: "«Siempre» no está disponible en este Mac: las reuniones se ofrecen, nunca se graban solas.",
         // MARK: Fixes L
+        detectionAlwaysDelay: "Teams, Webex y Discord: se graban solos 15 s después de empezar la llamada. Zoom y Slack: en cuanto se abre su ventana de reunión; si no, se ofrecen.",
         offerMainWindowFormat: "%@ (ventana principal)"
     )
 }
@@ -2057,6 +2065,7 @@ extension ForkMeetingStrings {
         voiceNeverWebCalls: "Hovory v prehliadači okrem Google Meet sa už nebudú ponúkať.",
         detectionAlwaysUnavailable: "Možnosť „Vždy“ nie je na tomto Macu k dispozícii: stretnutia sa ponúknu, nikdy sa nenahrajú samy.",
         // MARK: Fixes L
+        detectionAlwaysDelay: "Teams, Webex a Discord: nahrávajú sa samy 15 s po začiatku hovoru. Zoom a Slack: hneď ako sa otvorí ich okno schôdze, inak sa ponúknu.",
         offerMainWindowFormat: "%@ (hlavné okno)"
     )
 }
@@ -2321,6 +2330,7 @@ extension ForkMeetingStrings {
         voiceNeverWebCalls: "Anrufe im Browser außer Google Meet werden nicht mehr angeboten.",
         detectionAlwaysUnavailable: "„Immer“ ist auf diesem Mac nicht verfügbar: Besprechungen werden angeboten, nie von selbst aufgenommen.",
         // MARK: Fixes L
+        detectionAlwaysDelay: "Teams, Webex und Discord: 15 s nach Beginn des Anrufs von selbst aufgenommen. Zoom und Slack: sobald ihr Meeting-Fenster aufgeht, sonst angeboten.",
         offerMainWindowFormat: "%@ (Hauptfenster)"
     )
 }
@@ -2585,6 +2595,7 @@ extension ForkMeetingStrings {
         voiceNeverWebCalls: "Les visios dans un navigateur autres que Google Meet ne seront plus proposées.",
         detectionAlwaysUnavailable: "«\u{00A0}Toujours\u{00A0}» n’est pas disponible sur ce Mac\u{00A0}: les réunions sont proposées, jamais enregistrées d’elles-mêmes.",
         // MARK: Fixes L
+        detectionAlwaysDelay: "Teams, Webex et Discord\u{00A0}: enregistrés seuls 15\u{00A0}s après le début de l’appel. Zoom et Slack\u{00A0}: dès que leur fenêtre de réunion s’ouvre, sinon proposés.",
         offerMainWindowFormat: "%@ (fenêtre principale)"
     )
 }
@@ -2849,6 +2860,7 @@ extension ForkMeetingStrings {
         voiceNeverWebCalls: "Le chiamate nel browser diverse da Google Meet non saranno più proposte.",
         detectionAlwaysUnavailable: "«Sempre» non è disponibile su questo Mac: le riunioni vengono proposte, mai registrate da sole.",
         // MARK: Fixes L
+        detectionAlwaysDelay: "Teams, Webex e Discord: registrati da soli 15 s dopo l’inizio della chiamata. Zoom e Slack: appena si apre la loro finestra della riunione, altrimenti proposti.",
         offerMainWindowFormat: "%@ (finestra principale)"
     )
 }
@@ -3113,6 +3125,7 @@ extension ForkMeetingStrings {
         voiceNeverWebCalls: "Google Meet 以外のブラウザの通話は今後提案されません。",
         detectionAlwaysUnavailable: "この Mac では「常に録画」は使えません。会議は提案されるだけで、自動では録画されません。",
         // MARK: Fixes L
+        detectionAlwaysDelay: "Teams、Webex、Discord：通話開始から 15 秒で自動的に録画します。Zoom と Slack：ミーティングウインドウが開いたらすぐに録画し、開かなければ提案します。",
         offerMainWindowFormat: "%@（メインウインドウ）"
     )
 }
@@ -3377,6 +3390,7 @@ extension ForkMeetingStrings {
         voiceNeverWebCalls: "Google Meet 외의 브라우저 통화는 더 이상 제안되지 않습니다.",
         detectionAlwaysUnavailable: "이 Mac에서는 ‘항상’을 사용할 수 없습니다. 회의는 제안만 되고 자동으로 녹화되지 않습니다.",
         // MARK: Fixes L
+        detectionAlwaysDelay: "Teams, Webex, Discord: 통화 시작 15초 후 자동으로 녹화합니다. Zoom과 Slack: 회의 윈도우가 열리면 바로 녹화하고, 아니면 제안합니다.",
         offerMainWindowFormat: "%@ (메인 윈도우)"
     )
 }
@@ -3641,6 +3655,7 @@ extension ForkMeetingStrings {
         voiceNeverWebCalls: "Дзвінки в браузері, крім Google Meet, більше не пропонуватимуться.",
         detectionAlwaysUnavailable: "«Завжди» недоступне на цьому Mac: зустрічі пропонуються, але ніколи не записуються самі.",
         // MARK: Fixes L
+        detectionAlwaysDelay: "Teams, Webex і Discord: запис сам починається через 15 с після початку дзвінка. Zoom і Slack: щойно відкриється вікно зустрічі, інакше пропонується.",
         offerMainWindowFormat: "%@ (головне вікно)"
     )
 }
@@ -3905,6 +3920,7 @@ extension ForkMeetingStrings {
         voiceNeverWebCalls: "将不再提议录制浏览器中除 Google Meet 以外的通话。",
         detectionAlwaysUnavailable: "此 Mac 上无法使用“总是”：会议只会被提议，不会自动录制。",
         // MARK: Fixes L
+        detectionAlwaysDelay: "Teams、Webex 和 Discord：通话开始 15 秒后自动录制。Zoom 和 Slack：会议窗口一打开就录制，否则提议录制。",
         offerMainWindowFormat: "%@（主窗口）"
     )
 }
@@ -4169,6 +4185,7 @@ extension ForkMeetingStrings {
         voiceNeverWebCalls: "將不再提議錄製瀏覽器中 Google Meet 以外的通話。",
         detectionAlwaysUnavailable: "此 Mac 無法使用「一律」：會議只會被提議，不會自動錄製。",
         // MARK: Fixes L
+        detectionAlwaysDelay: "Teams、Webex 和 Discord：通話開始 15 秒後自動錄製。Zoom 和 Slack：會議視窗一打開就錄製，否則提議錄製。",
         offerMainWindowFormat: "%@（主視窗）"
     )
 }
@@ -4433,6 +4450,7 @@ extension ForkMeetingStrings {
         voiceNeverWebCalls: "將不再提議錄製瀏覽器中 Google Meet 以外的通話。",
         detectionAlwaysUnavailable: "此 Mac 無法使用「一律」：會議只會被提議，不會自動錄製。",
         // MARK: Fixes L
+        detectionAlwaysDelay: "Teams、Webex 和 Discord：通話開始 15 秒後自動錄製。Zoom 和 Slack：會議視窗一打開便錄製，否則提議錄製。",
         offerMainWindowFormat: "%@（主視窗）"
     )
 }

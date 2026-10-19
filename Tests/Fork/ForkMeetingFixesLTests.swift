@@ -21,6 +21,7 @@ enum ForkMeetingFixesLTests {
         backToBackMeetings(suite)
         theWindowOnScreen(suite)
         aHuddleTitledWithAHyphen(suite)
+        theProofDuringTheOffer(suite)
         alwaysInTheMenuOnlyWithTheMicrophone(suite)
     }
 
@@ -357,6 +358,63 @@ enum ForkMeetingFixesLTests {
         let wrong = huddles.filter { ForkMeetingTitleRules.verdict($0, rules: rules) != .meeting(code: nil, name: nil) }
             + others.filter { ForkMeetingTitleRules.verdict($0, rules: rules) != .none }
         suite.expect(wrong.isEmpty, "« Huddle - Acme - Slack » is a huddle window, « huddle-notes » no huddle: \(wrong)")
+    }
+
+    // MARK: - L.I5: the proof during the offer made at 15 s
+
+    /// Probe R6: "Always" for Zoom, its microphone 15 s before its meeting
+    /// window (the audio preview, the waiting room).
+    private static func theProofDuringTheOffer(_ suite: TestSuite) {
+        var zoom = Live(#"{"zoom":"always"}"#)
+        for second in stride(from: 0.0, through: 16, by: 2) {
+            zoom.read(second, windows: [zoomWindow("Zoom Workplace", id: 9)], microphones: [zoomMicrophone])
+        }
+        suite.expect(zoom.starts.isEmpty && zoom.offers.count == 1 && zoom.offers.first?.awaitedProof == true,
+                     "15 s without its meeting window: offered")
+        zoom.read(18, windows: [zoomWindow("Zoom Meeting", id: 1)], microphones: [zoomMicrophone])
+        suite.expect(zoom.starts.map(\.config.origin) == [.always] && zoom.starts.first?.config.meeting?.windowID == 1
+                        && zoom.effects.contains(.hideOffer),
+                     "its meeting window while the offer waits for an answer: it starts on its own, in that window")
+        if let token = zoom.starts.first?.token {
+            zoom.effects = []
+            zoom.send(.captureStarted(token, folder: folder), 19)
+            suite.expect(zoom.effects.contains { if case .showUndo = $0 { return true } else { return false } }
+                            && zoom.said == [.autoStarted(seconds: 5)],
+                         "with « Cancel » at hand, as Always")
+        }
+
+        var answered = Live(#"{"zoom":"always"}"#)
+        for second in stride(from: 0.0, through: 16, by: 2) {
+            answered.read(second, windows: [zoomWindow("Zoom Workplace", id: 9)], microphones: [zoomMicrophone])
+        }
+        answered.send(.dismiss(.thisTime), 17)
+        answered.read(18, windows: [zoomWindow("Zoom Meeting", id: 1)], microphones: [zoomMicrophone])
+        suite.expect(answered.starts.isEmpty, "Not now answered first: nothing starts")
+
+        var asked = Live(#"{"zoom":"ask"}"#)
+        asked.read(0, microphones: [zoomMicrophone])
+        asked.read(2, microphones: [zoomMicrophone])
+        asked.read(4, windows: [zoomWindow("Zoom Meeting", id: 1)], microphones: [zoomMicrophone])
+        suite.expect(asked.starts.isEmpty && asked.offers.first?.awaitedProof == false,
+                     "on Offer, its meeting window starts nothing")
+
+        let rows = ForkMeetingProviderTable.current.policyRows
+        let says = { (json: String, signal: Bool) in
+            ForkMeetingDetectionSupport.saysAlwaysDelay(ForkMeetingPolicies(json: json), microphoneSignal: signal, rows: rows)
+        }
+        suite.expect(says(#"{"teams":"always"}"#, true) && says(#"{"zoom":"always"}"#, true)
+                        && !says(#"{"meet":"always"}"#, true) && !says(ForkMeetingPolicies.defaultJSON, true)
+                        && !says(#"{"teams":"always"}"#, false) && !says(#"{"facetime":"always"}"#, true),
+                     "the page says what Always waits for while an app's row shows Always")
+        suite.expect(ForkMeetingStrings.strings(.enUS).detectionAlwaysDelay
+                        == "Teams, Webex and Discord: recorded on their own 15 s into the call. Zoom and Slack: once their meeting window opens, otherwise offered."
+                        && ForkMeetingStrings.strings(.fr).detectionAlwaysDelay
+                            == "Teams, Webex et Discord\u{00A0}: enregistrés seuls 15\u{00A0}s après le début de l’appel. Zoom et Slack\u{00A0}: dès que leur fenêtre de réunion s’ouvre, sinon proposés."
+                        && AppLanguage.allCases.allSatisfy { language in
+                            let text = ForkMeetingStrings.strings(language).detectionAlwaysDelay
+                            return ["Teams", "Webex", "Discord", "Zoom", "Slack", "15"].allSatisfy(text.contains)
+                        },
+                     "in every language")
     }
 
     // MARK: - L.I6: "Always" in the offer's menu only with the microphone
