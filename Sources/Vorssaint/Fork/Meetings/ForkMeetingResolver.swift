@@ -53,6 +53,9 @@ struct ForkMeetingResolution: Equatable {
 /// - An app holds one meeting at a time, numbered by its birth (`zoom:500#2`,
 ///   that Zoom's second): a meeting over, the next one in the same app is
 ///   another, and its set-aside goes with it.
+/// - A title without a code in a browser is never born while another
+///   meeting already born there holds that browser's microphone ("Chat |
+///   Microsoft Teams" beside a Meet call): the microphone is that call's.
 struct ForkMeetingResolver {
     struct Tuning: Equatable {
         /// Readings that must agree before a meeting is born…
@@ -366,13 +369,18 @@ struct ForkMeetingResolver {
     /// meeting born now already takes its browser's microphone from an
     /// older one.
     private mutating func live(at now: Date) -> [ForkMeetingIdentity] {
-        for (identity, var track) in tracks where track.bornAt == nil {
+        // A meeting with its code first: born now, it holds its browser's
+        // microphone before a title without one is weighed.
+        let unborn = tracks.values.filter { $0.bornAt == nil }
+            .sorted { ($0.meetCode == nil ? 1 : 0, $0.identity.value) < ($1.meetCode == nil ? 1 : 0, $1.identity.value) }
+        for var track in unborn {
+            let identity = track.identity
             guard track.windowSeen || microphoneOpen(track) else {
                 // Never born: its set-aside, if any, runs on from its last end.
                 tracks[identity] = nil
                 continue
             }
-            guard isBorn(track, at: now) else { continue }
+            guard isBorn(track, at: now), !microphoneHeld(from: track) else { continue }
             track.bornAt = now
             // Back before its set-aside ran out: it stays aside, until its next end.
             if silenced.keys.contains(identity) { silenced[identity] = .some(nil) }
@@ -457,6 +465,18 @@ struct ForkMeetingResolver {
         return !tracks.values.contains {
             $0.identity != track.identity && $0.family == track.family && $0.bornAt != nil && $0.windowSeen
                 && $0.meetCode != nil
+        }
+    }
+
+    /// A title without a code in a browser whose microphone a meeting
+    /// already born there holds (shown, or kept alive by it as `keepsAlive`
+    /// says): the microphone is that call's, the title only a page, never
+    /// born while it lasts.
+    private func microphoneHeld(from track: Track) -> Bool {
+        guard track.provider.kind == .web, track.meetCode == nil else { return false }
+        return tracks.values.contains { other in
+            other.identity != track.identity && other.provider.kind == .web && other.family == track.family
+                && other.bornAt != nil && microphoneOpen(other) && (other.windowSeen || keepsAlive(other))
         }
     }
 

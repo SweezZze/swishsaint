@@ -59,15 +59,37 @@ extension ForkMeetingTitleRules {
         return words == "huddle" || words.hasPrefix("huddle:")
     }
 
-    /// Teams on the web: its address in the title, or "<page> | Microsoft
-    /// Teams" as its pages are titled. Its chat is titled so too: like every
-    /// web call, it needs the browser's microphone in use.
+    /// Teams on the web, only on a call: the address of one (a meeting's
+    /// link), or "<page> | Microsoft Teams" whose page begins with a call's
+    /// word ("Meeting with Alice", "Réunion", "Call with Bob", "Appel", "Meet
+    /// now"), as Teams titles its call. Its chat, its calendar or its list of
+    /// calls ("Chat | Microsoft Teams", "Calls | Microsoft Teams") are no call,
+    /// even with the browser's microphone in use for another one.
     private static func isTeamsWeb(_ normalized: String) -> Bool {
-        if normalized.contains("teams.microsoft.com") { return true }
+        if teamsCallAddresses.contains(where: normalized.contains) { return true }
         let suffix = "| microsoft teams"
         guard normalized.hasSuffix(suffix) else { return false }
-        return !normalized.dropLast(suffix.count).trimmingCharacters(in: .whitespaces).isEmpty
+        let page = normalized.dropLast(suffix.count).trimmingCharacters(in: .whitespaces)
+        return teamsCallWords.contains { word in
+            page == word || [" ", ":", "\u{FF1A}"].contains { page.hasPrefix(word + $0) }
+        }
     }
+
+    /// A Teams meeting's own link, which a tab may show as its title while
+    /// it loads.
+    private static let teamsCallAddresses = [
+        "teams.microsoft.com/l/meetup-join", "teams.microsoft.com/meet/", "teams.live.com/meet/",
+    ]
+
+    /// The words a Teams call's page begins with, lowercased, a whole word
+    /// ("Meetings" or "Calls", lists, are not "Meeting" or "Call"): English
+    /// whatever the system's language, then the app's other languages.
+    static let teamsCallWords: Set<String> = [
+        "meeting", "call", "meet now",
+        "réunion", "appel", "reunión", "llamada", "reunião", "chamada", "besprechung", "anruf", "riunione",
+        "chiamata", "toplantı", "çağrı", "собрание", "звонок", "вызов", "нарада", "дзвінок", "виклик", "schôdza",
+        "hovor", "会議", "通話", "회의", "통화", "会议", "通话", "會議",
+    ]
 
     /// "Jitsi Meet" alone, or "<room> | Jitsi Meet" as its rooms are titled:
     /// the room is the meeting's name.

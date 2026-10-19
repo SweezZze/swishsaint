@@ -648,12 +648,14 @@ enum ForkMeetingFixesKTests {
 
     private static func teamsOnTheWeb(_ suite: TestSuite) {
         let rules = ForkMeetingTitleRuleSet.teamsWeb
-        suite.expect(["Réunion | Microsoft Teams", "Meeting with Alice | Microsoft Teams", "Chat | Microsoft Teams",
-                      "https://teams.microsoft.com/v2/"]
+        // L.B1: its chat, or its address alone, is no call.
+        suite.expect(["Réunion | Microsoft Teams", "Meeting with Alice | Microsoft Teams",
+                      "https://teams.microsoft.com/l/meetup-join/19%3ameeting_x/0"]
                         .allSatisfy { ForkMeetingTitleRules.verdict($0, rules: rules) == .meeting(code: nil, name: nil) }
-                        && ["Microsoft Teams", " | Microsoft Teams", "Microsoft Teams review", "Teams tips | Microsoft Teams Blog"]
+                        && ["Chat | Microsoft Teams", "https://teams.microsoft.com/v2/", "Microsoft Teams", " | Microsoft Teams",
+                            "Microsoft Teams review", "Teams tips | Microsoft Teams Blog"]
                             .allSatisfy { ForkMeetingTitleRules.verdict($0, rules: rules) == .none },
-                     "Teams on the web: « <page> | Microsoft Teams », or its address")
+                     "Teams on the web: « <call> | Microsoft Teams », or a meeting's address; never its chat")
         let tab = chrome("Réunion | Microsoft Teams")
         var silent = Live()
         for second in stride(from: 0.0, through: 30, by: 3) { silent.read(second, windows: [tab]) }

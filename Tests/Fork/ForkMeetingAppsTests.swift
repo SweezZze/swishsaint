@@ -172,7 +172,7 @@ enum ForkMeetingAppsTests {
     private static func webTitles(_ suite: TestSuite) {
         suite.expect(verdict("Zoom", .zoomWeb) == meeting && verdict("Zoom Meeting", .zoomWeb) == meeting
                         && verdict("Whereby", .whereby) == meeting && verdict("Jitsi Meet", .jitsiMeet) == meeting
-                        && verdict("https://teams.microsoft.com/v2/", .teamsWeb) == meeting,
+                        && verdict("https://teams.microsoft.com/l/meetup-join/19%3ameeting_x/0", .teamsWeb) == meeting,
                      "Zoom's web client, Whereby, Jitsi Meet and Teams on the web are read")
         suite.expect(verdict("Point hebdo | Jitsi Meet", .jitsiMeet) == .meeting(code: nil, name: "Point hebdo"),
                      "a Jitsi room is the meeting's name")
