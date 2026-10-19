@@ -112,6 +112,11 @@ enum ForkDefaultsKey {
     /// the screen stream heard (false): whether system audio recording is
     /// allowed on this Mac, which macOS gives no way to read. Machine state.
     static let meetingsSystemAudioVerified = "fork.meetings.systemAudioVerified"
+    /// The exporters set up on the Meetings page (`ForkMeetingExporterList`,
+    /// JSON, no secret: those are in the Keychain). Machine state: a folder's
+    /// path and an address depend on this Mac, so they stay out of the
+    /// settings backup.
+    static let meetingsExporters = "fork.meetings.exporters"
     /// The build the person answered "Later" for. Machine state: kept out
     /// of the settings backup.
     static let updatePostponedBuild = "fork.update.postponedBuild"

@@ -198,12 +198,20 @@ struct ForkMeetingSidecar: Equatable {
         var preserved: [String: ForkMeetingJSON] = [:]
     }
 
-    /// One attempt to send the meeting somewhere. Always empty until the
-    /// exports exist.
+    /// One attempt to send the meeting somewhere (`ForkMeetingExportHistory`):
+    /// appended, never rewritten.
     struct Export: Equatable {
+        /// The kind: `dropFolder`, `webhook`.
         var exporter: String?
         var at: Date?
+        /// `done` or `failed`.
         var status: String?
+        /// Which configured exporter, by its id.
+        var target: String?
+        /// Why it failed (`ForkMeetingExportFailure.code`).
+        var reason: String?
+        /// What the address answered.
+        var httpStatus: Int?
         var preserved: [String: ForkMeetingJSON] = [:]
     }
 
@@ -568,12 +576,14 @@ extension ForkMeetingSidecar.Capture: Codable {
 }
 
 extension ForkMeetingSidecar.Export: Codable {
-    private enum Field: String, CaseIterable { case exporter, at, status }
+    private enum Field: String, CaseIterable { case exporter, at, status, target, reason, httpStatus }
 
     init(from decoder: Decoder) throws {
         let object = try ForkMeetingSidecarObjectReader(decoder, fields: Field.self)
         self.init(exporter: try object.field(Field.exporter), at: try object.field(Field.at),
-                  status: try object.field(Field.status), preserved: object.unknown)
+                  status: try object.field(Field.status), target: try object.field(Field.target),
+                  reason: try object.field(Field.reason), httpStatus: try object.field(Field.httpStatus),
+                  preserved: object.unknown)
     }
 
     func encode(to encoder: Encoder) throws {
@@ -581,6 +591,9 @@ extension ForkMeetingSidecar.Export: Codable {
         try object.put(exporter, Field.exporter)
         try object.put(at, Field.at)
         try object.put(status, Field.status)
+        try object.put(target, Field.target)
+        try object.put(reason, Field.reason)
+        try object.put(httpStatus, Field.httpStatus)
         try object.keep(preserved, besides: Field.self)
     }
 }
@@ -604,6 +617,8 @@ struct ForkMeetingSidecarPatch: Equatable {
     var systemAudio: ForkMeetingSystemAudio?
     var recovered: Bool?
     var finalPass: ForkMeetingSidecar.FinalPass?
+    /// One export attempt, appended to `exports`.
+    var export: ForkMeetingSidecar.Export?
 
     /// A list or an object this version could not read is never replaced by
     /// a partial one: the addition is dropped rather than what was there.
@@ -615,6 +630,7 @@ struct ForkMeetingSidecarPatch: Equatable {
         if let recordedSeconds { result.recordedSeconds = recordedSeconds }
         if let pause, sidecar.preserved["pauses"] == nil { result.pauses = (result.pauses ?? []) + [pause] }
         if let gap, sidecar.preserved["gaps"] == nil { result.gaps = (result.gaps ?? []) + [gap] }
+        if let export, sidecar.preserved["exports"] == nil { result.exports = (result.exports ?? []) + [export] }
         if microphone != nil || target != nil || systemAudio != nil, sidecar.preserved["capture"] == nil {
             var capture = result.capture ?? ForkMeetingSidecar.Capture()
             if let microphone { capture.microphone = microphone }

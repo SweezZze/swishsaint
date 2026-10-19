@@ -56,6 +56,9 @@ final class ForkMeetingPresenter {
     private var spoken = ForkMeetingSpoken()
     /// Where the last notice could be shown, for its notification.
     private var lastShown: (notice: ForkMeetingNotice, shown: Shown)?
+    /// When the last saved notice showed: an export's failure waits for it
+    /// to have been read.
+    private var savedAt: Date?
 
     private init() {}
 
@@ -215,6 +218,7 @@ final class ForkMeetingPresenter {
         }
         let notice: ForkMeetingNotice = recovered ? .recovered : .saved
         let text = self.text
+        savedAt = Date()
         announce(ForkMeetingLiveText.sentences(notice.title(text), detail))
         let shown = present({ dismiss in
             ForkMeetingCard(symbol: ForkMeetingIsland.symbol(for: notice), tint: .green, title: notice.title(text),
@@ -231,6 +235,42 @@ final class ForkMeetingPresenter {
         if ForkMeetingServiceSupport.notifies(shownInIsland: shown.island, shownInBubble: shown.bubble,
                                               canNotify: Self.canNotify) {
             Notifier.post(title: notice.title(text), body: detail)
+        }
+    }
+
+    /// "Export failed [Show]": an automatic export of this meeting failed or
+    /// could not start. Shown once the saved notice had its time, in the
+    /// island or the bubble, else as a notification; [Show] opens the
+    /// meeting, whose detail says why, with its Retry.
+    func showExportFailed(folder: URL) {
+        guard Thread.isMainThread else {
+            DispatchQueue.main.async { self.showExportFailed(folder: folder) }
+            return
+        }
+        let wait = savedAt.map { Self.savedHold - Date().timeIntervalSince($0) } ?? 0
+        guard wait <= 0 else {
+            DispatchQueue.main.asyncAfter(deadline: .now() + wait) { [weak self] in
+                self?.savedAt = nil
+                self?.showExportFailed(folder: folder)
+            }
+            return
+        }
+        let text = self.text
+        let title = text.exportFailedNotice
+        // The meeting's name, never its Google Meet code: an island may be
+        // seen in a share.
+        let detail = ForkMeetingExportDocument.name(folder.lastPathComponent, meetCode: nil, includesMeetCode: false)
+        announce(ForkMeetingLiveText.sentences(title, detail))
+        let shown = present({ dismiss in
+            ForkMeetingCard(symbol: "xmark.circle.fill", tint: .red, title: title, lines: [detail],
+                            actions: [ForkMeetingCard.Action(title: text.actionShowMeeting, prominent: true) {
+                                ForkMeetingLibraryWindow.shared.show(folder: folder)
+                                dismiss()
+                            }])
+        }, height: Self.savedCardHeight, hold: Self.cardHold)
+        if ForkMeetingServiceSupport.notifies(shownInIsland: shown.island, shownInBubble: shown.bubble,
+                                              canNotify: Self.canNotify) {
+            Notifier.post(title: title, body: detail)
         }
     }
 

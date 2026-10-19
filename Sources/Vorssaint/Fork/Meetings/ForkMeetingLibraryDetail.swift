@@ -52,6 +52,7 @@ struct ForkMeetingLibraryDetail: View {
                     .frame(height: 250)
                     .clipShape(RoundedRectangle(cornerRadius: 8))
                 facts
+                ForkMeetingExportStatus(folder: model.folderURL(entry), live: model.isLive(entry), text: text, language: language)
                 notesField
                 ForkMeetingTranscriptRow(model: model, entry: entry, text: text)
                 actions
@@ -104,6 +105,7 @@ struct ForkMeetingLibraryDetail: View {
                 .disabled(!editable)
             Button(text.actionExportAudio) { model.exportAudio(entry, from: NSApp.keyWindow) }
                 .disabled(model.isLive(entry) || (entry.audio == nil && entry.playable == nil))
+            ForkMeetingExportMenu(folder: model.folderURL(entry), live: model.isLive(entry), text: text)
             Button(text.actionCopyPath) { model.copyPath(entry) }
             Divider()
             Button(text.actionTrash) { model.askTrash(entry) }

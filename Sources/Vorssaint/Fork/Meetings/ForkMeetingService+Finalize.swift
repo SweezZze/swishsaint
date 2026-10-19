@@ -103,6 +103,17 @@ extension ForkMeetingService {
         lastSaved = ForkMeetingSaved(folder: outcome.folder, seconds: outcome.seconds, bytes: bytes > 0 ? bytes : nil,
                                      recovered: recovered)
         presenter.showSaved(folder: outcome.folder, detail: detail, recovered: recovered)
+        // A meeting recovered at launch did not end well: sent with a click
+        // only. Nothing goes on its own with the feature off.
+        if !recovered, isWanted { ForkMeetingExports.shared.meetingFinished(outcome.folder) }
+    }
+
+    /// An automatic export of this meeting failed, or could not start:
+    /// "Export failed [Show]", the meeting's detail having the reason and
+    /// its Retry.
+    func exportFailed(_ folder: URL) {
+        guard isWanted else { return }
+        presenter.showExportFailed(folder: folder)
     }
 
     // MARK: - Launch
@@ -112,6 +123,8 @@ extension ForkMeetingService {
     /// that plays again is said: "Meeting recovered · 37 min". Whether the
     /// feature is on or not: a meeting is never left behind.
     func recoverAtLaunch() {
+        // What an export cut short by the last quit left behind.
+        ForkMeetingExports.shared.removeLeftovers()
         store.recoverAtLaunch(using: finalizer, extractAudio: defaults.bool(forKey: ForkDefaultsKey.meetingsExtractAudio),
                               titles: trackTitles) { [weak self] recoveries in
             self?.recovered(recoveries)

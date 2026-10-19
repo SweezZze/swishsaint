@@ -88,6 +88,10 @@ final class ForkMeetingLibraryModel: ObservableObject {
     private var renamed: [String: String] = [:]
     /// A title committed while its folder was busy, by folder.
     private var deferredTitles: [String: String] = [:]
+    /// A title committed while its meeting was being sent, by folder: the
+    /// rename runs once the send is done.
+    private var afterSend: [String: String] = [:]
+    private var sendWatch: AnyCancellable?
     /// The title a lagging folder was last renamed after without typing,
     /// by meeting (`catchUpFolder`).
     private var caughtUp: [String: String] = [:]
@@ -343,6 +347,15 @@ final class ForkMeetingLibraryModel: ObservableObject {
     func commitTitle(_ title: String, of entry: ForkMeetingLibraryEntry) {
         let folder = entry.folderName
         guard !entry.isReadOnly else { return }
+        // A send reads this folder: its title is saved now, its folder
+        // renamed once the send is done.
+        guard !ForkMeetingExports.shared.isSending(folderURL(entry)) else {
+            flushEdits(folder)
+            afterSend[folder] = wanted(title)
+            watchSends()
+            say(strings.renameAfterExport)
+            return
+        }
         let wanted = ForkMeetingRename.cleaned(title)
         guard !working.contains(folder) else {
             deferredTitles[folder] = wanted
@@ -374,6 +387,29 @@ final class ForkMeetingLibraryModel: ObservableObject {
             }
             self.finishWork(folder, now: now)
             self.refresh()
+        }
+    }
+
+    private func wanted(_ title: String) -> String { ForkMeetingRename.cleaned(title) }
+
+    /// The sends end one by one: each title that waited for its meeting's
+    /// is renamed then.
+    private func watchSends() {
+        guard sendWatch == nil else { return }
+        sendWatch = ForkMeetingExports.shared.$pending
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in self?.sendsChanged() }
+    }
+
+    private func sendsChanged() {
+        let exports = ForkMeetingExports.shared
+        for (folder, title) in afterSend where !exports.isSending(root.appendingPathComponent(folder, isDirectory: true)) {
+            afterSend[folder] = nil
+            guard let entry = entries.first(where: { $0.folderName == folder }) else { continue }
+            commitTitle(title, of: entry)
+        }
+        if afterSend.isEmpty {
+            sendWatch = nil
         }
     }
 
@@ -415,11 +451,19 @@ final class ForkMeetingLibraryModel: ObservableObject {
             say(strings.refusedWhileRecording)
             return
         }
+        guard !ForkMeetingExports.shared.isSending(folderURL(entry)) else {
+            say(strings.exportInProgress)
+            return
+        }
         trashAsked = entry.folderName
     }
 
     func trash(_ folder: String) {
         trashAsked = nil
+        guard !ForkMeetingExports.shared.isSending(root.appendingPathComponent(folder, isDirectory: true)) else {
+            say(strings.exportInProgress)
+            return
+        }
         edits.forget(folder)
         let order = ForkMeetingLibrary.order(groups)
         let path = root.appendingPathComponent(folder, isDirectory: true).standardizedFileURL.path
@@ -784,7 +828,9 @@ final class ForkMeetingRetentionSweep: ObservableObject {
         running?.cancel()
         let stop = ForkMeetingSweepStop()
         running = stop
-        store.sweepRetention(days: days, now: now, writing: ForkMeetingService.shared.writingFolders,
+        // A meeting being sent is left for the next sweep, as one being written.
+        let busy = ForkMeetingService.shared.writingFolders.union(ForkMeetingExports.shared.sendingFolders)
+        store.sweepRetention(days: days, now: now, writing: busy,
                              confirmed: confirmed, stop: stop) { [weak self] outcome in
             guard let self else { return }
             if self.running === stop { self.running = nil }
