@@ -446,21 +446,34 @@ enum ForkMeetingLibrary {
     /// Every word of the query is somewhere in the row, in any field, in any
     /// order. An empty query keeps every row. `transcript`: the row's
     /// transcript, already folded (`ForkMeetingTranscriptIndex`), searched
-    /// too.
+    /// too: both sides folded, a literal search of the `NSString` finds what
+    /// a folded compare would, in a fraction of the time (an hour's text,
+    /// 60 KB: well under a millisecond).
     static func matches(_ entry: ForkMeetingLibraryEntry, query: String, strings: ForkMeetingStrings,
                         providerName: (String) -> String? = { _ in nil },
-                        transcript: (ForkMeetingLibraryEntry) -> String? = { _ in nil }) -> Bool {
-        let words = terms(query)
+                        transcript: (ForkMeetingLibraryEntry) -> NSString? = { _ in nil }) -> Bool {
+        matches(entry, terms: terms(query), strings: strings, providerName: providerName, transcript: transcript)
+    }
+
+    private static func matches(_ entry: ForkMeetingLibraryEntry, terms words: [String], strings: ForkMeetingStrings,
+                                providerName: (String) -> String?,
+                                transcript: (ForkMeetingLibraryEntry) -> NSString?) -> Bool {
         guard !words.isEmpty else { return true }
         let text = haystack(entry, strings: strings, providerName: providerName)
         let said = transcript(entry)
-        return words.allSatisfy { text.contains($0) || said?.contains($0) == true }
+        return words.allSatisfy { word in
+            text.contains(word) || said.map { $0.range(of: word, options: .literal).location != NSNotFound } == true
+        }
     }
 
     static func filtered(_ entries: [ForkMeetingLibraryEntry], query: String, strings: ForkMeetingStrings,
                          providerName: (String) -> String? = { _ in nil },
-                         transcript: (ForkMeetingLibraryEntry) -> String? = { _ in nil }) -> [ForkMeetingLibraryEntry] {
-        entries.filter { matches($0, query: query, strings: strings, providerName: providerName, transcript: transcript) }
+                         transcript: (ForkMeetingLibraryEntry) -> NSString? = { _ in nil }) -> [ForkMeetingLibraryEntry] {
+        let words = terms(query)
+        guard !words.isEmpty else { return entries }
+        return entries.filter {
+            matches($0, terms: words, strings: strings, providerName: providerName, transcript: transcript)
+        }
     }
 
     // MARK: - Words on a row

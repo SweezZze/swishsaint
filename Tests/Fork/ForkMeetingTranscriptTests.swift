@@ -139,10 +139,10 @@ enum ForkMeetingTranscriptTests {
     // MARK: - Files
 
     private static func segments(_ suite: TestSuite) {
-        let words = [word("Bonjour", 0, 0.5), word("Martial.", 0.6, 1.0), word("On", 1.5, 1.7), word("commence", 1.7, 2.1),
+        let words = [word("Bonjour", 0, 0.5), word("Camille.", 0.6, 1.0), word("On", 1.5, 1.7), word("commence", 1.7, 2.1),
                      word("vite", 3.5, 3.8)]
         let cut = ForkMeetingTranscriptFormat.segments(words, speaker: .me)
-        suite.expect(cut.map(\.text) == ["Bonjour Martial.", "On commence", "vite"],
+        suite.expect(cut.map(\.text) == ["Bonjour Camille.", "On commence", "vite"],
                      "a segment ends at a sentence's end followed by a pause, or at a pause of a second")
         let long = (0..<40).map { word("mot", Double($0), Double($0) + 0.9) }
         suite.expect(ForkMeetingTranscriptFormat.segments(long, speaker: .participants).allSatisfy { $0.end - $0.start <= 30 },
@@ -163,10 +163,10 @@ enum ForkMeetingTranscriptTests {
         let merged = ForkMeetingTranscriptFormat.merge(
             ForkMeetingTranscriptFormat.segments([word("Bonjour", 0, 0.4), word("à", 0.4, 0.5), word("tous.", 0.5, 0.9),
                                                   word("D’accord.", 65.2, 65.6)], speaker: .me),
-            ForkMeetingTranscriptFormat.segments([word("Bonjour", 10.8, 11.5), word("Martial.", 11.5, 12.2),
+            ForkMeetingTranscriptFormat.segments([word("Bonjour", 10.8, 11.5), word("Camille.", 11.5, 12.2),
                                                   word("On", 13, 13.2), word("avance.", 13.2, 13.8)], speaker: .participants))
         let written = ForkMeetingTranscriptFormat.text(merged, label: labels)
-        suite.expect(written == "[00:00:00] Moi\u{00A0}: Bonjour à tous.\n\n[00:00:10] Participants\u{00A0}: Bonjour Martial. On avance.\n\n[00:01:05] Moi\u{00A0}: D’accord.\n",
+        suite.expect(written == "[00:00:00] Moi\u{00A0}: Bonjour à tous.\n\n[00:00:10] Participants\u{00A0}: Bonjour Camille. On avance.\n\n[00:01:05] Moi\u{00A0}: D’accord.\n",
                      "the text is one paragraph per turn, its time and its speaker first")
         suite.expect(ForkMeetingTranscriptFormat.text([], label: labels).isEmpty, "nothing heard writes an empty text")
         suite.expect(ForkMeetingTranscriptFormat.timestamp(3_725.25) == "01:02:05,250"
@@ -229,7 +229,7 @@ enum ForkMeetingTranscriptTests {
         let said = Data.microphoneWithEcho.filter(\.3).count
         suite.expect(made.words >= Data.meeting.count + said && made.words <= Data.meeting.count + said + 10,
                      "the document counts the words kept, the echo out (\(made.words))")
-        suite.expect(made.text.hasPrefix("[00:00:00] Moi\u{00A0}: Bonjour à tous") && made.text.contains("Participants\u{00A0}: Bonjour Martial."),
+        suite.expect(made.text.hasPrefix("[00:00:00] Moi\u{00A0}: Bonjour à tous") && made.text.contains("Participants\u{00A0}: Bonjour Camille."),
                      "the spike's minute reads as the person, then the participants")
         let alone = ForkMeetingTranscriptFormat.document(me: [], participants: [word("Bonjour", 0, 0.5)], microEnvelope: nil,
                                                          meetingEnvelope: nil, label: labels)
@@ -279,17 +279,17 @@ enum ForkMeetingTranscriptTests {
     }
 
     private static func tracks(_ suite: TestSuite) {
-        suite.expect(ForkMeetingTranscript.tracks(audioTrackCount: 3, isMaster: false)
+        suite.expect(ForkMeetingTranscript.tracks(enabled: [true, false, false])
                         == ForkMeetingTranscript.Tracks(meeting: 1, microphone: 2),
-                     "a final file is read past its mix: the meeting, then the microphone")
-        suite.expect(ForkMeetingTranscript.tracks(audioTrackCount: 2, isMaster: true)
+                     "a final file is read past its mix, the one track that plays: the meeting, then the microphone")
+        suite.expect(ForkMeetingTranscript.tracks(enabled: [true, true])
                         == ForkMeetingTranscript.Tracks(meeting: 0, microphone: 1),
                      "a master, or a final file that kept its tracks, is the meeting then the microphone")
-        suite.expect(ForkMeetingTranscript.tracks(audioTrackCount: 2, isMaster: false)
+        suite.expect(ForkMeetingTranscript.tracks(enabled: [true, false])
                         == ForkMeetingTranscript.Tracks(meeting: 1, microphone: nil)
-                        && ForkMeetingTranscript.tracks(audioTrackCount: 1, isMaster: false)
+                        && ForkMeetingTranscript.tracks(enabled: [true])
                         == ForkMeetingTranscript.Tracks(meeting: 0, microphone: nil)
-                        && ForkMeetingTranscript.tracks(audioTrackCount: 0, isMaster: true) == nil,
+                        && ForkMeetingTranscript.tracks(enabled: []) == nil,
                      "fewer tracks read what there is, and none means nothing to transcribe")
         suite.expect(ForkMeetingTranscript.source(video: "a.mp4", hasMaster: true) == "a.mp4"
                         && ForkMeetingTranscript.source(video: nil, hasMaster: true) == ForkMeetingFolder.masterName
@@ -299,21 +299,24 @@ enum ForkMeetingTranscriptTests {
         let master = ForkMeetingTranscript.fileNames(source: ForkMeetingFolder.masterName, folderName: "2026-10-18 10h02")
         suite.expect(named == ("2026-10-18 10h02 — Point.txt", "2026-10-18 10h02 — Point.srt")
                         && master == ("2026-10-18 10h02.txt", "2026-10-18 10h02.srt")
-                        && ForkMeetingTranscript.draftName("a.txt") == ".a.txt.draft",
+                        && ForkMeetingTranscript.draftName("a.txt") == ".swishsaint-transcript-a.txt.draft",
                      "the transcript is named after the video, else the folder, and written through a hidden draft")
     }
 
     private static func folder(_ suite: TestSuite) {
         let names = ["2026-10-18 10h02 — Point.mp4", "2026-10-18 10h02 — Point.m4a", "2026-10-18 10h02 — Point.txt",
                      "2026-10-18 10h02 — Point.srt", "notes.txt", "meeting.json", ".2026-10-18 10h02 — Point.txt.draft"]
-        let contents = ForkMeetingFolder.contents(of: names, folderName: "2026-10-18 10h02 — Point")
+        let ours = ["2026-10-18 10h02 — Point.txt", "2026-10-18 10h02 — Point.srt"]
+        let contents = ForkMeetingFolder.contents(of: names, folderName: "2026-10-18 10h02 — Point", transcriptFiles: ours)
         suite.expect(contents.transcript == "2026-10-18 10h02 — Point.txt" && contents.subtitles == "2026-10-18 10h02 — Point.srt",
-                     "a folder's transcript is the text named after its meeting")
+                     "a folder's transcript is the text this app wrote, by the names meeting.json keeps")
+        suite.expect(ForkMeetingFolder.contents(of: names, folderName: "2026-10-18 10h02 — Point").transcript == nil,
+                     "without its names in meeting.json, no text is taken for the transcript")
         let other = ForkMeetingFolder.contents(of: ["notes.txt", "meeting.json", "a.mp4"], folderName: "2026-10-18 10h02")
         suite.expect(other.transcript == nil && other.subtitles == nil,
                      "a text file the person put beside the meeting is not its transcript")
         let renames = ForkMeetingFolder.mediaRenames(from: "2026-10-18 10h02 — Point", to: "2026-10-18 10h02 — Budget",
-                                                     names: names)
+                                                     names: names, transcriptFiles: ours)
         suite.expect(Set(renames.moves.map(\.to)) == ["2026-10-18 10h02 — Budget.mp4", "2026-10-18 10h02 — Budget.m4a",
                                                       "2026-10-18 10h02 — Budget.txt", "2026-10-18 10h02 — Budget.srt"]
                         && !renames.moves.contains { $0.from == "notes.txt" },
@@ -327,8 +330,9 @@ enum ForkMeetingTranscriptTests {
                                                  capture: ForkMeetingSidecar.Capture())
         let names = ["2026-10-18 10h02 — Weekly.mp4", "2026-10-18 10h02 — Weekly.txt", "meeting.json"]
         guard let entry = ForkMeetingLibraryEntry(folderName: "2026-10-18 10h02 — Weekly", sidecar: .success(sidecar),
-                                                  contents: ForkMeetingFolder.contents(of: names,
-                                                                                       folderName: "2026-10-18 10h02 — Weekly"))
+                                                  contents: ForkMeetingFolder.contents(
+                                                      of: names, folderName: "2026-10-18 10h02 — Weekly",
+                                                      transcriptFiles: ["2026-10-18 10h02 — Weekly.txt"]))
         else {
             suite.expect(false, "a meeting with its transcript is listed")
             return
@@ -366,9 +370,9 @@ enum ForkMeetingTranscriptTests {
                         && !ForkMeetingTranscript.transcribesAutomatically(featureOn: false, settingOn: true, recovered: false)
                         && !ForkMeetingTranscript.transcribesAutomatically(featureOn: true, settingOn: true, recovered: true),
                      "a meeting is transcribed on its own only with the setting on, after a meeting that ended well")
-        suite.expect(ForkMeetingTranscript.mayStart(automatic: true, recording: false)
-                        && !ForkMeetingTranscript.mayStart(automatic: true, recording: true)
-                        && ForkMeetingTranscript.mayStart(automatic: false, recording: true),
+        suite.expect(ForkMeetingTranscript.mayStart(automatic: true, recording: false, finalizing: false)
+                        && !ForkMeetingTranscript.mayStart(automatic: true, recording: true, finalizing: false)
+                        && ForkMeetingTranscript.mayStart(automatic: false, recording: true, finalizing: false),
                      "an automatic transcription waits for a recording to end; a click starts at once")
         suite.expect(ForkMeetingTranscript.progress(trackIndex: 0, tracks: 2, seconds: 1_800, duration: 3_600) == 0.25
                         && ForkMeetingTranscript.progress(trackIndex: 1, tracks: 2, seconds: 3_600, duration: 3_600) == 1

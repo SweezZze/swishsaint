@@ -17,7 +17,11 @@ import os
 ///   behind an hour of meeting (spike S6: +10.6 MB, a dictation 61 → 66 ms
 ///   meanwhile).
 /// - **One job at a time**, on one serial queue; the others wait their turn.
-///   An automatic one also waits while a meeting records.
+///   None starts while a final pass runs; an automatic one also waits while
+///   a meeting records. A meeting still held by its final pass is tried
+///   again 30 s later.
+/// - **The updater waits** while a job runs or waits (`ForkMeetingActivity`),
+///   and the Mac does not doze off in the middle of one.
 /// - **The meeting track first**: the echo filter of the microphone needs its
 ///   words and its energy (`ForkMeetingEcho`).
 /// - `languageCode: nil`: Parakeet finds the language itself; a filter set
@@ -57,6 +61,10 @@ final class ForkMeetingTranscriber: ObservableObject {
         /// Started on its own after a meeting: its end is said in a notice.
         let automatic: Bool
         let asked: Date
+        /// Tries put off because the meeting was still being written.
+        var retried = 0
+        /// Not started before this, when put off.
+        var notBefore: Date?
 
         /// The same meeting: the same id, or the same folder.
         func isFor(id other: UUID?, folder path: URL) -> Bool {
@@ -71,8 +79,12 @@ final class ForkMeetingTranscriber: ObservableObject {
     }
 
     /// The job at work and its share done.
-    @Published private(set) var running: Running?
-    @Published private(set) var waiting: [Job] = []
+    @Published private(set) var running: Running? {
+        didSet { if (running == nil) != (oldValue == nil) { activityChanged() } }
+    }
+    @Published private(set) var waiting: [Job] = [] {
+        didSet { if waiting.isEmpty != oldValue.isEmpty { activityChanged() } }
+    }
     /// What the last job of each meeting did, while the app runs: the detail
     /// says a failure until the next try.
     @Published private(set) var outcomes: [Outcome.Entry] = []
@@ -81,12 +93,16 @@ final class ForkMeetingTranscriber: ObservableObject {
     private let defaults: UserDefaults
     private let modelDirectory: () -> URL?
     private let isRecording: () -> Bool
+    private let isFinalizing: () -> Bool
     private let notify: (Job, Outcome) -> Void
     private let work = DispatchQueue(label: "fork.meetings.transcriber", qos: .utility)
     private let log = Logger(subsystem: "fork.meetings", category: "transcript")
     private var stop: ForkMeetingTranscriptStop?
     private var enabled = true
     private var observers: Set<AnyCancellable> = []
+    private var retryTimer: DispatchWorkItem?
+    /// A final pass that ends lets a waiting job go.
+    private var activityObserver: AnyCancellable?
 
     /// What the recipe measures of the last job.
     struct Measure: Equatable {
@@ -105,12 +121,17 @@ final class ForkMeetingTranscriber: ObservableObject {
     init(store: ForkMeetingStore = .shared, defaults: UserDefaults = .standard,
          modelDirectory: @escaping () -> URL? = { ForkParakeetModelStore.shared.installedDirectory },
          isRecording: @escaping () -> Bool = { ForkMeetingService.shared.isRecording },
+         isFinalizing: @escaping () -> Bool = { ForkMeetingActivity.tally.finalizing > 0 },
          notify: ((Job, Outcome) -> Void)? = nil) {
         self.store = store
         self.defaults = defaults
         self.modelDirectory = modelDirectory
         self.isRecording = isRecording
+        self.isFinalizing = isFinalizing
         self.notify = notify ?? { job, outcome in ForkMeetingPresenter.shared.showTranscript(folder: job.folder, outcome: outcome) }
+        activityObserver = NotificationCenter.default.publisher(for: ForkMeetingActivity.didChange)
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in self?.startNext() }
     }
 
     // MARK: - Asking
@@ -155,12 +176,15 @@ final class ForkMeetingTranscriber: ObservableObject {
     var isBusy: Bool { running != nil || !waiting.isEmpty }
 
     /// Every switch of the feature: off, the job stops and the queue empties;
-    /// on, a job waiting for a recording to end goes when it ends.
+    /// on, a job waiting for a recording or a final pass to end goes when it
+    /// ends.
     func sync(enabled: Bool) {
         dispatchPrecondition(condition: .onQueue(.main))
         self.enabled = enabled
         guard enabled else {
             observers.removeAll()
+            retryTimer?.cancel()
+            retryTimer = nil
             waiting.removeAll()
             stop?.cancel()
             return
@@ -172,13 +196,23 @@ final class ForkMeetingTranscriber: ObservableObject {
             .store(in: &observers)
     }
 
+    /// Main thread: the updater holds while a job runs or waits.
+    private func activityChanged() {
+        ForkMeetingActivity.setTranscribing(running != nil || !waiting.isEmpty)
+    }
+
     // MARK: - Running
 
     private func startNext() {
         guard running == nil, enabled else { return }
-        let recording = isRecording()
-        guard let index = waiting.firstIndex(where: { ForkMeetingTranscript.mayStart(automatic: $0.automatic, recording: recording) })
-        else { return }
+        let recording = isRecording(), finalizing = isFinalizing(), now = Date()
+        guard let index = waiting.firstIndex(where: {
+            ($0.notBefore ?? now) <= now
+                && ForkMeetingTranscript.mayStart(automatic: $0.automatic, recording: recording, finalizing: finalizing)
+        }) else {
+            scheduleRetry()
+            return
+        }
         let job = waiting.remove(at: index)
         let stop = ForkMeetingTranscriptStop()
         self.stop = stop
@@ -189,6 +223,11 @@ final class ForkMeetingTranscriber: ObservableObject {
             from: defaults.string(forKey: ForkDefaultsKey.dictationReplacements) ?? "")
         work.async { [weak self] in
             guard let self else { return }
+            // Like the final pass: the Mac must not doze off in the middle
+            // of an hour's transcription.
+            let activity = ProcessInfo.processInfo.beginActivity(options: [.userInitiated],
+                                                                 reason: "Transcribing a meeting")
+            defer { ProcessInfo.processInfo.endActivity(activity) }
             var measure = Measure()
             var found = job
             let result = self.run(job, directory: directory, stop: stop, label: label, rules: rules,
@@ -197,21 +236,53 @@ final class ForkMeetingTranscriber: ObservableObject {
         }
     }
 
+    /// A job put off waits for its time: one timer, for the soonest.
+    private func scheduleRetry() {
+        retryTimer?.cancel()
+        retryTimer = nil
+        guard enabled, let soonest = waiting.compactMap(\.notBefore).min() else { return }
+        let timer = DispatchWorkItem { [weak self] in
+            self?.retryTimer = nil
+            self?.startNext()
+        }
+        retryTimer = timer
+        DispatchQueue.main.asyncAfter(deadline: .now() + max(0.1, soonest.timeIntervalSinceNow), execute: timer)
+    }
+
     private func finished(_ job: Job, _ result: Result<Int, ForkMeetingTranscriptFailure>, measure: Measure) {
-        running = nil
-        stop = nil
-        lastMeasure = measure
         let outcome: Outcome
         switch result {
         case let .success(words): outcome = .done(words: words)
         case let .failure(failure): outcome = .failed(failure)
         }
+        // The meeting still being written (the store holds it a moment after
+        // its final pass, or another copy of the app finishes it): the job
+        // waits and goes again, shown as waiting, nothing told yet.
+        if case let .failure(failure) = result, enabled, ForkMeetingTranscript.retries(failure, retried: job.retried) {
+            var again = job
+            again.retried += 1
+            again.notBefore = Date().addingTimeInterval(ForkMeetingTranscript.retryDelay)
+            // Queued before the running job clears, so the updater never
+            // sees a gap.
+            waiting.append(again)
+            running = nil
+            stop = nil
+            lastMeasure = measure
+            startNext()
+            return
+        }
+        running = nil
+        stop = nil
+        lastMeasure = measure
         outcomes.removeAll { $0.job.isFor(id: job.id, folder: job.folder) }
         outcomes.append(Outcome.Entry(job: job, outcome: outcome))
         log.notice("transcript of \(job.folder.lastPathComponent, privacy: .private): \(String(describing: outcome), privacy: .public)")
-        // The person stopped it: nothing to tell. An automatic job is told,
-        // once the saved notice had its time.
-        if job.automatic, outcome != .failed(.cancelled), enabled {
+        // The person stopped it, or the meeting went to the Trash: nothing
+        // to tell. An automatic job is told, once the saved notice had its
+        // time.
+        var failure: ForkMeetingTranscriptFailure?
+        if case let .failed(why) = outcome { failure = why }
+        if job.automatic, ForkMeetingTranscript.notifies(failure), enabled {
             let wait = max(0, job.asked.addingTimeInterval(Self.noticeDelay).timeIntervalSinceNow)
             DispatchQueue.main.asyncAfter(deadline: .now() + wait) { [weak self] in
                 guard let self, self.enabled else { return }
@@ -268,7 +339,7 @@ final class ForkMeetingTranscriber: ObservableObject {
         DispatchQueue.main.async { [weak self] in self?.identified(id) }
         let url = source.folder.appendingPathComponent(source.file)
         guard let audio = ForkMeetingTrackSource.audioTracks(of: url) else { return .failure(.unreadable) }
-        guard let tracks = ForkMeetingTranscript.tracks(audioTrackCount: audio.tracks.count, isMaster: source.isMaster) else {
+        guard let tracks = ForkMeetingTranscript.tracks(enabled: audio.enabled) else {
             return .failure(.noAudio)
         }
         let order = [tracks.meeting] + (tracks.microphone.map { [$0] } ?? [])
@@ -332,12 +403,13 @@ final class ForkMeetingTranscriber: ObservableObject {
         measure.echoDelay = document.echo?.delay
         let words = heard.joined().map(\.text).joined(separator: " ")
         let language = ForkMeetingTranscript.baseLanguage(NLLanguageRecognizer.dominantLanguage(for: words)?.rawValue)
-        let record = ForkMeetingTranscriptRecord(state: .done, words: document.words, language: language, at: Date())
+        let record = ForkMeetingTranscriptRecord(state: .done, words: document.words, language: language, at: Date(),
+                                                 meetingSilent: document.meetingSilent)
         guard !stop.isCancelled else { return .failure(.cancelled) }
         switch store.writeTranscript(document, record: record, in: source.folder, id: source.id) {
         case let .failure(failure): return .failure(failure)
         case let .success(written):
-            found = Job(folder: written, id: found.id, automatic: found.automatic, asked: found.asked)
+            found = Job(folder: written, id: found.id, automatic: found.automatic, asked: found.asked, retried: found.retried)
             return .success(document.words)
         }
     }
@@ -368,10 +440,13 @@ final class ForkMeetingTrackSource: ForkParakeetSampleSource {
         case cannotRead(String)
     }
 
-    /// The file's audio tracks by order, and its length.
+    /// The file's audio tracks by order, which of them play, and its length.
     struct Audio {
         let asset: AVURLAsset
         let tracks: [AVAssetTrack]
+        /// The final pass leaves its mix alone enabled
+        /// (`ForkMeetingTranscript.tracks(enabled:)`).
+        let enabled: [Bool]
         let duration: TimeInterval
     }
 
@@ -387,7 +462,10 @@ final class ForkMeetingTrackSource: ForkParakeetSampleSource {
             let asset = AVURLAsset(url: url)
             if let tracks = try? await asset.loadTracks(withMediaType: .audio),
                let duration = try? await asset.load(.duration) {
-                box.audio = Audio(asset: asset, tracks: tracks.sorted { $0.trackID < $1.trackID },
+                let sorted = tracks.sorted { $0.trackID < $1.trackID }
+                var enabled: [Bool] = []
+                for track in sorted { enabled.append((try? await track.load(.isEnabled)) ?? true) }
+                box.audio = Audio(asset: asset, tracks: sorted, enabled: enabled,
                                   duration: duration.seconds.isFinite ? duration.seconds : 0)
             }
             done.signal()

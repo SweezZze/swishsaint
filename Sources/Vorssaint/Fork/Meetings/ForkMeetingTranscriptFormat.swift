@@ -55,18 +55,26 @@ struct ForkMeetingEnvelope: Equatable {
 /// transcript of the "Microphone" track alone would put their words in the
 /// person's mouth (spike S6: three times as many words, 180 % of errors).
 ///
-/// The words alone do not tell an echo: Parakeet hears the speakers through
-/// the room differently from the clean track ("Pifrance" for "Bpifrance"),
-/// and about nine echoed words in ten have no exact twin. So the words that
-/// do match **calibrate** the echo's path, its delay and its gain; then
-/// **energy** judges every word of the microphone: one no louder than the
-/// meeting track through that path (+9 dB) is echo, whatever Parakeet heard
-/// in it. A word said over a participant is louder than the echo alone, so it
-/// stays, even when it matches ("OK" over "OK").
+/// A microphone word goes only when all of this holds:
+/// 1. **An echo path is proven** in its 5 minutes: where the meeting track
+///    speaks and the person does not, the microphone hears it through a
+///    steady gain, the one the twin words below measured, well above its own
+///    noise floor. With headphones it hears its floor alone: nothing goes,
+///    whatever the words say.
+/// 2. **It is no louder than that echo**, +8.5 dB: a word said over a
+///    participant is louder, so it stays, even when it matches ("OK" over
+///    "OK").
+/// 3. **It is the meeting's**: its text matches a meeting word just before
+///    it, or its energy follows the meeting track's, 10 ms at a time, after
+///    the speakers' delay (a correlation over 0.7). Parakeet hears the
+///    speakers through the room differently from the clean track
+///    ("Pifrance" for "Bpifrance"): about one echoed word in ten has no exact
+///    twin, but it keeps the meeting's syllables. A word said over a
+///    participant mixes in the person's own, and follows them less.
 ///
-/// With headphones there is no path: fewer than `minimumMatches` matches, or
-/// a gain too high to be an echo (coincidences), and nothing is removed.
-/// Measured in S6 on an hour: 96 to 97 % of the echoed words removed, none of
+/// The twin words calibrate the path: fewer than `minimumMatches`, or a gain
+/// too high to be an echo (both sides saying "yes" at once), and nothing goes.
+/// Measured in S6 on an hour: 94 to 96 % of the echoed words removed, none of
 /// the 2 935 words really said (interjections included).
 enum ForkMeetingEcho {
     struct Settings: Equatable {
@@ -79,8 +87,8 @@ enum ForkMeetingEcho {
         /// shorter ones must be equal.
         var similarity: Double = 0.75
         /// A word judged echo is no louder than the echo path makes the
-        /// meeting track, times this (a power ratio: 8 = +9 dB).
-        var margin: Float = 8
+        /// meeting track, times this (a power ratio: 7.08 = +8.5 dB).
+        var margin: Float = 7.08
         /// Fewer text matches than this: no echo path (headphones).
         var minimumMatches = 20
         /// A path louder than this (a power ratio: 0.25 = −6 dB) is made of
@@ -88,6 +96,18 @@ enum ForkMeetingEcho {
         var maximumGain: Float = 0.25
         /// The speaker-to-microphone delay looked for, from 0.
         var maxLag: TimeInterval = 0.5
+        /// The path is proven, and its gain measured, this long at a time:
+        /// the person may move, or turn the volume up.
+        var slice: TimeInterval = 300
+        /// Hops of the meeting speaking alone a slice needs to prove a path
+        /// (2 s).
+        var minimumHops = 200
+        /// A slice's gain within this of the twin words' (a power ratio: 4 =
+        /// 6 dB), and the microphone this far above its floor there.
+        var tolerance: Float = 4
+        /// A word whose energy follows the meeting's this closely (Pearson,
+        /// on the log of each 10 ms) is the meeting's.
+        var following: Float = 0.7
     }
 
     /// The microphone words that start just after a near-identical meeting
@@ -168,12 +188,24 @@ enum ForkMeetingEcho {
         return Double(best) * ForkMeetingEnvelope.hopSeconds
     }
 
+    /// The echo's path in a slice: what the microphone hears of the meeting
+    /// track, over the floor it hears anyway.
+    struct Path: Equatable {
+        /// Microphone energy over meeting energy, a power ratio.
+        var gain: Float
+        /// The microphone's own noise floor, a mean square.
+        var floor: Float
+    }
+
     struct Report: Equatable {
         var delay: TimeInterval
         var matches: Int
         /// Microphone energy over meeting energy on the matched words: the
         /// echo's path. `nil` without enough matches.
         var gain: Float?
+        /// Each slice's path where it is proven, `nil` where it is not
+        /// (headphones, a silent meeting, the person talking throughout).
+        var slices: [Path?] = []
         /// Indexes of the microphone words judged echo.
         var echo: Set<Int>
 
@@ -199,11 +231,109 @@ enum ForkMeetingEcho {
         guard gain < settings.maximumGain else {
             return Report(delay: lag, matches: ratios.count, gain: gain, echo: [])
         }
-        var echo = Set<Int>()
-        for (index, word) in micro.enumerated() where ratio(word) < gain * settings.margin {
-            echo.insert(index)
+        let twins = Set(matched)
+        // Where the person may be talking: around the words with no twin.
+        let hop = ForkMeetingEnvelope.hopSeconds
+        var person = [Bool](repeating: false, count: microEnvelope.meanSquares.count)
+        for (index, word) in micro.enumerated() where !twins.contains(index) {
+            let from = max(0, Int(((word.start - 0.1) / hop).rounded(.down)))
+            let to = min(person.count, Int(((word.end + 0.1) / hop).rounded(.up)))
+            if from < to { for hop in from..<to { person[hop] = true } }
         }
-        return Report(delay: lag, matches: ratios.count, gain: gain, echo: echo)
+        let slices = paths(micro: microEnvelope, meeting: meetingEnvelope, lag: lag, person: person,
+                           gain: gain, settings: settings)
+        var echo = Set<Int>()
+        for (index, word) in micro.enumerated() {
+            let slice = max(0, Int(word.start / settings.slice))
+            guard slice < slices.count, let path = slices[slice], ratio(word) < path.gain * settings.margin else {
+                continue
+            }
+            if twins.contains(index)
+                || following(micro: microEnvelope, meeting: meetingEnvelope, word.start, word.end, shift: lag, path: path)
+                    > settings.following {
+                echo.insert(index)
+            }
+        }
+        return Report(delay: lag, matches: ratios.count, gain: gain, slices: slices, echo: echo)
+    }
+
+    /// Each slice's echo gain, where the microphone proves it hears the
+    /// meeting: on the hops where the meeting speaks (within 20 dB of its
+    /// loudest) and the person does not, the microphone over the meeting,
+    /// their median; proven when it is an echo's (under `maximumGain`), the
+    /// twin words' `gain` give or take `tolerance`, and the microphone hears
+    /// it `tolerance` above its own floor. With headphones it hears its floor
+    /// alone.
+    static func paths(micro: ForkMeetingEnvelope, meeting: ForkMeetingEnvelope, lag: TimeInterval,
+                      person: [Bool], gain: Float, settings: Settings = Settings()) -> [Path?] {
+        let heard = micro.meanSquares, source = meeting.meanSquares
+        let shift = Int((lag / ForkMeetingEnvelope.hopSeconds).rounded())
+        let width = max(1, Int(settings.slice / ForkMeetingEnvelope.hopSeconds))
+        let count = min(heard.count, source.count + shift)
+        guard count > shift else { return [] }
+        var result: [Path?] = []
+        var start = 0
+        while start < count {
+            let end = min(count, start + width)
+            result.append(path(heard: heard, source: source, range: max(start, shift)..<end, shift: shift,
+                               person: person, gain: gain, settings: settings))
+            start = end
+        }
+        return result
+    }
+
+    private static func path(heard: [Float], source: [Float], range: Range<Int>, shift: Int, person: [Bool],
+                             gain: Float, settings: Settings) -> Path? {
+        guard !range.isEmpty else { return nil }
+        let loud = percentile(range.map { source[$0 - shift] }, 0.95)
+        let floor = max(percentile(range.map { heard[$0] }, 0.10), 1e-9)
+        var ratios: [Float] = []
+        var levels: [Float] = []
+        for index in range where source[index - shift] >= loud * 0.01 && !(index < person.count && person[index]) {
+            ratios.append(heard[index] / max(source[index - shift], 1e-10))
+            levels.append(heard[index])
+        }
+        guard ratios.count >= settings.minimumHops, loud > 0 else { return nil }
+        let measured = percentile(ratios, 0.5)
+        guard measured < settings.maximumGain, measured * settings.tolerance >= gain,
+              measured <= gain * settings.tolerance,
+              percentile(levels, 0.5) >= floor * settings.tolerance else { return nil }
+        return Path(gain: measured, floor: floor)
+    }
+
+    private static func percentile(_ values: [Float], _ share: Double) -> Float {
+        guard !values.isEmpty else { return 0 }
+        let sorted = values.sorted()
+        return sorted[min(sorted.count - 1, Int(Double(sorted.count - 1) * share))]
+    }
+
+    /// How closely the microphone's energy follows the meeting's over a word
+    /// (and 50 ms each side), `shift` seconds later: Pearson's correlation of
+    /// the log of each 10 ms, the meeting's seen through the path (its quiet
+    /// hops sink under the microphone's floor, as an echo's do). 0 when
+    /// either side is flat or too short.
+    static func following(micro: ForkMeetingEnvelope, meeting: ForkMeetingEnvelope,
+                          _ start: TimeInterval, _ end: TimeInterval, shift: TimeInterval,
+                          path: Path = Path(gain: 1, floor: 0)) -> Float {
+        let hop = ForkMeetingEnvelope.hopSeconds
+        let lag = Int((shift / hop).rounded())
+        let from = max(lag, Int(((start - 0.05) / hop).rounded(.down)))
+        let to = min(micro.meanSquares.count, meeting.meanSquares.count + lag, Int(((end + 0.05) / hop).rounded(.up)))
+        guard to - from >= 8 else { return 0 }
+        let one = (from..<to).map { log10(micro.meanSquares[$0] + 1e-10) }
+        let other = (from..<to).map { log10(path.gain * meeting.meanSquares[$0 - lag] + path.floor + 1e-10) }
+        let count = Float(one.count)
+        let meanOne = one.reduce(0, +) / count, meanOther = other.reduce(0, +) / count
+        var product: Float = 0, varianceOne: Float = 0, varianceOther: Float = 0
+        for index in one.indices {
+            let x = one[index] - meanOne, y = other[index] - meanOther
+            product += x * y
+            varianceOne += x * x
+            varianceOther += y * y
+        }
+        // Flatter than 0.1 dB: nothing to follow.
+        guard varianceOne > 1e-4 * count, varianceOther > 1e-4 * count else { return 0 }
+        return product / (varianceOne * varianceOther).squareRoot()
     }
 }
 
@@ -344,6 +474,11 @@ enum ForkMeetingTranscriptFormat {
         /// Words kept, both sides, echo removed.
         var words: Int
         var echo: ForkMeetingEcho.Report?
+        /// The microphone heard words and the meeting track none: without
+        /// the meeting's words and energy, no echo can be told from the
+        /// person, and the detail says so (the meeting's sound may have been
+        /// lost while the speakers played it).
+        var meetingSilent = false
     }
 
     /// The two sides' words to the two files. Without a microphone track,
@@ -363,6 +498,7 @@ enum ForkMeetingTranscriptFormat {
         let merged = merge(segments(kept, speaker: .me), segments(participants, speaker: .participants))
         return Document(text: text(merged, label: label, rewrite: rewrite),
                         srt: srt(cues(merged, label: label, rewrite: rewrite)),
-                        words: kept.count + participants.count, echo: report)
+                        words: kept.count + participants.count, echo: report,
+                        meetingSilent: !me.isEmpty && participants.isEmpty)
     }
 }

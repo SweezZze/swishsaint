@@ -3,26 +3,33 @@
 
 import Foundation
 
-/// Whether a meeting is being recorded or finished, for what must not get in
-/// its way: the fork's updater, which quits the app to replace it.
+/// Whether a meeting is being recorded, finished or transcribed, for what
+/// must not get in its way: the fork's updater, which quits the app to
+/// replace it.
 ///
-/// Two sources, kept apart so neither can clear the other: the service says
-/// when a recording runs, the finalizer counts the final passes it holds. A
-/// meeting is safe once both are done, and only then `didBecomeIdle` is
-/// posted, on the main thread.
+/// Three sources, kept apart so none can clear another: the service says
+/// when a recording runs, the finalizer counts the final passes it holds,
+/// the transcriber says while a transcription runs or waits. A meeting is
+/// safe once all are done, and only then `didBecomeIdle` is posted, on the
+/// main thread.
 ///
 /// Static and under a lock rather than an object to observe: the updater
 /// reads it from wherever it is, and must not depend on the meeting service
 /// being built.
 enum ForkMeetingActivity {
-    /// Posted on the main thread when the last recording or final pass ends.
+    /// Posted on the main thread when the last recording, final pass or
+    /// transcription ends.
     static let didBecomeIdle = Notification.Name("fork.meetings.activity.idle")
+    /// Posted on the main thread after any change of the tally: the
+    /// transcriber waits for the final passes to end.
+    static let didChange = Notification.Name("fork.meetings.activity.change")
 
     struct Tally: Equatable {
         var recording = false
         var finalizing = 0
+        var transcribing = false
 
-        var isBusy: Bool { recording || finalizing > 0 }
+        var isBusy: Bool { recording || finalizing > 0 || transcribing }
     }
 
     private final class Shared: @unchecked Sendable {
@@ -45,6 +52,11 @@ enum ForkMeetingActivity {
         change { $0.recording = recording }
     }
 
+    /// The transcriber: a transcription runs or waits, or none any more.
+    static func setTranscribing(_ transcribing: Bool) {
+        change { $0.transcribing = transcribing }
+    }
+
     /// The finalizer: one more final pass queued.
     static func beginFinalizing() {
         change { $0.finalizing += 1 }
@@ -57,13 +69,14 @@ enum ForkMeetingActivity {
 
     private static func change(_ body: (inout Tally) -> Void) {
         shared.lock.lock()
-        let wasBusy = shared.tally.isBusy
+        let before = shared.tally
         body(&shared.tally)
-        let becameIdle = wasBusy && !shared.tally.isBusy
+        let after = shared.tally
         shared.lock.unlock()
-        guard becameIdle else { return }
+        guard after != before else { return }
         DispatchQueue.main.async {
-            NotificationCenter.default.post(name: didBecomeIdle, object: nil)
+            NotificationCenter.default.post(name: didChange, object: nil)
+            if before.isBusy && !after.isBusy { NotificationCenter.default.post(name: didBecomeIdle, object: nil) }
         }
     }
 }

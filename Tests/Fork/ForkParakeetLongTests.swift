@@ -118,8 +118,8 @@ enum ForkParakeetLongTests {
     private static func words(_ suite: TestSuite) {
         // The shipped vocabulary starts words with a plain space; the
         // SentencePiece one with "▁". Both open a word.
-        let vocabulary = [1: " Bon", 2: "jour", 3: ",", 4: "\u{2581}la", 5: " semaine", 6: " ?", 7: " C", 8: "ast",
-                          9: "ral", 10: ".", 11: " 4", 12: ",2", 13: " %"]
+        let vocabulary = [1: " Bon", 2: "jour", 3: ",", 4: "\u{2581}la", 5: " semaine", 6: " ?", 7: " Con", 8: "to",
+                          9: "so", 10: ".", 11: " 4", 12: ",2", 13: " %"]
         func token(_ id: Int, _ frame: Int, _ duration: Int = 1, _ confidence: Float = 0.9) -> ForkParakeetToken {
             ForkParakeetToken(id: id, frame: frame, confidence: confidence, duration: duration)
         }
@@ -135,10 +135,10 @@ enum ForkParakeetLongTests {
         suite.expect(abs(heard[2].end - 25 * frame) < 1e-9,
                      "a question mark heard later does not stretch the word")
 
-        // "Castral." with its full stop 3 s later, after the silence.
+        // "Contoso." with its full stop 3 s later, after the silence.
         let late = ForkParakeetText.words(of: [token(7, 100), token(8, 101), token(9, 102, 2), token(10, 140, 4)],
                                           vocabulary: vocabulary)
-        suite.expect(late.count == 1 && late[0].text == "Castral." && abs(late[0].end - 104 * frame) < 1e-9,
+        suite.expect(late.count == 1 && late[0].text == "Contoso." && abs(late[0].end - 104 * frame) < 1e-9,
                      "a sentence's last word ends on its last spoken token, not on the full stop after the silence")
         let zero = ForkParakeetText.words(of: [token(11, 50, 0), token(12, 51, 0), token(13, 52, 0)], vocabulary: vocabulary)
         suite.expect(zero.map(\.text) == ["4,2 %"] && zero[0].end > zero[0].start,

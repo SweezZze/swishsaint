@@ -269,9 +269,10 @@ final class ForkMeetingPresenter {
             lines = [text.transcriptWords(words)]
             symbol = "text.bubble.fill"
             tint = .green
-        case .failed:
+        case let .failed(failure):
             title = text.noticeTranscriptFailed
-            lines = []
+            // The one reason the person can act on from the notice itself.
+            lines = failure == .modelMissing ? [text.noticeParakeetMissing] : []
             symbol = "exclamationmark.bubble.fill"
             tint = .orange
         }

@@ -640,7 +640,20 @@ struct ForkMeetingStrings {
 
     func transcriptLanguages(_ count: Int) -> String { String(format: transcriptLanguagesFormat, count) }
     func transcriptProgress(_ share: String) -> String { String(format: transcriptProgressFormat, share) }
-    func transcriptWords(_ count: Int) -> String { String(format: transcriptWordsFormat, count) }
+    func transcriptWords(_ count: Int) -> String {
+        count == 1 ? transcriptWordsOne : String(format: transcriptWordsFormat, count)
+    }
+
+    // MARK: Fixes O
+
+    /// "1 word": the singular of `transcriptWordsFormat`.
+    let transcriptWordsOne: String
+    /// The failed notice's line when Parakeet is missing: 28 characters at
+    /// most.
+    let noticeParakeetMissing: String
+    /// The detail's line when the meeting track was silent and the echo of
+    /// the speakers could not be filtered: short.
+    let transcriptMeetingSilent: String
 }
 
 extension ForkMeetingStrings {
@@ -982,11 +995,11 @@ extension ForkMeetingStrings {
         // MARK: Transcript
         transcriptTitle: "Transcript",
         transcribeAutomatically: "Transcribe on this Mac after each meeting",
-        transcribeCaption: "Parakeet writes the text beside the video, a .txt and a .srt, with “Me” and “Others” apart. Nothing leaves this Mac, and the dictation’s replacements apply.",
+        transcribeCaption: "Parakeet writes the text beside the video, a .txt and a .srt, with “Me” and “Others” apart, and applies the dictation’s replacements. Plain text on this Mac, sent nowhere unless an export is added.",
         transcriptLanguagesFormat: "Parakeet knows %d European languages and finds the meeting’s by itself.",
         transcriptNeedsParakeet: "Parakeet is not installed on this Mac.",
         transcriptInstall: "Install Parakeet",
-        actionTranscribe: "Transcribe on this Mac",
+        actionTranscribe: "Transcribe on This Mac",
         actionOpenTranscript: "Open Transcript",
         actionRetranscribe: "Transcribe Again",
         transcriptProgressFormat: "Transcribing… %@",
@@ -997,7 +1010,11 @@ extension ForkMeetingStrings {
         noticeTranscriptReady: "Transcript ready",
         noticeTranscriptFailed: "Transcription failed",
         transcriptMeLabel: "Me: ",
-        transcriptOthersLabel: "Others: "
+        transcriptOthersLabel: "Others: ",
+        // MARK: Fixes O
+        transcriptWordsOne: "1 word",
+        noticeParakeetMissing: "Parakeet not installed",
+        transcriptMeetingSilent: "Meeting track silent: echo not filtered"
     )
 }
 
@@ -1340,7 +1357,7 @@ extension ForkMeetingStrings {
         // MARK: Transcript
         transcriptTitle: "Transcrição",
         transcribeAutomatically: "Transcrever neste Mac após cada reunião",
-        transcribeCaption: "O Parakeet escreve o texto ao lado do vídeo, um .txt e um .srt, com “Eu” e “Outros” separados. Nada sai deste Mac, e as substituições do ditado são aplicadas.",
+        transcribeCaption: "O Parakeet escreve o texto ao lado do vídeo, um .txt e um .srt, com “Eu” e “Outros” separados, e aplica as substituições do ditado. Texto simples neste Mac, enviado a lugar nenhum, a menos que uma exportação seja adicionada.",
         transcriptLanguagesFormat: "O Parakeet conhece %d idiomas europeus e encontra sozinho o da reunião.",
         transcriptNeedsParakeet: "O Parakeet não está instalado neste Mac.",
         transcriptInstall: "Instalar o Parakeet",
@@ -1355,7 +1372,11 @@ extension ForkMeetingStrings {
         noticeTranscriptReady: "Transcrição pronta",
         noticeTranscriptFailed: "A transcrição falhou",
         transcriptMeLabel: "Eu: ",
-        transcriptOthersLabel: "Outros: "
+        transcriptOthersLabel: "Outros: ",
+        // MARK: Fixes O
+        transcriptWordsOne: "1 palavra",
+        noticeParakeetMissing: "Parakeet não instalado",
+        transcriptMeetingSilent: "Faixa Reunião muda: eco não filtrado"
     )
 }
 
@@ -1698,7 +1719,7 @@ extension ForkMeetingStrings {
         // MARK: Transcript
         transcriptTitle: "Metin dökümü",
         transcribeAutomatically: "Her toplantıdan sonra bu Mac’te metne dök",
-        transcribeCaption: "Parakeet metni videonun yanına bir .txt ve bir .srt olarak yazar; “Ben” ve “Diğerleri” ayrı tutulur. Hiçbir şey bu Mac’ten çıkmaz ve dikte değiştirmeleri uygulanır.",
+        transcribeCaption: "Parakeet metni videonun yanına bir .txt ve bir .srt olarak yazar; “Ben” ve “Diğerleri” ayrı tutulur ve dikte değiştirmeleri uygulanır. Bu Mac’te düz metin olarak kalır; bir dışa aktarma eklenmedikçe hiçbir yere gönderilmez.",
         transcriptLanguagesFormat: "Parakeet %d Avrupa dilini tanır ve toplantının dilini kendisi bulur.",
         transcriptNeedsParakeet: "Parakeet bu Mac’te yüklü değil.",
         transcriptInstall: "Parakeet’i yükle",
@@ -1713,7 +1734,11 @@ extension ForkMeetingStrings {
         noticeTranscriptReady: "Metin hazır",
         noticeTranscriptFailed: "Metne dökme başarısız",
         transcriptMeLabel: "Ben: ",
-        transcriptOthersLabel: "Diğerleri: "
+        transcriptOthersLabel: "Diğerleri: ",
+        // MARK: Fixes O
+        transcriptWordsOne: "1 sözcük",
+        noticeParakeetMissing: "Parakeet yüklü değil",
+        transcriptMeetingSilent: "Toplantı kanalı sessiz: yankı süzülmedi"
     )
 }
 
@@ -2056,7 +2081,7 @@ extension ForkMeetingStrings {
         // MARK: Transcript
         transcriptTitle: "Расшифровка",
         transcribeAutomatically: "Расшифровывать на этом Mac после каждой встречи",
-        transcribeCaption: "Parakeet записывает текст рядом с видео, в файлы .txt и .srt, где «Я» и «Другие» разделены. Ничего не покидает этот Mac, а замены диктовки применяются.",
+        transcribeCaption: "Parakeet записывает текст рядом с видео, в файлы .txt и .srt, где «Я» и «Другие» разделены, и применяет замены диктовки. Это обычный текст на этом Mac, который никуда не отправляется, если не добавлен экспорт.",
         transcriptLanguagesFormat: "Parakeet знает %d европейских языков и сам находит язык встречи.",
         transcriptNeedsParakeet: "Parakeet не установлен на этом Mac.",
         transcriptInstall: "Установить Parakeet",
@@ -2071,7 +2096,11 @@ extension ForkMeetingStrings {
         noticeTranscriptReady: "Расшифровка готова",
         noticeTranscriptFailed: "Расшифровка не удалась",
         transcriptMeLabel: "Я: ",
-        transcriptOthersLabel: "Другие: "
+        transcriptOthersLabel: "Другие: ",
+        // MARK: Fixes O
+        transcriptWordsOne: "1 слово",
+        noticeParakeetMissing: "Parakeet не установлен",
+        transcriptMeetingSilent: "Дорожка «Встреча» пуста: эхо не убрано"
     )
 }
 
@@ -2414,7 +2443,7 @@ extension ForkMeetingStrings {
         // MARK: Transcript
         transcriptTitle: "Transcripción",
         transcribeAutomatically: "Transcribir en este Mac después de cada reunión",
-        transcribeCaption: "Parakeet escribe el texto junto al vídeo, un .txt y un .srt, con “Yo” y “Otros” por separado. Nada sale de este Mac, y se aplican los reemplazos del dictado.",
+        transcribeCaption: "Parakeet escribe el texto junto al vídeo, un .txt y un .srt, con “Yo” y “Otros” por separado, y aplica las sustituciones del dictado. Texto sin formato en este Mac, que no se envía a ningún sitio salvo que se añada una exportación.",
         transcriptLanguagesFormat: "Parakeet conoce %d idiomas europeos y encuentra por sí mismo el de la reunión.",
         transcriptNeedsParakeet: "Parakeet no está instalado en este Mac.",
         transcriptInstall: "Instalar Parakeet",
@@ -2429,7 +2458,11 @@ extension ForkMeetingStrings {
         noticeTranscriptReady: "Transcripción lista",
         noticeTranscriptFailed: "La transcripción falló",
         transcriptMeLabel: "Yo: ",
-        transcriptOthersLabel: "Otros: "
+        transcriptOthersLabel: "Otros: ",
+        // MARK: Fixes O
+        transcriptWordsOne: "1 palabra",
+        noticeParakeetMissing: "Parakeet no instalado",
+        transcriptMeetingSilent: "Pista Reunión muda: eco sin filtrar"
     )
 }
 
@@ -2772,7 +2805,7 @@ extension ForkMeetingStrings {
         // MARK: Transcript
         transcriptTitle: "Prepis",
         transcribeAutomatically: "Prepísať na tomto Macu po každom stretnutí",
-        transcribeCaption: "Parakeet zapíše text vedľa videa ako .txt a .srt, so „Ja“ a „Ostatní“ zvlášť. Nič neopustí tento Mac a použijú sa náhrady z diktovania.",
+        transcribeCaption: "Parakeet zapíše text vedľa videa ako .txt a .srt, so „Ja“ a „Ostatní“ zvlášť, a použije náhrady z diktovania. Obyčajný text na tomto Macu, ktorý sa nikam neposiela, kým sa nepridá export.",
         transcriptLanguagesFormat: "Parakeet pozná %d európskych jazykov a jazyk stretnutia nájde sám.",
         transcriptNeedsParakeet: "Parakeet nie je na tomto Macu nainštalovaný.",
         transcriptInstall: "Nainštalovať Parakeet",
@@ -2787,7 +2820,11 @@ extension ForkMeetingStrings {
         noticeTranscriptReady: "Prepis je hotový",
         noticeTranscriptFailed: "Prepis zlyhal",
         transcriptMeLabel: "Ja: ",
-        transcriptOthersLabel: "Ostatní: "
+        transcriptOthersLabel: "Ostatní: ",
+        // MARK: Fixes O
+        transcriptWordsOne: "1 slovo",
+        noticeParakeetMissing: "Parakeet chýba",
+        transcriptMeetingSilent: "Stopa Stretnutie je tichá: ozvena zostala"
     )
 }
 
@@ -3130,7 +3167,7 @@ extension ForkMeetingStrings {
         // MARK: Transcript
         transcriptTitle: "Transkript",
         transcribeAutomatically: "Nach jeder Besprechung auf diesem Mac transkribieren",
-        transcribeCaption: "Parakeet schreibt den Text neben das Video, als .txt und .srt, mit „Ich“ und „Andere“ getrennt. Nichts verlässt diesen Mac, und die Ersetzungen der Diktierfunktion gelten.",
+        transcribeCaption: "Parakeet schreibt den Text neben das Video, als .txt und .srt, mit „Ich“ und „Andere“ getrennt, und wendet die Ersetzungen der Diktierfunktion an. Reiner Text auf diesem Mac, der nirgendwohin gesendet wird, solange kein Export hinzugefügt ist.",
         transcriptLanguagesFormat: "Parakeet kennt %d europäische Sprachen und erkennt die der Besprechung selbst.",
         transcriptNeedsParakeet: "Parakeet ist auf diesem Mac nicht installiert.",
         transcriptInstall: "Parakeet installieren",
@@ -3138,14 +3175,18 @@ extension ForkMeetingStrings {
         actionOpenTranscript: "Transkript öffnen",
         actionRetranscribe: "Erneut transkribieren",
         transcriptProgressFormat: "Wird transkribiert… %@",
-        transcriptWaiting: "Wartet, bis es dran ist",
+        transcriptWaiting: "In der Warteschlange",
         transcriptWordsFormat: "%d Wörter",
         transcriptNoAudio: "Diese Besprechung hat keinen Ton zum Transkribieren.",
         transcriptFailedGeneric: "Die Transkription ist fehlgeschlagen. Die Besprechung selbst bleibt unverändert: erneut versuchen.",
         noticeTranscriptReady: "Transkript fertig",
         noticeTranscriptFailed: "Transkription fehlgeschlagen",
         transcriptMeLabel: "Ich: ",
-        transcriptOthersLabel: "Andere: "
+        transcriptOthersLabel: "Andere: ",
+        // MARK: Fixes O
+        transcriptWordsOne: "1 Wort",
+        noticeParakeetMissing: "Parakeet nicht installiert",
+        transcriptMeetingSilent: "Spur „Besprechung“ stumm: Echo nicht gefiltert"
     )
 }
 
@@ -3488,7 +3529,7 @@ extension ForkMeetingStrings {
         // MARK: Transcript
         transcriptTitle: "Transcription",
         transcribeAutomatically: "Transcrire sur ce Mac après chaque réunion",
-        transcribeCaption: "Parakeet écrit le texte à côté de la vidéo, un .txt et un .srt, avec «\u{00A0}Moi\u{00A0}» et «\u{00A0}Participants\u{00A0}» à part. Rien ne quitte ce Mac, et les remplacements de la dictée s’appliquent.",
+        transcribeCaption: "Parakeet écrit le texte à côté de la vidéo, un .txt et un .srt, avec «\u{00A0}Moi\u{00A0}» et «\u{00A0}Participants\u{00A0}» à part, et applique les remplacements de la dictée. Du texte simple sur ce Mac, envoyé nulle part sauf si un export est ajouté.",
         transcriptLanguagesFormat: "Parakeet connaît %d langues européennes et trouve seul celle de la réunion.",
         transcriptNeedsParakeet: "Parakeet n’est pas installé sur ce Mac.",
         transcriptInstall: "Installer Parakeet",
@@ -3501,9 +3542,13 @@ extension ForkMeetingStrings {
         transcriptNoAudio: "Cette réunion n’a pas de son à transcrire.",
         transcriptFailedGeneric: "La transcription a échoué. La réunion elle-même reste intacte\u{00A0}: réessayez.",
         noticeTranscriptReady: "Transcription prête",
-        noticeTranscriptFailed: "Transcription ratée",
+        noticeTranscriptFailed: "Transcription impossible",
         transcriptMeLabel: "Moi\u{00A0}: ",
-        transcriptOthersLabel: "Participants\u{00A0}: "
+        transcriptOthersLabel: "Participants\u{00A0}: ",
+        // MARK: Fixes O
+        transcriptWordsOne: "1 mot",
+        noticeParakeetMissing: "Parakeet non installé",
+        transcriptMeetingSilent: "Piste Réunion muette\u{00A0}: écho non filtré"
     )
 }
 
@@ -3846,7 +3891,7 @@ extension ForkMeetingStrings {
         // MARK: Transcript
         transcriptTitle: "Trascrizione",
         transcribeAutomatically: "Trascrivi su questo Mac dopo ogni riunione",
-        transcribeCaption: "Parakeet scrive il testo accanto al video, un .txt e un .srt, con “Io” e “Altri” separati. Nulla lascia questo Mac, e si applicano le sostituzioni della dettatura.",
+        transcribeCaption: "Parakeet scrive il testo accanto al video, un .txt e un .srt, con “Io” e “Altri” separati, e applica le sostituzioni della dettatura. Testo semplice su questo Mac, inviato da nessuna parte a meno che non venga aggiunta un’esportazione.",
         transcriptLanguagesFormat: "Parakeet conosce %d lingue europee e trova da solo quella della riunione.",
         transcriptNeedsParakeet: "Parakeet non è installato su questo Mac.",
         transcriptInstall: "Installa Parakeet",
@@ -3861,7 +3906,11 @@ extension ForkMeetingStrings {
         noticeTranscriptReady: "Trascrizione pronta",
         noticeTranscriptFailed: "Trascrizione non riuscita",
         transcriptMeLabel: "Io: ",
-        transcriptOthersLabel: "Altri: "
+        transcriptOthersLabel: "Altri: ",
+        // MARK: Fixes O
+        transcriptWordsOne: "1 parola",
+        noticeParakeetMissing: "Parakeet non installato",
+        transcriptMeetingSilent: "Traccia Riunione muta: eco non filtrata"
     )
 }
 
@@ -4204,7 +4253,7 @@ extension ForkMeetingStrings {
         // MARK: Transcript
         transcriptTitle: "文字起こし",
         transcribeAutomatically: "ミーティングのたびにこの Mac で文字起こし",
-        transcribeCaption: "Parakeet がビデオの横にテキストを .txt と .srt で書き出し、「自分」と「他の参加者」を分けます。この Mac の外には何も送られず、音声入力の置き換えも適用されます。",
+        transcribeCaption: "Parakeet がビデオの横にテキストを .txt と .srt で書き出し、「自分」と「他の参加者」を分け、音声入力の置き換えを適用します。この Mac 上のプレーンテキストで、書き出し先を追加しない限りどこにも送信されません。",
         transcriptLanguagesFormat: "Parakeet は %d のヨーロッパ言語を認識し、ミーティングの言語を自動で判別します。",
         transcriptNeedsParakeet: "この Mac には Parakeet がインストールされていません。",
         transcriptInstall: "Parakeet をインストール",
@@ -4219,7 +4268,11 @@ extension ForkMeetingStrings {
         noticeTranscriptReady: "文字起こしが完了",
         noticeTranscriptFailed: "文字起こしに失敗",
         transcriptMeLabel: "自分：",
-        transcriptOthersLabel: "他の参加者："
+        transcriptOthersLabel: "他の参加者：",
+        // MARK: Fixes O
+        transcriptWordsOne: "1 語",
+        noticeParakeetMissing: "Parakeet 未インストール",
+        transcriptMeetingSilent: "ミーティングのトラックが無音：エコー未除去"
     )
 }
 
@@ -4560,24 +4613,28 @@ extension ForkMeetingStrings {
         renameTitleNotSaved: "폴더 이름은 변경되었지만 새 제목을 저장할 수 없습니다.",
         statusForeign: "이 meeting.json은 Vorssaint가 작성한 것이 아닙니다. 표시만 하고 변경하지 않습니다.",
         // MARK: Transcript
-        transcriptTitle: "받아쓰기",
-        transcribeAutomatically: "회의가 끝날 때마다 이 Mac에서 받아쓰기",
-        transcribeCaption: "Parakeet이 비디오 옆에 .txt와 .srt로 텍스트를 쓰고, ‘나’와 ‘다른 참가자’를 구분합니다. 이 Mac 밖으로 나가는 것은 없으며, 받아쓰기 대치어가 적용됩니다.",
+        transcriptTitle: "전사",
+        transcribeAutomatically: "회의가 끝날 때마다 이 Mac에서 전사",
+        transcribeCaption: "Parakeet이 비디오 옆에 .txt와 .srt로 텍스트를 쓰고, ‘나’와 ‘다른 참가자’를 구분하며, 받아쓰기 대치어를 적용합니다. 이 Mac에 있는 일반 텍스트이며, 내보내기를 추가하지 않는 한 어디로도 전송되지 않습니다.",
         transcriptLanguagesFormat: "Parakeet은 %d개의 유럽 언어를 알고, 회의 언어를 스스로 찾습니다.",
         transcriptNeedsParakeet: "이 Mac에 Parakeet이 설치되어 있지 않습니다.",
         transcriptInstall: "Parakeet 설치",
-        actionTranscribe: "이 Mac에서 받아쓰기",
-        actionOpenTranscript: "받아쓰기 열기",
-        actionRetranscribe: "다시 받아쓰기",
-        transcriptProgressFormat: "받아쓰는 중… %@",
+        actionTranscribe: "이 Mac에서 전사",
+        actionOpenTranscript: "전사본 열기",
+        actionRetranscribe: "다시 전사",
+        transcriptProgressFormat: "전사 중… %@",
         transcriptWaiting: "차례를 기다리는 중",
         transcriptWordsFormat: "%d단어",
-        transcriptNoAudio: "이 회의에는 받아쓸 소리가 없습니다.",
-        transcriptFailedGeneric: "받아쓰기에 실패했습니다. 회의 자체는 변경되지 않았습니다. 다시 시도하십시오.",
-        noticeTranscriptReady: "받아쓰기 완료",
-        noticeTranscriptFailed: "받아쓰기 실패",
+        transcriptNoAudio: "이 회의에는 전사할 소리가 없습니다.",
+        transcriptFailedGeneric: "전사에 실패했습니다. 회의 자체는 변경되지 않았습니다. 다시 시도하세요.",
+        noticeTranscriptReady: "전사 완료",
+        noticeTranscriptFailed: "전사 실패",
         transcriptMeLabel: "나: ",
-        transcriptOthersLabel: "다른 참가자: "
+        transcriptOthersLabel: "다른 참가자: ",
+        // MARK: Fixes O
+        transcriptWordsOne: "1단어",
+        noticeParakeetMissing: "Parakeet 미설치",
+        transcriptMeetingSilent: "회의 트랙 무음: 에코 미제거"
     )
 }
 
@@ -4920,7 +4977,7 @@ extension ForkMeetingStrings {
         // MARK: Transcript
         transcriptTitle: "Розшифрування",
         transcribeAutomatically: "Розшифровувати на цьому Mac після кожної зустрічі",
-        transcribeCaption: "Parakeet записує текст поруч із відео, у файли .txt і .srt, де «Я» та «Інші» окремо. Ніщо не залишає цей Mac, а заміни диктування застосовуються.",
+        transcribeCaption: "Parakeet записує текст поруч із відео, у файли .txt і .srt, де «Я» та «Інші» окремо, і застосовує заміни диктування. Це звичайний текст на цьому Mac, який нікуди не надсилається, якщо не додано експорт.",
         transcriptLanguagesFormat: "Parakeet знає %d європейських мов і сам визначає мову зустрічі.",
         transcriptNeedsParakeet: "Parakeet не встановлено на цьому Mac.",
         transcriptInstall: "Установити Parakeet",
@@ -4935,7 +4992,11 @@ extension ForkMeetingStrings {
         noticeTranscriptReady: "Розшифрування готове",
         noticeTranscriptFailed: "Розшифрування не вдалося",
         transcriptMeLabel: "Я: ",
-        transcriptOthersLabel: "Інші: "
+        transcriptOthersLabel: "Інші: ",
+        // MARK: Fixes O
+        transcriptWordsOne: "1 слово",
+        noticeParakeetMissing: "Parakeet не встановлено",
+        transcriptMeetingSilent: "Доріжка «Зустріч» порожня: луну не прибрано"
     )
 }
 
@@ -5278,7 +5339,7 @@ extension ForkMeetingStrings {
         // MARK: Transcript
         transcriptTitle: "转写",
         transcribeAutomatically: "每次会议后在此 Mac 上转写",
-        transcribeCaption: "Parakeet 会在视频旁写出文本（.txt 和 .srt），并将“我”和“其他人”分开。任何内容都不会离开此 Mac，听写的替换规则同样适用。",
+        transcribeCaption: "Parakeet 会在视频旁写出文本（.txt 和 .srt），将“我”和“其他人”分开，并应用听写的替换规则。这是此 Mac 上的纯文本，除非添加导出，否则不会发送到任何地方。",
         transcriptLanguagesFormat: "Parakeet 能识别 %d 种欧洲语言，并自行判断会议所用的语言。",
         transcriptNeedsParakeet: "此 Mac 上未安装 Parakeet。",
         transcriptInstall: "安装 Parakeet",
@@ -5293,7 +5354,11 @@ extension ForkMeetingStrings {
         noticeTranscriptReady: "转写已完成",
         noticeTranscriptFailed: "转写失败",
         transcriptMeLabel: "我：",
-        transcriptOthersLabel: "其他人："
+        transcriptOthersLabel: "其他人：",
+        // MARK: Fixes O
+        transcriptWordsOne: "1 个词",
+        noticeParakeetMissing: "未安装 Parakeet",
+        transcriptMeetingSilent: "会议音轨无声：未过滤回声"
     )
 }
 
@@ -5636,7 +5701,7 @@ extension ForkMeetingStrings {
         // MARK: Transcript
         transcriptTitle: "轉寫",
         transcribeAutomatically: "每次會議後在此 Mac 上轉寫",
-        transcribeCaption: "Parakeet 會在影片旁寫出文字（.txt 和 .srt），並將「我」和「其他人」分開。任何內容都不會離開此 Mac，聽寫的取代規則同樣適用。",
+        transcribeCaption: "Parakeet 會在影片旁寫出文字（.txt 和 .srt），將「我」和「其他人」分開，並套用聽寫的取代規則。這是此 Mac 上的純文字，除非加入匯出，否則不會傳送到任何地方。",
         transcriptLanguagesFormat: "Parakeet 能辨識 %d 種歐洲語言，並自行判斷會議所用的語言。",
         transcriptNeedsParakeet: "此 Mac 上未安裝 Parakeet。",
         transcriptInstall: "安裝 Parakeet",
@@ -5651,7 +5716,11 @@ extension ForkMeetingStrings {
         noticeTranscriptReady: "轉寫已完成",
         noticeTranscriptFailed: "轉寫失敗",
         transcriptMeLabel: "我：",
-        transcriptOthersLabel: "其他人："
+        transcriptOthersLabel: "其他人：",
+        // MARK: Fixes O
+        transcriptWordsOne: "1 個詞",
+        noticeParakeetMissing: "未安裝 Parakeet",
+        transcriptMeetingSilent: "會議音軌無聲：未過濾回音"
     )
 }
 
@@ -5994,7 +6063,7 @@ extension ForkMeetingStrings {
         // MARK: Transcript
         transcriptTitle: "轉寫",
         transcribeAutomatically: "每次會議後在此 Mac 上轉寫",
-        transcribeCaption: "Parakeet 會在影片旁寫出文字（.txt 和 .srt），並將「我」和「其他人」分開。任何內容都不會離開此 Mac，聽寫的取代規則同樣適用。",
+        transcribeCaption: "Parakeet 會在影片旁寫出文字（.txt 和 .srt），將「我」和「其他人」分開，並套用聽寫的取代規則。這是此 Mac 上的純文字，除非加入匯出，否則不會傳送到任何地方。",
         transcriptLanguagesFormat: "Parakeet 能辨識 %d 種歐洲語言，並自行判斷會議所用的語言。",
         transcriptNeedsParakeet: "此 Mac 上未安裝 Parakeet。",
         transcriptInstall: "安裝 Parakeet",
@@ -6009,6 +6078,10 @@ extension ForkMeetingStrings {
         noticeTranscriptReady: "轉寫已完成",
         noticeTranscriptFailed: "轉寫失敗",
         transcriptMeLabel: "我：",
-        transcriptOthersLabel: "其他人："
+        transcriptOthersLabel: "其他人：",
+        // MARK: Fixes O
+        transcriptWordsOne: "1 個詞",
+        noticeParakeetMissing: "未安裝 Parakeet",
+        transcriptMeetingSilent: "會議音軌無聲：未過濾回音"
     )
 }

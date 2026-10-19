@@ -19,10 +19,20 @@ import UniformTypeIdentifiers
 /// Main thread only.
 final class ForkMeetingLibraryModel: ObservableObject {
     @Published private(set) var entries: [ForkMeetingLibraryEntry] = [] {
-        didSet { indexTranscripts() }
+        didSet {
+            entriesVersion += 1
+            indexTranscripts()
+        }
     }
     /// The transcripts, read once and kept in memory for the search.
-    @Published private(set) var transcripts = ForkMeetingTranscriptIndex()
+    @Published private(set) var transcripts = ForkMeetingTranscriptIndex() {
+        didSet { transcriptsVersion += 1 }
+    }
+    private var entriesVersion = 0
+    private var transcriptsVersion = 0
+    /// The rows a search keeps, computed once per query, rows, transcripts
+    /// and language: the list, its groups and the selection all read it.
+    private var filterCache: (key: FilterKey, rows: [ForkMeetingLibraryEntry])?
     private var indexingTranscripts = false
     private var transcriptsAgain = false
     @Published private(set) var probes: [String: ForkMeetingProbeCache.Probe] = [:]
@@ -116,11 +126,23 @@ final class ForkMeetingLibraryModel: ObservableObject {
 
     // MARK: - What the list shows
 
+    private struct FilterKey: Equatable {
+        var query: String
+        var language: AppLanguage
+        var entries: Int
+        var transcripts: Int
+    }
+
     var filtered: [ForkMeetingLibraryEntry] {
+        let key = FilterKey(query: query, language: currentLanguage, entries: entriesVersion,
+                            transcripts: transcriptsVersion)
+        if let filterCache, filterCache.key == key { return filterCache.rows }
         let transcripts = self.transcripts
-        return ForkMeetingLibrary.filtered(entries, query: query, strings: strings,
-                                           providerName: ForkMeetingLibraryText.providerName,
-                                           transcript: { transcripts.text(folder: $0.folderName, file: $0.transcript) })
+        let rows = ForkMeetingLibrary.filtered(entries, query: query, strings: strings,
+                                               providerName: ForkMeetingLibraryText.providerName,
+                                               transcript: { transcripts.text(folder: $0.folderName, file: $0.transcript) })
+        filterCache = (key, rows)
+        return rows
     }
 
     var groups: [ForkMeetingLibrary.Group] {

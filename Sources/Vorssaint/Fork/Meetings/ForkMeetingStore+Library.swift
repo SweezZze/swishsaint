@@ -139,7 +139,9 @@ extension ForkMeetingStore {
         guard inside.contains(ForkMeetingFolder.sidecarName) else { return nil }
         let sidecar = ForkMeetingSidecar.read(at: folder.appendingPathComponent(ForkMeetingFolder.sidecarName))
         let contents = ForkMeetingFolder.contents(of: inside, folderName: name,
-                                                  alsoNamed: (try? sidecar.get())?.recordedName())
+                                                  alsoNamed: (try? sidecar.get())?.recordedName(),
+                                                  transcriptFiles: (try? sidecar.get())?.transcriptFiles ?? [])
+        removeTranscriptDrafts(inside.filter(ForkMeetingTranscript.isDraft), in: folder)
         let live = isClaimedHere(folder) || writing.contains(folder.standardizedFileURL.path)
         let bytes = Self.folderBytes(folder, names: inside)
         let attributes = try? manager.attributesOfItem(atPath: folder.path)
@@ -340,13 +342,30 @@ extension ForkMeetingStore {
             let moved = mediaMoved.first { $0.from == video }?.to ?? video
             recentCaptureMoved(folder.appendingPathComponent(video), now.appendingPathComponent(moved))
         }
+        // The transcript's names follow its files in meeting.json, so they
+        // stay this app's own.
+        var edit = plan.edit
+        if let ours = (try? read.get())?.transcriptFiles {
+            let moved = ForkMeetingTranscript.renamed(ours, by: mediaMoved)
+            if moved != ours { edit = (edit ?? ForkMeetingSidecarEdit()).merged(with: ForkMeetingSidecarEdit(transcriptFiles: moved)) }
+        }
         var titleSaved = true
-        if let edit = plan.edit, case .failure = writeEdit(edit, in: now) {
+        if let edit, case .failure = writeEdit(edit, in: now), plan.edit != nil {
             // The folder may have moved all the same: the window follows it.
             titleSaved = false
         }
         return .success(RenameResult(folderName: current, plan: plan, folderMoveFailed: folderMoveFailed,
                                      mediaKept: mediaKept, mediaMoved: mediaMoved, titleSaved: titleSaved))
+    }
+
+    /// Drafts of a transcription cut short (the app quit while it wrote):
+    /// removed on the store's queue, where no transcript is ever half
+    /// written between two blocks.
+    private func removeTranscriptDrafts(_ drafts: [String], in folder: URL) {
+        guard !drafts.isEmpty else { return }
+        queue.async {
+            for draft in drafts { try? FileManager.default.removeItem(at: folder.appendingPathComponent(draft)) }
+        }
     }
 
     // MARK: - Trash

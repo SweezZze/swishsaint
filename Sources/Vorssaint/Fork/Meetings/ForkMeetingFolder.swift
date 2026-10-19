@@ -263,8 +263,8 @@ enum ForkMeetingFolder {
         var hasVideoDraft = false
         var hasAudioDraft = false
         /// The transcript (`.txt`) and its subtitles (`.srt`): only the ones
-        /// named after the meeting, never a text file the person put beside
-        /// it.
+        /// this app wrote (`meeting.json`'s `transcript.files`), never a text
+        /// file the person put beside the meeting, whatever its name.
         var transcript: String?
         var subtitles: String?
     }
@@ -273,7 +273,9 @@ enum ForkMeetingFolder {
     /// the folder's now (`meeting.json`'s start and title, after a rename cut
     /// short between the folder's move and its media's): tried after the
     /// folder's own, before any other file of the same kind.
-    static func contents(of names: [String], folderName: String, alsoNamed: String? = nil) -> Contents {
+    /// `transcriptFiles`: the names the transcription wrote.
+    static func contents(of names: [String], folderName: String, alsoNamed: String? = nil,
+                         transcriptFiles: [String] = []) -> Contents {
         var contents = Contents()
         var videos: [String] = []
         var audios: [String] = []
@@ -296,18 +298,9 @@ enum ForkMeetingFolder {
         }
         contents.video = preferred(videos, stems: [folderName, alsoNamed].compactMap { $0 })
         contents.audio = preferred(audios, stems: [folderName, alsoNamed].compactMap { $0 })
-        // Named after the video, else after the folder.
-        let stems = [contents.video.map { ($0 as NSString).deletingPathExtension }, folderName, alsoNamed].compactMap { $0 }
-        contents.transcript = named(texts, stems: stems)
-        contents.subtitles = named(subtitles, stems: stems)
+        contents.transcript = transcriptFiles.first { texts.contains($0) }
+        contents.subtitles = transcriptFiles.first { subtitles.contains($0) }
         return contents
-    }
-
-    private static func named(_ names: [String], stems: [String]) -> String? {
-        for stem in stems {
-            if let named = names.first(where: { ($0 as NSString).deletingPathExtension == stem }) { return named }
-        }
-        return nil
     }
 
     private static func preferred(_ names: [String], stems: [String]) -> String? {
@@ -351,8 +344,9 @@ enum ForkMeetingFolder {
     /// files are the ones named after the **old** folder: a clip the person
     /// saved beside them under another name never takes the meeting's. Each
     /// keeps its own extension: renaming never changes what a file holds.
-    static func mediaRenames(from old: String, to new: String, names: [String], alsoNamed: String? = nil) -> MediaRenames {
-        let found = contents(of: names, folderName: old, alsoNamed: alsoNamed)
+    static func mediaRenames(from old: String, to new: String, names: [String], alsoNamed: String? = nil,
+                             transcriptFiles: [String] = []) -> MediaRenames {
+        let found = contents(of: names, folderName: old, alsoNamed: alsoNamed, transcriptFiles: transcriptFiles)
         var result = MediaRenames()
         for media in [found.video, found.audio, found.transcript, found.subtitles].compactMap({ $0 }) {
             let target = "\(new).\((media as NSString).pathExtension)"

@@ -188,6 +188,12 @@ struct ForkMeetingTranscriptRow: View {
                     .fixedSize(horizontal: false, vertical: true)
             } else if entry.transcript != nil, let words = entry.transcriptRecord?.words {
                 caption(text.transcriptWords(words))
+                if entry.transcriptRecord?.meetingSilent == true {
+                    Label(text.transcriptMeetingSilent, systemImage: "speaker.slash")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
             }
             if !store.isInstalled {
                 ForkMeetingParakeetInstall(text: text, language: model.currentLanguage, store: store)
@@ -210,8 +216,9 @@ struct ForkMeetingTranscriptRow: View {
 
     static func line(for failure: ForkMeetingTranscriptFailure, text: ForkMeetingStrings) -> String? {
         switch failure {
-        case .cancelled: return nil
-        case .modelMissing: return text.transcriptNeedsParakeet
+        // Missing Parakeet is said once, by the install row right below,
+        // and goes with it once installed.
+        case .cancelled, .modelMissing: return nil
         case .meetingInProgress: return text.refusedWhileRecording
         case .noAudio: return text.transcriptNoAudio
         case .unreadable, .engine, .folderGone, .notWritten: return text.transcriptFailedGeneric

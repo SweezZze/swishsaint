@@ -19,7 +19,7 @@ protocol ForkParakeetSampleSource: AnyObject {
 
 /// One word and its place in the audio.
 struct ForkParakeetWord: Equatable {
-    /// The word with the punctuation that follows it ("Castral," "4,2 %"),
+    /// The word with the punctuation that follows it ("Contoso," "4,2 %"),
     /// without the space before it.
     var text: String
     /// Seconds from the start of the audio.
