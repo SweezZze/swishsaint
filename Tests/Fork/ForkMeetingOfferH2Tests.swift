@@ -17,6 +17,7 @@ enum ForkMeetingOfferH2Tests {
         menu(suite)
         undoCardWords(suite)
         undoLabel(suite)
+        pageDelay(suite)
     }
 
     private static let zero = Date(timeIntervalSinceReferenceDate: 800_000_000)
@@ -249,5 +250,18 @@ enum ForkMeetingOfferH2Tests {
                      "the words VoiceOver reads go down with the seconds: \(words)")
         suite.expect(ForkMeetingOfferTiming.tickStart(until: at(5), now: at(0.4)) <= at(0.4),
                      "its timeline ticks from the past, on whole seconds before the end")
+    }
+
+    // MARK: - H2.13 The page's delay
+
+    private static func pageDelay(_ suite: TestSuite) {
+        suite.expect(ForkMeetingAutoStop.bounded(3) == 5 && ForkMeetingAutoStop.bounded(500) == 120
+                        && ForkMeetingAutoStop.bounded(30) == 30,
+                     "a stored delay out of 5–120 s reads as its bound")
+        suite.expect([-4, 0, 3, 5, 15, 120, 121, 9999].allSatisfy { seconds in
+                        ForkMeetingAutoStop(enabled: true, seconds: seconds).countdown
+                            == TimeInterval(ForkMeetingAutoStop.bounded(seconds))
+                     },
+                     "the page shows the delay the countdown really gives")
     }
 }

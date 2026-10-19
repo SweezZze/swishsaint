@@ -183,7 +183,13 @@ struct ForkMeetingAutoStop: Equatable {
     /// The countdown to give the machine: `nil` when the recording never
     /// stops on its own.
     var countdown: TimeInterval? {
-        enabled ? TimeInterval(min(max(seconds, Self.secondsRange.lowerBound), Self.secondsRange.upperBound)) : nil
+        enabled ? TimeInterval(Self.bounded(seconds)) : nil
+    }
+
+    /// A stored delay as the countdown really runs it, and as the page
+    /// shows it.
+    static func bounded(_ seconds: Int) -> Int {
+        min(max(seconds, secondsRange.lowerBound), secondsRange.upperBound)
     }
 
     static func load(_ defaults: UserDefaults = .standard) -> ForkMeetingAutoStop {
