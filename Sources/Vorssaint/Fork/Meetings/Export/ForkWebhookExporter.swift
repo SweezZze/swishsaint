@@ -93,7 +93,7 @@ struct ForkWebhookExporter: ForkMeetingExporter {
         }
         var multipart = ForkWebhookMultipart()
         multipart.parts = parts
-        let body = temporaryDirectory.appendingPathComponent("\(Self.bodyPrefix)\(UUID().uuidString).body")
+        let body = temporaryDirectory.appendingPathComponent(ForkMeetingLeftovers.name(Self.bodyPrefix) + ".body")
         defer { try? FileManager.default.removeItem(at: body) }
         var signer = ForkWebhookSigner(secret: key, at: Date())
         let length: Int64
@@ -111,6 +111,8 @@ struct ForkWebhookExporter: ForkMeetingExporter {
         request.setValue(signer.timestamp, forHTTPHeaderField: ForkWebhookSigner.timestampHeader)
         request.setValue(signer.signature(), forHTTPHeaderField: ForkWebhookSigner.signatureHeader)
         request.setValue(event, forHTTPHeaderField: ForkWebhookSigner.eventHeader)
+        request.setValue(Self.userAgent, forHTTPHeaderField: "User-Agent")
+        request.setValue("en", forHTTPHeaderField: "Accept-Language")
 
         let configuration = URLSessionConfiguration.ephemeral
         configuration.timeoutIntervalForRequest = ForkWebhookLimits.idleTimeout
@@ -121,6 +123,8 @@ struct ForkWebhookExporter: ForkMeetingExporter {
         configuration.urlCredentialStorage = nil
         configuration.urlCache = nil
         configuration.requestCachePolicy = .reloadIgnoringLocalAndRemoteCacheData
+        // Neutral: neither this Mac's language nor the app's build.
+        configuration.httpAdditionalHeaders = ["User-Agent": Self.userAgent, "Accept-Language": "en"]
         let transfer = ForkWebhookTransfer(origin: target.url, trust: trust, bodyBytes: length, progress: progress)
         let session = URLSession(configuration: configuration, delegate: transfer, delegateQueue: nil)
         defer { session.finishTasksAndInvalidate() }
@@ -136,6 +140,7 @@ struct ForkWebhookExporter: ForkMeetingExporter {
     /// The bodies' names in the temporary folder: what a send cut short by
     /// a quit leaves there is removed at the next launch.
     static let bodyPrefix = "fork.meetings.webhook-"
+    static let userAgent = "Swishsaint-Webhook/1"
 }
 
 /// One request's delegate: the redirection policy, the server's trust, the

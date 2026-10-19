@@ -26,22 +26,26 @@ struct ForkMeetingExportsSection: View {
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
-            if exports.listChanged {
+            if let banner {
                 HStack(alignment: .firstTextBaseline) {
-                    Label(text.exportsListChanged, systemImage: "exclamationmark.triangle.fill")
+                    Label(banner, systemImage: "exclamationmark.triangle.fill")
                         .font(.callout)
                         .foregroundStyle(.orange)
                         .fixedSize(horizontal: false, vertical: true)
                     Spacer()
-                    Button(text.exportsListConfirm) { exports.confirmList() }
+                    // What the page shows is what is confirmed.
+                    Button(text.exportsListConfirm) { exports.confirmList(exports.configs) }
                 }
             }
+            // Nothing the page changes is kept until the list is confirmed.
             ForEach(exports.configs) { config in
                 switch config.kind {
                 case .dropFolder:
                     ForkMeetingDropFolderRow(config: config, text: text) { removing = config }
+                        .disabled(exports.listChanged)
                 case .webhook:
                     ForkMeetingWebhookRow(config: config, text: text) { removing = config }
+                        .disabled(exports.listChanged)
                 }
             }
             HStack {
@@ -52,15 +56,13 @@ struct ForkMeetingExportsSection: View {
                     }
                 }
                 .fixedSize()
+                .disabled(exports.listChanged)
             }
         } header: {
             Text(text.exportsTitle)
         }
         // The Keychain and the preferences may have changed behind the page.
-        .onAppear {
-            exports.reload()
-            exports.verifyList()
-        }
+        .onAppear { exports.refresh() }
         .alert(text.exportRemoveTitle, isPresented: Binding(get: { removing != nil }, set: { if !$0 { removing = nil } })) {
             Button(text.exportRemove, role: .destructive) {
                 if let removing { exports.remove(removing.id) }
@@ -69,6 +71,16 @@ struct ForkMeetingExportsSection: View {
             Button(text.cancel, role: .cancel) { removing = nil }
         } message: {
             Text(text.exportRemoveMessage)
+        }
+    }
+
+    /// Why the list waits for its confirmation, if it does.
+    private var banner: String? {
+        switch exports.listState {
+        case .matches: return nil
+        case .changed: return text.exportsListChanged
+        case .unconfirmed: return text.exportsListUnconfirmed
+        case .keychainRefused: return text.exportsListKeychainRefused
         }
     }
 }
@@ -316,18 +328,23 @@ private struct ForkMeetingWebhookRow: View {
     }
 
     private func save(confirmed: Bool) {
-        switch exports.saveWebhook(config.id, address: address, secret: newSecret, confirmed: confirmed) {
-        case .saved:
-            problem = nil
-            newSecret = ""
-            address = exports.config(config.id)?.address ?? address
-        case let .confirmHostChange(old):
-            hostChange = old
-        case let .refused(refusal):
-            problem = refusal.message(text)
-        case .secretNotSaved:
-            problem = text.webhookSecretRefused
-            newSecret = ""
+        let id = config.id
+        exports.saveWebhook(id, address: address, secret: newSecret, confirmed: confirmed) { change in
+            switch change {
+            case .saved:
+                problem = nil
+                newSecret = ""
+                address = exports.config(id)?.address ?? address
+            case let .confirmHostChange(old):
+                hostChange = old
+            case let .refused(refusal):
+                problem = refusal.message(text)
+            case .secretNotSaved:
+                problem = text.webhookSecretRefused
+                newSecret = ""
+            case .listUnconfirmed:
+                problem = text.exportFailListUnconfirmed
+            }
         }
     }
 }

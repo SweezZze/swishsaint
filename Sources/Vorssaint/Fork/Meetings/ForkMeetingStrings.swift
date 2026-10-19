@@ -712,6 +712,19 @@ struct ForkMeetingStrings {
     let exportFailEarlyAnswer: String
     /// The library's rename or Trash, refused while a send reads the meeting.
     let exportInProgress: String
+    /// The list's banner when it has no fingerprint yet (a list of an
+    /// earlier version), or when the Keychain refused to keep it.
+    let exportsListUnconfirmed: String
+    let exportsListKeychainRefused: String
+    /// A send refused, or an automatic one written as failed, until the
+    /// page's list is confirmed; also the library's line beside its
+    /// actions greyed.
+    let exportFailListUnconfirmed: String
+    /// A title committed while the meeting is being sent: its folder is
+    /// renamed once the send is done.
+    let renameAfterExport: String
+    /// The drop folder's own disk is full (not this Mac's temporary one).
+    let exportFailDropFolderFull: String
 
     func retentionHeld(count: Int, days: Int) -> String {
         count == 1 ? String(format: retentionHeldOneFormat, days) : String(format: retentionHeldFormat, count, days)
@@ -986,7 +999,7 @@ extension ForkMeetingStrings {
         offerMainWindowFormat: "%@ (main window)",
         // MARK: Exports
         exportsTitle: "Exports",
-        exportsCaption: "Nothing is exported until you add an exporter. Only this leaves: the audio (M4A), the transcript when there is one, and a meeting.json holding only id, schema, title, startedAt, endedAt, recordedSeconds, provider, origin, pauses and transcript, plus notes and meetCode if you turn them on; never the microphone, the app, the calendar event nor a path. A drop folder copies it into a folder; a webhook sends it to the HTTPS address you choose.",
+        exportsCaption: "Nothing is exported until you add an exporter. Only this leaves: the audio (M4A), the transcript when there is one, and a meeting.json holding only id, schema, title (without the Google Meet code unless meetCode is on), startedAt, endedAt, recordedSeconds, provider, origin, pauses and transcript, plus notes and meetCode if you turn them on; never the microphone, the app, the calendar event, the history of the exports nor a path. A drop folder copies it into a folder; a webhook sends it to the HTTPS address you choose.",
         exportsAdd: "Add",
         exportKindDropFolder: "Drop folder",
         exportKindWebhook: "HTTPS webhook",
@@ -1017,7 +1030,7 @@ extension ForkMeetingStrings {
         webhookTest: "Send a test",
         webhookTestDoneFormat: "The test arrived: the address answered %d.",
         webhookHelpTitle: "Checking the signature",
-        webhookHelpCaption: "Each send is a multipart POST with the parts meeting (JSON), audio (M4A) and transcript (text, when there is one). X-Swishsaint-Signature is sha256= followed by the HMAC-SHA256, in hexadecimal, of X-Swishsaint-Timestamp, a dot and the raw body, keyed with the secret. The timestamp is taken before the send, which may last two hours: refuse a request whose signature differs or whose timestamp is more than 2 h 05 min away, and one whose meeting id you already received.",
+        webhookHelpCaption: "Each send is a multipart POST with the parts meeting (JSON), audio (M4A) and transcript (text, when there is one). X-Swishsaint-Signature is sha256= followed by the HMAC-SHA256, in hexadecimal, of X-Swishsaint-Timestamp, a dot and the raw body, keyed with the secret. The timestamp is taken before the send, which may last two hours: refuse a request whose signature differs or whose timestamp is more than 2 h 05 min away, and one whose signature you already received: a meeting sent again has a new one.",
         webhookHelpCopy: "Copy the example",
         originUnreadable: "This address cannot be read: write it whole, starting with https://.",
         originNotHTTPS: "Only an HTTPS address is accepted: otherwise the audio would travel unencrypted.",
@@ -1122,7 +1135,12 @@ extension ForkMeetingStrings {
         exportFailCertificate: "The address’s certificate was refused: nothing was sent.",
         exportFailTemporarySpace: "This Mac’s disk is full: what had to be sent could not be prepared.",
         exportFailEarlyAnswer: "The address answered before receiving the whole meeting: it is not counted as sent.",
-        exportInProgress: "This meeting is being exported: try again once it is done."
+        exportInProgress: "This meeting is being exported: try again once it is done.",
+        exportsListUnconfirmed: "This list of exports has not been confirmed on this Mac yet: check it. Nothing is sent until you confirm.",
+        exportsListKeychainRefused: "The Keychain refused to keep this list’s fingerprint: nothing is sent until it accepts. Check the list, then confirm again.",
+        exportFailListUnconfirmed: "The list of exports waits for your confirmation on the Meetings page: nothing was sent.",
+        renameAfterExport: "This meeting is being exported: its folder takes the new name once the export is done.",
+        exportFailDropFolderFull: "The drop folder’s disk is full: the meeting could not be copied there."
     )
 }
 
@@ -1394,7 +1412,7 @@ extension ForkMeetingStrings {
         offerMainWindowFormat: "%@ (janela principal)",
         // MARK: Exports
         exportsTitle: "Exportações",
-        exportsCaption: "Nada é exportado até você adicionar um exportador. Só isto sai: o áudio (M4A), a transcrição quando houver e um meeting.json só com id, schema, title, startedAt, endedAt, recordedSeconds, provider, origin, pauses e transcript, mais notes e meetCode se você os ativar; nunca o microfone, o app, o evento do calendário nem um caminho. Uma pasta de entrega copia tudo para uma pasta; um webhook envia tudo para o endereço HTTPS escolhido.",
+        exportsCaption: "Nada é exportado até você adicionar um exportador. Só isto sai: o áudio (M4A), a transcrição quando houver e um meeting.json só com id, schema, title (sem o código do Google Meet, a menos que meetCode esteja ativado), startedAt, endedAt, recordedSeconds, provider, origin, pauses e transcript, mais notes e meetCode se você os ativar; nunca o microfone, o app, o evento do calendário, o histórico das exportações nem um caminho. Uma pasta de entrega copia tudo para uma pasta; um webhook envia tudo para o endereço HTTPS escolhido.",
         exportsAdd: "Adicionar",
         exportKindDropFolder: "Pasta de entrega",
         exportKindWebhook: "Webhook HTTPS",
@@ -1425,7 +1443,7 @@ extension ForkMeetingStrings {
         webhookTest: "Enviar um teste",
         webhookTestDoneFormat: "O teste chegou: o endereço respondeu %d.",
         webhookHelpTitle: "Verificar a assinatura",
-        webhookHelpCaption: "Cada envio é um POST multipart com as partes meeting (JSON), audio (M4A) e transcript (texto, quando houver). X-Swishsaint-Signature é sha256= seguido do HMAC-SHA256, em hexadecimal, de X-Swishsaint-Timestamp, um ponto e o corpo bruto, com o segredo como chave. O carimbo de tempo é tirado antes do envio, que pode durar duas horas: recuse uma requisição cuja assinatura seja diferente ou cujo carimbo esteja a mais de 2 h 05 min, e uma cujo id de reunião você já recebeu.",
+        webhookHelpCaption: "Cada envio é um POST multipart com as partes meeting (JSON), audio (M4A) e transcript (texto, quando houver). X-Swishsaint-Signature é sha256= seguido do HMAC-SHA256, em hexadecimal, de X-Swishsaint-Timestamp, um ponto e o corpo bruto, com o segredo como chave. O carimbo de tempo é tirado antes do envio, que pode durar duas horas: recuse uma requisição cuja assinatura seja diferente ou cujo carimbo esteja a mais de 2 h 05 min, e uma cuja assinatura você já recebeu: uma reunião enviada de novo tem uma nova.",
         webhookHelpCopy: "Copiar o exemplo",
         originUnreadable: "Este endereço não pode ser lido: escreva-o inteiro, começando por https://.",
         originNotHTTPS: "Só um endereço HTTPS é aceito: do contrário, o áudio viajaria sem criptografia.",
@@ -1530,7 +1548,12 @@ extension ForkMeetingStrings {
         exportFailCertificate: "O certificado do endereço foi recusado: nada foi enviado.",
         exportFailTemporarySpace: "O disco deste Mac está cheio: não foi possível preparar o que seria enviado.",
         exportFailEarlyAnswer: "O endereço respondeu antes de receber a reunião inteira: ela não conta como enviada.",
-        exportInProgress: "Esta reunião está sendo exportada: tente de novo quando terminar."
+        exportInProgress: "Esta reunião está sendo exportada: tente de novo quando terminar.",
+        exportsListUnconfirmed: "Esta lista de exportações ainda não foi confirmada neste Mac: confira. Nada é enviado até você confirmar.",
+        exportsListKeychainRefused: "As Chaves recusaram guardar a impressão desta lista: nada é enviado até elas aceitarem. Confira a lista e confirme de novo.",
+        exportFailListUnconfirmed: "A lista de exportações aguarda sua confirmação na página Reuniões: nada foi enviado.",
+        renameAfterExport: "Esta reunião está sendo exportada: a pasta recebe o novo nome quando a exportação terminar.",
+        exportFailDropFolderFull: "O disco da pasta de entrega está cheio: não foi possível copiar a reunião para lá."
     )
 }
 
@@ -1802,7 +1825,7 @@ extension ForkMeetingStrings {
         offerMainWindowFormat: "%@ (ana pencere)",
         // MARK: Exports
         exportsTitle: "Dışa aktarımlar",
-        exportsCaption: "Bir dışa aktarıcı eklenene kadar hiçbir şey dışa aktarılmaz. Yalnızca şunlar gider: ses (M4A), varsa döküm ve yalnızca id, schema, title, startedAt, endedAt, recordedSeconds, provider, origin, pauses ve transcript içeren bir meeting.json; açarsanız notes ve meetCode da. Mikrofon, uygulama, takvim etkinliği ve dosya yolları asla gitmez. Bırakma klasörü bunları bir klasöre kopyalar; webhook seçtiğiniz HTTPS adresine gönderir.",
+        exportsCaption: "Bir dışa aktarıcı eklenene kadar hiçbir şey dışa aktarılmaz. Yalnızca şunlar gider: ses (M4A), varsa döküm ve yalnızca id, schema, title (meetCode açık değilse Google Meet kodu olmadan), startedAt, endedAt, recordedSeconds, provider, origin, pauses ve transcript içeren bir meeting.json; açarsanız notes ve meetCode da. Mikrofon, uygulama, takvim etkinliği, dışa aktarma geçmişi ve dosya yolları asla gitmez. Bırakma klasörü bunları bir klasöre kopyalar; webhook seçtiğiniz HTTPS adresine gönderir.",
         exportsAdd: "Ekle",
         exportKindDropFolder: "Bırakma klasörü",
         exportKindWebhook: "HTTPS Webhook",
@@ -1833,7 +1856,7 @@ extension ForkMeetingStrings {
         webhookTest: "Test gönder",
         webhookTestDoneFormat: "Test ulaştı: adres %d yanıtını verdi.",
         webhookHelpTitle: "İmzayı doğrulama",
-        webhookHelpCaption: "Her gönderim meeting (JSON), audio (M4A) ve varsa transcript (metin) parçalarından oluşan bir multipart POST isteğidir. X-Swishsaint-Signature, sha256= ve ardından gizli anahtarla hesaplanan, X-Swishsaint-Timestamp, bir nokta ve ham gövdenin onaltılık HMAC-SHA256 değeridir. Zaman damgası, iki saat sürebilen gönderimden önce alınır: imzası farklı olan veya zaman damgası 2 sa 05 dk’dan uzak olan isteği ve toplantı kimliğini zaten aldığınız isteği reddedin.",
+        webhookHelpCaption: "Her gönderim meeting (JSON), audio (M4A) ve varsa transcript (metin) parçalarından oluşan bir multipart POST isteğidir. X-Swishsaint-Signature, sha256= ve ardından gizli anahtarla hesaplanan, X-Swishsaint-Timestamp, bir nokta ve ham gövdenin onaltılık HMAC-SHA256 değeridir. Zaman damgası, iki saat sürebilen gönderimden önce alınır: imzası farklı olan veya zaman damgası 2 sa 05 dk’dan uzak olan isteği ve imzasını zaten aldığınız isteği reddedin: yeniden gönderilen bir toplantının imzası yenidir.",
         webhookHelpCopy: "Örneği kopyala",
         originUnreadable: "Bu adres okunamıyor: https:// ile başlayarak tam olarak yazın.",
         originNotHTTPS: "Yalnızca HTTPS adresi kabul edilir: aksi halde ses şifrelenmeden iletilir.",
@@ -1938,7 +1961,12 @@ extension ForkMeetingStrings {
         exportFailCertificate: "Adresin sertifikası reddedildi: hiçbir şey gönderilmedi.",
         exportFailTemporarySpace: "Bu Mac’in diski dolu: gönderilecekler hazırlanamadı.",
         exportFailEarlyAnswer: "Adres, toplantının tamamını almadan yanıt verdi: gönderilmiş sayılmaz.",
-        exportInProgress: "Bu toplantı dışa aktarılıyor: bittiğinde yeniden deneyin."
+        exportInProgress: "Bu toplantı dışa aktarılıyor: bittiğinde yeniden deneyin.",
+        exportsListUnconfirmed: "Bu dışa aktarma listesi bu Mac’te henüz onaylanmadı: kontrol edin. Siz onaylayana kadar hiçbir şey gönderilmez.",
+        exportsListKeychainRefused: "Anahtar Zinciri bu listenin parmak izini saklamayı reddetti: kabul edene kadar hiçbir şey gönderilmez. Listeyi kontrol edip yeniden onaylayın.",
+        exportFailListUnconfirmed: "Dışa aktarma listesi Toplantılar sayfasında onayınızı bekliyor: hiçbir şey gönderilmedi.",
+        renameAfterExport: "Bu toplantı dışa aktarılıyor: klasörü, dışa aktarma bitince yeni adı alır.",
+        exportFailDropFolderFull: "Bırakma klasörünün diski dolu: toplantı oraya kopyalanamadı."
     )
 }
 
@@ -2210,7 +2238,7 @@ extension ForkMeetingStrings {
         offerMainWindowFormat: "%@ (главное окно)",
         // MARK: Exports
         exportsTitle: "Экспорт",
-        exportsCaption: "Пока вы не добавите экспорт, ничего не экспортируется. Уходит только это: звук (M4A), расшифровка, если она есть, и meeting.json, где есть лишь id, schema, title, startedAt, endedAt, recordedSeconds, provider, origin, pauses и transcript, а notes и meetCode — только если вы их включите; никогда — микрофон, приложение, событие календаря или путь. Папка выгрузки копирует всё это в папку; веб-хук отправляет на выбранный вами адрес HTTPS.",
+        exportsCaption: "Пока вы не добавите экспорт, ничего не экспортируется. Уходит только это: звук (M4A), расшифровка, если она есть, и meeting.json, где есть лишь id, schema, title (без кода Google Meet, если не включён meetCode), startedAt, endedAt, recordedSeconds, provider, origin, pauses и transcript, а notes и meetCode — только если вы их включите; никогда — микрофон, приложение, событие календаря, история экспорта или путь. Папка выгрузки копирует всё это в папку; веб-хук отправляет на выбранный вами адрес HTTPS.",
         exportsAdd: "Добавить",
         exportKindDropFolder: "Папка выгрузки",
         exportKindWebhook: "Веб-хук HTTPS",
@@ -2241,7 +2269,7 @@ extension ForkMeetingStrings {
         webhookTest: "Отправить тест",
         webhookTestDoneFormat: "Тест дошёл: адрес ответил %d.",
         webhookHelpTitle: "Проверка подписи",
-        webhookHelpCaption: "Каждая отправка — это multipart POST с частями meeting (JSON), audio (M4A) и transcript (текст, если есть). X-Swishsaint-Signature — это sha256= и затем HMAC-SHA256 в шестнадцатеричном виде от X-Swishsaint-Timestamp, точки и необработанного тела, с секретом в качестве ключа. Метка времени ставится до отправки, которая может длиться два часа: отклоняйте запрос, если подпись не совпадает или метка времени отличается больше чем на 2 ч 05 мин, а также запрос с id встречи, который вы уже получили.",
+        webhookHelpCaption: "Каждая отправка — это multipart POST с частями meeting (JSON), audio (M4A) и transcript (текст, если есть). X-Swishsaint-Signature — это sha256= и затем HMAC-SHA256 в шестнадцатеричном виде от X-Swishsaint-Timestamp, точки и необработанного тела, с секретом в качестве ключа. Метка времени ставится до отправки, которая может длиться два часа: отклоняйте запрос, если подпись не совпадает или метка времени отличается больше чем на 2 ч 05 мин, а также запрос, подпись которого вы уже получали: у повторно отправленной встречи подпись новая.",
         webhookHelpCopy: "Скопировать пример",
         originUnreadable: "Этот адрес не читается: напишите его полностью, начиная с https://.",
         originNotHTTPS: "Принимается только адрес HTTPS: иначе звук передавался бы в открытом виде.",
@@ -2346,7 +2374,12 @@ extension ForkMeetingStrings {
         exportFailCertificate: "Сертификат адреса отклонён: ничего не отправлено.",
         exportFailTemporarySpace: "Диск этого Mac заполнен: не удалось подготовить то, что нужно отправить.",
         exportFailEarlyAnswer: "Адрес ответил, не получив встречу целиком: она не считается отправленной.",
-        exportInProgress: "Эта встреча экспортируется: повторите, когда экспорт закончится."
+        exportInProgress: "Эта встреча экспортируется: повторите, когда экспорт закончится.",
+        exportsListUnconfirmed: "Этот список экспорта ещё не подтверждён на этом Mac: проверьте его. Пока вы не подтвердите, ничего не отправляется.",
+        exportsListKeychainRefused: "Связка ключей не сохранила отпечаток этого списка: пока она его не примет, ничего не отправляется. Проверьте список и подтвердите снова.",
+        exportFailListUnconfirmed: "Список экспорта ждёт вашего подтверждения на странице «Встречи»: ничего не отправлено.",
+        renameAfterExport: "Эта встреча экспортируется: её папка получит новое название, когда экспорт закончится.",
+        exportFailDropFolderFull: "Диск папки выгрузки заполнен: встречу не удалось туда скопировать."
     )
 }
 
@@ -2618,7 +2651,7 @@ extension ForkMeetingStrings {
         offerMainWindowFormat: "%@ (ventana principal)",
         // MARK: Exports
         exportsTitle: "Exportaciones",
-        exportsCaption: "No se exporta nada hasta que añadas un exportador. Solo sale esto: el audio (M4A), la transcripción si la hay y un meeting.json con solo id, schema, title, startedAt, endedAt, recordedSeconds, provider, origin, pauses y transcript, más notes y meetCode si los activas; nunca el micrófono, la app, el evento del calendario ni una ruta. Una carpeta de entrega lo copia todo en una carpeta; un webhook lo envía a la dirección HTTPS que elijas.",
+        exportsCaption: "No se exporta nada hasta que añadas un exportador. Solo sale esto: el audio (M4A), la transcripción si la hay y un meeting.json con solo id, schema, title (sin el código de Google Meet salvo que actives meetCode), startedAt, endedAt, recordedSeconds, provider, origin, pauses y transcript, más notes y meetCode si los activas; nunca el micrófono, la app, el evento del calendario, el historial de exportaciones ni una ruta. Una carpeta de entrega lo copia todo en una carpeta; un webhook lo envía a la dirección HTTPS que elijas.",
         exportsAdd: "Añadir",
         exportKindDropFolder: "Carpeta de entrega",
         exportKindWebhook: "Webhook HTTPS",
@@ -2649,7 +2682,7 @@ extension ForkMeetingStrings {
         webhookTest: "Enviar una prueba",
         webhookTestDoneFormat: "La prueba llegó: la dirección respondió %d.",
         webhookHelpTitle: "Comprobar la firma",
-        webhookHelpCaption: "Cada envío es un POST multipart con las partes meeting (JSON), audio (M4A) y transcript (texto, si lo hay). X-Swishsaint-Signature es sha256= seguido del HMAC-SHA256, en hexadecimal, de X-Swishsaint-Timestamp, un punto y el cuerpo sin procesar, con el secreto como clave. La marca de tiempo se toma antes del envío, que puede durar dos horas: rechaza una petición cuya firma difiera o cuya marca de tiempo esté a más de 2 h 05 min, y una cuyo id de reunión ya hayas recibido.",
+        webhookHelpCaption: "Cada envío es un POST multipart con las partes meeting (JSON), audio (M4A) y transcript (texto, si lo hay). X-Swishsaint-Signature es sha256= seguido del HMAC-SHA256, en hexadecimal, de X-Swishsaint-Timestamp, un punto y el cuerpo sin procesar, con el secreto como clave. La marca de tiempo se toma antes del envío, que puede durar dos horas: rechaza una petición cuya firma difiera o cuya marca de tiempo esté a más de 2 h 05 min, y una cuya firma ya hayas recibido: una reunión enviada de nuevo tiene una nueva.",
         webhookHelpCopy: "Copiar el ejemplo",
         originUnreadable: "Esta dirección no se puede leer: escríbela entera, empezando por https://.",
         originNotHTTPS: "Solo se acepta una dirección HTTPS: si no, el audio viajaría sin cifrar.",
@@ -2754,7 +2787,12 @@ extension ForkMeetingStrings {
         exportFailCertificate: "Se rechazó el certificado de la dirección: no se envió nada.",
         exportFailTemporarySpace: "El disco de este Mac está lleno: no se pudo preparar lo que había que enviar.",
         exportFailEarlyAnswer: "La dirección respondió antes de recibir la reunión entera: no cuenta como enviada.",
-        exportInProgress: "Esta reunión se está exportando: inténtalo de nuevo cuando termine."
+        exportInProgress: "Esta reunión se está exportando: inténtalo de nuevo cuando termine.",
+        exportsListUnconfirmed: "Esta lista de exportaciones aún no se ha confirmado en este Mac: revísala. No se envía nada hasta que confirmes.",
+        exportsListKeychainRefused: "El Llavero se negó a guardar la huella de esta lista: no se envía nada hasta que la acepte. Revisa la lista y vuelve a confirmar.",
+        exportFailListUnconfirmed: "La lista de exportaciones espera tu confirmación en la página Reuniones: no se envió nada.",
+        renameAfterExport: "Esta reunión se está exportando: su carpeta tomará el nuevo nombre cuando termine la exportación.",
+        exportFailDropFolderFull: "El disco de la carpeta de entrega está lleno: no se pudo copiar allí la reunión."
     )
 }
 
@@ -3026,7 +3064,7 @@ extension ForkMeetingStrings {
         offerMainWindowFormat: "%@ (hlavné okno)",
         // MARK: Exports
         exportsTitle: "Exporty",
-        exportsCaption: "Kým nepridáte export, nič sa neexportuje. Odíde len toto: zvuk (M4A), prepis, ak existuje, a meeting.json len s id, schema, title, startedAt, endedAt, recordedSeconds, provider, origin, pauses a transcript, plus notes a meetCode, ak ich zapnete; nikdy mikrofón, aplikácia, udalosť kalendára ani cesta. Priečinok na odovzdanie to skopíruje do priečinka; webhook to pošle na zvolenú adresu HTTPS.",
+        exportsCaption: "Kým nepridáte export, nič sa neexportuje. Odíde len toto: zvuk (M4A), prepis, ak existuje, a meeting.json len s id, schema, title (bez kódu Google Meet, ak nie je zapnutý meetCode), startedAt, endedAt, recordedSeconds, provider, origin, pauses a transcript, plus notes a meetCode, ak ich zapnete; nikdy mikrofón, aplikácia, udalosť kalendára, história exportov ani cesta. Priečinok na odovzdanie to skopíruje do priečinka; webhook to pošle na zvolenú adresu HTTPS.",
         exportsAdd: "Pridať",
         exportKindDropFolder: "Priečinok na odovzdanie",
         exportKindWebhook: "Webhook HTTPS",
@@ -3057,7 +3095,7 @@ extension ForkMeetingStrings {
         webhookTest: "Poslať test",
         webhookTestDoneFormat: "Test dorazil: adresa odpovedala %d.",
         webhookHelpTitle: "Overenie podpisu",
-        webhookHelpCaption: "Každé odoslanie je multipart POST s časťami meeting (JSON), audio (M4A) a transcript (text, ak existuje). X-Swishsaint-Signature je sha256= a za ním HMAC-SHA256 v šestnástkovom zápise z X-Swishsaint-Timestamp, bodky a surového tela, s tajným kľúčom ako kľúčom. Časová pečiatka sa berie pred odoslaním, ktoré môže trvať dve hodiny: odmietnite požiadavku, ktorej podpis nesedí alebo ktorej časová pečiatka sa líši o viac ako 2 h 05 min, aj požiadavku s id stretnutia, ktoré ste už prijali.",
+        webhookHelpCaption: "Každé odoslanie je multipart POST s časťami meeting (JSON), audio (M4A) a transcript (text, ak existuje). X-Swishsaint-Signature je sha256= a za ním HMAC-SHA256 v šestnástkovom zápise z X-Swishsaint-Timestamp, bodky a surového tela, s tajným kľúčom ako kľúčom. Časová pečiatka sa berie pred odoslaním, ktoré môže trvať dve hodiny: odmietnite požiadavku, ktorej podpis nesedí alebo ktorej časová pečiatka sa líši o viac ako 2 h 05 min, aj požiadavku, ktorej podpis ste už prijali: znova odoslané stretnutie má nový.",
         webhookHelpCopy: "Kopírovať príklad",
         originUnreadable: "Táto adresa sa nedá prečítať: napíšte ju celú, začínajúc https://.",
         originNotHTTPS: "Prijíma sa len adresa HTTPS: inak by zvuk putoval nešifrovane.",
@@ -3162,7 +3200,12 @@ extension ForkMeetingStrings {
         exportFailCertificate: "Certifikát adresy bol odmietnutý: nič sa neodoslalo.",
         exportFailTemporarySpace: "Disk tohto Macu je plný: to, čo sa malo odoslať, sa nepodarilo pripraviť.",
         exportFailEarlyAnswer: "Adresa odpovedala skôr, než prijala celé stretnutie: nepovažuje sa za odoslané.",
-        exportInProgress: "Toto stretnutie sa exportuje: skúste to znova, keď sa export skončí."
+        exportInProgress: "Toto stretnutie sa exportuje: skúste to znova, keď sa export skončí.",
+        exportsListUnconfirmed: "Tento zoznam exportov ešte nebol v tomto Macu potvrdený: skontrolujte ho. Kým nepotvrdíte, nič sa neodošle.",
+        exportsListKeychainRefused: "Kľúčenka odmietla uložiť odtlačok tohto zoznamu: kým ho neprijme, nič sa neodošle. Skontrolujte zoznam a potvrďte ho znova.",
+        exportFailListUnconfirmed: "Zoznam exportov čaká na vaše potvrdenie na stránke Stretnutia: nič sa neodoslalo.",
+        renameAfterExport: "Toto stretnutie sa exportuje: jeho priečinok dostane nový názov, keď sa export skončí.",
+        exportFailDropFolderFull: "Disk priečinka na odovzdanie je plný: stretnutie sa tam nepodarilo skopírovať."
     )
 }
 
@@ -3434,7 +3477,7 @@ extension ForkMeetingStrings {
         offerMainWindowFormat: "%@ (Hauptfenster)",
         // MARK: Exports
         exportsTitle: "Exporte",
-        exportsCaption: "Es wird nichts exportiert, bevor du einen Export hinzufügst. Nur das geht hinaus: der Ton (M4A), das Transkript, falls vorhanden, und eine meeting.json nur mit id, schema, title, startedAt, endedAt, recordedSeconds, provider, origin, pauses und transcript, dazu notes und meetCode, wenn du sie einschaltest; nie das Mikrofon, die App, der Kalendertermin oder ein Pfad. Ein Ablageordner kopiert das in einen Ordner; ein Webhook sendet es an die gewählte HTTPS-Adresse.",
+        exportsCaption: "Es wird nichts exportiert, bevor du einen Export hinzufügst. Nur das geht hinaus: der Ton (M4A), das Transkript, falls vorhanden, und eine meeting.json nur mit id, schema, title (ohne den Google-Meet-Code, außer meetCode ist eingeschaltet), startedAt, endedAt, recordedSeconds, provider, origin, pauses und transcript, dazu notes und meetCode, wenn du sie einschaltest; nie das Mikrofon, die App, der Kalendertermin, der Verlauf der Exporte oder ein Pfad. Ein Ablageordner kopiert das in einen Ordner; ein Webhook sendet es an die gewählte HTTPS-Adresse.",
         exportsAdd: "Hinzufügen",
         exportKindDropFolder: "Ablageordner",
         exportKindWebhook: "HTTPS-Webhook",
@@ -3465,7 +3508,7 @@ extension ForkMeetingStrings {
         webhookTest: "Test senden",
         webhookTestDoneFormat: "Der Test kam an: Die Adresse antwortete %d.",
         webhookHelpTitle: "Signatur prüfen",
-        webhookHelpCaption: "Jeder Versand ist ein Multipart-POST mit den Teilen meeting (JSON), audio (M4A) und transcript (Text, falls vorhanden). X-Swishsaint-Signature ist sha256= gefolgt vom HMAC-SHA256 in Hexadezimalschreibweise aus X-Swishsaint-Timestamp, einem Punkt und dem unveränderten Anfrageinhalt, mit dem Geheimnis als Schlüssel. Der Zeitstempel wird vor dem Versand gesetzt, der bis zu zwei Stunden dauern kann: Lehne eine Anfrage ab, deren Signatur abweicht oder deren Zeitstempel mehr als 2 Std. 05 Min. abweicht, und eine, deren Besprechungs-ID du schon erhalten hast.",
+        webhookHelpCaption: "Jeder Versand ist ein Multipart-POST mit den Teilen meeting (JSON), audio (M4A) und transcript (Text, falls vorhanden). X-Swishsaint-Signature ist sha256= gefolgt vom HMAC-SHA256 in Hexadezimalschreibweise aus X-Swishsaint-Timestamp, einem Punkt und dem unveränderten Anfrageinhalt, mit dem Geheimnis als Schlüssel. Der Zeitstempel wird vor dem Versand gesetzt, der bis zu zwei Stunden dauern kann: Lehne eine Anfrage ab, deren Signatur abweicht oder deren Zeitstempel um mehr als 2 Std. 05 Min. danebenliegt, und eine, deren Signatur du schon erhalten hast: Eine erneut gesendete Besprechung hat eine neue.",
         webhookHelpCopy: "Beispiel kopieren",
         originUnreadable: "Diese Adresse ist nicht lesbar: Schreibe sie vollständig, beginnend mit https://.",
         originNotHTTPS: "Nur eine HTTPS-Adresse wird angenommen: Sonst würde der Ton unverschlüsselt übertragen.",
@@ -3570,7 +3613,12 @@ extension ForkMeetingStrings {
         exportFailCertificate: "Das Zertifikat der Adresse wurde abgelehnt: Es wurde nichts gesendet.",
         exportFailTemporarySpace: "Das Volume dieses Macs ist voll: Was gesendet werden sollte, konnte nicht vorbereitet werden.",
         exportFailEarlyAnswer: "Die Adresse hat geantwortet, bevor sie die ganze Besprechung erhielt: Sie gilt nicht als gesendet.",
-        exportInProgress: "Diese Besprechung wird gerade exportiert: Versuche es erneut, wenn der Export fertig ist."
+        exportInProgress: "Diese Besprechung wird gerade exportiert: Versuche es erneut, wenn der Export fertig ist.",
+        exportsListUnconfirmed: "Diese Liste der Exporte wurde auf diesem Mac noch nicht bestätigt: Prüfe sie. Bis du bestätigst, wird nichts gesendet.",
+        exportsListKeychainRefused: "Der Schlüsselbund hat den Fingerabdruck dieser Liste nicht gesichert: Bis er ihn annimmt, wird nichts gesendet. Prüfe die Liste und bestätige erneut.",
+        exportFailListUnconfirmed: "Die Liste der Exporte wartet auf deine Bestätigung auf der Seite „Besprechungen“: Es wurde nichts gesendet.",
+        renameAfterExport: "Diese Besprechung wird gerade exportiert: Ihr Ordner erhält den neuen Namen, sobald der Export fertig ist.",
+        exportFailDropFolderFull: "Das Volume des Ablageordners ist voll: Die Besprechung konnte nicht dorthin kopiert werden."
     )
 }
 
@@ -3842,7 +3890,7 @@ extension ForkMeetingStrings {
         offerMainWindowFormat: "%@ (fenêtre principale)",
         // MARK: Exports
         exportsTitle: "Exportations",
-        exportsCaption: "Rien n’est exporté tant que vous n’ajoutez pas d’export. Seul ceci part\u{00A0}: l’audio (M4A), la transcription s’il y en a une, et une fiche meeting.json réduite à id, schema, title, startedAt, endedAt, recordedSeconds, provider, origin, pauses et transcript, plus notes et meetCode si vous les cochez\u{00A0}; jamais le micro, l’app, l’événement du calendrier ni un chemin. Un dossier de dépôt copie le tout dans un dossier\u{00A0}; un webhook l’envoie à l’adresse HTTPS choisie.",
+        exportsCaption: "Rien n’est exporté tant que vous n’ajoutez pas d’export. Seul ceci part\u{00A0}: l’audio (M4A), la transcription s’il y en a une, et une fiche meeting.json réduite à id, schema, title (sans le code Google Meet, sauf si meetCode est coché), startedAt, endedAt, recordedSeconds, provider, origin, pauses et transcript, plus notes et meetCode si vous les cochez\u{00A0}; jamais le micro, l’app, l’événement du calendrier, l’historique des exports ni un chemin. Un dossier de dépôt copie le tout dans un dossier\u{00A0}; un webhook l’envoie à l’adresse HTTPS choisie.",
         exportsAdd: "Ajouter",
         exportKindDropFolder: "Dossier de dépôt",
         exportKindWebhook: "Webhook HTTPS",
@@ -3873,7 +3921,7 @@ extension ForkMeetingStrings {
         webhookTest: "Envoyer un test",
         webhookTestDoneFormat: "Le test est arrivé\u{00A0}: l’adresse a répondu %d.",
         webhookHelpTitle: "Vérifier la signature",
-        webhookHelpCaption: "Chaque envoi est un POST multipart avec les parties meeting (JSON), audio (M4A) et transcript (texte, s’il y en a un). X-Swishsaint-Signature vaut sha256= suivi du HMAC-SHA256, en hexadécimal, de X-Swishsaint-Timestamp, d’un point et du corps brut, avec la clé secrète. L’horodatage est pris avant l’envoi, qui peut durer deux heures\u{00A0}: refusez une requête dont la signature diffère ou dont l’horodatage est à plus de 2\u{00A0}h\u{00A0}05, et celle dont vous avez déjà reçu l’id de réunion.",
+        webhookHelpCaption: "Chaque envoi est un POST multipart avec les parties meeting (JSON), audio (M4A) et transcript (texte, s’il y en a un). X-Swishsaint-Signature vaut sha256= suivi du HMAC-SHA256, en hexadécimal, de X-Swishsaint-Timestamp, d’un point et du corps brut, avec la clé secrète. L’horodatage est pris avant l’envoi, qui peut durer deux heures\u{00A0}: refusez une requête dont la signature diffère ou dont l’horodatage est à plus de 2\u{00A0}h\u{00A0}05, et celle dont vous avez déjà reçu la signature\u{00A0}: une réunion renvoyée en a une nouvelle.",
         webhookHelpCopy: "Copier l’exemple",
         originUnreadable: "Cette adresse est illisible\u{00A0}: écrivez-la en entier, en commençant par https://.",
         originNotHTTPS: "Seule une adresse HTTPS est acceptée\u{00A0}: sinon l’audio voyagerait en clair.",
@@ -3978,7 +4026,12 @@ extension ForkMeetingStrings {
         exportFailCertificate: "Le certificat de l’adresse a été refusé\u{00A0}: rien n’a été envoyé.",
         exportFailTemporarySpace: "Le disque de ce Mac est plein\u{00A0}: ce qui devait partir n’a pas pu être préparé.",
         exportFailEarlyAnswer: "L’adresse a répondu avant d’avoir reçu toute la réunion\u{00A0}: elle n’est pas comptée comme envoyée.",
-        exportInProgress: "Cette réunion est en cours d’export\u{00A0}: réessayez quand il sera terminé."
+        exportInProgress: "Cette réunion est en cours d’export\u{00A0}: réessayez quand il sera terminé.",
+        exportsListUnconfirmed: "Cette liste d’exports n’a pas encore été confirmée sur ce Mac\u{00A0}: vérifiez-la. Rien ne part tant que vous ne l’avez pas confirmée.",
+        exportsListKeychainRefused: "Le trousseau a refusé de garder l’empreinte de cette liste\u{00A0}: rien ne part tant qu’il ne l’accepte pas. Vérifiez la liste, puis confirmez à nouveau.",
+        exportFailListUnconfirmed: "La liste des exports attend votre confirmation sur la page Réunions\u{00A0}: rien n’a été envoyé.",
+        renameAfterExport: "Cette réunion est en cours d’export\u{00A0}: son dossier prendra le nouveau nom une fois l’export terminé.",
+        exportFailDropFolderFull: "Le disque du dossier de dépôt est plein\u{00A0}: la réunion n’a pas pu y être copiée."
     )
 }
 
@@ -4250,7 +4303,7 @@ extension ForkMeetingStrings {
         offerMainWindowFormat: "%@ (finestra principale)",
         // MARK: Exports
         exportsTitle: "Esportazioni",
-        exportsCaption: "Non viene esportato nulla finché non aggiungi un’esportazione. Esce solo questo: l’audio (M4A), la trascrizione se c’è e un meeting.json con solo id, schema, title, startedAt, endedAt, recordedSeconds, provider, origin, pauses e transcript, più notes e meetCode se li attivi; mai il microfono, l’app, l’evento del calendario né un percorso. Una cartella di consegna copia tutto in una cartella; un webhook lo invia all’indirizzo HTTPS scelto.",
+        exportsCaption: "Non viene esportato nulla finché non aggiungi un’esportazione. Esce solo questo: l’audio (M4A), la trascrizione se c’è e un meeting.json con solo id, schema, title (senza il codice di Google Meet, a meno che meetCode sia attivo), startedAt, endedAt, recordedSeconds, provider, origin, pauses e transcript, più notes e meetCode se li attivi; mai il microfono, l’app, l’evento del calendario, la cronologia delle esportazioni né un percorso. Una cartella di consegna copia tutto in una cartella; un webhook lo invia all’indirizzo HTTPS scelto.",
         exportsAdd: "Aggiungi",
         exportKindDropFolder: "Cartella di consegna",
         exportKindWebhook: "Webhook HTTPS",
@@ -4281,7 +4334,7 @@ extension ForkMeetingStrings {
         webhookTest: "Invia un test",
         webhookTestDoneFormat: "Il test è arrivato: l’indirizzo ha risposto %d.",
         webhookHelpTitle: "Verificare la firma",
-        webhookHelpCaption: "Ogni invio è un POST multipart con le parti meeting (JSON), audio (M4A) e transcript (testo, se c’è). X-Swishsaint-Signature è sha256= seguito dall’HMAC-SHA256, in esadecimale, di X-Swishsaint-Timestamp, un punto e il corpo grezzo, con il segreto come chiave. Il timestamp è preso prima dell’invio, che può durare due ore: rifiuta una richiesta la cui firma è diversa o il cui timestamp dista più di 2 h 05 min, e una il cui id di riunione hai già ricevuto.",
+        webhookHelpCaption: "Ogni invio è un POST multipart con le parti meeting (JSON), audio (M4A) e transcript (testo, se c’è). X-Swishsaint-Signature è sha256= seguito dall’HMAC-SHA256, in esadecimale, di X-Swishsaint-Timestamp, un punto e il corpo grezzo, con il segreto come chiave. Il timestamp è preso prima dell’invio, che può durare due ore: rifiuta una richiesta la cui firma è diversa o il cui timestamp dista più di 2 h 05 min, e una la cui firma hai già ricevuto: una riunione inviata di nuovo ne ha una nuova.",
         webhookHelpCopy: "Copia l’esempio",
         originUnreadable: "Questo indirizzo non è leggibile: scrivilo per intero, iniziando con https://.",
         originNotHTTPS: "È accettato solo un indirizzo HTTPS: altrimenti l’audio viaggerebbe non cifrato.",
@@ -4386,7 +4439,12 @@ extension ForkMeetingStrings {
         exportFailCertificate: "Il certificato dell’indirizzo è stato rifiutato: non è stato inviato nulla.",
         exportFailTemporarySpace: "Il disco di questo Mac è pieno: non è stato possibile preparare ciò che andava inviato.",
         exportFailEarlyAnswer: "L’indirizzo ha risposto prima di ricevere tutta la riunione: non conta come inviata.",
-        exportInProgress: "Questa riunione è in esportazione: riprova quando è finita."
+        exportInProgress: "Questa riunione è in esportazione: riprova quando è finita.",
+        exportsListUnconfirmed: "Questo elenco di esportazioni non è ancora stato confermato su questo Mac: controllalo. Finché non confermi, non viene inviato nulla.",
+        exportsListKeychainRefused: "Il Portachiavi ha rifiutato di conservare l’impronta di questo elenco: finché non la accetta, non viene inviato nulla. Controlla l’elenco e conferma di nuovo.",
+        exportFailListUnconfirmed: "L’elenco delle esportazioni attende la tua conferma nella pagina Riunioni: non è stato inviato nulla.",
+        renameAfterExport: "Questa riunione è in esportazione: la sua cartella prenderà il nuovo nome a esportazione finita.",
+        exportFailDropFolderFull: "Il disco della cartella di consegna è pieno: non è stato possibile copiarvi la riunione."
     )
 }
 
@@ -4658,7 +4716,7 @@ extension ForkMeetingStrings {
         offerMainWindowFormat: "%@（メインウインドウ）",
         // MARK: Exports
         exportsTitle: "書き出し",
-        exportsCaption: "書き出し先を追加するまで何も書き出されません。送られるのは次のものだけです。音声（M4A）、文字起こし（ある場合）、そして id, schema, title, startedAt, endedAt, recordedSeconds, provider, origin, pauses と transcript だけを含むmeeting.json。notes と meetCode はオンにした場合のみ。マイク、App、カレンダーのイベント、パスは送りません。ドロップフォルダはこれらをフォルダにコピーし、Webhookは選んだHTTPSアドレスへ送信します。",
+        exportsCaption: "書き出し先を追加するまで何も書き出されません。送られるのは次のものだけです。音声（M4A）、文字起こし（ある場合）、そして id, schema, title（meetCodeがオンでない限りGoogle Meetのコードを除く）、startedAt, endedAt, recordedSeconds, provider, origin, pauses と transcript だけを含むmeeting.json。notes と meetCode はオンにした場合のみ。マイク、App、カレンダーのイベント、書き出しの履歴、パスは送りません。ドロップフォルダはこれらをフォルダにコピーし、Webhookは選んだHTTPSアドレスへ送信します。",
         exportsAdd: "追加",
         exportKindDropFolder: "ドロップフォルダ",
         exportKindWebhook: "HTTPS Webhook",
@@ -4689,7 +4747,7 @@ extension ForkMeetingStrings {
         webhookTest: "テストを送信",
         webhookTestDoneFormat: "テストが届きました。アドレスの応答は %d です。",
         webhookHelpTitle: "署名の検証",
-        webhookHelpCaption: "送信はそれぞれ、meeting（JSON）、audio（M4A）、transcript（テキスト、ある場合）の各パートを持つmultipart POSTです。X-Swishsaint-Signatureは、sha256=に続けて、X-Swishsaint-Timestamp、ドット、未加工の本文をシークレットで計算したHMAC-SHA256の16進数です。タイムスタンプは最長2時間かかる送信の前に付けられます。署名が一致しないリクエスト、タイムスタンプが2時間5分を超えてずれているリクエスト、すでに受け取ったミーティングidのリクエストは拒否してください。",
+        webhookHelpCaption: "送信はそれぞれ、meeting（JSON）、audio（M4A）、transcript（テキスト、ある場合）の各パートを持つmultipart POSTです。X-Swishsaint-Signatureは、sha256=に続けて、X-Swishsaint-Timestamp、ドット、未加工の本文をシークレットで計算したHMAC-SHA256の16進数です。タイムスタンプは最長2時間かかる送信の前に付けられます。署名が一致しないリクエスト、タイムスタンプが2時間5分を超えてずれているリクエスト、すでに受け取った署名のリクエストは拒否してください。送り直したミーティングには新しい署名が付きます。",
         webhookHelpCopy: "例をコピー",
         originUnreadable: "このアドレスは読み取れません。https:// から始めて完全に入力してください。",
         originNotHTTPS: "HTTPSのアドレスのみ使用できます。そうでないと音声が暗号化されずに送られます。",
@@ -4794,7 +4852,12 @@ extension ForkMeetingStrings {
         exportFailCertificate: "アドレスの証明書が拒否されました。何も送信されていません。",
         exportFailTemporarySpace: "このMacのディスクがいっぱいです。送信するものを準備できませんでした。",
         exportFailEarlyAnswer: "アドレスがミーティング全体を受け取る前に応答しました。送信済みとはみなされません。",
-        exportInProgress: "このミーティングは書き出し中です。完了してからもう一度お試しください。"
+        exportInProgress: "このミーティングは書き出し中です。完了してからもう一度お試しください。",
+        exportsListUnconfirmed: "この書き出し先のリストは、このMacでまだ確認されていません。確認してください。確認するまで何も送信されません。",
+        exportsListKeychainRefused: "キーチェーンがこのリストの指紋の保存を拒否しました。受け入れられるまで何も送信されません。リストを確認して、もう一度確認してください。",
+        exportFailListUnconfirmed: "書き出し先のリストが「ミーティング」ページでの確認を待っています。何も送信されていません。",
+        renameAfterExport: "このミーティングは書き出し中です。書き出しが終わるとフォルダに新しい名前が付きます。",
+        exportFailDropFolderFull: "ドロップフォルダのディスクがいっぱいです。ミーティングをコピーできませんでした。"
     )
 }
 
@@ -5066,7 +5129,7 @@ extension ForkMeetingStrings {
         offerMainWindowFormat: "%@ (메인 윈도우)",
         // MARK: Exports
         exportsTitle: "내보내기",
-        exportsCaption: "내보내기를 추가하기 전에는 아무것도 내보내지 않습니다. 나가는 것은 다음뿐입니다. 오디오(M4A), 있으면 녹취록, 그리고 id, schema, title, startedAt, endedAt, recordedSeconds, provider, origin, pauses, transcript만 담은 meeting.json입니다. notes와 meetCode는 켠 경우에만 포함됩니다. 마이크, 앱, 캘린더 이벤트, 경로는 절대 보내지 않습니다. 드롭 폴더는 이를 폴더에 복사하고, 웹훅은 선택한 HTTPS 주소로 보냅니다.",
+        exportsCaption: "내보내기를 추가하기 전에는 아무것도 내보내지 않습니다. 나가는 것은 다음뿐입니다. 오디오(M4A), 있으면 녹취록, 그리고 id, schema, title(meetCode를 켜지 않으면 Google Meet 코드 제외), startedAt, endedAt, recordedSeconds, provider, origin, pauses, transcript만 담은 meeting.json입니다. notes와 meetCode는 켠 경우에만 포함됩니다. 마이크, 앱, 캘린더 이벤트, 내보내기 기록, 경로는 절대 보내지 않습니다. 드롭 폴더는 이를 폴더에 복사하고, 웹훅은 선택한 HTTPS 주소로 보냅니다.",
         exportsAdd: "추가",
         exportKindDropFolder: "드롭 폴더",
         exportKindWebhook: "HTTPS 웹훅",
@@ -5097,7 +5160,7 @@ extension ForkMeetingStrings {
         webhookTest: "테스트 보내기",
         webhookTestDoneFormat: "테스트가 도착했습니다. 주소가 %d(으)로 응답했습니다.",
         webhookHelpTitle: "서명 확인",
-        webhookHelpCaption: "각 전송은 meeting(JSON), audio(M4A), transcript(텍스트, 있는 경우) 파트가 있는 multipart POST입니다. X-Swishsaint-Signature는 sha256= 뒤에 X-Swishsaint-Timestamp, 마침표, 원본 본문을 시크릿으로 계산한 HMAC-SHA256 16진수가 붙은 값입니다. 타임스탬프는 최대 2시간 걸릴 수 있는 전송 전에 찍힙니다. 서명이 다르거나 타임스탬프가 2시간 5분 넘게 차이 나는 요청, 이미 받은 회의 id의 요청은 거부하세요.",
+        webhookHelpCaption: "각 전송은 meeting(JSON), audio(M4A), transcript(텍스트, 있는 경우) 파트가 있는 multipart POST입니다. X-Swishsaint-Signature는 sha256= 뒤에 X-Swishsaint-Timestamp, 마침표, 원본 본문을 시크릿으로 계산한 HMAC-SHA256 16진수가 붙은 값입니다. 타임스탬프는 최대 2시간 걸릴 수 있는 전송 전에 찍힙니다. 서명이 다르거나 타임스탬프가 2시간 5분 넘게 차이 나는 요청, 이미 받은 서명의 요청은 거부하세요. 다시 보낸 회의에는 새 서명이 붙습니다.",
         webhookHelpCopy: "예시 복사",
         originUnreadable: "이 주소를 읽을 수 없습니다. https://로 시작하는 전체 주소를 입력하세요.",
         originNotHTTPS: "HTTPS 주소만 사용할 수 있습니다. 그렇지 않으면 오디오가 암호화되지 않은 채 전송됩니다.",
@@ -5202,7 +5265,12 @@ extension ForkMeetingStrings {
         exportFailCertificate: "주소의 인증서가 거부되었습니다. 아무것도 보내지 않았습니다.",
         exportFailTemporarySpace: "이 Mac의 디스크가 가득 찼습니다. 보낼 항목을 준비하지 못했습니다.",
         exportFailEarlyAnswer: "주소가 회의 전체를 받기 전에 응답했습니다. 보낸 것으로 보지 않습니다.",
-        exportInProgress: "이 회의를 내보내는 중입니다. 끝나면 다시 시도하세요."
+        exportInProgress: "이 회의를 내보내는 중입니다. 끝나면 다시 시도하세요.",
+        exportsListUnconfirmed: "이 내보내기 목록은 이 Mac에서 아직 확인되지 않았습니다. 확인하세요. 확인할 때까지 아무것도 보내지 않습니다.",
+        exportsListKeychainRefused: "키체인이 이 목록의 지문 저장을 거부했습니다. 받아들일 때까지 아무것도 보내지 않습니다. 목록을 확인한 다음 다시 확인하세요.",
+        exportFailListUnconfirmed: "내보내기 목록이 회의 페이지에서 확인을 기다리고 있습니다. 아무것도 보내지 않았습니다.",
+        renameAfterExport: "이 회의를 내보내는 중입니다. 내보내기가 끝나면 폴더가 새 이름을 받습니다.",
+        exportFailDropFolderFull: "드롭 폴더의 디스크가 가득 찼습니다. 회의를 그곳에 복사하지 못했습니다."
     )
 }
 
@@ -5474,7 +5542,7 @@ extension ForkMeetingStrings {
         offerMainWindowFormat: "%@ (головне вікно)",
         // MARK: Exports
         exportsTitle: "Експорт",
-        exportsCaption: "Поки ви не додасте експорт, нічого не експортується. Іде лише це: звук (M4A), розшифровка, якщо вона є, і meeting.json, де є тільки id, schema, title, startedAt, endedAt, recordedSeconds, provider, origin, pauses і transcript, а notes і meetCode — лише якщо ви їх увімкнете; ніколи — мікрофон, застосунок, подія календаря чи шлях. Папка вивантаження копіює все це в папку; вебхук надсилає на вибрану адресу HTTPS.",
+        exportsCaption: "Поки ви не додасте експорт, нічого не експортується. Іде лише це: звук (M4A), розшифровка, якщо вона є, і meeting.json, де є тільки id, schema, title (без коду Google Meet, якщо не ввімкнено meetCode), startedAt, endedAt, recordedSeconds, provider, origin, pauses і transcript, а notes і meetCode — лише якщо ви їх увімкнете; ніколи — мікрофон, застосунок, подія календаря, історія експорту чи шлях. Папка вивантаження копіює все це в папку; вебхук надсилає на вибрану адресу HTTPS.",
         exportsAdd: "Додати",
         exportKindDropFolder: "Папка вивантаження",
         exportKindWebhook: "Вебхук HTTPS",
@@ -5505,7 +5573,7 @@ extension ForkMeetingStrings {
         webhookTest: "Надіслати тест",
         webhookTestDoneFormat: "Тест дійшов: адреса відповіла %d.",
         webhookHelpTitle: "Перевірка підпису",
-        webhookHelpCaption: "Кожне надсилання — це multipart POST із частинами meeting (JSON), audio (M4A) і transcript (текст, якщо є). X-Swishsaint-Signature — це sha256= і далі HMAC-SHA256 у шістнадцятковому вигляді від X-Swishsaint-Timestamp, крапки й необробленого тіла, із секретом як ключем. Мітка часу ставиться до надсилання, яке може тривати дві години: відхиляйте запит, якщо підпис не збігається або мітка часу відрізняється більше ніж на 2 год 05 хв, а також запит з id зустрічі, яку ви вже отримали.",
+        webhookHelpCaption: "Кожне надсилання — це multipart POST із частинами meeting (JSON), audio (M4A) і transcript (текст, якщо є). X-Swishsaint-Signature — це sha256= і далі HMAC-SHA256 у шістнадцятковому вигляді від X-Swishsaint-Timestamp, крапки й необробленого тіла, із секретом як ключем. Мітка часу ставиться до надсилання, яке може тривати дві години: відхиляйте запит, якщо підпис не збігається або мітка часу відрізняється більше ніж на 2 год 05 хв, а також запит, підпис якого ви вже отримували: у повторно надісланої зустрічі підпис новий.",
         webhookHelpCopy: "Скопіювати приклад",
         originUnreadable: "Цю адресу неможливо прочитати: напишіть її повністю, починаючи з https://.",
         originNotHTTPS: "Приймається лише адреса HTTPS: інакше звук передавався б у відкритому вигляді.",
@@ -5599,7 +5667,7 @@ extension ForkMeetingStrings {
         renameTitleNotSaved: "Папку перейменовано, але нову назву не вдалося зберегти.",
         statusForeign: "Файл meeting.json записано не Vorssaint: показується, але не змінюється.",
         // MARK: Fixes N
-        exportIncludeNotes: "Додавати нотатки",
+        exportIncludeNotes: "Включати нотатки",
         exportIncludeNotesCaption: "Без цього параметра ваші нотатки про зустріч лишаються на цьому Mac.",
         exportsListChanged: "Список експорту змінено поза Vorssaint: перевірте його. Поки ви не підтвердите, нічого не надсилається само.",
         exportsListConfirm: "Підтвердити",
@@ -5610,7 +5678,12 @@ extension ForkMeetingStrings {
         exportFailCertificate: "Сертифікат адреси відхилено: нічого не надіслано.",
         exportFailTemporarySpace: "Диск цього Mac заповнено: не вдалося підготувати те, що треба надіслати.",
         exportFailEarlyAnswer: "Адреса відповіла, не отримавши зустріч повністю: вона не вважається надісланою.",
-        exportInProgress: "Ця зустріч експортується: спробуйте ще раз, коли експорт завершиться."
+        exportInProgress: "Ця зустріч експортується: спробуйте ще раз, коли експорт завершиться.",
+        exportsListUnconfirmed: "Цей список експорту ще не підтверджено на цьому Mac: перевірте його. Поки ви не підтвердите, нічого не надсилається.",
+        exportsListKeychainRefused: "В’язка ключів не зберегла відбиток цього списку: поки вона його не прийме, нічого не надсилається. Перевірте список і підтвердіть знову.",
+        exportFailListUnconfirmed: "Список експорту чекає вашого підтвердження на сторінці «Зустрічі»: нічого не надіслано.",
+        renameAfterExport: "Ця зустріч експортується: її папка отримає нову назву, коли експорт завершиться.",
+        exportFailDropFolderFull: "Диск папки вивантаження заповнено: зустріч не вдалося туди скопіювати."
     )
 }
 
@@ -5882,7 +5955,7 @@ extension ForkMeetingStrings {
         offerMainWindowFormat: "%@（主窗口）",
         // MARK: Exports
         exportsTitle: "导出",
-        exportsCaption: "添加导出方式之前不会导出任何内容。只会发出以下内容：音频（M4A）、转写文本（如有），以及只含 id, schema, title, startedAt, endedAt, recordedSeconds, provider, origin, pauses 和 transcript 的 meeting.json；打开相应选项时还包括 notes 和 meetCode。绝不包括麦克风、App、日历事件或路径。投放文件夹会把这些拷贝到文件夹；Webhook 会把它们发送到你选择的 HTTPS 地址。",
+        exportsCaption: "添加导出方式之前不会导出任何内容。只会发出以下内容：音频（M4A）、转写文本（如有），以及只含 id, schema, title（除非打开 meetCode，否则不含 Google Meet 代码）、startedAt, endedAt, recordedSeconds, provider, origin, pauses 和 transcript 的 meeting.json；打开相应选项时还包括 notes 和 meetCode。绝不包括麦克风、App、日历事件、导出历史记录或路径。投放文件夹会把这些拷贝到文件夹；Webhook 会把它们发送到你选择的 HTTPS 地址。",
         exportsAdd: "添加",
         exportKindDropFolder: "投放文件夹",
         exportKindWebhook: "HTTPS Webhook",
@@ -5913,7 +5986,7 @@ extension ForkMeetingStrings {
         webhookTest: "发送测试",
         webhookTestDoneFormat: "测试已送达：地址返回了 %d。",
         webhookHelpTitle: "验证签名",
-        webhookHelpCaption: "每次发送都是一个 multipart POST，包含 meeting（JSON）、audio（M4A）和 transcript（文本，如有）这几个部分。X-Swishsaint-Signature 为 sha256= 后接以密钥计算的 HMAC-SHA256（十六进制），计算对象是 X-Swishsaint-Timestamp、一个点号和原始正文。时间戳在发送前生成，而发送可能持续两小时：签名不一致、时间戳相差超过 2 小时 05 分，或会议 id 已收到过的请求应予拒绝。",
+        webhookHelpCaption: "每次发送都是一个 multipart POST，包含 meeting（JSON）、audio（M4A）和 transcript（文本，如有）这几个部分。X-Swishsaint-Signature 为 sha256= 后接以密钥计算的 HMAC-SHA256（十六进制），计算对象是 X-Swishsaint-Timestamp、一个点号和原始正文。时间戳在发送前生成，而发送可能持续两小时：签名不一致、时间戳相差超过 2 小时 05 分，或签名已收到过的请求应予拒绝；重新发送的会议会有新的签名。",
         webhookHelpCopy: "拷贝示例",
         originUnreadable: "无法读取此地址：请以 https:// 开头完整填写。",
         originNotHTTPS: "只接受 HTTPS 地址：否则音频会以明文传输。",
@@ -6007,7 +6080,7 @@ extension ForkMeetingStrings {
         renameTitleNotSaved: "文件夹已重新命名，但无法存储新标题。",
         statusForeign: "此 meeting.json 并非由 Vorssaint 写入：仅显示，不会更改。",
         // MARK: Fixes N
-        exportIncludeNotes: "包括备注",
+        exportIncludeNotes: "包含备注",
         exportIncludeNotesCaption: "除非打开此项，否则你对会议的备注留在这台 Mac 上。",
         exportsListChanged: "导出列表已在 Vorssaint 之外被更改：请检查。在你确认之前，不会自动发送任何内容。",
         exportsListConfirm: "确认",
@@ -6018,7 +6091,12 @@ extension ForkMeetingStrings {
         exportFailCertificate: "该地址的证书被拒绝：未发送任何内容。",
         exportFailTemporarySpace: "这台 Mac 的磁盘已满：无法准备要发送的内容。",
         exportFailEarlyAnswer: "该地址在收到完整会议之前就作出了响应：不算作已发送。",
-        exportInProgress: "此会议正在导出：完成后再试一次。"
+        exportInProgress: "此会议正在导出：完成后再试一次。",
+        exportsListUnconfirmed: "此导出列表尚未在这台 Mac 上确认：请检查。在你确认之前不会发送任何内容。",
+        exportsListKeychainRefused: "钥匙串拒绝保存此列表的指纹：在它接受之前不会发送任何内容。请检查列表，然后再次确认。",
+        exportFailListUnconfirmed: "导出列表正在等待你在“会议”页面中确认：未发送任何内容。",
+        renameAfterExport: "此会议正在导出：导出完成后，其文件夹会采用新名称。",
+        exportFailDropFolderFull: "投放文件夹所在磁盘已满：无法将会议拷贝到那里。"
     )
 }
 
@@ -6290,7 +6368,7 @@ extension ForkMeetingStrings {
         offerMainWindowFormat: "%@（主視窗）",
         // MARK: Exports
         exportsTitle: "輸出",
-        exportsCaption: "加入輸出方式之前不會輸出任何內容。只會送出以下內容：音訊（M4A）、逐字稿（如有），以及只含 id, schema, title, startedAt, endedAt, recordedSeconds, provider, origin, pauses 和 transcript 的 meeting.json；開啟相應選項時還包含 notes 和 meetCode。絕不包含麥克風、App、行事曆活動或路徑。投放資料夾會把這些拷貝到資料夾；Webhook 會把它們傳送到你選擇的 HTTPS 位址。",
+        exportsCaption: "加入輸出方式之前不會輸出任何內容。只會送出以下內容：音訊（M4A）、逐字稿（如有），以及只含 id, schema, title（除非開啟 meetCode，否則不含 Google Meet 代碼）、startedAt, endedAt, recordedSeconds, provider, origin, pauses 和 transcript 的 meeting.json；開啟相應選項時還包含 notes 和 meetCode。絕不包含麥克風、App、行事曆活動、輸出記錄或路徑。投放資料夾會把這些拷貝到資料夾；Webhook 會把它們傳送到你選擇的 HTTPS 位址。",
         exportsAdd: "加入",
         exportKindDropFolder: "投放資料夾",
         exportKindWebhook: "HTTPS Webhook",
@@ -6321,7 +6399,7 @@ extension ForkMeetingStrings {
         webhookTest: "傳送測試",
         webhookTestDoneFormat: "測試已送達：位址回應了 %d。",
         webhookHelpTitle: "驗證簽名",
-        webhookHelpCaption: "每次傳送都是一個 multipart POST，包含 meeting（JSON）、audio（M4A）和 transcript（文字，如有）這幾個部分。X-Swishsaint-Signature 為 sha256= 後接以密鑰計算的 HMAC-SHA256（十六進位），計算對象是 X-Swishsaint-Timestamp、一個句點和原始內文。時間戳記在傳送前產生，而傳送可能持續兩小時：簽名不一致、時間戳記相差超過 2 小時 05 分，或會議 id 已收過的請求應予拒絕。",
+        webhookHelpCaption: "每次傳送都是一個 multipart POST，包含 meeting（JSON）、audio（M4A）和 transcript（文字，如有）這幾個部分。X-Swishsaint-Signature 為 sha256= 後接以密鑰計算的 HMAC-SHA256（十六進位），計算對象是 X-Swishsaint-Timestamp、一個句點和原始內文。時間戳記在傳送前產生，而傳送可能持續兩小時：簽名不一致、時間戳記相差超過 2 小時 05 分，或簽名已收過的請求應予拒絕；重新傳送的會議會有新的簽名。",
         webhookHelpCopy: "拷貝範例",
         originUnreadable: "無法讀取此位址：請以 https:// 開頭完整填寫。",
         originNotHTTPS: "只接受 HTTPS 位址：否則音訊會以明文傳輸。",
@@ -6426,7 +6504,12 @@ extension ForkMeetingStrings {
         exportFailCertificate: "該位址的憑證遭拒：未傳送任何內容。",
         exportFailTemporarySpace: "這部 Mac 的磁碟已滿：無法準備要傳送的內容。",
         exportFailEarlyAnswer: "該位址在收到完整會議之前就回應了：不算已傳送。",
-        exportInProgress: "此會議正在輸出：完成後再試一次。"
+        exportInProgress: "此會議正在輸出：完成後再試一次。",
+        exportsListUnconfirmed: "此輸出列表尚未在這部 Mac 上確認：請檢查。在你確認之前不會傳送任何內容。",
+        exportsListKeychainRefused: "鑰匙圈拒絕保存此列表的指紋：在它接受之前不會傳送任何內容。請檢查列表，然後再次確認。",
+        exportFailListUnconfirmed: "輸出列表正在等待你在「會議」頁面中確認：未傳送任何內容。",
+        renameAfterExport: "此會議正在輸出：輸出完成後，其資料夾會採用新名稱。",
+        exportFailDropFolderFull: "投放資料夾所在磁碟已滿：無法將會議拷貝到那裡。"
     )
 }
 
@@ -6670,10 +6753,10 @@ extension ForkMeetingStrings {
         voiceMeetingBack: "會議仍在進行，錄製不會停止。",
         noticeDiscardedTrash: "已取消 · 已移至垃圾桶",
         noticeDiscardedDeleted: "已取消 · 已刪除",
-        noticeDiscardKept: "已取消 · 檔案夾仍在",
-        noticeDiscardKeptDetail: "仍在會議檔案夾中",
-        voiceDiscardedDeleted: "錄製已取消。無法將檔案夾移至垃圾桶，已將其刪除。",
-        voiceDiscardKept: "錄製已取消，但無法將其檔案夾移至垃圾桶或刪除，它仍在會議檔案夾中。",
+        noticeDiscardKept: "已取消 · 資料夾仍在",
+        noticeDiscardKeptDetail: "仍在會議資料夾中",
+        voiceDiscardedDeleted: "錄製已取消。無法將資料夾移至垃圾桶，已將其刪除。",
+        voiceDiscardKept: "錄製已取消，但無法將其資料夾移至垃圾桶或刪除，它仍在會議資料夾中。",
         noticeAnnouncementCopied: "通知已複製",
         noticeAnnouncementCopiedDetail: "貼到會議聊天中",
         undoAutoStartedFormat: "已自動開始 · %@ 一律錄製",
@@ -6698,7 +6781,7 @@ extension ForkMeetingStrings {
         offerMainWindowFormat: "%@（主視窗）",
         // MARK: Exports
         exportsTitle: "匯出",
-        exportsCaption: "加入匯出方式之前不會匯出任何內容。只會送出以下內容：音訊（M4A）、逐字稿（如有），以及只含 id, schema, title, startedAt, endedAt, recordedSeconds, provider, origin, pauses 和 transcript 的 meeting.json；開啟相應選項時還包括 notes 和 meetCode。絕不包括咪高風、App、日曆活動或路徑。投放資料夾會把這些複製到資料夾；Webhook 會把它們傳送到你選擇的 HTTPS 位址。",
+        exportsCaption: "加入匯出方式之前不會匯出任何內容。只會送出以下內容：音訊（M4A）、逐字稿（如有），以及只含 id, schema, title（除非開啟 meetCode，否則不含 Google Meet 代碼）、startedAt, endedAt, recordedSeconds, provider, origin, pauses 和 transcript 的 meeting.json；開啟相應選項時還包括 notes 和 meetCode。絕不包括咪高風、App、日曆活動、匯出記錄或路徑。投放資料夾會把這些複製到資料夾；Webhook 會把它們傳送到你選擇的 HTTPS 位址。",
         exportsAdd: "新增",
         exportKindDropFolder: "投放資料夾",
         exportKindWebhook: "HTTPS Webhook",
@@ -6729,7 +6812,7 @@ extension ForkMeetingStrings {
         webhookTest: "傳送測試",
         webhookTestDoneFormat: "測試已送達：位址回應了 %d。",
         webhookHelpTitle: "驗證簽名",
-        webhookHelpCaption: "每次傳送都是一個 multipart POST，包含 meeting（JSON）、audio（M4A）和 transcript（文字，如有）這幾個部分。X-Swishsaint-Signature 為 sha256= 後接以密鑰計算的 HMAC-SHA256（十六進制），計算對象是 X-Swishsaint-Timestamp、一個句號和原始內文。時間戳在傳送前產生，而傳送可能持續兩小時：簽名不一致、時間戳相差超過 2 小時 05 分，或會議 id 已收過的請求應予拒絕。",
+        webhookHelpCaption: "每次傳送都是一個 multipart POST，包含 meeting（JSON）、audio（M4A）和 transcript（文字，如有）這幾個部分。X-Swishsaint-Signature 為 sha256= 後接以密鑰計算的 HMAC-SHA256（十六進制），計算對象是 X-Swishsaint-Timestamp、一個句號和原始內文。時間戳在傳送前產生，而傳送可能持續兩小時：簽名不一致、時間戳相差超過 2 小時 05 分，或簽名已收過的請求應予拒絕；重新傳送的會議會有新的簽名。",
         webhookHelpCopy: "複製範例",
         originUnreadable: "無法讀取此位址：請以 https:// 開頭完整填寫。",
         originNotHTTPS: "只接受 HTTPS 位址：否則音訊會以明文傳輸。",
@@ -6823,7 +6906,7 @@ extension ForkMeetingStrings {
         renameTitleNotSaved: "資料夾已重新命名，但無法儲存新標題。",
         statusForeign: "此 meeting.json 並非由 Vorssaint 寫入：僅顯示，不會變更。",
         // MARK: Fixes N
-        exportIncludeNotes: "包括備註",
+        exportIncludeNotes: "包含備註",
         exportIncludeNotesCaption: "除非開啟此項，否則你對會議的備註會留在這部 Mac 上。",
         exportsListChanged: "匯出列表已在 Vorssaint 以外被更改：請檢查。在你確認之前，不會自動傳送任何內容。",
         exportsListConfirm: "確認",
@@ -6834,6 +6917,11 @@ extension ForkMeetingStrings {
         exportFailCertificate: "該位址的證書被拒絕：未傳送任何內容。",
         exportFailTemporarySpace: "這部 Mac 的磁碟已滿：無法準備要傳送的內容。",
         exportFailEarlyAnswer: "該位址在收到完整會議之前就作出回應：不算已傳送。",
-        exportInProgress: "此會議正在匯出：完成後再試一次。"
+        exportInProgress: "此會議正在匯出：完成後再試一次。",
+        exportsListUnconfirmed: "此匯出列表尚未在這部 Mac 上確認：請檢查。在你確認之前不會傳送任何內容。",
+        exportsListKeychainRefused: "鑰匙圈拒絕保存此列表的指紋：在它接受之前不會傳送任何內容。請檢查列表，然後再次確認。",
+        exportFailListUnconfirmed: "匯出列表正在等待你在「會議」頁面中確認：未傳送任何內容。",
+        renameAfterExport: "此會議正在匯出：匯出完成後，其資料夾會採用新名稱。",
+        exportFailDropFolderFull: "投放資料夾所在磁碟已滿：無法將會議複製到那裡。"
     )
 }

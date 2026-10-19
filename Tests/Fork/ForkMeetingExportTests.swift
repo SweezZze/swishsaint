@@ -521,10 +521,12 @@ enum ForkMeetingExportTests {
     private static func transcript(_ suite: TestSuite) {
         typealias Document = ForkMeetingExportDocument
         suite.expect(Document.transcript(in: ["a.mp4", "a.txt", "notes.txt", "meeting.json"], folderName: "a") == "a.txt"
-                        && Document.transcript(in: ["a.mp4", "Renamed.TXT", ".hidden.txt"], folderName: "a") == "Renamed.TXT"
-                        && Document.transcript(in: ["x.txt", "y.txt"], folderName: "a") == nil
+                        && Document.transcript(in: ["a.mp4", "a.TXT"], folderName: "a") == "a.TXT"
+                        && Document.transcript(in: ["Old.mp4", "Old.txt"], folderName: "a", video: "Old.mp4") == "Old.txt"
+                        && Document.transcript(in: ["a.mp4", "Renamed.txt", ".a.txt"], folderName: "a") == nil
+                        && Document.transcript(in: ["x.txt"], folderName: "a") == nil
                         && Document.transcript(in: ["a.mp4"], folderName: "a") == nil,
-                     "the transcript is the .txt named after the folder, else the only one; never a guess between two")
+                     "the transcript is the .txt named after the folder or its video, never another text left there")
     }
 
     // MARK: - Texts

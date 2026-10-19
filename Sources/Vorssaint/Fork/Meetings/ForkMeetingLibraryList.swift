@@ -11,7 +11,8 @@ struct ForkMeetingLibraryList: View {
     let text: ForkMeetingStrings
     let language: AppLanguage
 
-    /// The exporters set up: a row's ✓ or ✗ is theirs only (§7.1).
+    /// The exporters: a row's ✓ or ✗ is theirs, a failure of one not set
+    /// up included.
     @ObservedObject private var exports = ForkMeetingExports.shared
 
     var body: some View {
@@ -32,7 +33,7 @@ struct ForkMeetingLibraryList: View {
                     .padding(20)
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             } else {
-                let targets = exports.configured.map(\.id)
+                let targets = exports.configs.map(\.id)
                 List(selection: $model.selection) {
                     ForEach(groups, id: \.day) { group in
                         Section {

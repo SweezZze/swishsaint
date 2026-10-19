@@ -78,7 +78,7 @@ struct ForkDropFolderExporter: ForkMeetingExporter {
         let rights = (((try? manager.attributesOfItem(atPath: destination.path))?[.posixPermissions] as? NSNumber)?
             .intValue ?? 0o755) & 0o777
         let fileRights = rights & 0o666
-        let draft = destination.appendingPathComponent(Self.draftPrefix + UUID().uuidString, isDirectory: true)
+        let draft = destination.appendingPathComponent(ForkMeetingLeftovers.name(Self.draftPrefix), isDirectory: true)
         do {
             try manager.createDirectory(at: draft, withIntermediateDirectories: false,
                                         attributes: [.posixPermissions: rights])
@@ -113,7 +113,7 @@ struct ForkDropFolderExporter: ForkMeetingExporter {
             throw failure
         } catch {
             try? manager.removeItem(at: draft)
-            throw (error as NSError).code == NSFileWriteOutOfSpaceError ? ForkMeetingExportFailure.temporarySpace
+            throw ForkMeetingExportFailure.isOutOfSpace(error) ? ForkMeetingExportFailure.dropFolderFull
                 : ForkMeetingExportFailure.writeFailed
         }
     }
@@ -136,12 +136,16 @@ struct ForkDropFolderExporter: ForkMeetingExporter {
     }
 
     /// The drafts a copy cut short (a quit, a disk pulled) left in the drop
-    /// folder: removed at the next launch.
-    static func removeDrafts(in destination: URL) {
+    /// folder: removed at the next launch, this process's own or those
+    /// older than a day (`ForkMeetingLeftovers`).
+    static func removeDrafts(in destination: URL, pid: Int32 = ProcessInfo.processInfo.processIdentifier, now: Date = Date()) {
         let manager = FileManager.default
         guard let names = try? manager.contentsOfDirectory(atPath: destination.path) else { return }
-        for name in names where name.hasPrefix(draftPrefix) {
-            try? manager.removeItem(at: destination.appendingPathComponent(name))
+        for name in names {
+            let url = destination.appendingPathComponent(name)
+            let modified = (try? manager.attributesOfItem(atPath: url.path))?[.modificationDate] as? Date
+            guard ForkMeetingLeftovers.removable(name, prefix: draftPrefix, pid: pid, modified: modified, now: now) else { continue }
+            try? manager.removeItem(at: url)
         }
     }
 }

@@ -18,11 +18,14 @@ import os
 ///   again by its id if its folder moved meanwhile.
 /// - A meeting being recorded or finished is never sent, and one that did
 ///   not end well never on its own (`ForkMeetingExportEligibility`).
-/// - **On its own, only what the page wrote**: the Keychain keeps the
-///   fingerprint of the list the page saved; a list rewritten elsewhere
-///   sends nothing on its own until the page confirms it. Nothing goes on
-///   its own with the feature off, and what waited is dropped when it turns
-///   off.
+/// - **Only what the page wrote**: the Keychain keeps the fingerprint of
+///   the list the page saved; a list rewritten elsewhere sends nothing, on
+///   its own or with a click, and the page changes nothing, until it is
+///   confirmed there. Nothing goes on its own with the feature off, and
+///   what waited is dropped when it turns off.
+/// - **The Keychain is never asked on the main thread**: its own serial
+///   queue answers, and the page and the library show what it last said
+///   (`savedSecrets`, `listState`).
 /// - An automatic send that fails, or cannot start, is written in the
 ///   meeting's history with its Retry, and said in a short notice.
 /// - Nothing secret is published, logged or kept here: the Keychain is read
@@ -47,9 +50,11 @@ final class ForkMeetingExports: ObservableObject {
     /// The last "Send a test" of each webhook: its status, or why it failed.
     @Published private(set) var tests: [String: Result<Int, ForkMeetingExportFailure>] = [:]
     @Published private(set) var testing: Set<String> = []
-    /// The list read is not the one the page last wrote: the page asks to
-    /// look at it, and nothing goes on its own meanwhile.
-    @Published private(set) var listChanged = false
+    /// The list read against the page's: anything but `matches` and the
+    /// page asks to look at it; nothing goes, nothing changes, meanwhile.
+    @Published private(set) var listState: ForkMeetingExporterList.State = .matches
+    /// Keychain calls under way, for the harness's `isIdle`.
+    @Published private(set) var keychainCalls = 0
 
     let defaults: UserDefaults
     let store: ForkMeetingStore
@@ -64,6 +69,8 @@ final class ForkMeetingExports: ObservableObject {
     /// An automatic send failed for this meeting: the notice.
     private let failed: (URL) -> Void
     let queue = DispatchQueue(label: "fork.meetings.export", qos: .utility)
+    /// Every Keychain call of the page and the library, in order.
+    let keychainQueue = DispatchQueue(label: "fork.meetings.export.keychain", qos: .userInitiated)
     private let log = Logger(subsystem: "fork.meetings", category: "export")
     /// Bumped when the feature turns off: the automatic sends still waiting
     /// on the queue see it and go no further. Under `generationLock`; kept
@@ -87,6 +94,9 @@ final class ForkMeetingExports: ObservableObject {
     }
 
     var hasExporters: Bool { !configs.isEmpty }
+    var listChanged: Bool { listState != .matches }
+    /// No send and no Keychain call under way.
+    var isIdle: Bool { pending.isEmpty && keychainCalls == 0 }
 
     /// The exporters ready to send, in their order: the only ones the
     /// library names (§7.1).
@@ -98,60 +108,104 @@ final class ForkMeetingExports: ObservableObject {
 
     // MARK: - Registry
 
-    /// The list as stored. No Keychain data is read here: launch reads none.
+    /// The list as stored. No Keychain call here: launch makes none.
     func reload() {
         configs = ForkMeetingExporterList.decode(defaults.string(forKey: ForkDefaultsKey.meetingsExporters))
-        refreshSecrets()
     }
 
-    /// Only the page writes the list: its fingerprint goes to the Keychain
-    /// with it.
-    private func store(_ configs: [ForkMeetingExporterConfig]) {
+    /// A Keychain call on its queue, its answer on the main thread.
+    private func askKeychain<Value>(_ job: @escaping () -> Value, then: @escaping (Value) -> Void) {
+        keychainCalls += 1
+        keychainQueue.async { [self] in
+            let value = job()
+            DispatchQueue.main.async { [self] in
+                keychainCalls -= 1
+                then(value)
+            }
+        }
+    }
+
+    /// At the page's and the library's display: the list, its secrets and
+    /// its fingerprint read again (the secrets of an earlier version moved
+    /// to their exporter's account on the way).
+    func refresh(_ done: (() -> Void)? = nil) {
+        reload()
+        let configs = self.configs
+        let stored = defaults.string(forKey: ForkDefaultsKey.meetingsExporters)
+        askKeychain({ [self] () -> (Set<String>, ForkMeetingExporterList.State) in
+            moveLegacySecrets(configs)
+            return (Set(configs.compactMap(\.secretAccount).filter(keychain.exists)), state(of: stored))
+        }) { [self] secrets, state in
+            savedSecrets = secrets
+            listState = state
+            done?()
+        }
+    }
+
+    /// Keychain queue. The list read against the fingerprint kept.
+    private func state(of stored: String?) -> ForkMeetingExporterList.State {
+        guard !ForkMeetingExporterList.decode(stored).isEmpty else { return .matches }
+        switch keychain.read(ForkMeetingKeychain.fingerprintAccount) {
+        case let .found(data):
+            return ForkMeetingExporterList.state(stored, fingerprint: String(decoding: data, as: UTF8.self), keychainFailed: false)
+        case .missing:
+            return ForkMeetingExporterList.state(stored, fingerprint: nil, keychainFailed: false)
+        case .failed:
+            return ForkMeetingExporterList.state(stored, fingerprint: nil, keychainFailed: true)
+        }
+    }
+
+    /// Keychain queue. `webhook@<host>` of an earlier version becomes the
+    /// account of the first webhook of that host, then goes.
+    private func moveLegacySecrets(_ configs: [ForkMeetingExporterConfig]) {
+        for move in ForkMeetingExporterList.legacyMoves(configs) where keychain.exists(move.from) {
+            var moved = keychain.exists(move.to)
+            if !moved, case let .found(data) = keychain.read(move.from) { moved = keychain.save(data, account: move.to) }
+            if moved { keychain.delete(move.from) }
+        }
+    }
+
+    /// Keychain queue. The fingerprint of `stored` kept; `false` when the
+    /// Keychain refused.
+    private func saveFingerprint(_ stored: String) -> Bool {
+        if ForkMeetingExporterList.decode(stored).isEmpty {
+            return keychain.delete(ForkMeetingKeychain.fingerprintAccount)
+        }
+        return keychain.save(Data(ForkMeetingExporterList.fingerprint(stored).utf8), account: ForkMeetingKeychain.fingerprintAccount)
+    }
+
+    /// Only the page writes the list, and only the page's own: while the
+    /// list read is not the one it wrote, nothing it changes is kept, and
+    /// the fingerprint moves on only from the list it last confirmed.
+    @discardableResult
+    private func store(_ configs: [ForkMeetingExporterConfig]) -> Bool {
+        guard !listChanged else { return false }
+        let previous = defaults.string(forKey: ForkDefaultsKey.meetingsExporters)
         let stored = ForkMeetingExporterList.encode(configs)
         defaults.set(stored, forKey: ForkDefaultsKey.meetingsExporters)
         self.configs = configs
-        saveFingerprint(stored)
-        refreshSecrets()
+        askKeychain({ [self] () -> ForkMeetingExporterList.State in
+            // Rewritten behind the page just before: said, never taken.
+            let before = state(of: previous)
+            guard before == .matches else { return before }
+            return saveFingerprint(stored) ? .matches : .keychainRefused
+        }) { [self] state in listState = state }
+        return true
     }
 
-    private func saveFingerprint(_ stored: String) {
-        if ForkMeetingExporterList.decode(stored).isEmpty {
-            keychain.delete(ForkMeetingKeychain.fingerprintAccount)
-            listChanged = false
-        } else {
-            let saved = keychain.save(Data(ForkMeetingExporterList.fingerprint(stored).utf8),
-                                      account: ForkMeetingKeychain.fingerprintAccount)
-            listChanged = !saved
-        }
-    }
-
-    /// Whether the list read is the page's: at the page's display, and
-    /// before anything goes on its own.
-    @discardableResult
-    func verifyList() -> Bool {
+    /// The page's "Confirm": the list read now becomes the page's, only if
+    /// it is the one the page shows (`displayed`); else the page shows the
+    /// new one, to be confirmed in its turn.
+    func confirmList(_ displayed: [ForkMeetingExporterConfig]) {
         let stored = defaults.string(forKey: ForkDefaultsKey.meetingsExporters)
-        let matches: Bool
-        if ForkMeetingExporterList.decode(stored).isEmpty {
-            matches = true
-        } else if case let .found(data) = keychain.read(ForkMeetingKeychain.fingerprintAccount) {
-            matches = ForkMeetingExporterList.matches(stored, fingerprint: String(decoding: data, as: UTF8.self))
-        } else {
-            matches = false
+        guard ForkMeetingExporterList.decode(stored) == displayed else {
+            refresh()
+            return
         }
-        if configs != ForkMeetingExporterList.decode(stored) { reload() }
-        listChanged = !matches
-        return matches
-    }
-
-    /// The page's "Confirm": the list as it is now becomes the page's.
-    func confirmList() {
-        reload()
-        saveFingerprint(defaults.string(forKey: ForkDefaultsKey.meetingsExporters) ?? "")
-    }
-
-    /// At the page's display: the Keychain may have changed behind it.
-    func refreshSecrets() {
-        savedSecrets = Set(configs.compactMap(\.secretAccount).filter(keychain.exists))
+        askKeychain({ [self] in saveFingerprint(stored ?? "") }) { [self] saved in
+            listState = saved ? .matches : .keychainRefused
+            refresh()
+        }
     }
 
     func config(_ id: String) -> ForkMeetingExporterConfig? { configs.first { $0.id == id } }
@@ -193,9 +247,9 @@ final class ForkMeetingExports: ObservableObject {
 
     /// Removes the exporter and its own secret.
     func remove(_ id: String) {
-        guard let config = config(id) else { return }
-        if let account = config.secretAccount { keychain.delete(account) }
-        store(configs.filter { $0.id != id })
+        guard let config = config(id), store(configs.filter({ $0.id != id })) else { return }
+        guard let account = config.secretAccount else { return }
+        askKeychain({ [self] in keychain.delete(account) }) { [self] _ in savedSecrets.remove(account) }
     }
 
     enum AddressChange: Equatable {
@@ -207,32 +261,39 @@ final class ForkMeetingExports: ObservableObject {
         /// The Keychain refused the secret: the address is saved, the
         /// secret is not.
         case secretNotSaved
+        /// The list waits for its confirmation: nothing changed.
+        case listUnconfirmed
     }
 
     /// Saves a webhook's address, freezing its origin, and its new secret
     /// when one was typed (written once, here, then forgotten by the page).
     /// A change of host erases the old host's secret, once `confirmed`.
-    func saveWebhook(_ id: String, address: String, secret: String, confirmed: Bool) -> AddressChange {
-        guard let index = configs.firstIndex(where: { $0.id == id }), configs[index].kind == .webhook else { return .saved }
+    /// The Keychain answers on its queue: `done` on the main thread.
+    func saveWebhook(_ id: String, address: String, secret: String, confirmed: Bool,
+                     done: @escaping (AddressChange) -> Void) {
+        guard !listChanged else { return done(.listUnconfirmed) }
+        guard let config = config(id), config.kind == .webhook else { return done(.saved) }
         let verdict = ForkMeetingOriginPolicy.destination(address)
-        guard case let .approved(url, origin) = verdict else { return .refused(verdict.refusal ?? .unreadable) }
-        var config = configs[index]
-        if let old = config.origin, old != origin.name, let oldAccount = config.secretAccount, keychain.exists(oldAccount) {
-            guard confirmed else { return .confirmHostChange(old: old) }
-            keychain.delete(oldAccount)
-        }
-        config.address = url.absoluteString
-        config.origin = origin.name
-        var next = configs
-        next[index] = config
-        store(next)
+        guard case let .approved(url, origin) = verdict else { return done(.refused(verdict.refusal ?? .unreadable)) }
+        let oldAccount = config.origin.flatMap { $0 != origin.name ? config.secretAccount : nil }
         let typed = secret.trimmingCharacters(in: .whitespacesAndNewlines)
-        if !typed.isEmpty, let account = config.secretAccount {
-            let saved = keychain.save(Data(typed.utf8), account: account)
-            refreshSecrets()
-            if !saved { return .secretNotSaved }
+        askKeychain({ [self] in oldAccount.map(keychain.exists) ?? false }) { [self] oldExists in
+            if oldExists, !confirmed, let old = config.origin { return done(.confirmHostChange(old: old)) }
+            guard let index = configs.firstIndex(where: { $0.id == id }) else { return done(.saved) }
+            var next = configs
+            next[index].address = url.absoluteString
+            next[index].origin = origin.name
+            guard store(next) else { return done(.listUnconfirmed) }
+            let account = next[index].secretAccount
+            askKeychain({ [self] () -> Bool in
+                if oldExists, let oldAccount { keychain.delete(oldAccount) }
+                guard !typed.isEmpty, let account else { return true }
+                return keychain.save(Data(typed.utf8), account: account)
+            }) { [self] saved in
+                refresh()
+                done(saved ? .saved : .secretNotSaved)
+            }
         }
-        return .saved
     }
 
     func hasSecret(_ config: ForkMeetingExporterConfig) -> Bool {
@@ -253,30 +314,27 @@ final class ForkMeetingExports: ObservableObject {
     // MARK: - Sending
 
     /// The library's "Export To", and Retry: a click, so a meeting that did
-    /// not end well goes too.
+    /// not end well goes too, but only to the page's list: the send checks
+    /// it again against the fingerprint before anything leaves.
     func export(_ folder: URL, to target: String) {
         guard let config = config(target) else { return }
-        enqueue(folder, config, automatic: false, failure: nil)
+        guard !listChanged else {
+            refusals[Self.key(folder, target)] = .listChanged
+            return
+        }
+        enqueue(folder, config, automatic: false)
     }
 
     /// A meeting finalized: every automatic exporter gets it, when it ended
     /// well; one that cannot send (not set up, its origin changed, the list
     /// rewritten elsewhere) gets a failure in the meeting's history, and the
     /// notice. Called by the service after the saved notice, never for a
-    /// meeting recovered at launch, and never with the feature off.
+    /// meeting recovered at launch, and never with the feature off. The
+    /// checks run on the export queue, the Keychain's too.
     func meetingFinished(_ folder: URL) {
         guard wanted() else { return }
-        let automatic = configs.filter { $0.mode == .automatic }
-        guard !automatic.isEmpty else { return }
-        refreshSecrets()
-        let matches = verifyList()
-        for config in automatic {
-            switch ForkMeetingAutomaticExport.plan(mode: config.mode, featureOn: true, listMatches: matches,
-                                                   readiness: readiness(config)) {
-            case .none: break
-            case .send: enqueue(folder, config, automatic: true, failure: nil)
-            case let .fail(failure): enqueue(folder, config, automatic: true, failure: failure)
-            }
+        for config in configs where config.mode == .automatic {
+            enqueue(folder, config, automatic: true)
         }
     }
 
@@ -297,8 +355,7 @@ final class ForkMeetingExports: ObservableObject {
         Set(pending.compactMap { $0.split(separator: "\n", maxSplits: 1).first.map(String.init) })
     }
 
-    private func enqueue(_ folder: URL, _ config: ForkMeetingExporterConfig, automatic: Bool,
-                         failure: ForkMeetingExportFailure?) {
+    private func enqueue(_ folder: URL, _ config: ForkMeetingExporterConfig, automatic: Bool) {
         let key = Self.key(folder, config.id)
         guard !pending.contains(key) else { return }
         pending.insert(key)
@@ -307,15 +364,17 @@ final class ForkMeetingExports: ObservableObject {
         let exporter = exporter(config)
         let job = Self.generation
         queue.async { [self] in
-            let outcome = send(folder, exporter: exporter, live: live, automatic: automatic, failure: failure,
-                               generation: job)
+            let outcome = send(folder, exporter: exporter, live: live, automatic: automatic, generation: job)
             DispatchQueue.main.async { [self] in
                 pending.remove(key)
                 switch outcome {
                 case .skipped: break
-                case let .refused(failure): refusals[key] = failure
+                case let .refused(failure):
+                    refusals[key] = failure
+                    if failure == .listChanged { refresh() }
                 case let .recorded(at, exports, didFail):
                     publish(at, exports)
+                    if exports.last?.reason == ForkMeetingExportFailure.listChanged.code { refresh() }
                     if automatic, didFail { failedOnItsOwn(at) }
                 }
             }
@@ -344,11 +403,12 @@ final class ForkMeetingExports: ObservableObject {
         case recorded(URL, [ForkMeetingSidecar.Export], failed: Bool)
     }
 
-    /// Export queue. The whole send of one meeting to one exporter.
-    /// - `failure`: why an automatic exporter cannot send, written as is.
+    /// Export queue. The whole send of one meeting to one exporter, as the
+    /// list stored now says it (its options, its address), and only when
+    /// that list is the page's.
     /// - `generation`: the feature's, when it was asked.
-    func send(_ folder: URL, exporter: ForkMeetingExporter, live: Bool, automatic: Bool,
-              failure planned: ForkMeetingExportFailure? = nil, generation job: Int? = nil) -> SendOutcome {
+    func send(_ folder: URL, exporter asked: ForkMeetingExporter, live: Bool, automatic: Bool,
+              generation job: Int? = nil) -> SendOutcome {
         dispatchPrecondition(condition: .onQueue(queue))
         if automatic {
             guard job.map({ $0 == Self.generation }) ?? true, wanted() else {
@@ -358,7 +418,7 @@ final class ForkMeetingExports: ObservableObject {
         }
         let sidecar = store.sidecar(in: folder)
         let isLive = live || store.isClaimedHere(folder)
-        switch ForkMeetingExportEligibility.verdict(sidecar, live: isLive, automatic: automatic, target: exporter.id) {
+        switch ForkMeetingExportEligibility.verdict(sidecar, live: isLive, automatic: automatic, target: asked.id) {
         case .needsClick:
             log.notice("automatic export left for a click: \(folder.lastPathComponent, privacy: .private)")
             return .skipped
@@ -368,10 +428,32 @@ final class ForkMeetingExports: ObservableObject {
             break
         }
         guard case let .success(meeting) = sidecar else { return .refused(.unreadable) }
+        let stored = defaults.string(forKey: ForkDefaultsKey.meetingsExporters)
+        let list = ForkMeetingExporterList.decode(stored)
+        let state = keychainQueue.sync { () -> ForkMeetingExporterList.State in
+            moveLegacySecrets(list)
+            return self.state(of: stored)
+        }
+        guard let config = list.first(where: { $0.id == asked.id }) else { return .skipped }
+        let exporter = config == asked.config ? asked : self.exporter(config)
+        var planned: ForkMeetingExportFailure?
+        if automatic {
+            var readiness: ForkMeetingExportFailure?
+            do { try exporter.check() } catch { readiness = error as? ForkMeetingExportFailure ?? .notConfigured }
+            switch ForkMeetingAutomaticExport.plan(mode: config.mode, featureOn: wanted(), listMatches: state == .matches,
+                                                   readiness: readiness) {
+            case .none: return .skipped
+            case .send: break
+            case let .fail(failure): planned = failure
+            }
+        } else if state != .matches {
+            // A click on a list rewritten behind the page: nothing leaves.
+            return .refused(.listChanged)
+        }
         let started = Date()
         let record: ForkMeetingSidecar.Export
         let staging = FileManager.default.temporaryDirectory
-            .appendingPathComponent("\(Self.stagingPrefix)\(UUID().uuidString)", isDirectory: true)
+            .appendingPathComponent(ForkMeetingLeftovers.name(Self.stagingPrefix), isDirectory: true)
         defer { try? FileManager.default.removeItem(at: staging) }
         do {
             if let planned { throw planned }
@@ -424,12 +506,17 @@ final class ForkMeetingExports: ObservableObject {
         queue.async {
             let manager = FileManager.default
             let temporary = manager.temporaryDirectory
-            for name in (try? manager.contentsOfDirectory(atPath: temporary.path)) ?? []
-            where (name.hasPrefix(ForkWebhookExporter.bodyPrefix) && name.hasSuffix(".body"))
-                || name.hasPrefix(Self.stagingPrefix) {
-                try? manager.removeItem(at: temporary.appendingPathComponent(name))
+            let pid = ProcessInfo.processInfo.processIdentifier
+            let now = Date()
+            for name in (try? manager.contentsOfDirectory(atPath: temporary.path)) ?? [] {
+                let url = temporary.appendingPathComponent(name)
+                let modified = (try? manager.attributesOfItem(atPath: url.path))?[.modificationDate] as? Date
+                let body = name.hasSuffix(".body")
+                    && ForkMeetingLeftovers.removable(name, prefix: ForkWebhookExporter.bodyPrefix, pid: pid, modified: modified, now: now)
+                let staged = ForkMeetingLeftovers.removable(name, prefix: Self.stagingPrefix, pid: pid, modified: modified, now: now)
+                if body || staged { try? manager.removeItem(at: url) }
             }
-            folders.forEach(ForkDropFolderExporter.removeDrafts)
+            folders.forEach { ForkDropFolderExporter.removeDrafts(in: $0, pid: pid, now: now) }
         }
     }
 
@@ -470,21 +557,13 @@ final class ForkMeetingExports: ObservableObject {
             } catch {
                 // The video is there: a staging that fails is this Mac's
                 // disk, not the meeting.
-                throw Self.isOutOfSpace(error) ? ForkMeetingExportFailure.temporarySpace : ForkMeetingExportFailure.noAudio
+                throw ForkMeetingExportFailure.isOutOfSpace(error) ? ForkMeetingExportFailure.temporarySpace
+                    : ForkMeetingExportFailure.noAudio
             }
         }
-        let transcript = ForkMeetingExportDocument.transcript(in: names, folderName: name).map { folder.appendingPathComponent($0) }
+        let transcript = ForkMeetingExportDocument.transcript(in: names, folderName: name, video: contents.video)
+            .map { folder.appendingPathComponent($0) }
         return ForkMeetingExportPackage(folderName: name, sidecar: sidecar, audio: audio, transcript: transcript)
-    }
-
-    /// No room left, as Foundation, POSIX or AVFoundation says it.
-    static func isOutOfSpace(_ error: Error) -> Bool {
-        let error = error as NSError
-        if error.domain == NSCocoaErrorDomain, error.code == NSFileWriteOutOfSpaceError { return true }
-        if error.domain == NSPOSIXErrorDomain, error.code == Int(ENOSPC) { return true }
-        // AVFoundation's "disk full" (AVError.diskFull).
-        if error.domain == "AVFoundationErrorDomain", error.code == -11807 { return true }
-        return (error.userInfo[NSUnderlyingErrorKey] as? Error).map(isOutOfSpace) ?? false
     }
 
     // MARK: - Results

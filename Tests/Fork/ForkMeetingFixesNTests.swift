@@ -26,6 +26,13 @@ enum ForkMeetingFixesNTests {
         marks(suite)
         help(suite)
         texts(suite)
+        transcriptShape(suite)
+        notesWithoutCode(suite)
+        codeShapes(suite)
+        leftovers(suite)
+        listStates(suite)
+        legacySecrets(suite)
+        secondTexts(suite)
     }
 
     private static let start = Date(timeIntervalSince1970: 1_792_310_531)
@@ -49,7 +56,9 @@ enum ForkMeetingFixesNTests {
         sidecar.gaps = [.init(at: 12, seconds: 3, kind: .microphoneSwitch)]
         sidecar.pauses = [.init(at: 60, seconds: 30, reason: .user, preserved: ["where": .string("/Users/martial/secret")])]
         sidecar.exports = [ForkMeetingSidecar.Export(exporter: "webhook", at: start, status: "done", target: "x")]
-        sidecar.transcript = .object(["engine": .string("parakeet")])
+        sidecar.transcript = .object(["state": .string("done"), "engine": .string("parakeet"), "words": .number(812),
+                                      "at": .string("2026-10-19T10:55:00Z"), "file": .string("/Users/martial/x.txt"),
+                                      "device": .object(["name": .string("AirPods de Martial")])])
         sidecar.preserved = ["future": .string("a later version's field"), "path": .string("/Users/martial/Movies")]
         return sidecar
     }
@@ -172,11 +181,18 @@ enum ForkMeetingFixesNTests {
                         && manager.fileExists(atPath: trap.appendingPathComponent("2026-10-19 10h02 — Google Meet (2)/meeting.json").path),
                      "a link in the drop folder, even to the same meeting, is never written into: the copy takes (2)")
 
-        // What a copy cut short left: removed.
-        try? manager.createDirectory(at: drop.appendingPathComponent(ForkDropFolderExporter.draftPrefix + "x"), withIntermediateDirectories: true)
+        // What a copy cut short left: this process's own, or one a day old.
+        let own = ForkMeetingLeftovers.name(ForkDropFolderExporter.draftPrefix)
+        let other = ForkMeetingLeftovers.name(ForkDropFolderExporter.draftPrefix, pid: 1)
+        let old = ForkMeetingLeftovers.name(ForkDropFolderExporter.draftPrefix, pid: 2)
+        for name in [own, other, old] {
+            try? manager.createDirectory(at: drop.appendingPathComponent(name), withIntermediateDirectories: true)
+        }
+        try? manager.setAttributes([.modificationDate: Date().addingTimeInterval(-25 * 3600)],
+                                   ofItemAtPath: drop.appendingPathComponent(old).path)
         ForkDropFolderExporter.removeDrafts(in: drop)
-        suite.expect(((try? manager.contentsOfDirectory(atPath: drop.path)) ?? []) == ["2026-10-19 10h02 — Google Meet"],
-                     "a draft left in the drop folder is removed, the copies are not")
+        suite.expect(Set((try? manager.contentsOfDirectory(atPath: drop.path)) ?? []) == ["2026-10-19 10h02 — Google Meet", other],
+                     "a draft of this process, or a day old, is removed; another copy's recent one and the copies are not")
     }
 
     // MARK: - The list the page wrote
@@ -332,7 +348,8 @@ enum ForkMeetingFixesNTests {
         let example = ForkWebhookPayload.verificationExample
         suite.expect(ForkWebhookSigner.freshness == 7500 && example.contains("7500"),
                      "a receiver takes a timestamp up to 2 h 05 old: the longest send, and five minutes")
-        for piece in ["Buffer.byteLength", "try {", "|| ''", "/^[0-9]+$/", "isdigit()", "or ''", "seen", "compare_digest"] {
+        for piece in ["Buffer.byteLength", "try {", "toLowerCase()", "/^[0-9]+$/", "isdigit()", "key.lower()", "seen", "compare_digest",
+                      "'duplicate'", "secret.encode()", "Buffer.from(SECRET)", "seen.has(given)", "given in seen"] {
             suite.expect(example.contains(piece), "the help's examples are robust: \(piece)")
         }
         suite.expect(!example.contains("< 300") && !example.contains("ts = headers['x-swishsaint-timestamp'];"),
@@ -344,7 +361,7 @@ enum ForkMeetingFixesNTests {
         let failures: [ForkMeetingExportFailure] = [.inProgress, .unreadable, .noAudio, .folderMissing, .folderInsideLibrary,
                                                     .writeFailed, .refusedAddress(.fragmentInURL), .originChanged, .noSecret,
                                                     .redirected, .status(500), .network, .notConfigured, .keychain,
-                                                    .certificate, .temporarySpace, .earlyAnswer, .listChanged]
+                                                    .certificate, .temporarySpace, .earlyAnswer, .listChanged, .dropFolderFull]
         for language in AppLanguage.allCases {
             let strings = ForkMeetingStrings.strings(language)
             for path in shortened {
@@ -380,5 +397,116 @@ enum ForkMeetingFixesNTests {
                         && !ForkMeetingStrings.strings(.de).exportModeCaption.contains("Meeting")
                         && !ForkMeetingStrings.strings(.uk).exportKindDropFolder.contains("Тека"),
                      "each language uses its own word throughout")
+    }
+
+    // MARK: - Second review
+
+    private static func transcriptShape(_ suite: TestSuite) {
+        typealias Document = ForkMeetingExportDocument
+        suite.expect(Document.transcript(nil) == nil && Document.transcript(.string("text")) == nil
+                        && Document.transcript(.object(["file": .string("/Users/martial/x.txt")])) == nil
+                        && Document.transcript(.object(["engine": .string("parakeet")])) == nil,
+                     "nothing of transcript leaves until it has the transcription's shape")
+        let sent = Document.transcript(.object([
+            "state": .string("done"), "engine": .string("parakeet"), "language": .string("fr"), "at": .string("2026-10-19T10:55:00Z"),
+            "words": .number(812), "file": .string("/Users/martial/x.txt"), "device": .string("AirPods"),
+            "calendarEventID": .string("EVT-123"),
+        ]))
+        guard case let .object(fields)? = sent else { return suite.expect(false, "a transcript of its shape leaves") }
+        suite.expect(Set(fields.keys) == ["state", "engine", "language", "at", "words"],
+                     "under transcript, only state, words, language, engine and at leave: \(fields.keys.sorted())")
+        let nested = Document.transcript(.object(["state": .string("done"), "engine": .string("parakeet"),
+                                                  "words": .object(["path": .string("/Users/martial")])]))
+        suite.expect(nested == .object(["state": .string("done"), "engine": .string("parakeet")]),
+                     "a value of the list that is itself an object does not leave")
+    }
+
+    private static func notesWithoutCode(_ suite: TestSuite) {
+        var meeting = everything()
+        meeting.notes = "Lien : https://meet.google.com/\(code)\nBudget validé\nRevoir ZZZ-ZZZZ-ZZZ"
+        let off = object(try? ForkMeetingExportDocument.json(meeting, includesMeetCode: false, includesNotes: true))
+        let notes = off["notes"] as? String ?? ""
+        suite.expect(!notes.contains(code) && !notes.lowercased().contains("zzz-zzzz-zzz") && notes.contains("\nBudget validé\n"),
+                     "notes on, Meet code off: the code leaves the notes, their lines stay: \(notes)")
+        let on = object(try? ForkMeetingExportDocument.json(meeting, includesMeetCode: true, includesNotes: true))
+        suite.expect(on["notes"] as? String == meeting.notes, "both on: the notes leave as written")
+    }
+
+    private static func codeShapes(_ suite: TestSuite) {
+        typealias Document = ForkMeetingExportDocument
+        suite.expect(Document.title("Réunion (\(code))", meetCode: nil, includesMeetCode: false) == "Réunion"
+                        && Document.name("Réunion [\(code)]", meetCode: nil, includesMeetCode: false) == "Réunion"
+                        && Document.title("Point \(code) (2)", meetCode: code, includesMeetCode: false) == "Point (2)"
+                        && Document.title("Google Meet · ABC-DEFG-HIJ", meetCode: nil, includesMeetCode: false) == "Google Meet",
+                     "a code between brackets leaves no empty brackets behind")
+    }
+
+    private static func leftovers(_ suite: TestSuite) {
+        typealias Leftovers = ForkMeetingLeftovers
+        let prefix = "fork.meetings.webhook-"
+        let now = Date()
+        let mine = Leftovers.name(prefix, pid: 4242)
+        suite.expect(mine.hasPrefix("fork.meetings.webhook-4242-"), "a leftover is named with its process")
+        suite.expect(Leftovers.removable(mine, prefix: prefix, pid: 4242, modified: now, now: now)
+                        && !Leftovers.removable(mine, prefix: prefix, pid: 4243, modified: now, now: now)
+                        && Leftovers.removable(mine, prefix: prefix, pid: 4243, modified: now.addingTimeInterval(-25 * 3600), now: now)
+                        && !Leftovers.removable(mine, prefix: prefix, pid: 4243, modified: nil, now: now),
+                     "only this process's own, or one more than a day old, is removed")
+        suite.expect(!Leftovers.removable("fork.meetings.webhook-42424-x", prefix: prefix, pid: 4242, modified: now, now: now)
+                        && !Leftovers.removable("other-4242-x", prefix: prefix, pid: 4242, modified: .distantPast, now: now),
+                     "another process's number, or another prefix, is never taken for ours")
+    }
+
+    private static func listStates(_ suite: TestSuite) {
+        typealias List = ForkMeetingExporterList
+        let stored = List.encode([ForkMeetingExporterConfig(id: "d", kind: .dropFolder, folder: "/Volumes/NAS")])
+        suite.expect(List.state(stored, fingerprint: List.fingerprint(stored), keychainFailed: false) == .matches
+                        && List.state(stored, fingerprint: "00", keychainFailed: false) == .changed
+                        && List.state(stored, fingerprint: nil, keychainFailed: false) == .unconfirmed
+                        && List.state(stored, fingerprint: nil, keychainFailed: true) == .keychainRefused
+                        && List.state("", fingerprint: nil, keychainFailed: true) == .matches,
+                     "the page tells a list changed from one never confirmed, and from a Keychain that refused")
+    }
+
+    private static func legacySecrets(_ suite: TestSuite) {
+        let configs = [ForkMeetingExporterConfig(id: "a", kind: .webhook, address: "https://h.example/a", origin: "h.example"),
+                       ForkMeetingExporterConfig(id: "b", kind: .webhook, address: "https://h.example/b", origin: "h.example"),
+                       ForkMeetingExporterConfig(id: "c", kind: .webhook, address: "https://k.example:8443/c", origin: "k.example:8443"),
+                       ForkMeetingExporterConfig(id: "d", kind: .dropFolder, folder: "/tmp"),
+                       ForkMeetingExporterConfig(id: "e", kind: .webhook)]
+        let moves = ForkMeetingExporterList.legacyMoves(configs)
+        suite.expect(moves.map(\.from) == ["webhook@h.example", "webhook@k.example:8443"]
+                        && moves.map(\.to) == ["webhook@h.example#a", "webhook@k.example:8443#c"],
+                     "an earlier version's secret goes to the first webhook of its host, once")
+    }
+
+    private static func secondTexts(_ suite: TestSuite) {
+        for language in AppLanguage.allCases {
+            let strings = ForkMeetingStrings.strings(language)
+            let distinct = Set([strings.exportsListChanged, strings.exportsListUnconfirmed, strings.exportsListKeychainRefused,
+                                strings.exportFailListUnconfirmed])
+            suite.expect(distinct.count == 4 && !strings.exportFailListUnconfirmed.contains("Vorssaint"),
+                         "\(language.rawValue): a list never confirmed, or refused by the Keychain, is not said changed outside")
+            suite.expect(!strings.renameAfterExport.isEmpty && !strings.exportFailDropFolderFull.isEmpty
+                            && strings.exportFailDropFolderFull != strings.exportFailTemporarySpace,
+                         "\(language.rawValue): the drop folder's disk full is not this Mac's")
+        }
+        let english = ForkMeetingStrings.strings(.enUS), french = ForkMeetingStrings.strings(.fr)
+        suite.expect(english.exportsCaption.contains("history of the exports") && french.exportsCaption.contains("l’historique des exports")
+                        && english.exportsCaption.contains("without the Google Meet code unless meetCode"),
+                     "the page says the title leaves without the code, and that the history never leaves")
+        suite.expect(english.webhookHelpCaption.hasSuffix("and one whose signature you already received: a meeting sent again has a new one.")
+                        && french.webhookHelpCaption.hasSuffix("et celle dont vous avez déjà reçu la signature\u{00A0}: une réunion renvoyée en a une nouvelle.")
+                        && french.webhookHelpCaption.contains("2\u{00A0}h\u{00A0}05")
+                        && ForkMeetingStrings.strings(.de).webhookHelpCaption.contains("um mehr als 2 Std. 05 Min. danebenliegt"),
+                     "the help says to refuse a signature already received, in the reviewer's words")
+        suite.expect(ForkMeetingStrings.strings(.uk).exportIncludeNotes == "Включати нотатки"
+                        && ForkMeetingStrings.strings(.zhHans).exportIncludeNotes == "包含备注"
+                        && ForkMeetingStrings.strings(.zhHK).exportIncludeNotes == "包含備註",
+                     "the notes' toggle reads as the others")
+        let hk = ForkMeetingStrings.strings(.zhHK)
+        suite.expect(![hk.noticeDiscardKept, hk.noticeDiscardKeptDetail, hk.voiceDiscardedDeleted, hk.voiceDiscardKept]
+                        .contains { $0.contains("檔案夾") },
+                     "Hong Kong's Chinese says 資料夾 throughout")
     }
 }

@@ -20,6 +20,8 @@ import Foundation
 ///   (`ForkMeetingExportDocument`): a field added later stays on the Mac
 ///   until it is named there.
 protocol ForkMeetingExporter {
+    /// The settings it sends with.
+    var config: ForkMeetingExporterConfig { get }
     /// The exporter's own id among the configured ones: the `target` of
     /// its records in `meeting.json`.
     var id: String { get }
@@ -142,6 +144,40 @@ extension ForkMeetingExporterConfig {
 }
 
 extension ForkMeetingExporterList {
+    /// What the page says of the list read, against the fingerprint the
+    /// Keychain keeps (`ForkMeetingExports`).
+    enum State: Equatable {
+        /// The page's own list, or no exporter at all.
+        case matches
+        /// Rewritten outside the page.
+        case changed
+        /// No fingerprint yet: a list of an earlier version.
+        case unconfirmed
+        /// The Keychain refused to read or to keep the fingerprint.
+        case keychainRefused
+    }
+
+    /// - `fingerprint`: the one the Keychain gave, `nil` when it has none.
+    /// - `keychainFailed`: it refused, or did not answer in time.
+    static func state(_ stored: String?, fingerprint saved: String?, keychainFailed: Bool) -> State {
+        guard !decode(stored).isEmpty else { return .matches }
+        if keychainFailed { return .keychainRefused }
+        guard let saved, !saved.isEmpty else { return .unconfirmed }
+        return matches(stored, fingerprint: saved) ? .matches : .changed
+    }
+
+    /// The secrets an earlier version filed by host alone
+    /// (`webhook@<host[:port]>`): each goes to the account of the first
+    /// webhook of that host, then the old one is erased.
+    static func legacyMoves(_ configs: [ForkMeetingExporterConfig]) -> [(from: String, to: String)] {
+        var seen = Set<String>()
+        return configs.compactMap { config in
+            guard config.kind == .webhook, let origin = config.origin, !origin.isEmpty, let account = config.secretAccount,
+                  seen.insert(origin).inserted else { return nil }
+            return ("webhook@\(origin)", account)
+        }
+    }
+
     /// The exporters set up, in their order: the only ones the library
     /// names (§7.1: no exporter set up, no word of exporting).
     static func configured(_ configs: [ForkMeetingExporterConfig],
@@ -286,6 +322,8 @@ enum ForkMeetingExportFailure: Error, Equatable {
     /// The list of exporters was changed outside the page: nothing is sent
     /// on its own until the page confirms it.
     case listChanged
+    /// The drop folder's own disk is full.
+    case dropFolderFull
 
     var code: String {
         switch self {
@@ -307,6 +345,7 @@ enum ForkMeetingExportFailure: Error, Equatable {
         case .temporarySpace: return "temporarySpace"
         case .earlyAnswer: return "earlyAnswer"
         case .listChanged: return "listChanged"
+        case .dropFolderFull: return "dropFolderFull"
         }
     }
 
@@ -335,6 +374,7 @@ enum ForkMeetingExportFailure: Error, Equatable {
         case "temporarySpace": self = .temporarySpace
         case "earlyAnswer": self = .earlyAnswer
         case "listChanged": self = .listChanged
+        case "dropFolderFull": self = .dropFolderFull
         case let code? where code.hasPrefix("refusedAddress"):
             self = .refusedAddress(Self.refusal(String(code.dropFirst("refusedAddress.".count))))
         default: self = .network
@@ -361,6 +401,40 @@ enum ForkMeetingExportFailure: Error, Equatable {
         case "unapprovedHost": return .unapprovedHost("")
         default: return .unreadable
         }
+    }
+}
+
+extension ForkMeetingExportFailure {
+    /// No room left, as Foundation, POSIX or AVFoundation says it.
+    static func isOutOfSpace(_ error: Error) -> Bool {
+        let error = error as NSError
+        if error.domain == NSCocoaErrorDomain, error.code == NSFileWriteOutOfSpaceError { return true }
+        if error.domain == NSPOSIXErrorDomain, error.code == Int(ENOSPC) { return true }
+        // AVFoundation's "disk full" (AVError.diskFull).
+        if error.domain == "AVFoundationErrorDomain", error.code == -11807 { return true }
+        return (error.userInfo[NSUnderlyingErrorKey] as? Error).map(isOutOfSpace) ?? false
+    }
+}
+
+// MARK: - Leftovers
+
+/// What a send cut short leaves (a webhook's body, a staged M4A, a drop
+/// folder's draft) is named with the process that made it,
+/// `<prefix><pid>-<uuid>`: at launch, only this process's own or one older
+/// than a day goes, never what another copy of the app is sending now.
+enum ForkMeetingLeftovers {
+    static let maximumAge: TimeInterval = 24 * 3600
+
+    static func name(_ prefix: String, pid: Int32 = ProcessInfo.processInfo.processIdentifier) -> String {
+        "\(prefix)\(pid)-\(UUID().uuidString)"
+    }
+
+    static func removable(_ name: String, prefix: String, pid: Int32, modified: Date?, now: Date) -> Bool {
+        guard name.hasPrefix(prefix) else { return false }
+        let digits = name.dropFirst(prefix.count).prefix { $0.isNumber }
+        if Int32(digits) == pid, name.dropFirst(prefix.count + digits.count).first == "-" { return true }
+        guard let modified else { return false }
+        return now.timeIntervalSince(modified) > maximumAge
     }
 }
 
@@ -513,8 +587,8 @@ enum ForkMeetingExportDocument {
             startedAt: sidecar.startedAt, endedAt: sidecar.endedAt, recordedSeconds: sidecar.recordedSeconds,
             provider: sidecar.provider, origin: sidecar.origin,
             pauses: sidecar.pauses?.map { Shared.Pause(at: $0.at, seconds: $0.seconds, reason: $0.reason) },
-            transcript: sidecar.transcript,
-            notes: includesNotes ? sidecar.notes : nil,
+            transcript: transcript(sidecar.transcript),
+            notes: includesNotes ? sidecar.notes.map { includesMeetCode ? $0 : removingMeetCodes($0, meetCode: sidecar.meetCode) } : nil,
             meetCode: includesMeetCode ? sidecar.meetCode : nil)
         return try ForkMeetingSidecar.encoder().encode(shared)
     }
@@ -564,6 +638,12 @@ enum ForkMeetingExportDocument {
     /// The text without its Google Meet codes (the meeting's own, and any
     /// other of that shape), and without the separator they leave alone.
     static func withoutMeetCode(_ text: String, meetCode: String?) -> String {
+        tidied(removingMeetCodes(text, meetCode: meetCode))
+    }
+
+    /// The text without its Google Meet codes, and nothing else changed:
+    /// the notes keep their lines.
+    static func removingMeetCodes(_ text: String, meetCode: String?) -> String {
         var text = text
         if let meetCode, !meetCode.isEmpty {
             while let range = text.range(of: meetCode, options: .caseInsensitive) { text.removeSubrange(range) }
@@ -574,7 +654,7 @@ enum ForkMeetingExportDocument {
                   let range = text.range(of: code, options: .caseInsensitive) else { break }
             text.removeSubrange(range)
         }
-        return tidied(text)
+        return text
     }
 
     /// Spaces in one, and no separator left with nothing after it, or
@@ -582,6 +662,8 @@ enum ForkMeetingExportDocument {
     private static func tidied(_ text: String) -> String {
         let separators = CharacterSet(charactersIn: "·•|–—-:,/").union(.whitespacesAndNewlines)
         var text = text.components(separatedBy: .whitespacesAndNewlines).filter { !$0.isEmpty }.joined(separator: " ")
+        // "Meeting (abc-defg-hij)" leaves no "()" behind.
+        text = text.replacingOccurrences(of: #"\s*(\(\s*\)|\[\s*\])"#, with: "", options: .regularExpression)
         text = text.replacingOccurrences(of: #"\s*[·•|–—:,/-]\s*(?=\(\d+\)$)"#, with: " ", options: .regularExpression)
         text = text.replacingOccurrences(of: #"(\s[·•|–—:,/-])+(?=\s[·•|–—:,/-]\s)"#, with: "", options: .regularExpression)
         return text.trimmingCharacters(in: separators)
@@ -589,10 +671,37 @@ enum ForkMeetingExportDocument {
 
     /// The transcript of the folder, when there is one: the `.txt` named
     /// after the folder, else the only `.txt` there.
-    static func transcript(in names: [String], folderName: String) -> String? {
-        let texts = names.filter { !$0.hasPrefix(".") && ($0 as NSString).pathExtension.lowercased() == transcriptExtension }
-        if let own = texts.first(where: { ($0 as NSString).deletingPathExtension == folderName }) { return own }
-        return texts.count == 1 ? texts[0] : nil
+    /// The transcript file of the folder: only the `.txt` named after the
+    /// folder or after its video, never another text the person left
+    /// there.
+    static func transcript(in names: [String], folderName: String, video: String? = nil) -> String? {
+        let stems = [folderName] + (video.map { [($0 as NSString).deletingPathExtension] } ?? [])
+        return names.first { name in
+            !name.hasPrefix(".") && (name as NSString).pathExtension.lowercased() == transcriptExtension
+                && stems.contains((name as NSString).deletingPathExtension)
+        }
+    }
+
+    /// The `transcript` of `meeting.json`, as its own list of fields: the
+    /// shape the transcription writes (`state`, `words`, `language`,
+    /// `engine`, `at`), plain values only; nothing until that shape is
+    /// there, nothing else under it.
+    static let transcriptFields = ["state", "words", "language", "engine", "at"]
+
+    static func transcript(_ value: ForkMeetingJSON?) -> ForkMeetingJSON? {
+        guard case let .object(fields)? = value, case .string? = fields["state"], case .string? = fields["engine"] else {
+            return nil
+        }
+        func plain(_ value: ForkMeetingJSON) -> Bool {
+            switch value {
+            case .null, .bool, .number, .string: return true
+            case let .array(items): return items.allSatisfy { if case .object = $0 { return false }; if case .array = $0 { return false }; return true }
+            case .object: return false
+            }
+        }
+        var kept: [String: ForkMeetingJSON] = [:]
+        for key in transcriptFields { if let value = fields[key], plain(value) { kept[key] = value } }
+        return .object(kept)
     }
 }
 
@@ -649,7 +758,8 @@ extension ForkMeetingExportFailure {
         case .certificate: return strings.exportFailCertificate
         case .temporarySpace: return strings.exportFailTemporarySpace
         case .earlyAnswer: return strings.exportFailEarlyAnswer
-        case .listChanged: return strings.exportsListChanged
+        case .listChanged: return strings.exportFailListUnconfirmed
+        case .dropFolderFull: return strings.exportFailDropFolderFull
         }
     }
 }

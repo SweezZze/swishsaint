@@ -10,8 +10,9 @@ import Foundation
 /// before it is sent. The receiver recomputes it over the raw body it got,
 /// refuses a request whose signature differs or whose timestamp is older
 /// than `freshness` (the longest send, and five minutes of clocks apart),
-/// and keeps the `id` of the meetings it took: a copy replayed within that
-/// window is then refused too.
+/// and keeps the signatures it took for that long: a copy replayed within
+/// that window is answered without being taken twice, while a meeting sent
+/// again (a Retry) is signed anew.
 ///
 /// Computed while the body is written, chunk by chunk: an hour of audio is
 /// never held in memory.
@@ -221,41 +222,71 @@ enum ForkWebhookPayload {
         let startedAt: Date
     }
 
-    /// The receiver side, for the page's help: the raw body, headers that
-    /// may be missing, a timestamp that may not be a number, the window of
-    /// `ForkWebhookSigner.freshness`, and a meeting already taken refused.
+    /// The receiver side, for the page's help: the raw body, headers in any
+    /// case and maybe missing, a timestamp that may not be a number, the
+    /// window of `ForkWebhookSigner.freshness`, the secret as bytes, and a
+    /// request already taken answered 2xx without being taken twice (by its
+    /// signature: a meeting sent again has a new one, and is new).
     static let verificationExample = """
     // Node.js (n8n "Code" node, Express with express.raw()): rawBody is a Buffer
     const crypto = require('crypto');
-    const seen = new Set(); // ids of the meetings already taken
-    function verify(headers, rawBody, SECRET) {
-      const ts = String(headers['x-swishsaint-timestamp'] || '');
-      const given = String(headers['x-swishsaint-signature'] || '');
-      if (!/^[0-9]+$/.test(ts)) return false;
-      if (Math.abs(Date.now() / 1000 - Number(ts)) > 7500) return false; // 2 h 05
-      const expected = 'sha256=' + crypto.createHmac('sha256', SECRET)
-        .update(ts + '.').update(rawBody).digest('hex');
-      if (Buffer.byteLength(given) !== Buffer.byteLength(expected)) return false;
-      try {
-        return crypto.timingSafeEqual(Buffer.from(given), Buffer.from(expected));
-      } catch (e) { return false; }
+    const WINDOW = 7500; // 2 h 05, in seconds
+    const seen = new Map(); // signature -> when it was taken
+    function header(headers, name) {
+      for (const [key, value] of Object.entries(headers || {})) {
+        if (key.toLowerCase() === name) return String(value);
+      }
+      return '';
     }
-    // Then: const id = JSON.parse(meetingPart).id;
-    // if (seen.has(id)) refuse; else seen.add(id).
+    // 'new', 'duplicate' (answer 2xx, take nothing) or null (answer 401)
+    function verify(headers, rawBody, SECRET) {
+      const ts = header(headers, 'x-swishsaint-timestamp');
+      const given = header(headers, 'x-swishsaint-signature');
+      if (!/^[0-9]+$/.test(ts)) return null;
+      const now = Date.now() / 1000;
+      if (Math.abs(now - Number(ts)) > WINDOW) return null;
+      const expected = 'sha256=' + crypto.createHmac('sha256', Buffer.from(SECRET))
+        .update(ts + '.').update(rawBody).digest('hex');
+      if (Buffer.byteLength(given) !== Buffer.byteLength(expected)) return null;
+      try {
+        if (!crypto.timingSafeEqual(Buffer.from(given), Buffer.from(expected))) return null;
+      } catch (e) { return null; }
+      for (const [signature, at] of seen) if (now - at > WINDOW) seen.delete(signature);
+      if (seen.has(given)) return 'duplicate';
+      seen.set(given, now);
+      return 'new';
+    }
 
-    # Python: raw_body is bytes, headers a dict
+    # Python: raw_body is bytes, headers any mapping
     import hashlib, hmac, time
-    seen = set()  # ids of the meetings already taken
+    WINDOW = 7500  # 2 h 05, in seconds
+    seen = {}  # signature -> when it was taken
+    def header(headers, name):
+        for key, value in (headers or {}).items():
+            if key.lower() == name:
+                return str(value)
+        return ''
+    # 'new', 'duplicate' (answer 2xx, take nothing) or None (answer 401)
     def verify(headers, raw_body, secret):
-        ts = headers.get('X-Swishsaint-Timestamp') or ''
-        given = headers.get('X-Swishsaint-Signature') or ''
+        if isinstance(secret, str):
+            secret = secret.encode()
+        ts = header(headers, 'x-swishsaint-timestamp')
+        given = header(headers, 'x-swishsaint-signature')
         if not (ts.isascii() and ts.isdigit()):
-            return False
-        if abs(time.time() - int(ts)) > 7500:  # 2 h 05
-            return False
+            return None
+        now = time.time()
+        if abs(now - int(ts)) > WINDOW:
+            return None
         expected = 'sha256=' + hmac.new(secret, ts.encode() + b'.' + raw_body, hashlib.sha256).hexdigest()
-        return hmac.compare_digest(expected.encode(), given.encode())
-    # Then: refuse when json.loads(meeting_part)['id'] is in seen, else add it.
+        if not hmac.compare_digest(expected.encode(), given.encode()):
+            return None
+        for signature, at in list(seen.items()):
+            if now - at > WINDOW:
+                del seen[signature]
+        if given in seen:
+            return 'duplicate'
+        seen[given] = now
+        return 'new'
     """
 }
 

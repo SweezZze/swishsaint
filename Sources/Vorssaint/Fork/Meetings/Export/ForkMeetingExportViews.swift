@@ -5,7 +5,8 @@ import SwiftUI
 
 /// The ⋯ menu's "Export To": one item per exporter set up, and nothing at
 /// all without one (only "Export Audio (M4A)…" stays, §7.1). An exporter
-/// added but not finished is not named.
+/// added but not finished is not named. While the list waits for its
+/// confirmation, its items are greyed and the menu leads to the page.
 struct ForkMeetingExportMenu: View {
     let folder: URL
     let live: Bool
@@ -19,7 +20,12 @@ struct ForkMeetingExportMenu: View {
             Menu(text.actionExportTo) {
                 ForEach(configured) { config in
                     Button(config.title(text)) { exports.export(folder, to: config.id) }
-                        .disabled(live || exports.pending.contains(ForkMeetingExports.key(folder, config.id)))
+                        .disabled(live || exports.listChanged
+                                    || exports.pending.contains(ForkMeetingExports.key(folder, config.id)))
+                }
+                if exports.listChanged {
+                    Divider()
+                    Button(text.actionOpenMeetings) { ForkMeetingService.shared.perform(.openMeetingsPage) }
                 }
             }
         }
@@ -28,8 +34,9 @@ struct ForkMeetingExportMenu: View {
 
 /// The detail's line: each exporter set up, and what became of this meeting
 /// there (✓ and when, ✗ with why and Retry, sending, or nothing yet); one
-/// not set up only when it failed here, to say why. Absent without an
-/// exporter set up (§7.1).
+/// not set up only when it failed here, to say why. Absent when there is
+/// neither (§7.1). While the list waits for its confirmation, Retry is
+/// greyed and the line leads to the page.
 struct ForkMeetingExportStatus: View {
     let folder: URL
     let live: Bool
@@ -39,20 +46,38 @@ struct ForkMeetingExportStatus: View {
     @ObservedObject private var exports = ForkMeetingExports.shared
 
     var body: some View {
-        if !exports.configured.isEmpty {
-            VStack(alignment: .leading, spacing: 6) {
-                Text(text.exportsTitle)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                ForEach(shown) { config in
-                    row(config)
+        // Read whether the block shows or not: a failure alone shows it.
+        VStack(spacing: 0) {
+            let shown = shown
+            if !shown.isEmpty {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(text.exportsTitle)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    ForEach(shown) { config in
+                        row(config)
+                    }
+                    if exports.listChanged {
+                        HStack(alignment: .firstTextBaseline) {
+                            Text(text.exportFailListUnconfirmed)
+                                .font(.caption)
+                                .foregroundStyle(.orange)
+                                .fixedSize(horizontal: false, vertical: true)
+                            Spacer(minLength: 8)
+                            Button(text.actionOpenMeetings) { ForkMeetingService.shared.perform(.openMeetingsPage) }
+                                .controlSize(.small)
+                        }
+                    }
                 }
+                .padding(.horizontal, 10)
+                .padding(.vertical, 7)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(RoundedRectangle(cornerRadius: 8).fill(Color.primary.opacity(0.05)))
             }
-            .padding(.horizontal, 10)
-            .padding(.vertical, 7)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(RoundedRectangle(cornerRadius: 8).fill(Color.primary.opacity(0.05)))
-            .task(id: folder.standardizedFileURL.path) { exports.refreshResults(folder) }
+        }
+        .task(id: folder.standardizedFileURL.path) {
+            exports.refreshResults(folder)
+            exports.refresh()
         }
     }
 
@@ -107,7 +132,7 @@ struct ForkMeetingExportStatus: View {
             .foregroundStyle(.red)
         Button(text.exportRetry) { exports.export(folder, to: config.id) }
             .controlSize(.small)
-            .disabled(live || !exports.isConfigured(config))
+            .disabled(live || exports.listChanged || !exports.isConfigured(config))
             .help(failure.message(text))
     }
 }
