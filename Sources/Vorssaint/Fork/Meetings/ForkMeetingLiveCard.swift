@@ -133,10 +133,12 @@ struct ForkMeetingLiveCardView: View {
                 Spacer(minLength: 8)
                 ForkMeetingLiveCardClock(snapshot: snapshot, label: text.pillElapsed)
             }
-            HStack(alignment: .center, spacing: 8) {
-                levels(snapshot)
-                Spacer(minLength: 8)
-                buttons(snapshot)
+            // The buttons with their names where the island is wide enough
+            // in this language, else their symbols alone (named on hover
+            // and to VoiceOver all the same).
+            ViewThatFits(in: .horizontal) {
+                controlsRow(snapshot, titled: true)
+                controlsRow(snapshot, titled: false)
             }
         }
         .panelCard()
@@ -225,34 +227,46 @@ struct ForkMeetingLiveCardView: View {
 
     // MARK: Buttons
 
+    private func controlsRow(_ snapshot: ForkMeetingIslandSnapshot, titled: Bool) -> some View {
+        HStack(alignment: .center, spacing: 8) {
+            levels(snapshot)
+            Spacer(minLength: 8)
+            buttons(snapshot, titled: titled)
+        }
+    }
+
     @ViewBuilder
-    private func buttons(_ snapshot: ForkMeetingIslandSnapshot) -> some View {
+    private func buttons(_ snapshot: ForkMeetingIslandSnapshot, titled: Bool) -> some View {
         let enabled = snapshot.phase.acceptsControls
         HStack(spacing: 8) {
             if snapshot.phase.isPaused {
-                button(symbol: "play.fill", title: text.resumeRecording, label: text.pillResume, enabled: enabled) {
+                button(symbol: "play.fill", title: text.resumeRecording, label: text.pillResume, enabled: enabled,
+                       titled: titled) {
                     model.actions.resume()
                     ForkMeetingLiveCard.shared.buttonUsed()
                 }
             } else {
-                button(symbol: "pause.fill", title: text.pauseRecording, label: text.pillPause, enabled: enabled) {
+                button(symbol: "pause.fill", title: text.pauseRecording, label: text.pillPause, enabled: enabled,
+                       titled: titled) {
                     model.actions.pause()
                     ForkMeetingLiveCard.shared.buttonUsed()
                 }
             }
-            markButton(snapshot)
+            markButton(snapshot, titled: titled)
             button(symbol: "stop.fill", title: text.stopRecording, label: text.pillStop, enabled: enabled,
-                   prominent: true) {
+                   prominent: true, titled: titled) {
                 model.actions.stop()
             }
         }
         .animation(reduceMotion ? nil : .smooth(duration: 0.26), value: snapshot.phase.isPaused)
     }
 
-    private func markButton(_ snapshot: ForkMeetingIslandSnapshot) -> some View {
+    private func markButton(_ snapshot: ForkMeetingIslandSnapshot, titled: Bool) -> some View {
         let marked = model.markedUntil != nil
+        // VoiceOver hears "Marked" too while the button says it.
         return button(symbol: marked ? "checkmark" : "star.fill", title: marked ? text.cardMarked : text.cardMark,
-                      label: text.cardMarkHelp, enabled: snapshot.phase.canMark && !marked) {
+                      label: marked ? text.cardMarked : text.cardMarkHelp, enabled: snapshot.phase.canMark && !marked,
+                      titled: titled) {
             // "Marked" only for a moment really kept: `addMarker` lights it
             // when it returns true, whichever way the moment was marked, and
             // says the time to VoiceOver.
@@ -263,20 +277,22 @@ struct ForkMeetingLiveCardView: View {
     }
 
     private func button(symbol: String, title: String, label: String, enabled: Bool, prominent: Bool = false,
-                        action: @escaping () -> Void) -> some View {
+                        titled: Bool, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             HStack(spacing: 5) {
                 Image(systemName: symbol)
-                    .font(.system(size: 10, weight: .bold))
+                    .font(.system(size: titled ? 10 : 11, weight: .bold))
                     .contentTransition(.symbolEffect(.replace))
-                Text(title)
-                    .lineLimit(1)
-                    .fixedSize()
+                if titled {
+                    Text(title)
+                        .lineLimit(1)
+                        .fixedSize()
+                }
             }
             .font(.system(size: 12, weight: .semibold))
             .foregroundStyle(.white)
-            .padding(.horizontal, 10)
-            .frame(minHeight: 28)
+            .padding(.horizontal, titled ? 10 : 0)
+            .frame(minWidth: titled ? nil : 32, minHeight: 28)
             .background(prominent ? AnyShapeStyle(Color(nsColor: .systemRed))
                             : AnyShapeStyle(Color.white.opacity(0.1)),
                         in: RoundedRectangle(cornerRadius: 8, style: .continuous))
