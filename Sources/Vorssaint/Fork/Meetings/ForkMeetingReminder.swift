@@ -4,7 +4,7 @@
 import AppKit
 import SwiftUI
 
-/// An offer left unanswered, folded: a small grey pill, "● Meet", where the
+/// An offer left unanswered, folded: a small grey pill, "○ Meet", where the
 /// recording's pill would appear, kept while the meeting lives. A click
 /// opens the offer again. It never sounds, never moves and never takes the
 /// keyboard: it is there for when the person wants it.
@@ -114,8 +114,8 @@ final class ForkMeetingReminderModel: ObservableObject {
     @Published var label = ""
 }
 
-/// Grey, so it never reads as a recording: the red dot says what a click
-/// does.
+/// Grey through and through, its dot an empty ring: anything red near the
+/// menu bar reads as a recording running, and nothing records yet.
 struct ForkMeetingReminderView: View {
     @ObservedObject var model: ForkMeetingReminderModel
     let open: () -> Void
@@ -124,7 +124,7 @@ struct ForkMeetingReminderView: View {
         Button(action: open) {
             HStack(spacing: 6) {
                 Circle()
-                    .fill(Color(nsColor: .systemRed))
+                    .strokeBorder(Color.white.opacity(0.7), lineWidth: 1.5)
                     .frame(width: 8, height: 8)
                 Text(model.title ?? "")
                     .font(.system(size: 12, weight: .semibold))
