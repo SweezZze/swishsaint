@@ -318,18 +318,22 @@ enum ForkMeetingFolder {
         var blocked: [String] = []
     }
 
-    /// The media that follow the folder's name, read from what is on the
-    /// disk rather than from what was written, since the person may have
-    /// renamed things in between. Each keeps its own extension: renaming
-    /// never changes what a file holds.
-    static func mediaRenames(folderName: String, names: [String]) -> MediaRenames {
-        let found = contents(of: names, folderName: folderName)
+    /// The media that follow the folder from its name `old` to `new`, read
+    /// from what is on the disk rather than from what was written, since
+    /// the person may have renamed things in between. The meeting's own
+    /// files are the ones named after the **old** folder: a clip the person
+    /// saved beside them under another name never takes the meeting's. Each
+    /// keeps its own extension: renaming never changes what a file holds.
+    static func mediaRenames(from old: String, to new: String, names: [String]) -> MediaRenames {
+        let found = contents(of: names, folderName: old)
         var result = MediaRenames()
         for media in [found.video, found.audio].compactMap({ $0 }) {
-            let target = "\(folderName).\((media as NSString).pathExtension)"
+            let target = "\(new).\((media as NSString).pathExtension)"
             guard media != target else { continue }
-            // APFS ignores case: "F.mp4" and "f.MP4" are the same file.
-            if names.contains(where: { $0.lowercased() == target.lowercased() }) {
+            // APFS ignores case: "F.mp4" and "f.MP4" are the same file. The
+            // medium itself is not in the way of a change of case of its
+            // own name.
+            if names.contains(where: { $0 != media && $0.lowercased() == target.lowercased() }) {
                 result.blocked.append(media)
             } else {
                 result.moves.append(Move(from: media, to: target))

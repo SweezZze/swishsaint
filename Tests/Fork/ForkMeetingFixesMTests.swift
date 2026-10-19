@@ -14,6 +14,8 @@ enum ForkMeetingFixesMTests {
         age(suite)
         clock(suite)
         bulk(suite)
+        ownMedia(suite)
+        caseOnly(suite)
         texts(suite)
     }
 
@@ -152,6 +154,63 @@ enum ForkMeetingFixesMTests {
                         && ForkMeetingRetention.sweep(due: names(30), library: 40, confirmed: 37) == .trash(names(30))
                         && ForkMeetingRetention.sweep(due: names(38), library: 40, confirmed: 37) == .held(38),
                      "once the person agreed to a number, that many go; more found by then asks again")
+    }
+
+    // MARK: - M.4 The meeting's own media
+
+    private static func ownMedia(_ suite: TestSuite) {
+        let old = "2026-10-19 11h30 — Point"
+        let new = "2026-10-19 11h30 — Point Acme"
+        // A clip saved beside the meeting's video, whose name sorts first.
+        let names = ["\(old) extrait.mp4", "\(old).mp4", "\(old).m4a", "meeting.json"]
+        let renames = ForkMeetingFolder.mediaRenames(from: old, to: new, names: names)
+        suite.expect(renames.moves == [ForkMeetingFolder.Move(from: "\(old).mp4", to: "\(new).mp4"),
+                                       ForkMeetingFolder.Move(from: "\(old).m4a", to: "\(new).m4a")]
+                        && renames.blocked.isEmpty,
+                     "a rename moves the files named after the old folder, never a clip saved beside them")
+        var sidecar = meeting(startedAt: date(2026, 10, 19, 11, 30), title: "Point")
+        sidecar.titleSource = .user
+        let plan = ForkMeetingRename.plan(title: "Point Acme", folderName: old, sidecar: .success(sidecar), names: names,
+                                          live: false, calendar: paris, occupant: { _ in .free })
+        if case let .success(made) = plan {
+            suite.expect(made.folder == ForkMeetingFolder.Move(from: old, to: new)
+                            && made.media.moves.map(\.from) == ["\(old).mp4", "\(old).m4a"],
+                         "the folder's plan names the targets after the new name, the sources after the old one")
+        } else {
+            suite.expect(false, "the meeting with a clip beside it can be renamed")
+        }
+        let byHand = ForkMeetingFolder.mediaRenames(from: old, to: new, names: ["Rush.mp4", "meeting.json"])
+        suite.expect(byHand.moves == [ForkMeetingFolder.Move(from: "Rush.mp4", to: "\(new).mp4")],
+                     "a video renamed by hand, alone in its folder, still follows the folder")
+    }
+
+    // MARK: - M.5 A change of case alone
+
+    private static func caseOnly(_ suite: TestSuite) {
+        let lower = "2026-10-19 10h02 — point hebdo"
+        let upper = "2026-10-19 10h02 — Point hebdo"
+        let names = ["\(lower).mp4", "\(lower).m4a", "meeting.json"]
+        var sidecar = meeting(startedAt: date(2026, 10, 19, 10, 2), title: "point hebdo")
+        sidecar.titleSource = .user
+        // APFS: every case of the name is the folder itself.
+        let disk: (String) -> ForkMeetingFolder.Occupant = { $0.lowercased() == lower.lowercased() ? .sameMeeting : .free }
+        func plan(_ occupant: @escaping (String) -> ForkMeetingFolder.Occupant) -> ForkMeetingRename.Plan? {
+            try? ForkMeetingRename.plan(title: "Point hebdo", folderName: lower, sidecar: .success(sidecar), names: names,
+                                        live: false, calendar: paris, occupant: occupant).get()
+        }
+        let unaware = plan(disk)
+        suite.expect(unaware?.folder?.to == upper + " (2)",
+                     "asked of the disk alone, the folder's own name in another case looks taken")
+        let made = plan(ForkMeetingRename.occupant(sameFolder: { $0.lowercased() == lower.lowercased() }, disk: disk))
+        suite.expect(made?.folder == ForkMeetingFolder.Move(from: lower, to: upper) && made?.folderKept == nil,
+                     "a change of case alone renames the folder to the same name in the new case, without a number")
+        suite.expect(made?.media.moves == [ForkMeetingFolder.Move(from: "\(lower).mp4", to: "\(upper).mp4"),
+                                           ForkMeetingFolder.Move(from: "\(lower).m4a", to: "\(upper).m4a")]
+                        && made?.media.blocked.isEmpty == true,
+                     "and its media follow: a file is never in the way of a change of case of its own name")
+        let other = ForkMeetingFolder.mediaRenames(from: lower, to: upper, names: names + ["\(upper).MP4"])
+        suite.expect(other.blocked == ["\(lower).mp4"] && other.moves.map(\.from) == ["\(lower).m4a"],
+                     "on a volume that tells cases apart, another file holding the new name still blocks the move")
     }
 
     // MARK: - Texts

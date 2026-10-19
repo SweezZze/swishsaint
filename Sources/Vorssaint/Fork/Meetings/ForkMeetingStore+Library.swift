@@ -217,7 +217,9 @@ extension ForkMeetingStore {
         let plan: ForkMeetingRename.Plan
         switch ForkMeetingRename.plan(title: title, folderName: folderName, sidecar: read, names: names,
                                       live: isBusy(folder, live: live),
-                                      occupant: { Self.occupant(of: root.appendingPathComponent($0, isDirectory: true), id: id) }) {
+                                      occupant: ForkMeetingRename.occupant(
+                                          sameFolder: { Self.isSameFile(root.appendingPathComponent($0, isDirectory: true), folder) },
+                                          disk: { Self.occupant(of: root.appendingPathComponent($0, isDirectory: true), id: id) })) {
         case let .failure(refusal): return .failure(.renameRefused(refusal))
         case let .success(made): plan = made
         }

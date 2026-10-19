@@ -102,6 +102,15 @@ enum ForkMeetingRename {
         var media = ForkMeetingFolder.MediaRenames()
     }
 
+    /// What sits at a name beside the folder, as a rename sees it: the
+    /// folder itself under another case of its name (APFS ignores case, so
+    /// the disk answers that the name is taken) is free to take, or a change
+    /// of case alone would go to "(2)".
+    static func occupant(sameFolder: @escaping (String) -> Bool,
+                         disk: @escaping (String) -> ForkMeetingFolder.Occupant) -> (String) -> ForkMeetingFolder.Occupant {
+        { name in sameFolder(name) ? .free : disk(name) }
+    }
+
     /// The title as it is kept: one line, no blank around it, and none of
     /// the bidi controls that would let the row show words in another order
     /// than the folder's name (`ForkMeetingFolder.bidiControls`).
@@ -154,7 +163,7 @@ enum ForkMeetingRename {
         switch ForkMeetingFolder.reserve(base: desired, forRename: true, occupant: occupant) {
         case let .create(name):
             plan.folder = ForkMeetingFolder.Move(from: folderName, to: name)
-            plan.media = ForkMeetingFolder.mediaRenames(folderName: name, names: names)
+            plan.media = ForkMeetingFolder.mediaRenames(from: folderName, to: name, names: names)
         case .adopt, .exhausted:
             plan.folderKept = .namesExhausted
         }
