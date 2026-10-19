@@ -153,9 +153,9 @@ private struct ForkMeetingRecordSection: View {
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
                 Spacer()
-                // The meetings already recorded stay at hand, the feature
-                // on or off.
+                // Like every part of the feature, off with it.
                 Button(text.openLibrary) { ForkMeetingLibraryWindow.shared.show() }
+                    .disabled(!enabled)
             }
             if enabled && !acknowledged {
                 HStack(alignment: .firstTextBaseline) {

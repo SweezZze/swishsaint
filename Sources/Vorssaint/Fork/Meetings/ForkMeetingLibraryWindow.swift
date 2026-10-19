@@ -37,10 +37,18 @@ final class ForkMeetingLibraryWindow: NSObject, NSWindowDelegate {
     }
 
     /// Opens the window, or brings it forward; `folder` selects that
-    /// meeting (the "Show" of the saved and recovered notices).
+    /// meeting (the "Show" of the saved and recovered notices). With the
+    /// feature off, the window does not open: the meeting's folder shows in
+    /// the Finder instead, and nothing watches or scans.
     func show(folder: URL? = nil) {
         guard Thread.isMainThread else {
             DispatchQueue.main.async { self.show(folder: folder) }
+            return
+        }
+        guard ForkMeetingService.isWanted else {
+            if let folder, FileManager.default.fileExists(atPath: folder.path) {
+                NSWorkspace.shared.activateFileViewerSelecting([folder])
+            }
             return
         }
         let model = self.model ?? ForkMeetingLibraryModel()
@@ -55,6 +63,12 @@ final class ForkMeetingLibraryWindow: NSObject, NSWindowDelegate {
         }
         NSApp.activate(ignoringOtherApps: true)
         window.makeKeyAndOrderFront(nil)
+    }
+
+    /// The feature turned off: the window goes, and with it its watch.
+    func close() {
+        guard let window, window.isVisible || window.isMiniaturized || model?.isOpen == true else { return }
+        window.close()
     }
 
     private func ensureWindow(model: ForkMeetingLibraryModel) -> NSWindow {
