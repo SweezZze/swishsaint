@@ -67,11 +67,15 @@ enum ForkMeetingIsland {
     /// lock) calls `close`, instead of the card staying attached unseen.
     /// `fallback` runs when the island goes away under it (turned off, its
     /// display unplugged). A card with a ⋯ menu puts it in the island's top
-    /// row, right of the camera, where the page's own controls go.
+    /// row, right of the camera, where the page's own controls go. The card
+    /// `id` already up is changed in place: the island, open on it, is no
+    /// longer free for a new one.
     @discardableResult
     static func present(_ card: ForkMeetingCard, id: UUID, height: CGFloat, fallback: @escaping () -> Void,
                         close: @escaping () -> Void, hover: @escaping (Bool) -> Void) -> Bool {
-        guard isAvailable else { return false }
+        guard ForkMeetingIslandCard.islandTakes(available: isAvailable, showingThisCard: isShowing(id: id)) else {
+            return false
+        }
         let actions = card.menu.isEmpty ? nil : AnyView(ForkMeetingCardMenu(card: card))
         return NotchService.shared.presentCapture(
             id: id, content: AnyView(ForkMeetingCardView(card: card)), actions: actions, height: height,

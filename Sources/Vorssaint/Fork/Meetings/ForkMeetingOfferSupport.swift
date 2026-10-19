@@ -19,6 +19,41 @@ enum ForkMeetingOfferSurface: Equatable {
     }
 }
 
+/// Which of the detection's cards the island holds: the offer, "Recording
+/// started · Cancel (5 s)", "Meeting over? Stopping in 12 s".
+enum ForkMeetingIslandCard: Equatable {
+    case offer
+    case undo
+    case endingSoon
+
+    /// What becomes of a card the island closed over (a click on the
+    /// island, a lock, the official capture controls).
+    enum AfterClose: Equatable {
+        /// The offer folds into its reminder: not a "Not Now".
+        case fold
+        /// "Cancel" goes on in the bubble while its seconds run.
+        case bubble
+        /// Nothing to keep: the pill holds the countdown, and "Cancel" is
+        /// over.
+        case gone
+    }
+
+    func afterClose(undoUntil: Date?, now: Date) -> AfterClose {
+        switch self {
+        case .offer: return .fold
+        case .undo: return undoUntil.map { now < $0 } == true ? .bubble : .gone
+        case .endingSoon: return .gone
+        }
+    }
+
+    /// Our card already up in the island is changed there, in place. The
+    /// island is open on it, so it is not "available" (free to be opened
+    /// for a card) any more.
+    static func islandTakes(available: Bool, showingThisCard: Bool) -> Bool {
+        available || showingThisCard
+    }
+}
+
 /// When an open offer folds. The machine folds it 20 s after it opened;
 /// the pointer resting on it holds the fold until it leaves, then a short
 /// grace lets a click that was on its way land. An offer opened again from

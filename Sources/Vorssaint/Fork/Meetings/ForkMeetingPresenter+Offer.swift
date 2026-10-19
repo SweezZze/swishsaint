@@ -9,12 +9,7 @@ import SwiftUI
 /// shows, where, and the cards "Cancel (5 s)" and "Meeting over?" that
 /// hold the island meanwhile.
 final class ForkMeetingOfferUI {
-    /// Which of our cards the island holds.
-    enum Card: Equatable {
-        case offer
-        case undo
-        case endingSoon
-    }
+    typealias Card = ForkMeetingIslandCard
 
     /// The offer's own bubble, apart from the notices': a notice arriving
     /// meanwhile never replaces it, it goes under it.
@@ -381,6 +376,8 @@ extension ForkMeetingPresenter {
             // Two buttons leave the words no room beside them in the island.
             card.stacked = true
         }
+        // A × beside "Cancel" would read as cancelling the recording.
+        card.closable = false
         return card
     }
 
@@ -404,7 +401,9 @@ extension ForkMeetingPresenter {
     private func presentInIsland(_ card: ForkMeetingCard, as kind: ForkMeetingOfferUI.Card, minimum: CGFloat) -> Bool {
         let ui = offerUI
         let ours = ui.islandCard.map { ForkMeetingIsland.isShowing(id: $0.id) } ?? false
-        guard ForkMeetingIsland.isAvailable || ours else { return false }
+        guard ForkMeetingIslandCard.islandTakes(available: ForkMeetingIsland.isAvailable, showingThisCard: ours) else {
+            return false
+        }
         // The presenter's own card is replaced in place, not taken away
         // first, so the island does not close and open again.
         forgetCard()
@@ -431,14 +430,24 @@ extension ForkMeetingPresenter {
             close: { [weak self] in
                 guard let self, let held = self.offerUI.islandCard, held.id == id else { return }
                 self.offerUI.islandCard = nil
-                guard held.card == .offer else { return }
-                // Collapsed by a click, a lock, the capture controls: not a
-                // "Not Now", only a fold. Later, so a quitting app folds
-                // nothing.
-                self.offerUI.islandTurnedAway = true
-                DispatchQueue.main.async { [weak self] in
-                    guard let self, self.offerUI.open, self.offerUI.offer != nil else { return }
-                    self.foldOffer()
+                // Collapsed by a click, a lock, the capture controls: an
+                // offer only folds, "Cancel" goes on in the bubble while it
+                // runs. Later, so a quitting app moves nothing.
+                switch held.card.afterClose(undoUntil: self.offerUI.undoUntil, now: Date()) {
+                case .fold:
+                    self.offerUI.islandTurnedAway = true
+                    DispatchQueue.main.async { [weak self] in
+                        guard let self, self.offerUI.open, self.offerUI.offer != nil else { return }
+                        self.foldOffer()
+                    }
+                case .bubble:
+                    DispatchQueue.main.async { [weak self] in
+                        guard let self, let until = self.offerUI.undoUntil, Date() < until,
+                              self.offerUI.islandCard == nil else { return }
+                        self.showOfferBubble(self.undoCard(until: until), as: .undo)
+                    }
+                case .gone:
+                    break
                 }
             },
             hover: { [weak self] inside in

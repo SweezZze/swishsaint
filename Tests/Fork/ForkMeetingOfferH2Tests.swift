@@ -10,6 +10,7 @@ enum ForkMeetingOfferH2Tests {
     static func run(_ suite: TestSuite) {
         shares(suite)
         microphone(suite)
+        islandCards(suite)
     }
 
     private static let zero = Date(timeIntervalSinceReferenceDate: 800_000_000)
@@ -65,5 +66,24 @@ enum ForkMeetingOfferH2Tests {
         suite.expect(ForkMeetingOfferInput.of(.meeting, meetingInput: ForkMeetingDetectionSupport.meetingInput(
                         for: meeting, in: microphones)) == .meetingApp("AirPodsUID"),
                      "the offer and the start read the same input: Chrome's AudioService's")
+    }
+
+    // MARK: - H2.3, H2.4 The island's cards
+
+    private static func islandCards(_ suite: TestSuite) {
+        suite.expect(ForkMeetingIslandCard.islandTakes(available: false, showingThisCard: true),
+                     "our card up in the island is changed in place, though the island open on it is not free")
+        suite.expect(ForkMeetingIslandCard.islandTakes(available: true, showingThisCard: false)
+                        && !ForkMeetingIslandCard.islandTakes(available: false, showingThisCard: false),
+                     "a new card opens the island only when it is free")
+        suite.expect(ForkMeetingIslandCard.undo.afterClose(undoUntil: at(5), now: at(1)) == .bubble,
+                     "the island closed by the first click: « Annuler » goes on in the bubble while it runs")
+        suite.expect(ForkMeetingIslandCard.undo.afterClose(undoUntil: at(5), now: at(5)) == .gone
+                        && ForkMeetingIslandCard.undo.afterClose(undoUntil: nil, now: at(1)) == .gone,
+                     "« Annuler » over, nothing moves to the bubble")
+        suite.expect(ForkMeetingIslandCard.offer.afterClose(undoUntil: nil, now: at(1)) == .fold,
+                     "an offer the island closed over folds into its reminder: not a « Pas cette fois »")
+        suite.expect(ForkMeetingIslandCard.endingSoon.afterClose(undoUntil: at(5), now: at(1)) == .gone,
+                     "the countdown stays in the pill alone")
     }
 }
