@@ -28,6 +28,7 @@ enum ForkMeetingFixesKTests {
         noAlwaysBeforeMacOS14_4(suite)
         namedByTheCalendar(suite)
         oneWebexCall(suite)
+        tenNewTapsAtMost(suite)
     }
 
     // MARK: - Fixtures
@@ -588,5 +589,21 @@ enum ForkMeetingFixesKTests {
         var ended: [ForkMeetingIdentity] = []
         for second in stride(from: 10.0, through: 40, by: 2) { ended += webex.read(second, microphones: []).ended }
         suite.expect(ended == [identity("webex#1")], "and it ends once neither uses the microphone")
+    }
+
+    // MARK: - K.m: ten new taps at most per recording
+
+    private static func tenNewTapsAtMost(_ suite: TestSuite) {
+        var repair = ForkMeetingTapRepair()
+        var tried = 0
+        for _ in 0..<50 {
+            if repair.tryAgain() { tried += 1 }
+            repair.heard()
+        }
+        suite.expect(tried == 10 && ForkMeetingTapRepair.total == 10 && !repair.tryAgain(),
+                     "a tap that keeps losing its reader and hearing again gets 10 new ones in all, then the track gives up")
+        var fresh = ForkMeetingTapRepair()
+        suite.expect(fresh.tryAgain() && fresh.tryAgain() && !fresh.tryAgain(),
+                     "still two in a row at most without hearing anything")
     }
 }
