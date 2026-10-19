@@ -20,6 +20,7 @@ enum ForkMeetingFixesKTests {
         aMicrophoneTestNeverStarts(suite)
         aLongMicrophoneProvesTeams(suite)
         faceTimeIsOnlyOffered(suite)
+        aWebCallLivesOnItsMicrophone(suite)
     }
 
     // MARK: - Fixtures
@@ -305,5 +306,40 @@ enum ForkMeetingFixesKTests {
         suite.expect(french.detectionFaceTimeRelayed == "Un appel téléphonique relayé par l’iPhone peut aussi être proposé."
                         && AppLanguage.allCases.allSatisfy { !ForkMeetingStrings.strings($0).detectionFaceTimeRelayed.isEmpty },
                      "« Un appel téléphonique relayé par l’iPhone peut aussi être proposé », in every language")
+    }
+
+    // MARK: - K.I3: the other web calls live on the microphone
+
+    /// Probe P5: Zoom's web client, the call over and the microphone free,
+    /// the tab still titled "Zoom".
+    private static func aWebCallLivesOnItsMicrophone(_ suite: TestSuite) {
+        let tab = chrome("Zoom")
+        var web = Live()
+        web.read(-5, microphones: [chromeMicrophone])
+        web.read(0, windows: [tab], microphones: [chromeMicrophone])
+        let born = web.read(3, windows: [tab], microphones: [chromeMicrophone])
+        suite.expect(born.candidates.map(\.identity) == [identity("web:100:Zoom")]
+                        && born.candidates.first?.windowID == 7 && born.candidates.first?.name == "Zoom",
+                     "Zoom's web client with the browser's microphone: a call, named and filmed by its tab")
+        var ended: [ForkMeetingIdentity] = []
+        var alive: [TimeInterval] = []
+        for second in stride(from: 6.0, through: 60, by: 3) {
+            let resolution = web.read(second, windows: [tab], microphones: [])
+            ended += resolution.ended
+            if !resolution.candidates.isEmpty { alive.append(second) }
+        }
+        suite.expect(ended == [identity("web:100:Zoom")] && alive.last.map { $0 < 30 } == true,
+                     "the microphone free, the tab still titled Zoom: the call ends after 20 s")
+
+        var background = Live()
+        background.read(-5, microphones: [chromeMicrophone])
+        background.read(0, windows: [chrome("Point hebdo | Jitsi Meet")], microphones: [chromeMicrophone])
+        background.read(3, windows: [chrome("Point hebdo | Jitsi Meet")], microphones: [chromeMicrophone])
+        var lives = true
+        for second in stride(from: 6.0, through: 60, by: 3) {
+            let resolution = background.read(second, windows: [chrome("Inbox - Gmail")], microphones: [chromeMicrophone])
+            lives = lives && resolution.candidates.map(\.name) == ["Point hebdo"]
+        }
+        suite.expect(lives, "another tab in front, the browser's microphone open: the Jitsi room goes on, named")
     }
 }

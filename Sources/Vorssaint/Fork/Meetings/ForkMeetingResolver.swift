@@ -36,7 +36,9 @@ struct ForkMeetingResolution: Equatable {
 ///   another meeting of that browser shows with its code, the microphone
 ///   opened again since (two Meet in a row: the microphone is the new
 ///   one's). A title without a code, or another Meet's waiting room on the
-///   same microphone, never takes it from a call going on.
+///   same microphone, never takes it from a call going on. The other web
+///   calls (Zoom's web client, Whereby…) live on the microphone alone: their
+///   title stays on the tab once the call is over.
 /// - It **probably ends** when both have been gone for 20 s, or at once when
 ///   its window says the call is over and its microphone is free: an end
 ///   page with the microphone still open leaves it to the 20 s (another tab
@@ -369,7 +371,11 @@ struct ForkMeetingResolver {
         }
         var ended: [ForkMeetingIdentity] = []
         for (identity, var track) in tracks where track.bornAt != nil {
-            let alive = track.windowSeen || keepsAlive(track)
+            // The other web calls' titles are plain words a tab keeps once
+            // the call is over ("Zoom"): their window names them and is the
+            // one filmed, only the browser's microphone keeps them alive.
+            let shown = track.windowSeen && (track.provider.kind == .app || track.provider.titlesMakeMeetings)
+            let alive = shown || keepsAlive(track)
             if alive {
                 track.absentSince = nil
             } else {
