@@ -1,0 +1,511 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 Martial
+
+import AppKit
+import Combine
+import CoreServices
+import UniformTypeIdentifiers
+
+/// What the Meetings window shows and does: the rows scanned from the disk,
+/// the search, the selection, the title and notes typed, and every action
+/// of the detail, run through the store.
+///
+/// The disk is the truth: every action ends with a new scan, and so does
+/// every change the Finder makes, seen through `ForkMeetingFolderWatch`
+/// while the window is open, and only then.
+///
+/// Main thread only.
+final class ForkMeetingLibraryModel: ObservableObject {
+    @Published private(set) var entries: [ForkMeetingLibraryEntry] = []
+    @Published private(set) var probes: [String: ForkMeetingProbeCache.Probe] = [:]
+    @Published private(set) var root: URL
+    @Published private(set) var rootExists = true
+    /// The first scan answered: until then the window shows no empty state.
+    @Published private(set) var loaded = false
+    @Published var query = ""
+    @Published var selection: String? {
+        didSet { if selection != oldValue { note = nil } }
+    }
+    /// One line under the detail's buttons: what an action could not do,
+    /// or did ("Path copied").
+    @Published var note: String?
+    /// The meeting whose move to the Trash waits for a confirmation.
+    @Published var trashAsked: String?
+    /// Folders a rename or a copy works on: their actions wait.
+    @Published private(set) var working: Set<String> = []
+    /// Asks the search field to take the keyboard (⌘F).
+    @Published private(set) var searchFocus = 0
+    /// Asks the title field to take the keyboard (⋯ › Rename).
+    @Published private(set) var titleFocus = 0
+
+    let store: ForkMeetingStore
+    /// The window's language when it is not the app's (the recipe's sheets).
+    let language: AppLanguage?
+    let now: () -> Date
+    let calendar: Calendar
+    /// What this app records or finishes now, by standardized path.
+    private let writing: () -> Set<String>
+    private var edits = ForkMeetingEditCoalescer()
+    private var editTimer: DispatchSourceTimer?
+    private var watch: ForkMeetingFolderWatch?
+    private var scanning = false
+    private var scanAgain = false
+    /// Renames done since the last scan, old name to new, so the selection
+    /// follows them.
+    private var renamed: [String: String] = [:]
+    private var noteExpiry: DispatchWorkItem?
+
+    init(store: ForkMeetingStore = .shared, language: AppLanguage? = nil, now: @escaping () -> Date = Date.init,
+         calendar: Calendar = .current, writing: @escaping () -> Set<String> = { ForkMeetingService.shared.writingFolders }) {
+        self.store = store
+        self.language = language
+        self.now = now
+        self.calendar = calendar
+        self.writing = writing
+        root = store.root()
+    }
+
+    /// Rows given as they are, for the recipe's sheets: no disk, no scan.
+    init(preview entries: [ForkMeetingLibraryEntry], probes: [String: ForkMeetingProbeCache.Probe] = [:],
+         root: URL, language: AppLanguage, now: Date, calendar: Calendar) {
+        store = .shared
+        self.language = language
+        self.now = { now }
+        self.calendar = calendar
+        writing = { [] }
+        self.root = root
+        self.entries = entries
+        self.probes = probes
+        loaded = true
+    }
+
+    var strings: ForkMeetingStrings { ForkMeetingStrings.strings(currentLanguage) }
+    var currentLanguage: AppLanguage { language ?? L10n.shared.language }
+
+    // MARK: - What the list shows
+
+    var filtered: [ForkMeetingLibraryEntry] {
+        ForkMeetingLibrary.filtered(entries, query: query, strings: strings,
+                                    providerName: ForkMeetingLibraryText.providerName)
+    }
+
+    var groups: [ForkMeetingLibrary.Group] {
+        ForkMeetingLibrary.groups(filtered, now: now(), calendar: calendar)
+    }
+
+    var selectedEntry: ForkMeetingLibraryEntry? {
+        guard let selection else { return nil }
+        return entries.first { $0.folderName == selection }
+    }
+
+    func folderURL(_ entry: ForkMeetingLibraryEntry) -> URL {
+        root.appendingPathComponent(entry.folderName, isDirectory: true)
+    }
+
+    func playableURL(_ entry: ForkMeetingLibraryEntry) -> URL? {
+        entry.playable.map { folderURL(entry).appendingPathComponent($0) }
+    }
+
+    func isLive(_ entry: ForkMeetingLibraryEntry) -> Bool {
+        entry.status.isInProgress || working.contains(entry.folderName)
+    }
+
+    // MARK: - Opening and closing
+
+    /// The window opened: a scan now, then one after every change of the
+    /// folder. `focus` selects that meeting once it is listed.
+    func start(focus: URL? = nil) {
+        root = store.root()
+        if let focus { selection = focus.standardizedFileURL.lastPathComponent }
+        rewatch()
+        refresh()
+    }
+
+    /// The window closed: what was typed is written, nothing watches.
+    func stop() {
+        flushEdits()
+        watch?.stop()
+        watch = nil
+    }
+
+    func focusSearch() { searchFocus += 1 }
+    func focusTitle() { titleFocus += 1 }
+
+    private func rewatch() {
+        let path = root.path
+        guard watch?.path != path else { return }
+        watch?.stop()
+        watch = ForkMeetingFolderWatch(path: path) { [weak self] in self?.refresh() }
+        watch?.start()
+    }
+
+    /// A scan, one at a time: a change during a scan asks for one more.
+    func refresh() {
+        guard !scanning else {
+            scanAgain = true
+            return
+        }
+        scanning = true
+        root = store.root()
+        let before = ForkMeetingLibrary.order(groups)
+        store.scanLibrary(writing: writing()) { [weak self] scan in
+            guard let self else { return }
+            self.scanning = false
+            self.root = scan.root
+            self.rootExists = scan.rootExists
+            self.entries = scan.entries
+            self.probes = scan.probes
+            self.loaded = true
+            let after = ForkMeetingLibrary.order(self.groups)
+            self.selection = ForkMeetingLibrary.keptSelection(self.selection, renamed: self.renamed,
+                                                              before: before, after: after)
+                ?? after.first
+            self.renamed = [:]
+            if scan.rootExists { self.rewatch() }
+            if self.scanAgain {
+                self.scanAgain = false
+                self.refresh()
+            }
+        }
+    }
+
+    // MARK: - Title and notes
+
+    /// Typed in the title field: saved in `meeting.json` within half a
+    /// second, the folder renamed only at the commit.
+    func typedTitle(_ title: String, in folder: String) {
+        noteEdit(ForkMeetingSidecarEdit(title: ForkMeetingRename.cleaned(title)), in: folder)
+    }
+
+    func typedNotes(_ notes: String, in folder: String) {
+        noteEdit(ForkMeetingSidecarEdit(notes: notes), in: folder)
+    }
+
+    private func noteEdit(_ edit: ForkMeetingSidecarEdit, in folder: String) {
+        edits.note(edit, in: folder, at: now())
+        scheduleEdits()
+    }
+
+    private func scheduleEdits() {
+        editTimer?.cancel()
+        editTimer = nil
+        guard let deadline = edits.nextDeadline else { return }
+        let timer = DispatchSource.makeTimerSource(queue: .main)
+        timer.schedule(deadline: .now() + max(0, deadline.timeIntervalSince(now())), leeway: .milliseconds(20))
+        timer.setEventHandler { [weak self] in
+            guard let self else { return }
+            self.write(self.edits.takeDue(at: self.now()))
+            self.scheduleEdits()
+        }
+        editTimer = timer
+        timer.resume()
+    }
+
+    /// Before a rename, a move to the Trash, the window's closing.
+    func flushEdits(_ folder: String? = nil) {
+        write(edits.flush(folder))
+        scheduleEdits()
+    }
+
+    private func write(_ due: [(folder: String, edit: ForkMeetingSidecarEdit)]) {
+        for (folder, edit) in due {
+            store.applyEdit(edit, in: root.appendingPathComponent(folder, isDirectory: true))
+        }
+    }
+
+    /// Return, or the field left: the folder and its media take the title.
+    func commitTitle(_ title: String, of entry: ForkMeetingLibraryEntry) {
+        let folder = entry.folderName
+        guard !entry.isReadOnly, !working.contains(folder) else { return }
+        let wanted = ForkMeetingRename.cleaned(title)
+        flushEdits(folder)
+        working.insert(folder)
+        store.renameMeeting(folder, title: wanted, live: writing().contains(folderURL(entry).standardizedFileURL.path)) {
+            [weak self] result in
+            guard let self else { return }
+            self.working.remove(folder)
+            switch result {
+            case let .success(done):
+                if done.folderName != folder {
+                    self.renamed[folder] = done.folderName
+                    self.edits.move(from: folder, to: done.folderName)
+                    if self.selection == folder { self.selection = done.folderName }
+                }
+                if done.folderMoveFailed || !done.mediaKept.isEmpty {
+                    self.say(done.folderMoveFailed ? self.strings.renameFailed : self.strings.renameMediaKept)
+                } else if let line = ForkMeetingLibraryText.renameNote(done.plan, strings: self.strings) {
+                    self.say(line)
+                }
+            case let .failure(.renameRefused(refusal)):
+                self.say(ForkMeetingLibraryText.refusal(refusal, strings: self.strings))
+            case .failure:
+                self.say(self.strings.renameFailed)
+            }
+            self.refresh()
+        }
+    }
+
+    // MARK: - Actions
+
+    /// ⌘⌫ or ⋯ › Move to Trash: asks first.
+    func askTrash(_ entry: ForkMeetingLibraryEntry?) {
+        guard let entry else { return }
+        guard !isLive(entry) else {
+            say(strings.refusedWhileRecording)
+            return
+        }
+        trashAsked = entry.folderName
+    }
+
+    func trash(_ folder: String) {
+        trashAsked = nil
+        edits.forget(folder)
+        let order = ForkMeetingLibrary.order(groups)
+        let path = root.appendingPathComponent(folder, isDirectory: true).standardizedFileURL.path
+        store.trashMeeting(folder, live: writing().contains(path)) { [weak self] result in
+            guard let self else { return }
+            switch result {
+            case .success:
+                if self.selection == folder {
+                    self.selection = ForkMeetingLibrary.neighbour(of: folder, in: order)
+                }
+                Self.announce(self.strings.voiceTrashed)
+            case .failure(.meetingInProgress):
+                self.say(self.strings.refusedWhileRecording)
+            case .failure:
+                self.say(self.strings.trashFailed)
+            }
+            self.refresh()
+        }
+    }
+
+    func showInFinder(_ entry: ForkMeetingLibraryEntry) {
+        let folder = folderURL(entry)
+        let target = playableURL(entry).flatMap { FileManager.default.fileExists(atPath: $0.path) ? $0 : nil } ?? folder
+        NSWorkspace.shared.activateFileViewerSelecting([target])
+    }
+
+    func copyPath(_ entry: ForkMeetingLibraryEntry) {
+        let pasteboard = NSPasteboard.general
+        pasteboard.clearContents()
+        pasteboard.setString(folderURL(entry).path, forType: .string)
+        say(strings.noticePathCopied)
+        Self.announce(strings.noticePathCopied)
+    }
+
+    /// A copy in the official editor; the meeting stays as it is.
+    func trim(_ entry: ForkMeetingLibraryEntry) {
+        let folder = entry.folderName
+        guard !working.contains(folder) else { return }
+        working.insert(folder)
+        let live = writing().contains(folderURL(entry).standardizedFileURL.path)
+        store.makeEditorTake(for: entry, probe: probes[folder], editorAvailable: AppFeature.screenRecorder.isAvailable,
+                             live: live) { [weak self] result in
+            guard let self else { return }
+            self.working.remove(folder)
+            switch result {
+            case let .success(take):
+                if !ScreenRecorderService.shared.openEditor(with: take, owner: .screenRecorder) {
+                    RecorderTakeStore.shared.delete(take)
+                    self.say(self.strings.trimNeedsEditor)
+                }
+            case let .failure(.editorCopyRefused(refusal)):
+                switch refusal {
+                case .meetingInProgress: self.say(self.strings.refusedWhileRecording)
+                case .noVideo: self.say(self.strings.trimNoVideo)
+                case .editorUnavailable: self.say(self.strings.trimNeedsEditor)
+                }
+            case .failure:
+                self.say(self.strings.trimFailed)
+            }
+        }
+    }
+
+    /// "Export Audio (M4A)…": where to, then the copy.
+    func exportAudio(_ entry: ForkMeetingLibraryEntry, from window: NSWindow?) {
+        let panel = NSSavePanel()
+        panel.allowedContentTypes = [UTType.mpeg4Audio]
+        panel.nameFieldStringValue = ForkMeetingAudioExport.suggestedName(entry)
+        panel.canCreateDirectories = true
+        panel.isExtensionHidden = false
+        let run: (NSApplication.ModalResponse) -> Void = { [weak self] response in
+            guard let self, response == .OK, let url = panel.url else { return }
+            self.exportAudio(entry, to: url)
+        }
+        if let window {
+            panel.beginSheetModal(for: window, completionHandler: run)
+        } else {
+            run(panel.runModal())
+        }
+    }
+
+    func exportAudio(_ entry: ForkMeetingLibraryEntry, to url: URL) {
+        let folder = entry.folderName
+        working.insert(folder)
+        let live = writing().contains(folderURL(entry).standardizedFileURL.path)
+        store.exportAudio(of: entry, probe: probes[folder], live: live, to: url) { [weak self] result in
+            guard let self else { return }
+            self.working.remove(folder)
+            switch result {
+            case .success: NSWorkspace.shared.activateFileViewerSelecting([url])
+            case .failure(.exportRefused(.meetingInProgress)): self.say(self.strings.refusedWhileRecording)
+            case .failure: self.say(self.strings.exportFailed)
+            }
+        }
+    }
+
+    /// The line under the buttons, for a few seconds.
+    func say(_ line: String) {
+        note = line
+        noteExpiry?.cancel()
+        let expiry = DispatchWorkItem { [weak self] in
+            if self?.note == line { self?.note = nil }
+        }
+        noteExpiry = expiry
+        DispatchQueue.main.asyncAfter(deadline: .now() + 6, execute: expiry)
+    }
+
+    static func announce(_ message: String) {
+        guard let window = NSApp.keyWindow ?? NSApp.mainWindow else { return }
+        NSAccessibility.post(element: window, notification: .announcementRequested,
+                             userInfo: [.announcement: message, .priority: NSAccessibilityPriorityLevel.high.rawValue])
+    }
+}
+
+// MARK: - Watching the folder
+
+/// The meetings folder, watched through FSEvents while the window is open:
+/// a folder renamed, added or sent to the Trash in the Finder, a note
+/// written, a meeting finishing. Changes are gathered for a quarter of a
+/// second before the window scans again, so a burst of writes (a final
+/// pass, a rename moving three files) costs one scan.
+final class ForkMeetingFolderWatch {
+    let path: String
+    private let onChange: () -> Void
+    private var stream: FSEventStreamRef?
+    private var pending: DispatchWorkItem?
+    static let debounce: TimeInterval = 0.25
+
+    init(path: String, onChange: @escaping () -> Void) {
+        self.path = path
+        self.onChange = onChange
+    }
+
+    deinit { stop() }
+
+    /// Main thread. A folder that does not exist yet is not watched: the
+    /// window scans again once a meeting made it.
+    func start() {
+        guard stream == nil, FileManager.default.fileExists(atPath: path) else { return }
+        var context = FSEventStreamContext(version: 0, info: Unmanaged.passUnretained(self).toOpaque(),
+                                           retain: nil, release: nil, copyDescription: nil)
+        let callback: FSEventStreamCallback = { _, info, _, _, _, _ in
+            guard let info else { return }
+            Unmanaged<ForkMeetingFolderWatch>.fromOpaque(info).takeUnretainedValue().changed()
+        }
+        guard let stream = FSEventStreamCreate(kCFAllocatorDefault, callback, &context, [path] as CFArray,
+                                               FSEventStreamEventId(kFSEventStreamEventIdSinceNow), 0.2,
+                                               FSEventStreamCreateFlags(kFSEventStreamCreateFlagWatchRoot)) else { return }
+        FSEventStreamSetDispatchQueue(stream, .main)
+        guard FSEventStreamStart(stream) else {
+            FSEventStreamInvalidate(stream)
+            FSEventStreamRelease(stream)
+            return
+        }
+        self.stream = stream
+    }
+
+    func stop() {
+        pending?.cancel()
+        pending = nil
+        guard let stream else { return }
+        FSEventStreamStop(stream)
+        FSEventStreamInvalidate(stream)
+        FSEventStreamRelease(stream)
+        self.stream = nil
+    }
+
+    /// Main queue (the stream's).
+    private func changed() {
+        pending?.cancel()
+        let work = DispatchWorkItem { [weak self] in self?.onChange() }
+        pending = work
+        DispatchQueue.main.asyncAfter(deadline: .now() + Self.debounce, execute: work)
+    }
+}
+
+// MARK: - The automatic bin
+
+/// `fork.meetings.retentionDays` at work: a sweep at the launch with the
+/// feature on, then once a day while the app runs (`ForkMeetingRetention`).
+/// Off, or set to Never, nothing runs.
+///
+/// Main thread only.
+final class ForkMeetingRetentionSweep {
+    static let shared = ForkMeetingRetentionSweep()
+
+    /// After the recovery at launch (5 s), so a meeting it finishes is
+    /// judged as it ends up.
+    static let launchDelay: TimeInterval = 20
+    private let store: ForkMeetingStore
+    private let defaults: UserDefaults
+    private var timer: Timer?
+    private var lastSweep: Date?
+    private var first: DispatchWorkItem?
+
+    init(store: ForkMeetingStore = .shared, defaults: UserDefaults = .standard) {
+        self.store = store
+        self.defaults = defaults
+    }
+
+    var days: Int { ForkMeetingRetention.sanitized(defaults.integer(forKey: ForkDefaultsKey.meetingsRetentionDays)) }
+
+    /// Every switch of the feature, and a change of the setting.
+    func sync(enabled: Bool) {
+        guard enabled, days > 0 else {
+            timer?.invalidate()
+            timer = nil
+            first?.cancel()
+            first = nil
+            return
+        }
+        guard timer == nil else { return }
+        let work = DispatchWorkItem { [weak self] in self?.sweepIfDue() }
+        first = work
+        DispatchQueue.main.asyncAfter(deadline: .now() + Self.launchDelay, execute: work)
+        // Looked at every hour, swept once a day: a Mac asleep for a night
+        // sweeps soon after it wakes.
+        let timer = Timer(timeInterval: 3600, repeats: true) { [weak self] _ in self?.sweepIfDue() }
+        timer.tolerance = 600
+        RunLoop.main.add(timer, forMode: .common)
+        self.timer = timer
+    }
+
+    private func sweepIfDue() {
+        let now = Date()
+        guard days > 0, ForkMeetingRetention.isSweepDue(lastSweep: lastSweep, now: now) else { return }
+        sweep(now: now)
+    }
+
+    /// Now, whatever the last sweep: the setting was just confirmed.
+    func sweep(now: Date = Date(), completion: (([String]) -> Void)? = nil) {
+        lastSweep = now
+        store.sweepRetention(days: days, now: now, writing: ForkMeetingService.shared.writingFolders) { gone in
+            completion?(gone)
+        }
+    }
+}
+
+extension ForkMeetingService {
+    /// The folders this app is recording or finishing now, standardized:
+    /// the library touches none of them.
+    var writingFolders: Set<String> {
+        // `folders` keeps every session's folder: only those whose file is
+        // still open, or whose session is the machine's now, are written.
+        var tokens = Set(recorders.keys)
+        if let session = machine.activeSession { tokens.insert(session.token) }
+        var paths = Set(tokens.compactMap { folders[$0]?.standardizedFileURL.path })
+        paths.formUnion(finalizing.map { $0.standardizedFileURL.path })
+        return paths
+    }
+}
