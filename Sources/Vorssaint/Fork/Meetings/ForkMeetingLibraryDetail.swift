@@ -46,10 +46,11 @@ struct ForkMeetingLibraryDetail: View {
                 if let banner { banner }
                 // As wide as the detail, low enough to leave the facts, the
                 // notes and the buttons in sight in a window of the default
-                // size; the player fits the picture inside.
+                // size; the player fits the picture inside. A meeting
+                // without picture gets its controls alone.
                 ForkMeetingLibraryPlayer(url: model.playableURL(entry), placeholder: text.playerNoVideo)
                     .frame(maxWidth: .infinity)
-                    .frame(height: 250)
+                    .frame(height: entry.isAudioOnly ? 56 : 250)
                     .clipShape(RoundedRectangle(cornerRadius: 8))
                 facts
                 ForkMeetingExportStatus(folder: model.folderURL(entry), live: model.isLive(entry), text: text, language: language)
@@ -230,7 +231,7 @@ struct ForkMeetingLibraryDetail: View {
             HStack {
                 Button(text.actionShow) { model.showInFinder(entry) }
                 Button(text.actionTrim) { model.trim(entry) }
-                    .disabled(model.isLive(entry) || entry.playable == nil)
+                    .disabled(model.isLive(entry) || entry.playable == nil || entry.isAudioOnly)
                     .help(text.trimCaption)
                 Spacer()
                 if model.working.contains(entry.folderName) {

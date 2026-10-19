@@ -49,6 +49,7 @@ FORK_SOURCES=(
     Sources/Vorssaint/Fork/Meetings/ForkMeetingActivity.swift
     Sources/Vorssaint/Fork/Meetings/ForkMeetingAppTitleRules.swift
     Sources/Vorssaint/Fork/Meetings/ForkMeetingAppsSupport.swift
+    Sources/Vorssaint/Fork/Meetings/ForkMeetingAudioOnly.swift
     Sources/Vorssaint/Fork/Meetings/ForkMeetingCaptureSupport.swift
     Sources/Vorssaint/Fork/Meetings/ForkMeetingDetectionSupport.swift
     Sources/Vorssaint/Fork/Meetings/ForkMeetingFailure.swift

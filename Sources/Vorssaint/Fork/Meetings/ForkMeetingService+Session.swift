@@ -367,7 +367,8 @@ extension ForkMeetingService {
         case let .success(start):
             // Stopped meanwhile: the stop cleans up.
             guard isStarting(token) else { return }
-            log.notice("recording \(start.target.rawValue, privacy: .public), \(start.codec, privacy: .public) \(start.outputSize.width)×\(start.outputSize.height), microphone \(start.microphone == nil ? "none" : "on", privacy: .public)")
+            let picture = start.outputSize.map { "\(start.codec ?? "") \($0.width)×\($0.height)" } ?? "no picture"
+            log.notice("recording \(start.target.rawValue, privacy: .public), \(picture, privacy: .public), microphone \(start.microphone == nil ? "none" : "on", privacy: .public)")
             context.target = start.target
             context.canSwitchTarget = start.window != nil
             context.recordsMicrophone = start.microphone != nil

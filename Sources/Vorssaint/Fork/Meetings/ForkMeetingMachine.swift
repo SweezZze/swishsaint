@@ -616,7 +616,7 @@ struct ForkMeetingMachine {
             let zero = min(startedAt ?? now, now)
             var session = Session(token: token, config: pending.config, folder: folder, startedAt: zero,
                                   target: target ?? setting, runningSince: zero)
-            if locked { session.lockedAt = 0 }
+            if locked, session.target.filmsPicture { session.lockedAt = 0 }
             session.choseAlways = pending.choseAlways
             session.meetingGone = pending.meetingGone
             session.endCountdown = pending.endCountdown
@@ -731,8 +731,9 @@ struct ForkMeetingMachine {
         case .locked:
             locked = true
             // Nothing pauses: the sound goes on, the picture freezes. The
-            // lock becomes a gap once its length is known.
-            guard var session = activeSession, session.lockedAt == nil else { return [] }
+            // lock becomes a gap once its length is known; without picture
+            // nothing froze, nothing is noted.
+            guard var session = activeSession, session.lockedAt == nil, session.target.filmsPicture else { return [] }
             session.lockedAt = session.recorded(at: now)
             replace(session)
             return []
@@ -754,7 +755,7 @@ struct ForkMeetingMachine {
 
         case let .diskLow(freeBytes):
             guard var session = activeSession else { return [] }
-            switch ForkMeetingDisk.level(freeBytes: freeBytes, quality: session.config.settings.quality) {
+            switch ForkMeetingDisk.level(freeBytes: freeBytes, settings: session.config.settings) {
             case .critical:
                 return stopForFailure(session, .diskFull, now: now)
             case .enough:
@@ -778,6 +779,8 @@ struct ForkMeetingMachine {
             guard let session = activeSession else { return [] }
             switch permission {
             case .screenRecording:
+                // Nothing filmed, nothing taken away.
+                guard session.target.filmsPicture else { return [] }
                 return stopForFailure(session, .screenRecordingRevoked, now: now)
             case .microphone:
                 let patch = ForkMeetingSidecarPatch(microphone: ForkMeetingSidecar.Capture.microphoneDenied)
@@ -795,8 +798,8 @@ struct ForkMeetingMachine {
         case .toggleTarget:
             // Asked only: the engine says what it films once it does, and
             // only then is the switch noted (a window that went cannot be
-            // filmed again).
-            guard let session = activeSession else { return [] }
+            // filmed again). Without picture there is nothing to switch.
+            guard let session = activeSession, session.target.filmsPicture else { return [] }
             return [.switchTarget(session.target == .window ? .display : .window)]
 
         case let .targetSwitched(token, target):
@@ -1200,10 +1203,11 @@ struct ForkMeetingMachine {
     }
 
     /// Why a meeting may not start, checked in this order: nothing can be
-    /// filmed, the official recorder holds the screen, no room.
+    /// filmed (never asked of a meeting without picture), the official
+    /// recorder holds the screen, no room.
     static func refusal(_ request: ForkMeetingStartRequest) -> ForkMeetingFailure? {
         let facts = request.facts
-        if !facts.screenRecordingAllowed { return .screenRecordingDenied }
+        if request.settings.target.filmsPicture, !facts.screenRecordingAllowed { return .screenRecordingDenied }
         if facts.officialRecorderBusy { return .officialRecorderBusy }
         guard let freeBytes = facts.freeBytes else { return .folderUnavailable }
         let required = ForkMeetingDisk.requiredToStart(request.settings.quality)

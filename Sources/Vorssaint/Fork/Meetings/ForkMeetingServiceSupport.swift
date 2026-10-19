@@ -78,6 +78,8 @@ enum ForkMeetingServiceSupport {
             return strings.filmedWindow(appName)
         case .display:
             return noWindowToFilm ? strings.filmedNoWindow : strings.filmedDisplay
+        case .audioOnly:
+            return strings.soundOnly
         }
     }
 

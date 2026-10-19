@@ -38,7 +38,8 @@ extension ForkMeetingStore {
             let contents = ForkMeetingFolder.contents(of: names, folderName: found.lastPathComponent,
                                                       alsoNamed: meeting.recordedName())
             if isWritten(found, sidecar: read, contents: contents) { return .failure(.meetingInProgress) }
-            guard let file = ForkMeetingTranscript.source(video: contents.video, hasMaster: contents.hasMaster) else {
+            guard let file = ForkMeetingTranscript.source(video: contents.media(audioOnly: meeting.isAudioOnly),
+                                                          hasMaster: contents.hasMaster) else {
                 return .failure(.noAudio)
             }
             let kept = file == ForkMeetingFolder.masterName || meeting.finalPass == .skippedDisk
@@ -64,7 +65,8 @@ extension ForkMeetingStore {
             let contents = ForkMeetingFolder.contents(of: names, folderName: found.lastPathComponent,
                                                       alsoNamed: meeting.recordedName())
             if isWritten(found, sidecar: read, contents: contents) { return .failure(.meetingInProgress) }
-            guard let source = ForkMeetingTranscript.source(video: contents.video, hasMaster: contents.hasMaster) else {
+            guard let source = ForkMeetingTranscript.source(video: contents.media(audioOnly: meeting.isAudioOnly),
+                                                            hasMaster: contents.hasMaster) else {
                 return .failure(.noAudio)
             }
             let place = ForkMeetingTranscript.placement(source: source, folderName: found.lastPathComponent,

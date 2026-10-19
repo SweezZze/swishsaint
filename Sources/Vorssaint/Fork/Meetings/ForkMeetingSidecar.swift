@@ -46,10 +46,14 @@ enum ForkMeetingPauseReason: String, Codable, CaseIterable {
     case sleep
 }
 
-/// What the picture follows: the meeting's window, or the display it is on.
+/// What the picture follows: the meeting's window, or the display it is on;
+/// or no picture at all (`audioOnly`), the meeting kept as an `.m4a`. A
+/// version that does not know `audioOnly` keeps the whole `capture` object
+/// as it was written (`preserved`), never a part of it.
 enum ForkMeetingCaptureTarget: String, Codable, CaseIterable {
     case window
     case display
+    case audioOnly
 
     static let fallback: ForkMeetingCaptureTarget = .window
 

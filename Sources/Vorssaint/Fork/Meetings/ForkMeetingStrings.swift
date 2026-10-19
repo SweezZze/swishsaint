@@ -801,6 +801,23 @@ struct ForkMeetingStrings {
     let indicatorBothCaption: String
 
     func islandValuePaused(_ time: String) -> String { String(format: islandValuePausedFormat, time) }
+    // MARK: Finish C
+
+    /// "Sound only": the picture setting's third choice, what the pill and
+    /// the start say is recorded, a library row's mark: 28 characters at most.
+    let soundOnly: String
+    let soundOnlyCaption: String
+    let soundOnlyBefore144: String
+    /// The offer's menu: this one meeting otherwise than the setting.
+    let offerRecordSoundOnly: String
+    let offerRecordWithPicture: String
+    /// The offer's line for a meeting without picture: the sound's and the
+    /// microphone's values, as `offerCaptureFormat` says them.
+    let offerCaptureSoundOnlyFormat: String
+
+    func offerCaptureSoundOnly(sound: String, microphone: String) -> String {
+        String(format: offerCaptureSoundOnlyFormat, sound, microphone)
+    }
 }
 
 extension ForkMeetingStrings {
@@ -1250,7 +1267,14 @@ extension ForkMeetingStrings {
         indicatorAuto: "Automatic",
         indicatorBoth: "Always",
         indicatorAutoCaption: "It steps aside while the closed island shows the recording on the filmed display, and comes back when the island is hidden, in full screen or shows another activity.",
-        indicatorBothCaption: "It stays on screen beside the island."
+        indicatorBothCaption: "It stays on screen beside the island.",
+        // MARK: Finish C
+        soundOnly: "Sound only",
+        soundOnlyCaption: "No picture: the meeting’s sound and your microphone, in an .m4a file. Screen Recording is not needed, and the quality only applies to the picture.",
+        soundOnlyBefore144: "Before macOS 14.4, no app’s sound can be heard without filming: only your microphone is recorded.",
+        offerRecordSoundOnly: "Record Sound Only",
+        offerRecordWithPicture: "Record with Picture",
+        offerCaptureSoundOnlyFormat: "Sound only · sound: %1$@ · mic: %2$@"
     )
 }
 
@@ -1701,7 +1725,14 @@ extension ForkMeetingStrings {
         indicatorAuto: "Automático",
         indicatorBoth: "Sempre",
         indicatorAutoCaption: "Ele se oculta enquanto a ilha fechada mostra a gravação na tela filmada e volta quando a ilha está oculta, em tela cheia ou mostra outra atividade.",
-        indicatorBothCaption: "Ele fica na tela ao lado da ilha."
+        indicatorBothCaption: "Ele fica na tela ao lado da ilha.",
+        // MARK: Finish C
+        soundOnly: "Só o som",
+        soundOnlyCaption: "Sem imagem: o som da reunião e o seu microfone, num arquivo .m4a. A Gravação de Tela não é necessária, e a qualidade só vale para a imagem.",
+        soundOnlyBefore144: "Antes do macOS 14.4, nenhum som de app pode ser ouvido sem filmar: só o seu microfone é gravado.",
+        offerRecordSoundOnly: "Gravar só o som",
+        offerRecordWithPicture: "Gravar com imagem",
+        offerCaptureSoundOnlyFormat: "Só o som · som: %1$@ · microfone: %2$@"
     )
 }
 
@@ -2152,7 +2183,14 @@ extension ForkMeetingStrings {
         indicatorAuto: "Otomatik",
         indicatorBoth: "Her zaman",
         indicatorAutoCaption: "Kapalı ada kaydı çekilen ekranda gösterirken kenara çekilir; ada gizlendiğinde, tam ekranda olduğunda ya da başka bir etkinlik gösterdiğinde geri gelir.",
-        indicatorBothCaption: "Adanın yanında ekranda kalır."
+        indicatorBothCaption: "Adanın yanında ekranda kalır.",
+        // MARK: Finish C
+        soundOnly: "Yalnızca ses",
+        soundOnlyCaption: "Görüntü yok: toplantının sesi ve mikrofonunuz, bir .m4a dosyasında. Ekran Kaydı gerekmez; kalite yalnızca görüntü için geçerlidir.",
+        soundOnlyBefore144: "macOS 14.4’ten önce, çekim yapmadan hiçbir uygulamanın sesi duyulamaz: yalnızca mikrofonunuz kaydedilir.",
+        offerRecordSoundOnly: "Yalnızca sesi kaydet",
+        offerRecordWithPicture: "Görüntüyle kaydet",
+        offerCaptureSoundOnlyFormat: "Yalnızca ses · ses: %1$@ · mikrofon: %2$@"
     )
 }
 
@@ -2603,7 +2641,14 @@ extension ForkMeetingStrings {
         indicatorAuto: "Автоматически",
         indicatorBoth: "Всегда",
         indicatorAutoCaption: "Он скрывается, пока закрытый остров показывает запись на снимаемом экране, и возвращается, когда остров скрыт, открыт полноэкранный режим или остров показывает другое действие.",
-        indicatorBothCaption: "Он остаётся на экране рядом с островом."
+        indicatorBothCaption: "Он остаётся на экране рядом с островом.",
+        // MARK: Finish C
+        soundOnly: "Только звук",
+        soundOnlyCaption: "Без изображения: звук встречи и ваш микрофон в файле .m4a. Запись экрана не нужна, а качество относится только к изображению.",
+        soundOnlyBefore144: "До macOS 14.4 звук приложений нельзя услышать без съёмки: записывается только ваш микрофон.",
+        offerRecordSoundOnly: "Записать только звук",
+        offerRecordWithPicture: "Записать с изображением",
+        offerCaptureSoundOnlyFormat: "Только звук · звук: %1$@ · микрофон: %2$@"
     )
 }
 
@@ -3054,7 +3099,14 @@ extension ForkMeetingStrings {
         indicatorAuto: "Automático",
         indicatorBoth: "Siempre",
         indicatorAutoCaption: "Se oculta mientras la isla cerrada muestra la grabación en la pantalla filmada y vuelve cuando la isla está oculta, en pantalla completa o muestra otra actividad.",
-        indicatorBothCaption: "Se queda en pantalla junto a la isla."
+        indicatorBothCaption: "Se queda en pantalla junto a la isla.",
+        // MARK: Finish C
+        soundOnly: "Solo sonido",
+        soundOnlyCaption: "Sin imagen: el sonido de la reunión y tu micrófono, en un archivo .m4a. No hace falta la Grabación de pantalla, y la calidad solo se aplica a la imagen.",
+        soundOnlyBefore144: "Antes de macOS 14.4, no se puede oír el sonido de ninguna app sin filmar: solo se graba tu micrófono.",
+        offerRecordSoundOnly: "Grabar solo el sonido",
+        offerRecordWithPicture: "Grabar con imagen",
+        offerCaptureSoundOnlyFormat: "Solo sonido · sonido: %1$@ · micro: %2$@"
     )
 }
 
@@ -3505,7 +3557,14 @@ extension ForkMeetingStrings {
         indicatorAuto: "Automaticky",
         indicatorBoth: "Vždy",
         indicatorAutoCaption: "Skryje sa, kým zatvorený Dynamic Island zobrazuje nahrávanie na snímanej obrazovke, a vráti sa, keď je Dynamic Island skrytý, na celej obrazovke alebo zobrazuje inú aktivitu.",
-        indicatorBothCaption: "Zostane na obrazovke vedľa Dynamic Island."
+        indicatorBothCaption: "Zostane na obrazovke vedľa Dynamic Island.",
+        // MARK: Finish C
+        soundOnly: "Len zvuk",
+        soundOnlyCaption: "Bez obrazu: zvuk stretnutia a váš mikrofón v súbore .m4a. Nahrávanie obrazovky nie je potrebné a kvalita sa týka len obrazu.",
+        soundOnlyBefore144: "Pred macOS 14.4 nemožno bez natáčania počuť zvuk žiadnej aplikácie: nahráva sa len váš mikrofón.",
+        offerRecordSoundOnly: "Nahrávať len zvuk",
+        offerRecordWithPicture: "Nahrávať s obrazom",
+        offerCaptureSoundOnlyFormat: "Len zvuk · zvuk: %1$@ · mikrofón: %2$@"
     )
 }
 
@@ -3956,7 +4015,14 @@ extension ForkMeetingStrings {
         indicatorAuto: "Automatisch",
         indicatorBoth: "Immer",
         indicatorAutoCaption: "Sie tritt zurück, solange die geschlossene Insel die Aufnahme auf dem gefilmten Bildschirm zeigt, und kehrt zurück, wenn die Insel ausgeblendet ist, im Vollbild oder bei einer anderen Aktivität.",
-        indicatorBothCaption: "Sie bleibt neben der Insel auf dem Bildschirm."
+        indicatorBothCaption: "Sie bleibt neben der Insel auf dem Bildschirm.",
+        // MARK: Finish C
+        soundOnly: "Nur Ton",
+        soundOnlyCaption: "Kein Bild: der Ton der Besprechung und dein Mikrofon, in einer .m4a-Datei. Bildschirmaufnahme ist nicht nötig, und die Qualität betrifft nur das Bild.",
+        soundOnlyBefore144: "Vor macOS 14.4 ist ohne Filmen kein App-Ton zu hören: Nur dein Mikrofon wird aufgenommen.",
+        offerRecordSoundOnly: "Nur Ton aufnehmen",
+        offerRecordWithPicture: "Mit Bild aufnehmen",
+        offerCaptureSoundOnlyFormat: "Nur Ton · Ton: %1$@ · Mikro: %2$@"
     )
 }
 
@@ -4407,7 +4473,14 @@ extension ForkMeetingStrings {
         indicatorAuto: "Automatique",
         indicatorBoth: "Toujours",
         indicatorAutoCaption: "Elle s’efface quand l’île fermée montre l’enregistrement sur l’écran filmé, et revient quand l’île est masquée, en plein écran ou montre une autre activité.",
-        indicatorBothCaption: "Elle reste à l’écran à côté de l’île."
+        indicatorBothCaption: "Elle reste à l’écran à côté de l’île.",
+        // MARK: Finish C
+        soundOnly: "Son seulement",
+        soundOnlyCaption: "Pas d’image\u{00A0}: le son de la réunion et votre micro, dans un fichier .m4a. L’enregistrement de l’écran n’est pas nécessaire, et la qualité ne concerne que l’image.",
+        soundOnlyBefore144: "Avant macOS 14.4, aucun son d’app ne s’entend sans filmer\u{00A0}: seul votre micro est enregistré.",
+        offerRecordSoundOnly: "Enregistrer le son seulement",
+        offerRecordWithPicture: "Enregistrer avec l’image",
+        offerCaptureSoundOnlyFormat: "Son seulement · son\u{00A0}: %1$@ · micro\u{00A0}: %2$@"
     )
 }
 
@@ -4858,7 +4931,14 @@ extension ForkMeetingStrings {
         indicatorAuto: "Automatico",
         indicatorBoth: "Sempre",
         indicatorAutoCaption: "Si nasconde mentre l’isola chiusa mostra la registrazione sullo schermo ripreso e torna quando l’isola è nascosta, a schermo intero o mostra un’altra attività.",
-        indicatorBothCaption: "Resta sullo schermo accanto all’isola."
+        indicatorBothCaption: "Resta sullo schermo accanto all’isola.",
+        // MARK: Finish C
+        soundOnly: "Solo audio",
+        soundOnlyCaption: "Nessuna immagine: l’audio della riunione e il tuo microfono, in un file .m4a. La Registrazione schermo non serve, e la qualità riguarda solo l’immagine.",
+        soundOnlyBefore144: "Prima di macOS 14.4 non si può sentire l’audio di nessuna app senza riprendere: viene registrato solo il tuo microfono.",
+        offerRecordSoundOnly: "Registra solo l’audio",
+        offerRecordWithPicture: "Registra con l’immagine",
+        offerCaptureSoundOnlyFormat: "Solo audio · audio: %1$@ · microfono: %2$@"
     )
 }
 
@@ -5309,7 +5389,14 @@ extension ForkMeetingStrings {
         indicatorAuto: "自動",
         indicatorBoth: "常に表示",
         indicatorAutoCaption: "閉じた島が撮影中の画面で録画を表示している間は隠れ、島が非表示、フルスクリーン、または別のアクティビティを表示しているときに戻ります。",
-        indicatorBothCaption: "島の横に表示されたままになります。"
+        indicatorBothCaption: "島の横に表示されたままになります。",
+        // MARK: Finish C
+        soundOnly: "音声のみ",
+        soundOnlyCaption: "映像なし：ミーティングの音声とマイクを .m4a ファイルに保存します。画面収録は不要で、画質は映像にのみ関係します。",
+        soundOnlyBefore144: "macOS 14.4 より前では、撮影せずにアプリの音声を取り込むことはできません。録音されるのはマイクだけです。",
+        offerRecordSoundOnly: "音声のみ録音",
+        offerRecordWithPicture: "映像付きで録画",
+        offerCaptureSoundOnlyFormat: "音声のみ · 音声：%1$@ · マイク：%2$@"
     )
 }
 
@@ -5760,7 +5847,14 @@ extension ForkMeetingStrings {
         indicatorAuto: "자동",
         indicatorBoth: "항상",
         indicatorAutoCaption: "닫힌 섬이 촬영 중인 화면에서 녹화를 표시하는 동안 숨겨지고, 섬이 숨겨지거나 전체 화면이거나 다른 활동을 표시하면 다시 나타납니다.",
-        indicatorBothCaption: "섬 옆 화면에 계속 표시됩니다."
+        indicatorBothCaption: "섬 옆 화면에 계속 표시됩니다.",
+        // MARK: Finish C
+        soundOnly: "소리만",
+        soundOnlyCaption: "화면 없음: 회의 소리와 마이크를 .m4a 파일로 저장합니다. 화면 녹화 권한이 필요 없으며, 화질은 화면에만 적용됩니다.",
+        soundOnlyBefore144: "macOS 14.4 이전에는 촬영하지 않으면 앱 소리를 들을 수 없어 마이크만 녹음됩니다.",
+        offerRecordSoundOnly: "소리만 녹음",
+        offerRecordWithPicture: "화면과 함께 녹화",
+        offerCaptureSoundOnlyFormat: "소리만 · 사운드: %1$@ · 마이크: %2$@"
     )
 }
 
@@ -6211,7 +6305,14 @@ extension ForkMeetingStrings {
         indicatorAuto: "Автоматично",
         indicatorBoth: "Завжди",
         indicatorAutoCaption: "Він ховається, поки закритий острівець показує запис на знімальному екрані, і повертається, коли острівець приховано, увімкнено повноекранний режим або острівець показує іншу активність.",
-        indicatorBothCaption: "Він залишається на екрані біля острівця."
+        indicatorBothCaption: "Він залишається на екрані біля острівця.",
+        // MARK: Finish C
+        soundOnly: "Лише звук",
+        soundOnlyCaption: "Без зображення: звук зустрічі й ваш мікрофон у файлі .m4a. Запис екрана не потрібен, а якість стосується лише зображення.",
+        soundOnlyBefore144: "До macOS 14.4 звук програм не можна почути без знімання: записується лише ваш мікрофон.",
+        offerRecordSoundOnly: "Записати лише звук",
+        offerRecordWithPicture: "Записати із зображенням",
+        offerCaptureSoundOnlyFormat: "Лише звук · звук: %1$@ · мікрофон: %2$@"
     )
 }
 
@@ -6662,7 +6763,14 @@ extension ForkMeetingStrings {
         indicatorAuto: "自动",
         indicatorBoth: "始终",
         indicatorAutoCaption: "收起的岛在被录制的屏幕上显示录制时，它会隐藏；岛被隐藏、处于全屏或显示其他活动时，它会回来。",
-        indicatorBothCaption: "它会一直显示在岛旁边。"
+        indicatorBothCaption: "它会一直显示在岛旁边。",
+        // MARK: Finish C
+        soundOnly: "仅声音",
+        soundOnlyCaption: "没有画面：会议的声音和你的麦克风，保存为 .m4a 文件。不需要屏幕录制权限，画质只影响画面。",
+        soundOnlyBefore144: "在 macOS 14.4 之前，不录制画面就听不到任何 App 的声音：只会录下你的麦克风。",
+        offerRecordSoundOnly: "仅录制声音",
+        offerRecordWithPicture: "连同画面录制",
+        offerCaptureSoundOnlyFormat: "仅声音 · 声音：%1$@ · 麦克风：%2$@"
     )
 }
 
@@ -7113,7 +7221,14 @@ extension ForkMeetingStrings {
         indicatorAuto: "自動",
         indicatorBoth: "永遠",
         indicatorAutoCaption: "收合的島在被錄製的螢幕上顯示錄製時，它會隱藏；島被隱藏、處於全螢幕或顯示其他活動時，它會回來。",
-        indicatorBothCaption: "它會一直顯示在島旁邊。"
+        indicatorBothCaption: "它會一直顯示在島旁邊。",
+        // MARK: Finish C
+        soundOnly: "僅聲音",
+        soundOnlyCaption: "沒有畫面：會議的聲音和你的麥克風，儲存為 .m4a 檔案。不需要螢幕錄製權限，畫質只影響畫面。",
+        soundOnlyBefore144: "在 macOS 14.4 之前，不錄製畫面就聽不到任何 App 的聲音：只會錄下你的麥克風。",
+        offerRecordSoundOnly: "僅錄製聲音",
+        offerRecordWithPicture: "連同畫面錄製",
+        offerCaptureSoundOnlyFormat: "僅聲音 · 聲音：%1$@ · 麥克風：%2$@"
     )
 }
 
@@ -7564,6 +7679,13 @@ extension ForkMeetingStrings {
         indicatorAuto: "自動",
         indicatorBoth: "總是",
         indicatorAutoCaption: "收合的島在被錄製的螢幕上顯示錄製時，它會隱藏；島被隱藏、處於全螢幕或顯示其他活動時，它會回來。",
-        indicatorBothCaption: "它會一直顯示在島旁邊。"
+        indicatorBothCaption: "它會一直顯示在島旁邊。",
+        // MARK: Finish C
+        soundOnly: "只有聲音",
+        soundOnlyCaption: "沒有畫面：會議的聲音和你的咪高風，儲存為 .m4a 檔案。不需要螢幕錄影權限，畫質只影響畫面。",
+        soundOnlyBefore144: "在 macOS 14.4 之前，不錄製畫面就聽不到任何 App 的聲音：只會錄下你的咪高風。",
+        offerRecordSoundOnly: "只錄製聲音",
+        offerRecordWithPicture: "連同畫面錄製",
+        offerCaptureSoundOnlyFormat: "只有聲音 · 聲音：%1$@ · 咪高風：%2$@"
     )
 }

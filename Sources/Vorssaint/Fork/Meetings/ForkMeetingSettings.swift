@@ -689,24 +689,45 @@ private struct ForkMeetingShortcutSection: View {
 
 /// The meeting's window or its whole display, with what each means: the
 /// detected meeting's window, else the window in front for a recording
-/// started by hand.
+/// started by hand. Or no picture at all, with what an hour of it weighs.
 struct ForkMeetingPicturePicker: View {
     let text: ForkMeetingStrings
     @Binding var target: String
+
+    @ObservedObject private var l10n = L10n.shared
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             Picker(text.pictureTitle, selection: $target) {
                 Text(text.pictureMeetingWindow).tag(ForkMeetingCaptureTarget.window.rawValue)
                 Text(text.pictureFrontDisplay).tag(ForkMeetingCaptureTarget.display.rawValue)
+                Text(soundOnlyLabel).tag(ForkMeetingCaptureTarget.audioOnly.rawValue)
             }
             .pickerStyle(.radioGroup)
-            Text(ForkMeetingCaptureTarget(stored: target) == .window ? text.pictureMeetingWindowCaption
-                    : text.pictureDisplayCaption)
+            Text(caption)
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
         }
+    }
+
+    private var caption: String {
+        switch ForkMeetingCaptureTarget(stored: target) {
+        case .window: return text.pictureMeetingWindowCaption
+        case .display: return text.pictureDisplayCaption
+        case .audioOnly:
+            // No tap before macOS 14.4, and no stream to stand in for it.
+            if #available(macOS 14.4, *) { return text.soundOnlyCaption }
+            return text.soundOnlyCaption + "\n" + text.soundOnlyBefore144
+        }
+    }
+
+    /// "Sound only · ~0.1 GB/h", the decimal in the app's language, as the
+    /// quality presets say theirs.
+    private var soundOnlyLabel: String {
+        let size = ForkMeetingAudioOnly.estimatedGigabytesPerHour
+            .formatted(.number.precision(.fractionLength(1)).locale(Locale(identifier: l10n.language.rawValue)))
+        return "\(text.soundOnly) · \(text.perHour(size))"
     }
 }
 
@@ -738,6 +759,8 @@ private struct ForkMeetingCaptureSection: View {
                     Text(label(preset)).tag(preset.rawValue)
                 }
             }
+            // The picture's quality: nothing to choose without one.
+            .disabled(!ForkMeetingCaptureTarget(stored: target).filmsPicture)
             caption(qualityCaption)
         }
     }
