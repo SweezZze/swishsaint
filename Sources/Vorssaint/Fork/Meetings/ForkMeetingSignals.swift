@@ -78,9 +78,10 @@ struct ForkMeetingReading: Equatable {
 }
 
 /// Which meeting a candidate is: `meet:<code>`, else `meet:<pid>:<title>`
-/// for a Google Meet without a code in its title; `<provider>:<pid>` for a
-/// meeting app. Two windows, two profiles or a web app and a tab on the same
-/// Google Meet give the same identity, so one meeting.
+/// for a Google Meet without a code in its title; `<provider>:<pid>#<birth>`
+/// for a meeting app, its second meeting `#2`. Two windows, two profiles or a
+/// web app and a tab on the same Google Meet give the same identity, so one
+/// meeting.
 struct ForkMeetingIdentity: Hashable, CustomStringConvertible {
     let value: String
 

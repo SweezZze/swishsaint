@@ -224,7 +224,7 @@ enum ForkMeetingResolverTests {
         suite.expect(microphones(&app, 0, [zoom]).candidates.isEmpty && microphones(&app, 0.3, [zoom]).candidates.isEmpty,
                      "a meeting app's microphone needs two readings a second apart")
         let born = microphones(&app, 2, [zoom])
-        suite.expect(ids(born) == [ForkMeetingIdentity("zoom:500")] && born.candidates.first?.windowID == nil
+        suite.expect(ids(born) == [ForkMeetingIdentity("zoom:500#1")] && born.candidates.first?.windowID == nil
                         && born.candidates.first?.appBundle == "us.zoom.xos",
                      "then the app's microphone alone makes its meeting, named by its process")
 
@@ -238,7 +238,7 @@ enum ForkMeetingResolverTests {
                                         running: ["com.apple.FaceTime": 78])
         microphones(&daemon, 0, call)
         let facetime = microphones(&daemon, 2, call)
-        suite.expect(ids(facetime) == [ForkMeetingIdentity("facetime:78")] && facetime.candidates.first?.defaultSound == .all,
+        suite.expect(ids(facetime) == [ForkMeetingIdentity("facetime:78#1")] && facetime.candidates.first?.defaultSound == .all,
                      "a system process no app owns can carry a provider's calls, given to its app, with the whole Mac's sound")
 
         var others = resolver(withApps)

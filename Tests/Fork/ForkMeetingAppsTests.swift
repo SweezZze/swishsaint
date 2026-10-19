@@ -191,7 +191,7 @@ enum ForkMeetingAppsTests {
                         && ids(read(&zoom, 0.4, microphones: [zoomMicrophone])).isEmpty,
                      "Zoom's microphone needs two readings a second apart")
         let born = read(&zoom, 2, microphones: [zoomMicrophone])
-        suite.expect(ids(born) == ["zoom:500"] && born.candidates.first?.windowID == nil
+        suite.expect(ids(born) == ["zoom:500#1"] && born.candidates.first?.windowID == nil
                         && born.candidates.first?.name == "Zoom" && born.candidates.first?.defaultSound == .app
                         && born.candidates.first?.policy == .ask,
                      "then Zoom's microphone alone makes its meeting, named Zoom, offered, its sound Zoom's")
@@ -202,14 +202,14 @@ enum ForkMeetingAppsTests {
             var app = resolver()
             let signal = microphone(bundle, pid: 300)
             read(&app, 0, microphones: [signal])
-            suite.expect(ids(read(&app, 2, microphones: [signal])) == ["\(id):300"],
+            suite.expect(ids(read(&app, 2, microphones: [signal])) == ["\(id):300#1"],
                          "the microphone of \(bundle) makes a \(id) meeting")
         }
 
         var helper = resolver()
         let sharing = Microphone(appBundle: "us.zoom.xos", appPID: zoomPID, pid: 510, processBundle: "us.zoom.CptHost")
         read(&helper, 0, microphones: [sharing, zoomMicrophone])
-        suite.expect(ids(read(&helper, 2, microphones: [sharing, zoomMicrophone])) == ["zoom:500"],
+        suite.expect(ids(read(&helper, 2, microphones: [sharing, zoomMicrophone])) == ["zoom:500#1"],
                      "Zoom's helpers are Zoom's: one meeting for the app")
 
         var strangers = resolver()
@@ -224,12 +224,12 @@ enum ForkMeetingAppsTests {
         var titled = resolver()
         read(&titled, 0, windows: [window("Réunion Zoom", id: 4)])
         let born = read(&titled, 3, windows: [window("Réunion Zoom", id: 4)])
-        suite.expect(ids(born) == ["zoom:500"] && born.candidates.first?.windowID == 4 && born.onMicrophone.isEmpty,
+        suite.expect(ids(born) == ["zoom:500#1"] && born.candidates.first?.windowID == 4 && born.onMicrophone.isEmpty,
                      "Zoom's meeting window alone makes its meeting, filmed in that window, not on the microphone yet")
         let both = read(&titled, 4, microphones: [zoomMicrophone])
-        suite.expect(ids(both) == ["zoom:500"] && both.candidates.first?.windowID == 4,
+        suite.expect(ids(both) == ["zoom:500#1"] && both.candidates.first?.windowID == 4,
                      "its microphone then is the same meeting")
-        suite.expect(read(&titled, 5.5, microphones: [zoomMicrophone]).onMicrophone == [ForkMeetingIdentity("zoom:500")],
+        suite.expect(read(&titled, 5.5, microphones: [zoomMicrophone]).onMicrophone == [ForkMeetingIdentity("zoom:500#1")],
                      "and counts as on the microphone once open for a second")
 
         var main = resolver()
@@ -244,7 +244,7 @@ enum ForkMeetingAppsTests {
         read(&muted, 3, windows: [window("Zoom Meeting")], microphones: [zoomMicrophone])
         var alive = true
         for second in stride(from: 6.0, through: 60, by: 3) {
-            alive = alive && ids(read(&muted, second, windows: [window("Zoom Meeting")], microphones: [])) == ["zoom:500"]
+            alive = alive && ids(read(&muted, second, windows: [window("Zoom Meeting")], microphones: [])) == ["zoom:500#1"]
         }
         suite.expect(alive, "a meeting whose microphone Zoom let go (muted) lives on its window")
     }
@@ -264,14 +264,14 @@ enum ForkMeetingAppsTests {
                        window("Huddle: #design", bundle: "com.tinyspeck.slackmacgap", pid: 300, id: 2)]
         read(&huddle, 0, windows: windows, microphones: [slack])
         let born = read(&huddle, 2, microphones: [slack])
-        suite.expect(ids(born) == ["slack:300"] && born.candidates.first?.windowID == 2,
+        suite.expect(ids(born) == ["slack:300#1"] && born.candidates.first?.windowID == 2,
                      "Slack's microphone makes the huddle, filmed in its huddle window")
 
         var channel = resolver()
         let named = [window("Slack | #meeting | Acme", bundle: "com.tinyspeck.slackmacgap", pid: 300)]
         read(&channel, 0, windows: named, microphones: [slack])
         let call = read(&channel, 2, microphones: [slack])
-        suite.expect(ids(call) == ["slack:300"] && call.candidates.first?.windowID == nil,
+        suite.expect(ids(call) == ["slack:300#1"] && call.candidates.first?.windowID == nil,
                      "a channel called #meeting is no huddle window: the call is Slack's, its window chosen later")
     }
 
@@ -283,7 +283,7 @@ enum ForkMeetingAppsTests {
         var on = resolver(ForkMeetingPolicies.defaultJSON.replacingOccurrences(of: #""discord":"never""#,
                                                                                with: #""discord":"ask""#))
         read(&on, 0, microphones: [discord])
-        suite.expect(ids(read(&on, 2, microphones: [discord])) == ["discord:400"], "set to Offer, it is")
+        suite.expect(ids(read(&on, 2, microphones: [discord])) == ["discord:400#1"], "set to Offer, it is")
     }
 
     private static func faceTime(_ suite: TestSuite) {
@@ -301,7 +301,7 @@ enum ForkMeetingAppsTests {
         var call = resolver()
         read(&call, 0, microphones: open)
         let born = read(&call, 2, microphones: open)
-        suite.expect(ids(born) == ["facetime:600"] && born.candidates.first?.defaultSound == .all
+        suite.expect(ids(born) == ["facetime:600#1"] && born.candidates.first?.defaultSound == .all
                         && born.candidates.first?.appBundle == "com.apple.FaceTime",
                      "a FaceTime call is named by FaceTime's process, and records the whole Mac")
 
@@ -310,7 +310,7 @@ enum ForkMeetingAppsTests {
         let all = current.attributing([callDaemon, signalling, app], running: ["com.apple.FaceTime": faceTimePID])
         var together = resolver()
         read(&together, 0, microphones: all)
-        suite.expect(ids(read(&together, 2, microphones: all)) == ["facetime:600"],
+        suite.expect(ids(read(&together, 2, microphones: all)) == ["facetime:600#1"],
                      "FaceTime, avconferenced and callservicesd together are one call")
 
         let unrelated = Microphone(appBundle: nil, pid: 79, processBundle: "com.apple.corespeechd")
@@ -391,7 +391,7 @@ enum ForkMeetingAppsTests {
             ended += read(&zoom, second, windows: [window("Zoom Workplace")]).ended
         }
         suite.expect(ended.isEmpty, "its window and its microphone gone, a Zoom meeting lives on 20 s")
-        suite.expect(read(&zoom, 27, windows: [window("Zoom Workplace")]).ended == [ForkMeetingIdentity("zoom:500")],
+        suite.expect(read(&zoom, 27, windows: [window("Zoom Workplace")]).ended == [ForkMeetingIdentity("zoom:500#1")],
                      "then it probably ended")
 
         var two = resolver()
@@ -401,8 +401,8 @@ enum ForkMeetingAppsTests {
         var survived = true
         for second in stride(from: 4.0, through: 40, by: 2) {
             let resolution = read(&two, second, microphones: [teams])
-            survived = survived && resolution.candidates.map(\.identity.value).contains("teams:300")
-                && !resolution.ended.contains(ForkMeetingIdentity("teams:300"))
+            survived = survived && resolution.candidates.map(\.identity.value).contains("teams:300#1")
+                && !resolution.ended.contains(ForkMeetingIdentity("teams:300#1"))
         }
         suite.expect(survived, "two apps, two meetings: Zoom ending never ends Teams")
     }
@@ -460,7 +460,7 @@ enum ForkMeetingAppsTests {
         var titleOnly = Live(apps: always)
         titleOnly.read(0, windows: [window("Zoom Meeting")])
         titleOnly.read(3, windows: [window("Zoom Meeting")])
-        suite.expect(titleOnly.starts.isEmpty && titleOnly.offers.map(\.candidate.identity.value) == ["zoom:500"],
+        suite.expect(titleOnly.starts.isEmpty && titleOnly.offers.map(\.candidate.identity.value) == ["zoom:500#1"],
                      "Always for Zoom without its microphone: offered, not started")
 
         var justOpened = Live(apps: always)
@@ -482,7 +482,7 @@ enum ForkMeetingAppsTests {
         unlocked.read(-3, microphones: [zoomMicrophone])
         unlocked.read(0, windows: [window("Zoom Meeting")], microphones: [zoomMicrophone])
         suite.expect(unlocked.starts.map(\.origin) == [.always] && unlocked.offers.isEmpty
-                        && unlocked.starts.first?.meeting?.identity.value == "zoom:500",
+                        && unlocked.starts.first?.meeting?.identity.value == "zoom:500#1",
                      "Zoom's microphone open for a second, the screen unlocked: Always starts it on its own")
 
         var faceTime = Live(apps: #"{"facetime":"always"}"#)
@@ -557,7 +557,7 @@ enum ForkMeetingAppsTests {
         let windows = [shown(1, pid: 42, 1600, 1000), shown(2, pid: zoomPID, 400, 300),
                        shown(3, pid: zoomPID, 1200, 800), shown(4, pid: zoomPID, 2000, 100),
                        shown(5, pid: zoomPID, 1900, 1200, layer: 3), shown(6, pid: zoomPID, 1900, 1200, alpha: 0)]
-        let zoom = candidate("zoom:500", pid: zoomPID, appBundle: "us.zoom.xos")
+        let zoom = candidate("zoom:500#1", pid: zoomPID, appBundle: "us.zoom.xos")
         suite.expect(Support.window(for: zoom, in: windows, ownPID: ownPID) == 3,
                      "an app found by its microphone is filmed in its largest ordinary window, never another app's")
         suite.expect(Support.window(for: zoom, in: windows, ownPID: ownPID, excluded: [3]) == 2,
@@ -580,7 +580,7 @@ enum ForkMeetingAppsTests {
                         && Support.soundPID(for: webApp, running: [chromePID, 130]) == nil,
                      "a web app is heard from its browser when one copy runs, else from what is filmed")
 
-        let call = candidate("facetime:600", pid: faceTimePID, appBundle: "com.apple.FaceTime", sound: .all)
+        let call = candidate("facetime:600#1", pid: faceTimePID, appBundle: "com.apple.FaceTime", sound: .all)
         suite.expect(Support.soundOutsideApp(call) && !Support.soundOutsideApp(zoom),
                      "only FaceTime's call sound is no app's")
         let appSound = ForkMeetingDetectionSupport.settings(settings, for: call)
