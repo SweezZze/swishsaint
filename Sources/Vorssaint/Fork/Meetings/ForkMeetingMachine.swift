@@ -35,7 +35,8 @@ struct ForkMeetingStartFacts: Equatable {
     var officialRecorderBusy: Bool
     /// The detected meetings whose app has used a microphone for a second
     /// at least (`ForkMeetingResolution.onMicrophone`): "Always" starts only
-    /// those on its own; a title alone, which any page can copy, is offered.
+    /// those on its own, with their Meet code in the title; a title alone,
+    /// which any page can copy, is offered.
     var meetingsOnMicrophone: Set<ForkMeetingIdentity> = []
 }
 
@@ -284,9 +285,9 @@ enum ForkMeetingDismissal: Equatable {
 /// - a recording "Always" started can be cancelled for 5 s: its folder goes
 ///   to the Trash, never finalized; cancelled right after "Always" was
 ///   chosen in the offer, the provider is offered again ("ask");
-/// - "Always" starts on its own only a meeting whose app has used the
-///   microphone for a second, on a screen not locked: otherwise, and once
-///   an offer was shown, it waits for a click.
+/// - "Always" starts on its own only a meeting with its Meet code in the
+///   title whose app has used the microphone for a second, on a screen not
+///   locked: otherwise, and once an offer was shown, it waits for a click.
 struct ForkMeetingMachine {
     /// An unanswered offer folds after this long.
     static let offerCollapse: TimeInterval = 20
@@ -915,15 +916,17 @@ struct ForkMeetingMachine {
 
     /// From idle: offers the most recent meeting not set aside, or starts it
     /// when its provider is set to "Always" and nothing refuses the start:
-    /// its app has used the microphone for a second (a page can copy a
-    /// title, not a call) and the screen is not locked (nobody to cancel).
+    /// its title shows its Meet code (a page can call itself "Meet – x", a
+    /// code is Meet's own), its app has used the microphone for a second (a
+    /// page can copy a title, not a call) and the screen is not locked
+    /// (nobody to cancel).
     private mutating func offerOrStart(_ candidates: [ForkMeetingCandidate], request: ForkMeetingStartRequest,
                                        now: Date) -> [Effect] {
         guard !terminating, let candidate = candidates.first(where: { !$0.silenced && $0.policy != .never }) else {
             return []
         }
         let blocked = Self.refusal(request)
-        if candidate.policy == .always, blocked == nil, !locked,
+        if candidate.policy == .always, blocked == nil, !locked, candidate.meetCode != nil,
            request.facts.meetingsOnMicrophone.contains(candidate.identity) {
             return [.silence(candidate.identity)] + start(origin: .always, request: request, meeting: candidate)
         }
