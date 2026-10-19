@@ -775,6 +775,32 @@ struct ForkMeetingStrings {
     /// The detail's line when the meeting track was silent and the echo of
     /// the speakers could not be filtered: short.
     let transcriptMeetingSilent: String
+
+    // MARK: Finish A
+
+    /// The island's strip, for VoiceOver: what a click on it does.
+    let islandHint: String
+    /// "12 min, 3 sec, paused": %@ is the time recorded, said by VoiceOver.
+    let islandValuePausedFormat: String
+    /// The live card's button that marks a moment, its help and VoiceOver
+    /// name, and what it says for a moment once clicked: 28 characters at
+    /// most.
+    let cardMark: String
+    let cardMarkHelp: String
+    let cardMarked: String
+    let voiceMarked: String
+    /// The Meetings page's recording indicator: the closed island's strip,
+    /// and the floating indicator (the pill) beside it.
+    let indicatorTitle: String
+    let islandActivity: String
+    let islandActivityCaption: String
+    let indicatorPill: String
+    let indicatorAuto: String
+    let indicatorBoth: String
+    let indicatorAutoCaption: String
+    let indicatorBothCaption: String
+
+    func islandValuePaused(_ time: String) -> String { String(format: islandValuePausedFormat, time) }
 }
 
 extension ForkMeetingStrings {
@@ -1209,7 +1235,22 @@ extension ForkMeetingStrings {
         // MARK: Fixes O
         transcriptWordsOne: "1 word",
         noticeParakeetMissing: "Parakeet not installed",
-        transcriptMeetingSilent: "Meeting track silent: echo not filtered"
+        transcriptMeetingSilent: "Meeting track silent: echo not filtered",
+        // MARK: Finish A
+        islandHint: "Shows the recording’s controls",
+        islandValuePausedFormat: "%@, paused",
+        cardMark: "Mark",
+        cardMarkHelp: "Mark this moment",
+        cardMarked: "Marked",
+        voiceMarked: "Moment marked.",
+        indicatorTitle: "Recording indicator",
+        islandActivity: "Show the recording in the closed island",
+        islandActivityCaption: "The recorded time and the sound levels appear beside the camera. A click opens the recording’s controls.",
+        indicatorPill: "Floating indicator",
+        indicatorAuto: "Automatic",
+        indicatorBoth: "Always",
+        indicatorAutoCaption: "It steps aside while the closed island shows the recording on the filmed display, and comes back when the island is hidden, in full screen or shows another activity.",
+        indicatorBothCaption: "It stays on screen beside the island."
     )
 }
 
@@ -1645,7 +1686,22 @@ extension ForkMeetingStrings {
         // MARK: Fixes O
         transcriptWordsOne: "1 palavra",
         noticeParakeetMissing: "Parakeet não instalado",
-        transcriptMeetingSilent: "Faixa Reunião muda: eco não filtrado"
+        transcriptMeetingSilent: "Faixa Reunião muda: eco não filtrado",
+        // MARK: Finish A
+        islandHint: "Mostra os controles da gravação",
+        islandValuePausedFormat: "%@, em pausa",
+        cardMark: "Marcar",
+        cardMarkHelp: "Marcar este momento",
+        cardMarked: "Marcado",
+        voiceMarked: "Momento marcado.",
+        indicatorTitle: "Indicador de gravação",
+        islandActivity: "Mostrar a gravação na ilha fechada",
+        islandActivityCaption: "O tempo gravado e os níveis de som aparecem ao lado da câmera. Um clique abre os controles da gravação.",
+        indicatorPill: "Indicador flutuante",
+        indicatorAuto: "Automático",
+        indicatorBoth: "Sempre",
+        indicatorAutoCaption: "Ele se oculta enquanto a ilha fechada mostra a gravação na tela filmada e volta quando a ilha está oculta, em tela cheia ou mostra outra atividade.",
+        indicatorBothCaption: "Ele fica na tela ao lado da ilha."
     )
 }
 
@@ -2081,7 +2137,22 @@ extension ForkMeetingStrings {
         // MARK: Fixes O
         transcriptWordsOne: "1 sözcük",
         noticeParakeetMissing: "Parakeet yüklü değil",
-        transcriptMeetingSilent: "Toplantı kanalı sessiz: yankı süzülmedi"
+        transcriptMeetingSilent: "Toplantı kanalı sessiz: yankı süzülmedi",
+        // MARK: Finish A
+        islandHint: "Kaydın denetimlerini gösterir",
+        islandValuePausedFormat: "%@, duraklatıldı",
+        cardMark: "İşaretle",
+        cardMarkHelp: "Bu anı işaretle",
+        cardMarked: "İşaretlendi",
+        voiceMarked: "An işaretlendi.",
+        indicatorTitle: "Kayıt göstergesi",
+        islandActivity: "Kaydı kapalı adada göster",
+        islandActivityCaption: "Kaydedilen süre ve ses düzeyleri kameranın yanında görünür. Bir tıklama kaydın denetimlerini açar.",
+        indicatorPill: "Kayan gösterge",
+        indicatorAuto: "Otomatik",
+        indicatorBoth: "Her zaman",
+        indicatorAutoCaption: "Kapalı ada kaydı çekilen ekranda gösterirken kenara çekilir; ada gizlendiğinde, tam ekranda olduğunda ya da başka bir etkinlik gösterdiğinde geri gelir.",
+        indicatorBothCaption: "Adanın yanında ekranda kalır."
     )
 }
 
@@ -2517,7 +2588,22 @@ extension ForkMeetingStrings {
         // MARK: Fixes O
         transcriptWordsOne: "1 слово",
         noticeParakeetMissing: "Parakeet не установлен",
-        transcriptMeetingSilent: "Дорожка «Встреча» пуста: эхо не убрано"
+        transcriptMeetingSilent: "Дорожка «Встреча» пуста: эхо не убрано",
+        // MARK: Finish A
+        islandHint: "Показывает элементы управления записью",
+        islandValuePausedFormat: "%@, на паузе",
+        cardMark: "Отметить",
+        cardMarkHelp: "Отметить этот момент",
+        cardMarked: "Отмечено",
+        voiceMarked: "Момент отмечен.",
+        indicatorTitle: "Индикатор записи",
+        islandActivity: "Показывать запись в закрытом острове",
+        islandActivityCaption: "Записанное время и уровни звука появляются рядом с камерой. Щелчок открывает элементы управления записью.",
+        indicatorPill: "Плавающий индикатор",
+        indicatorAuto: "Автоматически",
+        indicatorBoth: "Всегда",
+        indicatorAutoCaption: "Он скрывается, пока закрытый остров показывает запись на снимаемом экране, и возвращается, когда остров скрыт, открыт полноэкранный режим или остров показывает другое действие.",
+        indicatorBothCaption: "Он остаётся на экране рядом с островом."
     )
 }
 
@@ -2953,7 +3039,22 @@ extension ForkMeetingStrings {
         // MARK: Fixes O
         transcriptWordsOne: "1 palabra",
         noticeParakeetMissing: "Parakeet no instalado",
-        transcriptMeetingSilent: "Pista Reunión muda: eco sin filtrar"
+        transcriptMeetingSilent: "Pista Reunión muda: eco sin filtrar",
+        // MARK: Finish A
+        islandHint: "Muestra los controles de la grabación",
+        islandValuePausedFormat: "%@, en pausa",
+        cardMark: "Marcar",
+        cardMarkHelp: "Marcar este momento",
+        cardMarked: "Marcado",
+        voiceMarked: "Momento marcado.",
+        indicatorTitle: "Indicador de grabación",
+        islandActivity: "Mostrar la grabación en la isla cerrada",
+        islandActivityCaption: "El tiempo grabado y los niveles de sonido aparecen junto a la cámara. Un clic abre los controles de la grabación.",
+        indicatorPill: "Indicador flotante",
+        indicatorAuto: "Automático",
+        indicatorBoth: "Siempre",
+        indicatorAutoCaption: "Se oculta mientras la isla cerrada muestra la grabación en la pantalla filmada y vuelve cuando la isla está oculta, en pantalla completa o muestra otra actividad.",
+        indicatorBothCaption: "Se queda en pantalla junto a la isla."
     )
 }
 
@@ -3389,7 +3490,22 @@ extension ForkMeetingStrings {
         // MARK: Fixes O
         transcriptWordsOne: "1 slovo",
         noticeParakeetMissing: "Parakeet chýba",
-        transcriptMeetingSilent: "Stopa Stretnutie je tichá: ozvena zostala"
+        transcriptMeetingSilent: "Stopa Stretnutie je tichá: ozvena zostala",
+        // MARK: Finish A
+        islandHint: "Zobrazí ovládanie nahrávania",
+        islandValuePausedFormat: "%@, pozastavené",
+        cardMark: "Označiť",
+        cardMarkHelp: "Označiť tento okamih",
+        cardMarked: "Označené",
+        voiceMarked: "Okamih je označený.",
+        indicatorTitle: "Indikátor nahrávania",
+        islandActivity: "Zobraziť nahrávanie v zatvorenom Dynamic Island",
+        islandActivityCaption: "Nahraný čas a úrovne zvuku sa zobrazia vedľa kamery. Kliknutím otvoríte ovládanie nahrávania.",
+        indicatorPill: "Plávajúci indikátor",
+        indicatorAuto: "Automaticky",
+        indicatorBoth: "Vždy",
+        indicatorAutoCaption: "Skryje sa, kým zatvorený Dynamic Island zobrazuje nahrávanie na snímanej obrazovke, a vráti sa, keď je Dynamic Island skrytý, na celej obrazovke alebo zobrazuje inú aktivitu.",
+        indicatorBothCaption: "Zostane na obrazovke vedľa Dynamic Island."
     )
 }
 
@@ -3825,7 +3941,22 @@ extension ForkMeetingStrings {
         // MARK: Fixes O
         transcriptWordsOne: "1 Wort",
         noticeParakeetMissing: "Parakeet nicht installiert",
-        transcriptMeetingSilent: "Spur „Besprechung“ stumm: Echo nicht gefiltert"
+        transcriptMeetingSilent: "Spur „Besprechung“ stumm: Echo nicht gefiltert",
+        // MARK: Finish A
+        islandHint: "Zeigt die Steuerung der Aufnahme",
+        islandValuePausedFormat: "%@, pausiert",
+        cardMark: "Markieren",
+        cardMarkHelp: "Diesen Moment markieren",
+        cardMarked: "Markiert",
+        voiceMarked: "Moment markiert.",
+        indicatorTitle: "Aufnahmeanzeige",
+        islandActivity: "Aufnahme in der geschlossenen Insel zeigen",
+        islandActivityCaption: "Die aufgenommene Zeit und die Tonpegel erscheinen neben der Kamera. Ein Klick öffnet die Steuerung der Aufnahme.",
+        indicatorPill: "Schwebende Anzeige",
+        indicatorAuto: "Automatisch",
+        indicatorBoth: "Immer",
+        indicatorAutoCaption: "Sie tritt zurück, solange die geschlossene Insel die Aufnahme auf dem gefilmten Bildschirm zeigt, und kehrt zurück, wenn die Insel ausgeblendet ist, im Vollbild oder bei einer anderen Aktivität.",
+        indicatorBothCaption: "Sie bleibt neben der Insel auf dem Bildschirm."
     )
 }
 
@@ -4261,7 +4392,22 @@ extension ForkMeetingStrings {
         // MARK: Fixes O
         transcriptWordsOne: "1 mot",
         noticeParakeetMissing: "Parakeet non installé",
-        transcriptMeetingSilent: "Piste Réunion muette\u{00A0}: écho non filtré"
+        transcriptMeetingSilent: "Piste Réunion muette\u{00A0}: écho non filtré",
+        // MARK: Finish A
+        islandHint: "Affiche les commandes de l’enregistrement",
+        islandValuePausedFormat: "%@, en pause",
+        cardMark: "Marquer",
+        cardMarkHelp: "Marquer ce moment",
+        cardMarked: "Marqué",
+        voiceMarked: "Moment marqué.",
+        indicatorTitle: "Indicateur d’enregistrement",
+        islandActivity: "Afficher l’enregistrement dans l’île fermée",
+        islandActivityCaption: "La durée enregistrée et les niveaux du son apparaissent à côté de la caméra. Un clic ouvre les commandes de l’enregistrement.",
+        indicatorPill: "Pastille flottante",
+        indicatorAuto: "Automatique",
+        indicatorBoth: "Toujours",
+        indicatorAutoCaption: "Elle s’efface quand l’île fermée montre l’enregistrement sur l’écran filmé, et revient quand l’île est masquée, en plein écran ou montre une autre activité.",
+        indicatorBothCaption: "Elle reste à l’écran à côté de l’île."
     )
 }
 
@@ -4697,7 +4843,22 @@ extension ForkMeetingStrings {
         // MARK: Fixes O
         transcriptWordsOne: "1 parola",
         noticeParakeetMissing: "Parakeet non installato",
-        transcriptMeetingSilent: "Traccia Riunione muta: eco non filtrata"
+        transcriptMeetingSilent: "Traccia Riunione muta: eco non filtrata",
+        // MARK: Finish A
+        islandHint: "Mostra i controlli della registrazione",
+        islandValuePausedFormat: "%@, in pausa",
+        cardMark: "Segna",
+        cardMarkHelp: "Segna questo momento",
+        cardMarked: "Segnato",
+        voiceMarked: "Momento segnato.",
+        indicatorTitle: "Indicatore di registrazione",
+        islandActivity: "Mostra la registrazione nell’isola chiusa",
+        islandActivityCaption: "Il tempo registrato e i livelli del suono appaiono accanto alla fotocamera. Un clic apre i controlli della registrazione.",
+        indicatorPill: "Indicatore mobile",
+        indicatorAuto: "Automatico",
+        indicatorBoth: "Sempre",
+        indicatorAutoCaption: "Si nasconde mentre l’isola chiusa mostra la registrazione sullo schermo ripreso e torna quando l’isola è nascosta, a schermo intero o mostra un’altra attività.",
+        indicatorBothCaption: "Resta sullo schermo accanto all’isola."
     )
 }
 
@@ -5133,7 +5294,22 @@ extension ForkMeetingStrings {
         // MARK: Fixes O
         transcriptWordsOne: "1 語",
         noticeParakeetMissing: "Parakeet 未インストール",
-        transcriptMeetingSilent: "ミーティングのトラックが無音：エコー未除去"
+        transcriptMeetingSilent: "ミーティングのトラックが無音：エコー未除去",
+        // MARK: Finish A
+        islandHint: "録画のコントロールを表示します",
+        islandValuePausedFormat: "%@、一時停止中",
+        cardMark: "マーク",
+        cardMarkHelp: "この瞬間をマーク",
+        cardMarked: "マークしました",
+        voiceMarked: "この瞬間をマークしました。",
+        indicatorTitle: "録画インジケータ",
+        islandActivity: "閉じた島に録画を表示",
+        islandActivityCaption: "録画時間と音量レベルがカメラの横に表示されます。クリックすると録画のコントロールが開きます。",
+        indicatorPill: "フローティング表示",
+        indicatorAuto: "自動",
+        indicatorBoth: "常に表示",
+        indicatorAutoCaption: "閉じた島が撮影中の画面で録画を表示している間は隠れ、島が非表示、フルスクリーン、または別のアクティビティを表示しているときに戻ります。",
+        indicatorBothCaption: "島の横に表示されたままになります。"
     )
 }
 
@@ -5569,7 +5745,22 @@ extension ForkMeetingStrings {
         // MARK: Fixes O
         transcriptWordsOne: "1단어",
         noticeParakeetMissing: "Parakeet 미설치",
-        transcriptMeetingSilent: "회의 트랙 무음: 에코 미제거"
+        transcriptMeetingSilent: "회의 트랙 무음: 에코 미제거",
+        // MARK: Finish A
+        islandHint: "녹화 제어를 표시합니다",
+        islandValuePausedFormat: "%@, 일시 정지됨",
+        cardMark: "표시",
+        cardMarkHelp: "이 순간 표시",
+        cardMarked: "표시됨",
+        voiceMarked: "이 순간을 표시했습니다.",
+        indicatorTitle: "녹화 표시기",
+        islandActivity: "닫힌 섬에 녹화 표시",
+        islandActivityCaption: "녹화된 시간과 소리 레벨이 카메라 옆에 나타납니다. 클릭하면 녹화 제어가 열립니다.",
+        indicatorPill: "플로팅 표시기",
+        indicatorAuto: "자동",
+        indicatorBoth: "항상",
+        indicatorAutoCaption: "닫힌 섬이 촬영 중인 화면에서 녹화를 표시하는 동안 숨겨지고, 섬이 숨겨지거나 전체 화면이거나 다른 활동을 표시하면 다시 나타납니다.",
+        indicatorBothCaption: "섬 옆 화면에 계속 표시됩니다."
     )
 }
 
@@ -6005,7 +6196,22 @@ extension ForkMeetingStrings {
         // MARK: Fixes O
         transcriptWordsOne: "1 слово",
         noticeParakeetMissing: "Parakeet не встановлено",
-        transcriptMeetingSilent: "Доріжка «Зустріч» порожня: луну не прибрано"
+        transcriptMeetingSilent: "Доріжка «Зустріч» порожня: луну не прибрано",
+        // MARK: Finish A
+        islandHint: "Показує керування записом",
+        islandValuePausedFormat: "%@, на паузі",
+        cardMark: "Позначити",
+        cardMarkHelp: "Позначити цю мить",
+        cardMarked: "Позначено",
+        voiceMarked: "Мить позначено.",
+        indicatorTitle: "Індикатор запису",
+        islandActivity: "Показувати запис у закритому острівці",
+        islandActivityCaption: "Записаний час і рівні звуку з’являються біля камери. Клацання відкриває керування записом.",
+        indicatorPill: "Плаваючий індикатор",
+        indicatorAuto: "Автоматично",
+        indicatorBoth: "Завжди",
+        indicatorAutoCaption: "Він ховається, поки закритий острівець показує запис на знімальному екрані, і повертається, коли острівець приховано, увімкнено повноекранний режим або острівець показує іншу активність.",
+        indicatorBothCaption: "Він залишається на екрані біля острівця."
     )
 }
 
@@ -6441,7 +6647,22 @@ extension ForkMeetingStrings {
         // MARK: Fixes O
         transcriptWordsOne: "1 个词",
         noticeParakeetMissing: "未安装 Parakeet",
-        transcriptMeetingSilent: "会议音轨无声：未过滤回声"
+        transcriptMeetingSilent: "会议音轨无声：未过滤回声",
+        // MARK: Finish A
+        islandHint: "显示录制控制",
+        islandValuePausedFormat: "%@，已暂停",
+        cardMark: "标记",
+        cardMarkHelp: "标记此刻",
+        cardMarked: "已标记",
+        voiceMarked: "已标记此刻。",
+        indicatorTitle: "录制指示器",
+        islandActivity: "在收起的岛中显示录制",
+        islandActivityCaption: "已录制的时间和声音电平显示在摄像头旁。点按一下即可打开录制控制。",
+        indicatorPill: "浮动指示器",
+        indicatorAuto: "自动",
+        indicatorBoth: "始终",
+        indicatorAutoCaption: "收起的岛在被录制的屏幕上显示录制时，它会隐藏；岛被隐藏、处于全屏或显示其他活动时，它会回来。",
+        indicatorBothCaption: "它会一直显示在岛旁边。"
     )
 }
 
@@ -6877,7 +7098,22 @@ extension ForkMeetingStrings {
         // MARK: Fixes O
         transcriptWordsOne: "1 個詞",
         noticeParakeetMissing: "未安裝 Parakeet",
-        transcriptMeetingSilent: "會議音軌無聲：未過濾回音"
+        transcriptMeetingSilent: "會議音軌無聲：未過濾回音",
+        // MARK: Finish A
+        islandHint: "顯示錄製控制項目",
+        islandValuePausedFormat: "%@，已暫停",
+        cardMark: "標記",
+        cardMarkHelp: "標記此刻",
+        cardMarked: "已標記",
+        voiceMarked: "已標記此刻。",
+        indicatorTitle: "錄製指示器",
+        islandActivity: "在收合的島中顯示錄製",
+        islandActivityCaption: "已錄製的時間和聲音電平會顯示在相機旁。按一下即可開啟錄製控制項目。",
+        indicatorPill: "浮動指示器",
+        indicatorAuto: "自動",
+        indicatorBoth: "永遠",
+        indicatorAutoCaption: "收合的島在被錄製的螢幕上顯示錄製時，它會隱藏；島被隱藏、處於全螢幕或顯示其他活動時，它會回來。",
+        indicatorBothCaption: "它會一直顯示在島旁邊。"
     )
 }
 
@@ -7313,6 +7549,21 @@ extension ForkMeetingStrings {
         // MARK: Fixes O
         transcriptWordsOne: "1 個詞",
         noticeParakeetMissing: "未安裝 Parakeet",
-        transcriptMeetingSilent: "會議音軌無聲：未過濾回音"
+        transcriptMeetingSilent: "會議音軌無聲：未過濾回音",
+        // MARK: Finish A
+        islandHint: "顯示錄製控制項",
+        islandValuePausedFormat: "%@，已暫停",
+        cardMark: "標記",
+        cardMarkHelp: "標記這一刻",
+        cardMarked: "已標記",
+        voiceMarked: "已標記這一刻。",
+        indicatorTitle: "錄製指示器",
+        islandActivity: "在收合的島中顯示錄製",
+        islandActivityCaption: "已錄製的時間和聲音電平會顯示在相機旁。按一下即可打開錄製控制項。",
+        indicatorPill: "浮動指示器",
+        indicatorAuto: "自動",
+        indicatorBoth: "總是",
+        indicatorAutoCaption: "收合的島在被錄製的螢幕上顯示錄製時，它會隱藏；島被隱藏、處於全螢幕或顯示其他活動時，它會回來。",
+        indicatorBothCaption: "它會一直顯示在島旁邊。"
     )
 }

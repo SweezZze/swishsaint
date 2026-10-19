@@ -15,6 +15,9 @@ import SwiftUI
 /// on the island's Captures page, with buttons, for what asks for a gesture
 /// ("Meeting saved · Show in Finder"). Anything the island turns away goes to
 /// the bubble; the pill carries the recording's real state either way.
+/// While a meeting records, the closed island also shows it as one of its
+/// live activities (`ForkMeetingIslandStrip`), whose click opens the live
+/// card (`ForkMeetingLiveCard`).
 enum ForkMeetingIsland {
     /// Whether the closed island is free for a meeting now. Open, dragged
     /// into, holding the official capture controls or a dictation, it is
@@ -78,12 +81,22 @@ enum ForkMeetingIsland {
     @discardableResult
     static func present(_ card: ForkMeetingCard, id: UUID, height: CGFloat, fallback: @escaping () -> Void,
                         close: @escaping () -> Void, hover: @escaping (Bool) -> Void) -> Bool {
+        let actions = card.menu.isEmpty ? nil : AnyView(ForkMeetingCardMenu(card: card))
+        return present(AnyView(ForkMeetingCardView(card: card)), actions: actions, id: id, height: height,
+                       fallback: fallback, close: close, hover: hover)
+    }
+
+    /// Any view as the island's card, on the same terms: the recording's
+    /// live card (`ForkMeetingLiveCard`) is one.
+    @discardableResult
+    static func present(_ content: AnyView, actions: AnyView?, id: UUID, height: CGFloat,
+                        fallback: @escaping () -> Void, close: @escaping () -> Void,
+                        hover: @escaping (Bool) -> Void) -> Bool {
         guard ForkMeetingIslandCard.islandTakes(available: isAvailable, showingThisCard: isShowing(id: id)) else {
             return false
         }
-        let actions = card.menu.isEmpty ? nil : AnyView(ForkMeetingCardMenu(card: card))
         return NotchService.shared.presentCapture(
-            id: id, content: AnyView(ForkMeetingCardView(card: card)), actions: actions, height: height,
+            id: id, content: content, actions: actions, height: height,
             takeFocus: false, closeOnCollapse: true, fallback: fallback, close: close, hover: hover)
     }
 
@@ -96,9 +109,14 @@ enum ForkMeetingIsland {
     /// a remedy of three lines is never cut, nor one of one line given room
     /// for two. Main thread.
     static func height(of card: ForkMeetingCard, minimum: CGFloat) -> CGFloat {
+        height(of: ForkMeetingCardView(card: card), minimum: minimum)
+    }
+
+    /// Any card's height in the island, measured the same way.
+    static func height<Content: View>(of content: Content, minimum: CGFloat) -> CGFloat {
         let width = NotchService.shared.expandedGeometry.contentWidth
         guard width > 0 else { return minimum }
-        let host = NSHostingView(rootView: ForkMeetingCardView(card: card)
+        let host = NSHostingView(rootView: content
             .environment(\.notchPresentation, true)
             .frame(width: width)
             .fixedSize(horizontal: false, vertical: true))

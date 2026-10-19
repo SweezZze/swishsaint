@@ -99,6 +99,11 @@ enum ForkDefaultsKey {
     /// (`ForkMeetingTranscriber`). Off until a real meeting has been read
     /// back (plan §10).
     static let meetingsTranscribe = "fork.meetings.transcribe"
+    // MARK: Finish A
+    /// What says that a meeting is being recorded: the closed island's
+    /// strip and the pill (`auto`), the pill alone (`pill`), or both always
+    /// (`both`). A choice of the person's: it follows the backup.
+    static let meetingsIndicator = "fork.meetings.indicator"
     /// The meetings folder's path; empty: a folder in Movies, named in the
     /// person's language and saved here at the first recording. Machine
     /// state, like the official recorder's folder: kept out of the backup.
@@ -173,6 +178,7 @@ enum ForkDefaults {
         ForkDefaultsKey.meetingsCalendarNaming: false,
         ForkDefaultsKey.meetingsRetentionDays: ForkMeetingRetention.fallback,
         ForkDefaultsKey.meetingsTranscribe: false,
+        ForkDefaultsKey.meetingsIndicator: ForkMeetingIndicator.fallback.rawValue,
     ]
 
     /// Where each setting lived in the test builds made before the fork

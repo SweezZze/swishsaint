@@ -47,6 +47,8 @@ struct ForkMeetingSettings: View {
             .disabled(!enabled)
         ForkMeetingShortcutSection(text: text)
             .disabled(!enabled)
+        ForkMeetingIndicatorSection(text: text)
+            .disabled(!enabled)
         ForkMeetingCaptureSection(text: text)
             .disabled(!enabled)
         ForkMeetingLibrarySection(text: text)

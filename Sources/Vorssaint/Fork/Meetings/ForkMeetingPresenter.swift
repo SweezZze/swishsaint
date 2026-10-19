@@ -87,12 +87,14 @@ final class ForkMeetingPresenter {
             }
             return
         }
-        pill.configure(levels: levels, actions: ForkMeetingPill.Actions(pause: onPause, resume: onResume, stop: onStop,
-                                                                       toggleTarget: onToggleTarget,
-                                                                       continueRecording: {
-                                                                           ForkMeetingService.shared.continueRecording()
-                                                                       }))
+        let actions = ForkMeetingPill.Actions(pause: onPause, resume: onResume, stop: onStop, toggleTarget: onToggleTarget,
+                                              continueRecording: { ForkMeetingService.shared.continueRecording() })
+        pill.configure(levels: levels, actions: actions)
+        pill.stepsAside = Self.pillStepsAside
         pill.prepare()
+        // The island's strip and live card read the same levels and do the same.
+        ForkMeetingIslandModel.shared.levels = levels
+        ForkMeetingIslandModel.shared.actions = actions
         failureAction = onFailureAction
     }
 
@@ -144,6 +146,7 @@ final class ForkMeetingPresenter {
         }
         guard context != self.context else { return }
         self.context = context
+        ForkMeetingIslandModel.shared.update(context)
         if pillState != .hidden { pill.update(context) }
     }
 
@@ -154,6 +157,7 @@ final class ForkMeetingPresenter {
             DispatchQueue.main.async { self.setFinalizing(progress: progress) }
             return
         }
+        ForkMeetingIslandModel.shared.setProgress(progress)
         pill.setFinalizing(progress: progress)
     }
 
@@ -357,6 +361,7 @@ final class ForkMeetingPresenter {
             return
         }
         pillState = .hidden
+        ForkMeetingIslandModel.shared.show(.hidden)
         pill.hide()
         bubble.hide()
         removeCard()
@@ -374,6 +379,7 @@ final class ForkMeetingPresenter {
         context = ForkMeetingLiveContext()
         failureAction = nil
         pill.configure(levels: { ForkMeetingLevels() }, actions: ForkMeetingPill.Actions())
+        ForkMeetingIslandModel.shared.reset()
     }
 
     // MARK: - Surfaces
@@ -389,8 +395,20 @@ final class ForkMeetingPresenter {
         return NSScreen.screens.first { $0.displayID == id }
     }
 
+    /// The pill steps aside while the closed island shows the recording
+    /// where it is filmed, as `fork.meetings.indicator` asks.
+    private static func pillStepsAside(_ look: ForkMeetingPillLook?, _ context: ForkMeetingLiveContext) -> Bool {
+        let indicator = ForkMeetingIndicator(stored: UserDefaults.standard.string(forKey: ForkDefaultsKey.meetingsIndicator))
+        guard indicator == .auto, look != nil else { return false }
+        return ForkMeetingIslandRules.hidesPill(indicator: indicator,
+                                                islandShowsRecording: ForkMeetingIsland.showsRecording(onDisplay: context.displayID),
+                                                look: look)
+    }
+
     private func showPill(_ state: ForkMeetingPillState) {
         pillState = state
+        // The island first: the pill then knows whether the island shows it.
+        ForkMeetingIslandModel.shared.show(state)
         guard state != .hidden else {
             // The next meeting says its steps again from the start
             // (`ForkMeetingSpoken.forgets`).
