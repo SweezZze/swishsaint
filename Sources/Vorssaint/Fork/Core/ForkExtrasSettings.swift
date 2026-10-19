@@ -170,15 +170,13 @@ private struct ForkUpdatesSection: View {
         case .upToDate:
             row(text.upToDate, system: "checkmark.circle.fill", tint: .green)
         case let .available(candidate):
-            VStack(alignment: .leading, spacing: 4) {
-                row("\(text.availableTitle) (\(candidate.build))", system: "arrow.down.circle.fill",
-                    tint: .accentColor)
-                if !candidate.notes.isEmpty {
-                    Text(candidate.notes)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
+            HStack(spacing: 6) {
+                Image(systemName: "arrow.down.circle.fill").foregroundStyle(Color.accentColor)
+                Text("\(text.availableTitle) (\(candidate.build))").font(.callout)
+                Spacer()
+                // The notes of every build since this one, in the update window.
+                Button(l10n.s.tabReleaseNotes) { updates.showNotes(of: candidate) }
+                    .buttonStyle(.link)
             }
         case .downloading:
             row(text.downloading, system: "arrow.down.circle", tint: .secondary)

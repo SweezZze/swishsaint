@@ -72,6 +72,7 @@ final class ForkUpdateService: ObservableObject {
     /// At launch, then every few hours: a newer build is offered once.
     func startAutomaticChecks() {
         guard repository != nil, timer == nil else { return }
+        noteLaunch()
         DispatchQueue.main.asyncAfter(deadline: .now() + 8) { [weak self] in
             self?.check(offering: true)
         }
@@ -92,10 +93,11 @@ final class ForkUpdateService: ObservableObject {
     }
 
     /// - Parameters:
-    ///   - offering: true for the automatic checks, which ask in an alert
-    ///     when a build the person has not postponed is out.
+    ///   - offering: true for the automatic checks, which open the update
+    ///     window when a build the person has not postponed is out.
     ///   - reporting: true for the official "Check for Updates" command,
-    ///     which always answers in an alert.
+    ///     which always answers: with the update window when a build is
+    ///     out, even one postponed, in an alert otherwise.
     func check(offering: Bool = false, reporting: Bool = false) {
         switch state {
         case .checking, .downloading, .installing: return
@@ -108,40 +110,83 @@ final class ForkUpdateService: ObservableObject {
         }
         state = .checking
         lastChecked = Date()
-        var request = URLRequest(url: ForkUpdateSupport.latestReleaseURL(repository: repository))
-        request.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
-        request.cachePolicy = .reloadIgnoringLocalCacheData
-        request.timeoutInterval = 20
-        URLSession.shared.dataTask(with: request) { [weak self] data, response, _ in
-            let status = (response as? HTTPURLResponse)?.statusCode ?? 0
-            let candidate = (status == 200 ? data : nil)
-                .flatMap { try? JSONDecoder().decode(ForkUpdateSupport.Release.self, from: $0) }
-                .flatMap(ForkUpdateSupport.candidate(from:))
+        Self.fetchReleases(repository: repository, installed: currentBuild) { [weak self] releases in
             DispatchQueue.main.async {
                 guard let self else { return }
                 let text = ForkUpdateStrings.current
-                guard status == 200 || status == 404 else {
+                guard let releases else {
                     self.state = offering && !reporting ? .idle : .failed(text.checkFailed)
                     if reporting { self.report(text.checkFailed) }
                     return
                 }
-                guard let candidate, ForkUpdateSupport.isNewer(candidate, than: self.currentBuild) else {
+                guard let candidate = ForkUpdateSupport.newestCandidate(in: releases),
+                      ForkUpdateSupport.isNewer(candidate, than: self.currentBuild) else {
                     self.state = .upToDate
                     if reporting { self.report(text.upToDate) }
                     return
                 }
+                self.remember(ForkUpdateNotes.summary(releases: releases, installed: self.currentBuild,
+                                                      candidate: candidate.build,
+                                                      installedUpstream: self.upstreamVersion))
                 self.state = .available(candidate)
                 let postponed = UserDefaults.standard.integer(forKey: ForkDefaultsKey.updatePostponedBuild)
                 if reporting || (offering && postponed != candidate.build) {
-                    // An alert in the middle of a meeting would take the
+                    // A window in the middle of a meeting would take the
                     // keyboard from the call: asked once it is over.
                     if ForkMeetingActivity.isBusy && !reporting {
                         self.waitForMeeting(candidate, install: false)
                     } else {
-                        self.offer(candidate)
+                        self.offer(candidate, asked: reporting)
                     }
                 }
             }
+        }
+    }
+
+    /// Off the main thread: the releases since the installed build, newest
+    /// first, in one request most of the time; `/releases/latest` alone
+    /// when the list cannot be read, as before the update window gathered
+    /// notes. nil when GitHub could not be asked at all.
+    private static func fetchReleases(repository: String, installed: Int?, page: Int = 1,
+                                      found: [ForkUpdateSupport.Release] = [],
+                                      completion: @escaping ([ForkUpdateSupport.Release]?) -> Void) {
+        get(ForkUpdateSupport.releasesURL(repository: repository, page: page)) { status, data in
+            if status == 200, let data,
+               let releases = try? JSONDecoder().decode([ForkUpdateSupport.Release].self, from: data) {
+                if ForkUpdateSupport.needsNextPage(releases, pageNumber: page, installed: installed) {
+                    fetchReleases(repository: repository, installed: installed, page: page + 1,
+                                  found: found + releases, completion: completion)
+                } else {
+                    completion(found + releases)
+                }
+                return
+            }
+            // A later page that fails still leaves the newest builds.
+            guard page == 1 else {
+                completion(found)
+                return
+            }
+            get(ForkUpdateSupport.latestReleaseURL(repository: repository)) { status, data in
+                switch status {
+                case 200:
+                    let release = data.flatMap { try? JSONDecoder().decode(ForkUpdateSupport.Release.self, from: $0) }
+                    completion(release.map { [$0] } ?? [])
+                case 404:
+                    completion([])
+                default:
+                    completion(nil)
+                }
+            }
+        }
+    }
+
+    private static func get(_ url: URL, completion: @escaping (Int, Data?) -> Void) {
+        var request = URLRequest(url: url)
+        request.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
+        request.cachePolicy = .reloadIgnoringLocalCacheData
+        request.timeoutInterval = 20
+        URLSession.shared.dataTask(with: request) { data, response, _ in
+            completion((response as? HTTPURLResponse)?.statusCode ?? 0, data)
         }.resume()
     }
 
@@ -153,21 +198,152 @@ final class ForkUpdateService: ObservableObject {
         alert.runModal()
     }
 
-    private func offer(_ candidate: ForkUpdateSupport.Candidate) {
-        let text = ForkUpdateStrings.current
-        let alert = NSAlert()
-        alert.messageText = text.availableTitle
-        alert.informativeText = candidate.notes.isEmpty
-            ? text.availableBody
-            : text.availableBody + "\n\n" + candidate.notes
-        alert.addButton(withTitle: text.install)
-        alert.addButton(withTitle: text.later)
-        NSApp.activate(ignoringOtherApps: true)
-        if alert.runModal() == .alertFirstButtonReturn {
-            install(candidate)
-        } else {
-            UserDefaults.standard.set(candidate.build, forKey: ForkDefaultsKey.updatePostponedBuild)
+    /// From the Settings: the update window again, even for a build
+    /// postponed.
+    func showNotes(of candidate: ForkUpdateSupport.Candidate) {
+        offer(candidate, asked: true)
+    }
+
+    /// The window with the notes of every build since the installed one.
+    /// "Later" (or closing it) postpones this build until a newer one is
+    /// out; installing from it counts its notes as read, so they are not
+    /// shown again after the relaunch.
+    private func offer(_ candidate: ForkUpdateSupport.Candidate, asked: Bool = false) {
+        ForkUpdateNotesWindow.shared.show(
+            notes(for: candidate), mode: .available, bringForward: asked,
+            onInstall: { [weak self] in
+                UserDefaults.standard.set(candidate.build, forKey: ForkDefaultsKey.updateNotesSeenBuild)
+                self?.install(candidate)
+            },
+            onDismiss: {
+                UserDefaults.standard.set(candidate.build, forKey: ForkDefaultsKey.updatePostponedBuild)
+            })
+    }
+
+    // MARK: - Notes
+
+    /// The notes of the build on offer, gathered by the last check.
+    private(set) var offeredNotes: ForkUpdateNotes.Summary?
+
+    /// Kept on this Mac too: the window after the relaunch shows them again
+    /// without asking GitHub.
+    private func remember(_ notes: ForkUpdateNotes.Summary) {
+        offeredNotes = notes
+        if let data = try? JSONEncoder().encode(notes) {
+            UserDefaults.standard.set(data, forKey: ForkDefaultsKey.updateNotesCache)
         }
+    }
+
+    private func notes(for candidate: ForkUpdateSupport.Candidate) -> ForkUpdateNotes.Summary {
+        if let offeredNotes, offeredNotes.build == candidate.build { return offeredNotes }
+        return ForkUpdateNotes.Summary(build: candidate.build, upstream: nil, upstreamChanged: false, authors: [],
+                                       other: ForkUpdateNotes.fallbackItems(in: candidate.notes), includedBuilds: 1)
+    }
+
+    // MARK: - After an update
+
+    /// The build the app ran before this one, while the notes of the update
+    /// just installed wait to be shown.
+    private var installedSince: Int?
+    private var launchWindowObservers: [NSObjectProtocol] = []
+    private var launchWindowRecheck = false
+
+    /// At launch: a build newer than the one that ran last on this Mac is
+    /// an update just installed. Its notes are shown once, unless they were
+    /// read in the update window before installing. The build counts as
+    /// run only once that is done, so a quit before still shows them.
+    private func noteLaunch() {
+        let defaults = UserDefaults.standard
+        guard let current = currentBuild else { return }
+        let last = defaults.object(forKey: ForkDefaultsKey.updateLastRunBuild) as? Int
+        guard let last, current > last,
+              defaults.integer(forKey: ForkDefaultsKey.updateNotesSeenBuild) < current else {
+            defaults.set(current, forKey: ForkDefaultsKey.updateLastRunBuild)
+            return
+        }
+        installedSince = last
+        // After the official launch windows have had their turn to open.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 3) { [weak self] in
+            self?.showInstalledNotesWhenFree()
+        }
+    }
+
+    /// Main thread. Waits for the onboarding, the official What's New and
+    /// update intros, any alert and a meeting: one window at a time.
+    private func showInstalledNotesWhenFree() {
+        guard let since = installedSince, let current = currentBuild, let repository else { return }
+        guard Self.launchWindowsAreDone else {
+            waitForLaunchWindows()
+            return
+        }
+        stopWaitingForLaunchWindows()
+        installedSince = nil
+        if let data = UserDefaults.standard.data(forKey: ForkDefaultsKey.updateNotesCache),
+           let cached = try? JSONDecoder().decode(ForkUpdateNotes.Summary.self, from: data),
+           cached.build == current {
+            showInstalled(cached)
+            return
+        }
+        Self.fetchReleases(repository: repository, installed: since) { [weak self] releases in
+            DispatchQueue.main.async {
+                guard let self else { return }
+                // Offline: tried again at the next launch.
+                guard let releases else { return }
+                self.showInstalled(ForkUpdateNotes.summary(releases: releases, installed: since, candidate: current,
+                                                           installedUpstream: self.upstreamVersion))
+            }
+        }
+    }
+
+    private func showInstalled(_ notes: ForkUpdateNotes.Summary) {
+        let build = notes.build
+        let markSeen = {
+            UserDefaults.standard.set(build, forKey: ForkDefaultsKey.updateLastRunBuild)
+            UserDefaults.standard.set(build, forKey: ForkDefaultsKey.updateNotesSeenBuild)
+        }
+        // Nothing an author wrote: the official window says the rest.
+        guard notes.hasNotes, !ForkUpdateNotesWindow.shared.isOpen else {
+            markSeen()
+            return
+        }
+        ForkUpdateNotesWindow.shared.show(notes, mode: .installed, onDismiss: markSeen)
+    }
+
+    private static var launchWindowsAreDone: Bool {
+        let defaults = UserDefaults.standard
+        guard defaults.bool(forKey: DefaultsKey.hasOnboarded),
+              defaults.string(forKey: DefaultsKey.whatsNewPendingVersion) == nil,
+              NSApp.modalWindow == nil,
+              !ForkMeetingActivity.isBusy,
+              !ForkUpdateNotesWindow.shared.isOpen
+        else { return false }
+        return !ForkUpdateNotesWindow.officialIntroIsOpen
+    }
+
+    /// Looks again whenever one of those may have ended. A closing window
+    /// is given a moment, so the official window that follows it opens first.
+    private func waitForLaunchWindows() {
+        guard launchWindowObservers.isEmpty else { return }
+        let center = NotificationCenter.default
+        let recheck: (Notification) -> Void = { [weak self] notification in
+            guard let self, !self.launchWindowRecheck else { return }
+            self.launchWindowRecheck = true
+            let delay: TimeInterval = notification.name == NSWindow.willCloseNotification ? 0.6 : 0.2
+            DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
+                self?.launchWindowRecheck = false
+                self?.showInstalledNotesWhenFree()
+            }
+        }
+        launchWindowObservers = [
+            center.addObserver(forName: NSWindow.willCloseNotification, object: nil, queue: .main, using: recheck),
+            center.addObserver(forName: UserDefaults.didChangeNotification, object: nil, queue: .main, using: recheck),
+            center.addObserver(forName: ForkMeetingActivity.didBecomeIdle, object: nil, queue: .main, using: recheck),
+        ]
+    }
+
+    private func stopWaitingForLaunchWindows() {
+        launchWindowObservers.forEach { NotificationCenter.default.removeObserver($0) }
+        launchWindowObservers = []
     }
 
     // MARK: - Installing

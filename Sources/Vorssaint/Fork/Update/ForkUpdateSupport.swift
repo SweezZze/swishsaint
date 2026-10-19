@@ -34,6 +34,20 @@ enum ForkUpdateSupport {
         URL(string: "https://api.github.com/repos/\(repository)/releases/latest")!
     }
 
+    /// Releases asked for per request, newest first: one request covers
+    /// every build skipped since the installed one, whose notes the update
+    /// window puts together.
+    static let releasesPerPage = 50
+    /// A Mac that missed more than this many pages of builds sees the notes
+    /// of the newest ones only.
+    static let maxReleasePages = 3
+
+    static func releasesURL(repository: String, page: Int = 1) -> URL {
+        var url = "https://api.github.com/repos/\(repository)/releases?per_page=\(releasesPerPage)"
+        if page > 1 { url += "&page=\(page)" }
+        return URL(string: url)!
+    }
+
     static func releasesPageURL(repository: String) -> URL {
         URL(string: "https://github.com/\(repository)/releases/latest")!
     }
@@ -54,11 +68,16 @@ enum ForkUpdateSupport {
         let tagName: String
         let body: String?
         let assets: [Asset]
+        /// Neither is offered, as `/releases/latest` never returned them.
+        var draft: Bool? = nil
+        var prerelease: Bool? = nil
 
         enum CodingKeys: String, CodingKey {
             case tagName = "tag_name"
             case body
             case assets
+            case draft
+            case prerelease
         }
     }
 
@@ -67,7 +86,8 @@ enum ForkUpdateSupport {
         let zipURL: URL
         let zipSize: Int
         let sha256: String
-        /// The release notes without the checksum line.
+        /// The release notes as a person may read them: no checksum line,
+        /// no machine line (`ForkUpdateNotes.displayText`).
         let notes: String
     }
 
@@ -98,13 +118,26 @@ enum ForkUpdateSupport {
         else { return nil }
         let zips = release.assets.filter { $0.name.lowercased().hasSuffix(".zip") }
         guard zips.count == 1 else { return nil }
-        let notes = (release.body ?? "")
-            .split(separator: "\n", omittingEmptySubsequences: false)
-            .filter { !$0.trimmingCharacters(in: .whitespaces).hasPrefix("SHA256:") }
-            .joined(separator: "\n")
-            .trimmingCharacters(in: .whitespacesAndNewlines)
         return Candidate(build: build, zipURL: zips[0].browserDownloadURL, zipSize: zips[0].size,
-                         sha256: sha256, notes: notes)
+                         sha256: sha256, notes: ForkUpdateNotes.displayText(release.body))
+    }
+
+    /// The newest installable build of a list of releases, whatever their
+    /// order; drafts and pre-releases are never offered.
+    static func newestCandidate(in releases: [Release]) -> Candidate? {
+        releases
+            .filter { $0.draft != true && $0.prerelease != true }
+            .compactMap(candidate(from:))
+            .max { $0.build < $1.build }
+    }
+
+    /// Whether the next page is needed for the notes: only while every
+    /// build of a full page is still newer than the installed one, and
+    /// never past `maxReleasePages`.
+    static func needsNextPage(_ page: [Release], pageNumber: Int, installed: Int?) -> Bool {
+        guard let installed, page.count >= releasesPerPage, pageNumber < maxReleasePages else { return false }
+        let builds = page.compactMap { buildNumber(fromTag: $0.tagName) }
+        return !builds.isEmpty && builds.allSatisfy { $0 > installed }
     }
 
     /// Only a strictly newer build is offered. A build that does not know

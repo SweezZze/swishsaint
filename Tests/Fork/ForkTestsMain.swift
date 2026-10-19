@@ -13,6 +13,7 @@ struct ForkTests {
             ("fork-defaults", { ForkDefaultsTests.run(suite) }),
             ("window-trackpad", { ForkTrackpadGestureTests.run(suite) }),
             ("fork-update", { ForkUpdateTests.run(suite) }),
+            ("fork-update-notes", { ForkUpdateNotesTests.run(suite) }),
             ("fork-dictation", { ForkDictationTests.run(suite) }),
             ("fork-dictation-machine", { ForkDictationMachineTests.run(suite) }),
             ("fork-dictation-replacements", { ForkDictationReplacementsTests.run(suite) }),
